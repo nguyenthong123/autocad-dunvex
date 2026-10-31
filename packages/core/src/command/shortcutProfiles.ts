@@ -77,6 +77,7 @@ export const Chili3dShortcuts: ShortcutMap = {
     "modify.explode": "x",
     "modify.chamfer": "shift+c",
     "modify.fillet": "shift+f",
+    "view.pan": "h",
     // The one feature command with a key of its own: Press Pull is the entry point that reads the
     // selection and hands off, so the key has to reach it before any pick starts.
     "feature.pressPull": "q",
@@ -102,6 +103,7 @@ export const AutoCADCommandAliases: Record<string, CommandKeys> = {
     SPL: "create.bezier",
     O: "create.offset",
     OFFSET: "create.offset",
+    H: "view.pan",
     P: "view.pan",
     PAN: "view.pan",
     EXT: "create.extrude",
@@ -156,8 +158,7 @@ export const AutoCADCommandAliases: Record<string, CommandKeys> = {
 
 export const AutoCADShortcuts: ShortcutMap = {
     ...Chili3dShortcuts,
-    "view.pan": "p",
-    "create.extrude": "e+x+t",
+    "view.pan": "h",
     "create.line": "l",
     "create.polygon": "p+l",
     "create.rect": "r+e+c",

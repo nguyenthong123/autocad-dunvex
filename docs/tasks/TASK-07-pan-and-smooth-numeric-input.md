@@ -44,7 +44,7 @@ Qua kiểm thử thực tế trên giao diện người dùng, có **3 vấn đ�
 | `packages/ui/src/viewport/viewport.ts` | Chỉnh sửa | Trong `pointerMove`: giữ cố định vị trí `this._flyout` khi người dùng đang gõ trong ô nhập số (`!this._flyout.hasActiveInput`), tránh làm ô nhập nhảy theo chuột. |
 | `packages/three/src/cameraController.ts` | Chỉnh sửa | Gọi `this.view.update()` ở cuối `setTopView2D()` để màn hình xoay phẳng về 2D ngay lập tức khi tích chọn checkbox `2D`. |
 | `packages/core/src/command/commandKeys.ts` | Chỉnh sửa | Thêm khóa lệnh `"view.pan"` vào danh sách `CommandKeys`. |
-| `packages/core/src/command/shortcutProfiles.ts` | Chỉnh sửa | Thêm `P: "view.pan"`, `PAN: "view.pan"` vào `AutoCADCommandAliases` và `"view.pan": "p"`, `"create.extrude": "e+x+t"` vào `AutoCADShortcuts`. |
+| `packages/core/src/command/shortcutProfiles.ts` | Chỉnh sửa | Thêm `H: "view.pan"`, `P: "view.pan"`, `PAN: "view.pan"` vào `AutoCADCommandAliases`; thêm `"view.pan": "h"` vào `Chili3dShortcuts` và `AutoCADShortcuts` (giữ nguyên `"create.extrude": "p"`). |
 | `packages/i18n/src/en.ts` & `packages/i18n/src/vi.ts` | Chỉnh sửa | Bổ sung bản dịch cho khóa `"command.view.pan"` (`"Pan View"` / `"Di chuyển vùng nhìn (Pan)"`). |
 | `packages/app/src/commands/application/panView.ts` | Tạo mới | Triển khai lệnh `PanViewCommand` (`view.pan`) và `PanEventHandler` cho phép giữ chuột trái kéo màn hình, nhấn `ESC` / `Enter` / `Space` / `Chuột phải` để thoát. |
 | `packages/app/src/commands/application/index.ts` | Chỉnh sửa | Export `panView.ts`. |
@@ -148,15 +148,19 @@ Trong `packages/three/src/cameraController.ts` (hàm `setTopView2D` dòng 226-23
 1. Thêm `"view.pan"` vào `packages/core/src/command/commandKeys.ts`.
 2. Thêm bản dịch `"view.pan": "Pan View"` trong `packages/i18n/src/en.ts` và `"view.pan": "Di chuyển vùng nhìn (Pan)"` trong `packages/i18n/src/vi.ts`.
 3. Trong `packages/core/src/command/shortcutProfiles.ts`:
+   - Thêm vào `Chili3dShortcuts`:
+     ```ts
+     "view.pan": "h",
+     ```
    - Thêm vào `AutoCADCommandAliases`:
      ```ts
+     H: "view.pan",
      P: "view.pan",
      PAN: "view.pan",
      ```
    - Thêm vào `AutoCADShortcuts`:
      ```ts
-     "view.pan": "p",
-     "create.extrude": "e+x+t",
+     "view.pan": "h",
      ```
 4. Tạo file `packages/app/src/commands/application/panView.ts` (và export trong `packages/app/src/commands/application/index.ts`):
    ```ts
@@ -266,7 +270,7 @@ Trong `packages/three/src/cameraController.ts` (hàm `setTopView2D` dòng 226-23
 
 ## 4. Tiêu chí nghiệm thu & Kiểm thử (Verification Checklist)
 
-- [x] **Lệnh `P` / `PAN`:** Gõ `P` + `Enter` (hoặc nhấn phím `P` trên vùng vẽ): có thể nhấn giữ **chuột trái** và kéo để dịch chuyển toàn bộ màn hình bản vẽ mượt mà; nhấn `ESC`, `Enter`, `Space` hoặc `Chuột phải` để thoát lệnh `PAN`.
+- [x] **Lệnh `P` / `PAN` / `H`:** Gõ `P` / `PAN` / `H` + `Enter` (hoặc nhấn phím `H` trên vùng vẽ): có thể nhấn giữ **chuột trái** và kéo để dịch chuyển toàn bộ màn hình bản vẽ mượt mà; nhấn `ESC`, `Enter`, `Space` hoặc `Chuột phải` để thoát lệnh `PAN`.
 - [x] **Nhập số kích thước mượt mà không bị khựng:** Gõ `L` + `Enter`, click điểm đầu, kéo chuột theo hướng bất kỳ và gõ nhanh liên tiếp `500` hoặc `1250.5` rồi nhấn `Enter` (hoặc `Space`):
   - Không bị mất chữ số thứ 2 khi gõ nhanh.
   - Ô nhập số đứng yên, không bị rung giật theo tay cầm chuột.
