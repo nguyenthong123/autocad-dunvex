@@ -1,0 +1,66 @@
+# LỘ TRÌNH PHÁT TRIỂN & TÙY BIẾN HỆ THỐNG CAD CHILI3D (MASTER ROADMAP)
+
+Tài liệu này đóng vai trò là **Bảng điều khiển trung tâm (Master Tracker)** phục vụ công tác nghiên cứu kiến trúc, tùy biến tính năng theo luồng công việc AutoCAD 2D/3D và triển khai hệ thống **Chili3D** lên hạ tầng đám mây.
+
+---
+
+## 1. Tổng quan kiến trúc Chili3D (Architecture Overview)
+
+**Chili3D** là hệ thống Web CAD 3D/2D tham số (Parametric CAD) chạy trực tiếp trên trình duyệt, kết hợp nhân hình học **OpenCascade (OCCT v8.0.0)** biên dịch sang **WebAssembly** và engine đồ họa **Three.js**. Dự án được tổ chức theo mô hình **Monorepo** (npm workspaces) nằm trong thư mục `packages/` và được đóng gói bằng **Rspack + SWC** (`rspack.config.ts`).
+
+### Sơ đồ phân tầng các Package trong Monorepo
+
+```
+packages/web ──> packages/builder ──> packages/app ────────> packages/core
+                                  ──> packages/i18n ───────> packages/core
+                                  ──> packages/three ──────> packages/core
+                                  ──> packages/wasm ───────> packages/core
+                                  ──> packages/storage ────> packages/core
+                                  ──> packages/ui ─────────> packages/core + packages/element
+                                  ──> packages/parametric ─> packages/core
+                                  ──> packages/ai ─────────> packages/core
+```
+
+### Vai trò chi tiết của từng Package
+
+| Package | Đường dẫn thực tế | Vai trò & Thành phần cốt lõi |
+| :--- | :--- | :--- |
+| **`@chili3d/core`** | `packages/core/` | **Tầng trừu tượng trung tâm (Core Abstractions):** Định nghĩa toàn bộ Interfaces (`IApplication`, `IDocument`, `IShape`, `ICommand`, `IStorage`, `IDataExchange`, `ICameraController`), cấu hình toàn cục (`Config`, `VisualConfig`), hệ thống phản ứng dữ liệu (`Observable`, `Binding`, `PubSub`), quản lý lệnh (`CommandStore`, `ShortcutProfiles`), bắt điểm (`ObjectSnapTypes`, `ISnap`), đa ngôn ngữ (`I18n`, `I18N_KEYS`) và Serialization (`@serializable`, `Serializer`). |
+| **`@chili3d/app`** | `packages/app/` | **Tầng thực thi nghiệp vụ (Application & Commands):** Chứa lớp `Application`, `Document`, các đối tượng hình học cơ sở (`bodys/`: `LineNode`, `RectNode`, `CircleNode`, `BoxNode`...), toàn bộ các lệnh vẽ/chỉnh sửa/đo kích thước (`commands/create/*`, `commands/modify/*`, `commands/annotate/*`), cùng hai dịch vụ nền tảng là `CommandService` và `HotkeyService`. |
+| **`@chili3d/parametric`** | `packages/parametric/` | **Tầng thiết kế tham số & Sketch 2D:** Quản lý danh sách thuộc tính lịch sử khối (`ParametricBodyNode`, feature-list) và môi trường phác thảo 2D (`src/sketch/`, tích hợp bộ giải ràng buộc hình học `garlic` Wasm). |
+| **`@chili3d/wasm`** | `packages/wasm/` | **Tầng lõi hình học C++ OCCT (WebAssembly):** Đóng gói thư viện `lib/chili-wasm.wasm` (biên dịch từ thư mục `cpp/`), cung cấp `OccShapeProvider`, `OccShapeFactory` (tạo khối, boolean, fillet, chamfer, extrude) và `OccShapeConverter` (chuyển đổi STEP, IGES, BREP, STL). |
+| **`@chili3d/three`** | `packages/three/` | **Tầng hiển thị đồ họa 3D/2D (Three.js):** Triển khai `ThreeVisulFactory`, `ThreeView`, `CameraController` (chuyển đổi camera Perspective/Orthographic, Pan/Zoom/Rotate, Fit Content), `ViewGizmo` (khối điều hướng góc nhìn), `ThreeHighlighter` và `MeshExporter` (xuất OBJ, PLY). |
+| **`@chili3d/ui`** | `packages/ui/` | **Tầng giao diện người dùng (UI Chrome):** Xây dựng cửa sổ chính (`MainWindow`), màn hình khởi động (`Home`), không gian làm việc (`Editor`), thanh công cụ (`Ribbon`, `RibbonUI`), cây thư mục bản vẽ (`ProjectView`, `Tree`), bảng thuộc tính (`PropertyView`), khung nhìn (`Viewport`, `Flyout`), và thanh trạng thái (`Statusbar`, `SnapConfig`). |
+| **`@chili3d/element`** | `packages/element/` | **Tầng DOM Reactive:** Cung cấp các hàm khởi tạo Web Components và gắn kết dữ liệu hai chiều (`div`, `button`, `input`, `select`, `svg`, `collection`, `RadioGroup`, `Expander`). |
+| **`@chili3d/i18n`** | `packages/i18n/` | **Tầng dữ liệu ngôn ngữ:** Lưu trữ các từ điển dịch thuật (`en.ts`, `zh-cn.ts`, `pt-br.ts`, `ru.ts`) dựa trên tập khóa chuẩn `I18N_KEYS` của `@chili3d/core`. |
+| **`@chili3d/storage`** | `packages/storage/` | **Tầng lưu trữ cục bộ:** Triển khai `IndexedDBStorage` thực thi giao diện `IStorage` để lưu trữ bản vẽ (`documents`) và danh sách mở gần đây (`recents`) trên trình duyệt. |
+| **`@chili3d/ai`** | `packages/ai/` | **Tầng trợ lý AI & MCP Bridge:** Tích hợp khung chat AI (`ChatPanel`), bộ công cụ dựng hình bằng ngôn ngữ tự nhiên (`capabilityEngine`) và kết nối WebSocket (`?bridge=<port>`). |
+| **`@chili3d/builder`** | `packages/builder/` | **Tầng khởi tạo & lắp ghép (Dependency Wiring):** Cung cấp `AppBuilder` theo mẫu thiết kế Fluent API (`.useIndexedDB().useWasmOcc().useParametric().useThree().useUI().build()`), định nghĩa cấu hình thanh công cụ `DefaultRibbon` và bộ chuyển đổi tệp `DefaultDataExchange`. |
+| **`@chili3d/web`** | `packages/web/` | **Điểm vào ứng dụng (Entry Point):** File `packages/web/src/index.ts` hiển thị màn hình chờ `Loading`, kích hoạt `AppBuilder` và xử lý các tham số URL (`?url=`, `?plugin=`). |
+
+---
+
+## 2. Bảng theo dõi công việc (Master Task Table)
+
+| ID | Tiêu đề | Trạng thái | File hướng dẫn chi tiết |
+| :--- | :--- | :---: | :--- |
+| **TASK-01** | Thiết lập môi trường Local, cấu hình Build & tối ưu Deploy cho VPS 1GB RAM | `[x] DONE` | [docs/tasks/TASK-01-setup-and-deploy.md](./docs/tasks/TASK-01-setup-and-deploy.md) |
+| **TASK-02** | Việt hóa toàn diện giao diện (i18n) và Tùy biến thương hiệu / Giao diện | `[x] DONE` | [docs/tasks/TASK-02-i18n-and-branding.md](./docs/tasks/TASK-02-i18n-and-branding.md) |
+| **TASK-03** | Tùy biến hệ thống Phím tắt (Hotkeys) và Thanh nhập lệnh (Command Bar) chuẩn AutoCAD | `[x] DONE` | [docs/tasks/TASK-03-autocad-command-hotkey.md](./docs/tasks/TASK-03-autocad-command-hotkey.md) |
+| **TASK-04** | Tối ưu chế độ vẽ kỹ thuật 2D (Orthographic Top View, Bắt điểm OsSnap, quản lý Layer & Dim kích thước) | `[x] DONE` | [docs/tasks/TASK-04-2d-drafting-workflow.md](./docs/tasks/TASK-04-2d-drafting-workflow.md) |
+| **TASK-05** | Tích hợp tính năng Đọc / Xuất bản vẽ định dạng `.DXF` (AutoCAD) | `[x] DONE` | [docs/tasks/TASK-05-dxf-import-export.md](./docs/tasks/TASK-05-dxf-import-export.md) |
+| **TASK-06** | Chuyển đổi cơ chế lưu trữ từ IndexedDB (Trình duyệt) sang Backend API / Cloud Storage trên VPS | `[x] DONE` | [docs/tasks/TASK-06-cloud-storage-api.md](./docs/tasks/TASK-06-cloud-storage-api.md) |
+
+---
+
+## 3. Hồ sơ Vận hành, Cấu hình `.env` & Bảo trì Hạ tầng
+
+- **Sổ tay vận hành & bảo trì VPS / GitHub / `.env`:** [docs/MAINTENANCE.md](./docs/MAINTENANCE.md)
+
+---
+
+## 4. Quy ước cập nhật trạng thái
+
+- `[ ] TODO`: Công việc chưa bắt đầu.
+- `[~] IN_PROGRESS`: Công việc đang được triển khai.
+- `[x] DONE`: Công việc đã hoàn thành và vượt qua toàn bộ danh sách kiểm thử nghiệm thu (Verification Checklist).

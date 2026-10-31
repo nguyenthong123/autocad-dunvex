@@ -44,8 +44,10 @@ export class I18n {
         if (language) {
             return language;
         }
-
-        return "en";
+        if (defaultLanguage.startsWith("vi") && languages.has("vi")) {
+            return "vi";
+        }
+        return languages.has("vi") ? "vi" : "en";
     }
 
     static getLanguages(): Locale[] {

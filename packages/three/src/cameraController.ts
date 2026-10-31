@@ -2,6 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 import {
+    CAMERA_FLY_DURATION,
     type CameraTransitionOptions,
     type CameraType,
     Config,
@@ -11,6 +12,7 @@ import {
     MathUtils,
     Observable,
     type ViewMode,
+    XYZ,
     type XYZLike,
 } from "@chili3d/core";
 import {
@@ -221,7 +223,22 @@ export class CameraController extends Observable implements ICameraController {
         this._rotateCenter = this.selectedNodesCenter();
     }
 
+    setTopView2D(fit: boolean = true): void {
+        this.cameraType = "orthographic";
+        const target = this.cameraTarget;
+        const distance = Math.max(this._position.distanceTo(this._target), 1000);
+        const eye = new XYZ(target.x, target.y, target.z + distance);
+        const up = new XYZ(0, 1, 0);
+        this.lookAt(eye, target, up, { duration: CAMERA_FLY_DURATION });
+        if (fit) {
+            this.fitContent({ duration: CAMERA_FLY_DURATION });
+        }
+    }
+
     rotate(dx: number, dy: number): void {
+        if (Config.instance.is2DDraftingMode) {
+            return;
+        }
         this.cancelTransition();
         const newRotation = this.getRotation(dx * ROTATE_SPEED_FACTOR, dy * ROTATE_SPEED_FACTOR);
 

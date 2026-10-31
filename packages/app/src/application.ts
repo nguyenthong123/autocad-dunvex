@@ -4,6 +4,7 @@
 import {
     CAMERA_FLY_DURATION,
     type CommandKeys,
+    Config,
     DOCUMENT_FILE_EXTENSION,
     I18n,
     type IApplication,
@@ -244,5 +245,8 @@ export class Application extends Observable implements IApplication {
         if (document === undefined) return undefined;
         const view = document.visual.createView("3d", Plane.XY);
         this.activeView = view;
+        if (Config.instance.is2DDraftingMode) {
+            view.cameraController.setTopView2D?.(false);
+        }
     }
 }

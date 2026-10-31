@@ -77,6 +77,20 @@ export class AppBuilder {
         return this;
     }
 
+    useCloudStorage(baseUrl: string = "/api/storage") {
+        this._inits.push(async () => {
+            Logger.info(`initializing ApiCloudStorage (${baseUrl})`);
+
+            const db = await import("@chili3d/storage");
+            this._storage = new db.ApiCloudStorage({ baseUrl });
+            await this._storage.createDBIfNeeded(Constants.DBName, [
+                Constants.DocumentTable,
+                Constants.RecentTable,
+            ]);
+        });
+        return this;
+    }
+
     useWasmOcc() {
         this._inits.push(async () => {
             Logger.info("initializing wasm occ");

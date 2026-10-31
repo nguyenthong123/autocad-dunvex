@@ -7,3 +7,7 @@ import { initializeI18n } from "./i18n";
 // Registers the identity locale so tests never log "No translation for ... in undefined"
 // without each test file having to call `initializeI18n()` itself.
 initializeI18n();
+
+if (typeof (Promise as any).try !== "function") {
+    (Promise as any).try = (fn: any, ...args: any[]) => new Promise((resolve) => resolve(fn(...args)));
+}

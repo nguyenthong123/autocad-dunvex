@@ -12,3 +12,9 @@ types
 /test/scenarios
 
 /docs/manual/book/
+
+# Environment variables & local storage data
+.env
+.env.*
+!.env.example
+/data/

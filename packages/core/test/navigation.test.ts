@@ -10,6 +10,10 @@ describe("Navigation3DTypes", () => {
         expect(Navigation3DTypes).toContain("Chili3d");
     });
 
+    test("should contain AutoCAD", () => {
+        expect(Navigation3DTypes).toContain("AutoCAD");
+    });
+
     test("should contain Revit", () => {
         expect(Navigation3DTypes).toContain("Revit");
     });
@@ -26,8 +30,8 @@ describe("Navigation3DTypes", () => {
         expect(Navigation3DTypes).toContain("Solidworks");
     });
 
-    test("should have exactly 5 navigation types", () => {
-        expect(Navigation3DTypes).toHaveLength(5);
+    test("should have exactly 6 navigation types", () => {
+        expect(Navigation3DTypes).toHaveLength(6);
     });
 });
 
@@ -106,6 +110,20 @@ describe("Navigation3D.navigationKeyMap", () => {
         test("should return Shift+Middle for rotate", () => {
             Config.instance.init("testNavigation");
             Config.instance.navigation3D = "Chili3d";
+            expect(Navigation3D.navigationKeyMap().rotate).toBe("Shift+Middle");
+        });
+    });
+
+    describe("AutoCAD", () => {
+        test("should return Middle for pan", () => {
+            Config.instance.init("testNavigation");
+            Config.instance.navigation3D = "AutoCAD";
+            expect(Navigation3D.navigationKeyMap().pan).toBe("Middle");
+        });
+
+        test("should return Shift+Middle for rotate", () => {
+            Config.instance.init("testNavigation");
+            Config.instance.navigation3D = "AutoCAD";
             expect(Navigation3D.navigationKeyMap().rotate).toBe("Shift+Middle");
         });
     });

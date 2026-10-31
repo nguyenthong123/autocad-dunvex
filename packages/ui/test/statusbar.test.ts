@@ -22,6 +22,10 @@ rs.mock("../src/statusbar/errorStatus", () => ({
     ErrorStatus: class {},
 }));
 
+rs.mock("../src/statusbar/commandBar", () => ({
+    CommandBar: class {},
+}));
+
 // Recorded collaborators for the core mock. Factories may only reference
 // rs.hoisted-created values.
 const pubSubRecorder = rs.hoisted(() => {

@@ -31,6 +31,7 @@ export interface ICameraController extends IPropertyChanged, IDisposable {
     readonly cameraUp: XYZ;
 
     cameraType: CameraType;
+    setTopView2D?(fit?: boolean): void;
     fitContent(options?: CameraTransitionOptions): void;
     lookAt(eye: XYZLike, target: XYZLike, up: XYZLike, options?: CameraTransitionOptions): void;
     /**

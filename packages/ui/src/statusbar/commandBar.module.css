@@ -1,0 +1,91 @@
+.container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 24px;
+}
+
+.prefix {
+    font-size: 11px;
+    font-weight: bold;
+    color: var(--primary-color, #007acc);
+    user-select: none;
+    letter-spacing: 0.5px;
+}
+
+.input {
+    height: 20px;
+    width: 260px;
+    padding: 0 6px;
+    font-size: 12px;
+    font-family: inherit;
+    border: 1px solid var(--border-color, #444);
+    border-radius: 2px;
+    background-color: var(--input-background-color, #1e1e1e);
+    color: var(--foreground-color, #ccc);
+    outline: none;
+    transition:
+        width 0.2s,
+        border-color 0.2s;
+}
+
+.input:focus {
+    width: 320px;
+    border-color: var(--primary-color, #007acc);
+}
+
+.popup {
+    position: absolute;
+    bottom: 28px;
+    left: 65px;
+    width: 320px;
+    max-height: 220px;
+    overflow-y: auto;
+    background-color: var(--control-background-color, #252526);
+    border: 1px solid var(--border-color, #454545);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    display: none;
+    flex-direction: column;
+    z-index: 1000;
+}
+
+.item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.item:hover,
+.item.active {
+    background-color: var(--primary-color, #007acc);
+    color: #fff;
+}
+
+.alias {
+    font-weight: bold;
+    color: var(--foreground-color, #fff);
+}
+
+.item.active .alias {
+    color: #fff;
+}
+
+.desc {
+    font-size: 11px;
+    opacity: 0.8;
+    color: var(--statusbar-foreground-color, #aaa);
+    margin-left: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.item.active .desc {
+    color: #eee;
+}

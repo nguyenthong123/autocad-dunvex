@@ -2,6 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 import {
+    Config,
     command,
     DimensionAnnotation,
     Dimensions,
@@ -91,7 +92,7 @@ export class AnnotateDimension extends AnnotationCommandBase<DimensionAnnotation
     private readonly annotationPlane = (point?: XYZ): Plane => {
         const p1 = this.stepDatas[0].point!;
         const dir = this.stepDatas[1].point!.sub(p1).normalize();
-        if (dir === undefined) return Plane.XY.translateTo(p1);
+        if (dir === undefined || Config.instance.is2DDraftingMode) return Plane.XY.translateTo(p1);
 
         const view = this.application.activeView;
         const axis = view && point ? this.draggedAxis(view, p1, dir, point) : undefined;

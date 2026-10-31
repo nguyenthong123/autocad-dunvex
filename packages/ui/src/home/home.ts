@@ -115,7 +115,7 @@ export class Home extends HTMLElement {
             svg({ icon: "icon-chili" }),
             div(
                 { className: style.logoText },
-                span({ className: style.wordmark, textContent: "CHILI3D" }),
+                span({ className: style.wordmark, textContent: "DUNVEX CAD" }),
                 span({ className: style.version, textContent: `v${__APP_VERSION__}` }),
             ),
         );

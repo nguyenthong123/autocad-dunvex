@@ -743,4 +743,39 @@ describe("CameraController — transitions", () => {
         expect(cc.tick(100)).toBe(false);
         expect(cc.cameraPosition.z).toBeCloseTo(position.z);
     });
+
+    describe("2D Drafting Mode & setTopView2D", () => {
+        let original2D: boolean;
+
+        beforeEach(() => {
+            original2D = Config.instance.is2DDraftingMode;
+        });
+
+        afterEach(() => {
+            Config.instance.is2DDraftingMode = original2D;
+        });
+
+        test("setTopView2D switches camera to orthographic and aligns top-down", () => {
+            const cc = new CameraController(createFakeView());
+            cc.setTopView2D(false);
+            expect(cc.cameraType).toBe("orthographic");
+            advance(cc, 6);
+            expect(cc.cameraPosition.x).toBeCloseTo(0);
+            expect(cc.cameraPosition.y).toBeCloseTo(0);
+            expect(cc.cameraPosition.z).toBeGreaterThan(0);
+            expect(cc.cameraUp.y).toBeCloseTo(1);
+        });
+
+        test("rotate is locked when is2DDraftingMode is enabled", () => {
+            const cc = new CameraController(createFakeView());
+            Config.instance.is2DDraftingMode = true;
+            const initPos = cc.cameraPosition;
+
+            cc.rotate(50, 50);
+
+            expect(cc.cameraPosition.x).toBe(initPos.x);
+            expect(cc.cameraPosition.y).toBe(initPos.y);
+            expect(cc.cameraPosition.z).toBe(initPos.z);
+        });
+    });
 });

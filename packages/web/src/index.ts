@@ -59,7 +59,7 @@ async function handleApplicaionBuilt(app: IApplication) {
 
 // prettier-ignore
 new AppBuilder()
-    .useIndexedDB()
+    .useCloudStorage("/api/storage")
     .useWasmOcc()
     .useParametric()
     .useThree()

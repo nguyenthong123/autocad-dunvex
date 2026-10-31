@@ -15,6 +15,7 @@ import {
 import { createMockDocument, MockShape, TestNode } from "@chili3d/core/test-utils";
 import { rs } from "@rstest/core";
 import { DefaultDataExchange } from "../src/defaultDataExchange";
+import { DxfConverter } from "../src/dxfConverter";
 
 describe("DefaultDataExchange", () => {
     let exchange: DefaultDataExchange;
@@ -26,6 +27,7 @@ describe("DefaultDataExchange", () => {
     describe("importFormats", () => {
         test("should return supported import formats", () => {
             const formats = exchange.importFormats();
+            expect(formats).toContain(".dxf");
             expect(formats).toContain(".step");
             expect(formats).toContain(".stp");
             expect(formats).toContain(".iges");
@@ -46,6 +48,7 @@ describe("DefaultDataExchange", () => {
     describe("exportFormats", () => {
         test("should return supported export formats", () => {
             const formats = exchange.exportFormats();
+            expect(formats).toContain(".dxf");
             expect(formats).toContain(".step");
             expect(formats).toContain(".iges");
             expect(formats).toContain(".brep");
@@ -90,6 +93,10 @@ describe("DefaultDataExchange", () => {
 
         test("should match .brep extension", () => {
             expect((exchange as any).extensionIs("model.brep", ".brep")).toBe(true);
+        });
+
+        test("should match .dxf extension", () => {
+            expect((exchange as any).extensionIs("model.dxf", ".dxf")).toBe(true);
         });
     });
 
@@ -196,6 +203,25 @@ describe("DefaultDataExchange", () => {
             expect(addNodeSpy).toHaveBeenCalledTimes(1);
             const addedNode = addNodeSpy.mock.calls[0][0] as INode;
             expect(addedNode.name).toBe("model.brep");
+            expect(updateSpy).toHaveBeenCalledTimes(1);
+        });
+
+        test("should route .dxf through DxfConverter.importFromDxf with the file text", async () => {
+            const { doc, addNodeSpy, updateSpy } = setup();
+            const dxfNode = new EditableShapeNode({
+                document: doc,
+                name: "dxf-node",
+                shape: new MockShape({ id: "dxf" }),
+            });
+            const importSpy = rs.spyOn(DxfConverter, "importFromDxf").mockReturnValue(Result.ok(dxfNode));
+
+            await exchange.import(doc, [new File(["dummy dxf content"], "drawing.dxf")]);
+
+            expect(importSpy).toHaveBeenCalledTimes(1);
+            expect(importSpy).toHaveBeenCalledWith(doc, "dummy dxf content");
+            expect(addNodeSpy).toHaveBeenCalledTimes(1);
+            const addedNode = addNodeSpy.mock.calls[0][0] as INode;
+            expect(addedNode.name).toBe("drawing.dxf");
             expect(updateSpy).toHaveBeenCalledTimes(1);
         });
 
@@ -406,6 +432,20 @@ describe("DefaultDataExchange", () => {
             expect(converter.convertToBrep).toHaveBeenCalledTimes(1);
             expect(converter.convertToBrep).toHaveBeenCalledWith(combined);
             expect(disposeSpy).toHaveBeenCalledTimes(1);
+        });
+
+        test("should route .dxf through DxfConverter.exportToDxf", async () => {
+            const doc = createMockDocument();
+            const { node, transformed } = createShapeNode(doc, "dxf-node");
+            const exportSpy = rs
+                .spyOn(DxfConverter, "exportToDxf")
+                .mockReturnValue(Result.ok("SECTION\nHEADER..."));
+
+            const result = await exchange.export(".dxf", [node]);
+
+            expect(exportSpy).toHaveBeenCalledTimes(1);
+            expect(exportSpy).toHaveBeenCalledWith([transformed]);
+            expect(result).toEqual(["SECTION\nHEADER..."]);
         });
 
         test("should return undefined and not call any exporter for an unknown type", async () => {

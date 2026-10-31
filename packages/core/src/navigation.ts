@@ -3,7 +3,7 @@
 
 import { Config } from "./config";
 
-export const Navigation3DTypes = ["Chili3d", "Revit", "Blender", "Creo", "Solidworks"] as const;
+export const Navigation3DTypes = ["Chili3d", "AutoCAD", "Revit", "Blender", "Creo", "Solidworks"] as const;
 
 export type Navigation3DType = (typeof Navigation3DTypes)[number];
 
@@ -29,6 +29,10 @@ export class Navigation3D {
     } {
         const functionKey = {
             ["Chili3d"]: {
+                pan: "Middle",
+                rotate: "Shift+Middle",
+            },
+            ["AutoCAD"]: {
                 pan: "Middle",
                 rotate: "Shift+Middle",
             },

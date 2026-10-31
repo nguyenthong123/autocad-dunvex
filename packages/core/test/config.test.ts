@@ -211,12 +211,14 @@ describe("Config", () => {
             const testData = {
                 language: "en-US",
                 navigation3D: "TestNav",
+                is2DDraftingMode: true,
             };
             localStorageMock["chili3d.app.testRead"] = JSON.stringify(testData);
 
             Config.instance.readFromStorage();
             expect(Config.instance.language).toBe("en-US");
             expect(Config.instance.navigation3D).toBe("TestNav");
+            expect(Config.instance.is2DDraftingMode).toBe(true);
             Config.instance.init("config");
         });
 

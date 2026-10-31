@@ -13,14 +13,15 @@ import {
     ShapeNode,
     type VisualNode,
 } from "@chili3d/core";
+import { DxfConverter } from "./dxfConverter";
 
 export class DefaultDataExchange implements IDataExchange {
     importFormats(): string[] {
-        return [".step", ".stp", ".iges", ".igs", ".brep", ".stl"];
+        return [".dxf", ".step", ".stp", ".iges", ".igs", ".brep", ".stl"];
     }
 
     exportFormats(): string[] {
-        return [".step", ".iges", ".brep", ".stl", ".stl binary", ".ply", ".ply binary", ".obj"];
+        return [".dxf", ".step", ".iges", ".brep", ".stl", ".stl binary", ".ply", ".ply binary", ".obj"];
     }
 
     async import(document: IDocument, files: FileList | File[]): Promise<void> {
@@ -33,7 +34,11 @@ export class DefaultDataExchange implements IDataExchange {
         let importResult: Result<INode> | undefined;
 
         const fileName = file.name.toLocaleLowerCase();
-        if (this.extensionIs(fileName, ".brep")) {
+        if (this.extensionIs(fileName, ".dxf")) {
+            const text =
+                typeof file.text === "function" ? await file.text() : await new Response(file).text();
+            importResult = DxfConverter.importFromDxf(document, text);
+        } else if (this.extensionIs(fileName, ".brep")) {
             importResult = await this.importBrep(document, file);
         } else if (this.extensionIs(fileName, ".stl")) {
             importResult = await this.importStl(document, file);
@@ -90,7 +95,11 @@ export class DefaultDataExchange implements IDataExchange {
 
         const document = nodes[0].document;
         let shapeResult: Result<BlobPart> | undefined;
-        if (type === ".ply") {
+        if (type === ".dxf") {
+            const shapes = this.getExportShapes(nodes);
+            if (!shapes.length) return undefined;
+            shapeResult = DxfConverter.exportToDxf(shapes);
+        } else if (type === ".ply") {
             shapeResult = document.visual.meshExporter.exportToPly(nodes, true);
         } else if (type === ".ply binary") {
             shapeResult = document.visual.meshExporter.exportToPly(nodes, false);

@@ -3,6 +3,7 @@
 
 import { type BridgeStatus, Config, I18n, type I18nKeys, Navigation3D, PubSub } from "@chili3d/core";
 import { div, label } from "@chili3d/element";
+import { CommandBar } from "./commandBar";
 import { ErrorStatus } from "./errorStatus";
 import { SnapConfig } from "./snapConfig";
 import style from "./statusbar.module.css";
@@ -21,6 +22,8 @@ export class Statusbar extends HTMLElement {
     private _isDefaultTip = true;
     private bridge?: HTMLElement;
     private readonly right = div({ className: style.right }, new SnapConfig(), new ErrorStatus());
+
+    readonly commandBar = new CommandBar();
 
     readonly tip = label({
         textContent: "",
@@ -47,7 +50,7 @@ export class Statusbar extends HTMLElement {
     };
 
     private render() {
-        this.append(div({ className: style.left }, this.tip), this.right);
+        this.append(div({ className: style.left }, this.commandBar, this.tip), this.right);
     }
 
     private readonly bridgeStatusChanged = (status: BridgeStatus | undefined, title?: string) => {

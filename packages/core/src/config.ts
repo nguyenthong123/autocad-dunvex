@@ -145,6 +145,21 @@ export class Config extends Observable {
     }
 
     @serialize()
+    get is2DDraftingMode(): boolean {
+        return this.getPrivateValue("is2DDraftingMode", false);
+    }
+    set is2DDraftingMode(value: boolean) {
+        this.setProperty("is2DDraftingMode", value);
+    }
+
+    get orthoMode(): boolean {
+        return this.getPrivateValue("orthoMode", false);
+    }
+    set orthoMode(value: boolean) {
+        this.setProperty("orthoMode", value);
+    }
+
+    @serialize()
     get orbitMode(): OrbitMode {
         return this.getPrivateValue("orbitMode", "turntable");
     }

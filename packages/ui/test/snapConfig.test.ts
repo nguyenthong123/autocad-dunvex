@@ -33,13 +33,19 @@ describe("SnapConfig", () => {
     let originalSnapType: ObjectSnapType;
     let originalEnableSnap: boolean;
     let originalEnableSnapTracking: boolean;
+    let originalOrthoMode: boolean;
+    let originalIs2DDraftingMode: boolean;
 
     beforeEach(() => {
         originalSnapType = Config.instance.snapType;
         originalEnableSnap = Config.instance.enableSnap;
         originalEnableSnapTracking = Config.instance.enableSnapTracking;
+        originalOrthoMode = Config.instance.orthoMode;
+        originalIs2DDraftingMode = Config.instance.is2DDraftingMode;
         Config.instance.enableSnap = true;
         Config.instance.enableSnapTracking = true;
+        Config.instance.orthoMode = false;
+        Config.instance.is2DDraftingMode = false;
     });
 
     afterEach(() => {
@@ -48,20 +54,26 @@ describe("SnapConfig", () => {
         Config.instance.snapType = originalSnapType;
         Config.instance.enableSnap = originalEnableSnap;
         Config.instance.enableSnapTracking = originalEnableSnapTracking;
+        Config.instance.orthoMode = originalOrthoMode;
+        Config.instance.is2DDraftingMode = originalIs2DDraftingMode;
         rs.unstubAllGlobals();
     });
 
-    test("renders snap and tracking toggles with the config collapsed", () => {
+    test("renders snap, tracking, ortho, and 2d toggles with the config collapsed", () => {
         const config = new SnapConfig();
         document.body.append(config);
 
         expect(config.className).toContain("sc-container");
         expect(config.querySelectorAll("button").length).toBe(1);
-        expect(config.querySelectorAll("input").length).toBe(2);
+        expect(config.querySelectorAll("input").length).toBe(4);
         const enabled = mustQuery<HTMLInputElement>(config, "#snap-enabled");
         const tracking = mustQuery<HTMLInputElement>(config, "#snap-tracking");
+        const ortho = mustQuery<HTMLInputElement>(config, "#snap-ortho");
+        const mode2d = mustQuery<HTMLInputElement>(config, "#mode-2d-drafting");
         expect(enabled.checked).toBe(true);
         expect(tracking.checked).toBe(true);
+        expect(ortho.checked).toBe(false);
+        expect(mode2d.checked).toBe(false);
         const snapLabel = mustQuery<HTMLLabelElement>(config, 'label[for="snap-enabled"]');
         const trackingLabel = mustQuery<HTMLLabelElement>(config, 'label[for="snap-tracking"]');
         expect(snapLabel.contains(enabled)).toBe(true);
@@ -258,5 +270,33 @@ describe("SnapConfig", () => {
 
         (config as unknown as { snapTypeChanged: (property: string) => void }).snapTypeChanged("language");
         expect(mustQuery(document.body, `input#snap-${ObjectSnapTypes.endPoint}`)).toBe(endpoint);
+    });
+
+    test("toggles orthoMode and is2DDraftingMode via checkboxes", () => {
+        const config = new SnapConfig();
+        document.body.append(config);
+        const ortho = mustQuery<HTMLInputElement>(config, "#snap-ortho");
+        const mode2d = mustQuery<HTMLInputElement>(config, "#mode-2d-drafting");
+
+        ortho.click();
+        expect(Config.instance.orthoMode).toBe(true);
+
+        mode2d.click();
+        expect(Config.instance.is2DDraftingMode).toBe(true);
+        expect(Config.instance.dynamicWorkplane).toBe(false);
+    });
+
+    test("toggles snap settings via global function keys F3, F8, F11", () => {
+        const config = new SnapConfig();
+        document.body.append(config);
+
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "F3" }));
+        expect(Config.instance.enableSnap).toBe(false);
+
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "F8" }));
+        expect(Config.instance.orthoMode).toBe(true);
+
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "F11" }));
+        expect(Config.instance.enableSnapTracking).toBe(false);
     });
 });

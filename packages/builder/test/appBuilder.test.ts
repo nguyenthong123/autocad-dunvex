@@ -137,6 +137,7 @@ describe("AppBuilder", () => {
     describe("fluent API", () => {
         test.each([
             "useIndexedDB",
+            "useCloudStorage",
             "useWasmOcc",
             "useParametric",
             "useThree",

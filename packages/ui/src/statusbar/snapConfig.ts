@@ -3,6 +3,7 @@
 
 import {
     Config,
+    getCurrentApplication,
     I18n,
     type I18nKeys,
     Localize,
@@ -54,6 +55,31 @@ const SnapTypes: Array<{
 export class SnapConfig extends HTMLElement {
     private popup?: HTMLElement;
     private resizeObserver?: ResizeObserver;
+    private readonly mode2DToggle = input({
+        type: "checkbox",
+        id: "mode-2d-drafting",
+        checked: Config.instance.is2DDraftingMode,
+        onclick: () => {
+            const enabled = this.mode2DToggle.checked;
+            Config.instance.is2DDraftingMode = enabled;
+            Config.instance.dynamicWorkplane = !enabled;
+            if (enabled) {
+                try {
+                    getCurrentApplication()?.activeView?.cameraController.setTopView2D?.(true);
+                } catch {
+                    // Ignored in headless/test environments where no Application instance is set
+                }
+            }
+        },
+    });
+    private readonly orthoToggle = input({
+        type: "checkbox",
+        id: "snap-ortho",
+        checked: Config.instance.orthoMode,
+        onclick: () => {
+            Config.instance.orthoMode = this.orthoToggle.checked;
+        },
+    });
     private readonly enabled = input({
         type: "checkbox",
         id: "snap-enabled",
@@ -83,6 +109,16 @@ export class SnapConfig extends HTMLElement {
         this.summary.setAttribute("aria-expanded", "false");
         this.summary.setAttribute("aria-haspopup", "true");
         this.append(
+            label(
+                { className: style.toggle, htmlFor: "mode-2d-drafting" },
+                this.mode2DToggle,
+                span({ textContent: "2D" }),
+            ),
+            label(
+                { className: style.toggle, htmlFor: "snap-ortho" },
+                this.orthoToggle,
+                span({ textContent: "ORTHO (F8)" }),
+            ),
             div(
                 { className: style.snapGroup },
                 label(
@@ -105,6 +141,8 @@ export class SnapConfig extends HTMLElement {
             property === "snapType" ||
             property === "enableSnap" ||
             property === "enableSnapTracking" ||
+            property === "orthoMode" ||
+            property === "is2DDraftingMode" ||
             property === "language"
         ) {
             this.refresh();
@@ -121,6 +159,8 @@ export class SnapConfig extends HTMLElement {
         this.summary.setAttribute("aria-label", I18n.translate("statusBar.snap"));
         this.enabled.checked = Config.instance.enableSnap;
         this.tracking.checked = Config.instance.enableSnapTracking;
+        this.orthoToggle.checked = Config.instance.orthoMode;
+        this.mode2DToggle.checked = Config.instance.is2DDraftingMode;
     }
 
     private handleSnapClick(snapType: ObjectSnapType) {
@@ -200,13 +240,32 @@ export class SnapConfig extends HTMLElement {
         );
     }
 
+    private readonly onGlobalKeyDown = (e: KeyboardEvent) => {
+        const target = e.target as HTMLElement;
+        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+            return;
+        }
+        if (e.key === "F3") {
+            e.preventDefault();
+            Config.instance.enableSnap = !Config.instance.enableSnap;
+        } else if (e.key === "F8") {
+            e.preventDefault();
+            Config.instance.orthoMode = !Config.instance.orthoMode;
+        } else if (e.key === "F11") {
+            e.preventDefault();
+            Config.instance.enableSnapTracking = !Config.instance.enableSnapTracking;
+        }
+    };
+
     connectedCallback() {
         Config.instance.onPropertyChanged(this.snapTypeChanged);
+        window.addEventListener("keydown", this.onGlobalKeyDown);
         this.refresh();
     }
 
     disconnectedCallback() {
         this.close();
+        window.removeEventListener("keydown", this.onGlobalKeyDown);
         Config.instance.removePropertyChanged(this.snapTypeChanged);
     }
 }

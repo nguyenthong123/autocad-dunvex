@@ -5,6 +5,7 @@ import { TsCheckerRspackPlugin } from "ts-checker-rspack-plugin";
 import packages from "./package.json" with { type: "json" };
 
 const isProduction = process.env.NODE_ENV === "production";
+const skipTypeCheck = process.env.SKIP_TYPECHECK === "true";
 const configDir = import.meta.dirname;
 
 export default defineConfig({
@@ -60,7 +61,7 @@ export default defineConfig({
         extensions: [".ts", ".js", ".json", ".wasm"],
     },
     plugins: [
-        new TsCheckerRspackPlugin(),
+        ...(!skipTypeCheck ? [new TsCheckerRspackPlugin()] : []),
         new rspack.CircularDependencyRspackPlugin({
             failOnError: true,
             exclude: /node_modules/,
@@ -78,7 +79,7 @@ export default defineConfig({
         new rspack.DefinePlugin({
             __APP_VERSION__: JSON.stringify(packages.version),
             __DOCUMENT_VERSION__: JSON.stringify(packages.documentVersion),
-            __IS_PRODUCTION__: JSON.stringify(process.env.NODE_ENV === "production"),
+            __IS_PRODUCTION__: JSON.stringify(isProduction),
         }),
         new rspack.HtmlRspackPlugin({
             template: resolve(configDir, "public/index.html"),
@@ -86,6 +87,18 @@ export default defineConfig({
         }),
     ],
     optimization: {
+        splitChunks: isProduction
+            ? {
+                  chunks: "all",
+                  cacheGroups: {
+                      three: {
+                          test: /[\\/]node_modules[\\/]three[\\/]/,
+                          name: "vendor-three",
+                          priority: 20,
+                      },
+                  },
+              }
+            : false,
         minimizer: [
             new rspack.SwcJsMinimizerRspackPlugin({
                 minimizerOptions: {

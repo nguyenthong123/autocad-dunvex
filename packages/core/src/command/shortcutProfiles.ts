@@ -4,7 +4,7 @@
 import type { Navigation3DType } from "../navigation";
 import type { CommandKeys } from "./commandKeys";
 
-type ShortcutMap = Partial<Record<CommandKeys, string | string[]>>;
+export type ShortcutMap = Partial<Record<CommandKeys, string | string[]>>;
 
 const MODIFIER_KEYS = new Set(["ctrl", "shift", "alt"]);
 
@@ -82,6 +82,99 @@ export const Chili3dShortcuts: ShortcutMap = {
     "feature.pressPull": "q",
 };
 
+export const AutoCADCommandAliases: Record<string, CommandKeys> = {
+    L: "create.line",
+    LINE: "create.line",
+    PL: "create.polygon",
+    PLINE: "create.polygon",
+    REC: "create.rect",
+    RECTANG: "create.rect",
+    C: "create.circle",
+    CIRCLE: "create.circle",
+    A: "create.arc3point",
+    ARC: "create.arc",
+    EL: "create.ellipse",
+    ELLIPSE: "create.ellipse",
+    POL: "create.regularPolygon",
+    POLYGON: "create.regularPolygon",
+    PO: "create.point",
+    POINT: "create.point",
+    SPL: "create.bezier",
+    O: "create.offset",
+    OFFSET: "create.offset",
+    EXT: "create.extrude",
+    EXTRUDE: "create.extrude",
+    REV: "create.revol",
+    REVOLVE: "create.revol",
+    SWEEP: "create.sweep",
+    LOFT: "create.loft",
+    M: "modify.move",
+    MOVE: "modify.move",
+    RO: "modify.rotate",
+    ROTATE: "modify.rotate",
+    MI: "modify.mirror",
+    MIRROR: "modify.mirror",
+    AR: "modify.array",
+    ARRAY: "modify.array",
+    TR: "modify.trim",
+    TRIM: "modify.trim",
+    EX: "modify.extend",
+    EXTEND: "modify.extend",
+    BR: "modify.break",
+    BREAK: "modify.break",
+    F: "modify.fillet",
+    FILLET: "modify.fillet",
+    CHA: "modify.chamfer",
+    CHAMFER: "modify.chamfer",
+    X: "modify.explode",
+    EXPLODE: "modify.explode",
+    E: "modify.deleteNode",
+    ERASE: "modify.deleteNode",
+    DIM: "annotate.dimension",
+    DLI: "annotate.dimension",
+    DRA: "annotate.radius",
+    DAN: "annotate.angle",
+    T: "annotate.text",
+    MTEXT: "annotate.text",
+    TEXT: "annotate.text",
+    DI: "measure.length",
+    DIST: "measure.length",
+    LA: "create.folder",
+    LAYER: "create.folder",
+    U: "edit.undo",
+    UNDO: "edit.undo",
+    REDO: "edit.redo",
+    QSAVE: "doc.save",
+    SAVE: "doc.save",
+    OPEN: "doc.open",
+    NEW: "doc.new",
+    IMPORT: "file.import",
+    EXPORT: "file.export",
+};
+
+export const AutoCADShortcuts: ShortcutMap = {
+    ...Chili3dShortcuts,
+    "create.line": "l",
+    "create.polygon": "p+l",
+    "create.rect": "r+e+c",
+    "create.circle": "c",
+    "create.arc3point": "a",
+    "create.ellipse": "e+l",
+    "create.offset": "o",
+    "modify.move": "m",
+    "modify.rotate": "r+o",
+    "modify.mirror": "m+i",
+    "modify.trim": "t+r",
+    "modify.extend": "e+x",
+    "modify.fillet": "f",
+    "modify.chamfer": "c+h+a",
+    "modify.explode": "x",
+    "modify.deleteNode": ["Delete", "Backspace"],
+    "annotate.dimension": "d+l+i",
+    "annotate.radius": "d+r+a",
+    "annotate.angle": "d+a+n",
+};
+
 export const DefaultShortcuts: ShortcutMap = Chili3dShortcuts;
 
 export const RevitShortcuts: ShortcutMap = {
@@ -113,6 +206,7 @@ export const CreoShortcuts: ShortcutMap = {
 
 export const ShortcutProfiles: Record<Navigation3DType, ShortcutMap> = {
     Chili3d: Chili3dShortcuts,
+    AutoCAD: AutoCADShortcuts,
     Revit: RevitShortcuts,
     Blender: BlenderShortcuts,
     Creo: CreoShortcuts,
