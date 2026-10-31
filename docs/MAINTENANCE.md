@@ -140,3 +140,23 @@ Sau khi SSH vào máy chủ VPS (`cd /opt/autocad-dunvex`):
    cat backup-drawings-YYYYMMDD.tar.gz | ssh -i "$VPS_SSH_KEY_PATH" "$VPS_USER@$VPS_HOST" \
      "docker run --rm -i -v autocad-dunvex_chili3d-data:/data alpine tar -xzf - -C /data"
    ```
+
+---
+
+## 6. Nhật ký Triển khai Thực tế (Deployment Record)
+
+- **Thời gian hoàn tất:** 31/10/2026 20:05 (GMT+7)
+- **Hạ tầng máy chủ:** Google Cloud Compute Engine (Instance: `cad-server`, Zone: `us-west1-a`, RAM: 1GB)
+- **Địa chỉ IP Public:** `136.66.95.155`
+- **Đường link truy cập Web:** [http://136.66.95.155](http://136.66.95.155)
+- **Bộ nhớ đệm chống OOM (Swap):** 2.0 GB active tại `/swapfile`
+- **Trạng thái Dịch vụ Container:**
+  - `autocad-dunvex-chili3d-1` (Nginx WebAssembly + Static assets): `Up` (Cổng `80`, RAM tiêu thụ: `~11.0 MiB / 128 MiB`)
+  - `autocad-dunvex-storage-api-1` (Node.js REST API Cloud Storage): `Up` (RAM tiêu thụ: `~26.0 MiB / 64 MiB`)
+  - **Tổng RAM tiêu thụ của cả hệ thống container:** `~37.0 MiB` (tiết kiệm tối đa tài nguyên trên VPS 1GB RAM)
+- **Kiểm thử nghiệm thu trực tiếp:**
+  - `curl -I http://136.66.95.155` -> `HTTP/1.1 200 OK`
+  - Ghi bản vẽ (`PUT /api/storage/chili3d/recents/...`) -> `{"ok":true}`
+  - Đọc danh sách bản vẽ (`GET /api/storage/chili3d/recents?page=0&count=20`) -> Trả về mảng JSON chính xác
+  - Xóa bản vẽ (`DELETE /api/storage/chili3d/recents/...`) -> `{"ok":true}`
+

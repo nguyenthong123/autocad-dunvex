@@ -55,6 +55,7 @@ packages/web ──> packages/builder ──> packages/app ───────
 
 ## 3. Hồ sơ Vận hành, Cấu hình `.env` & Bảo trì Hạ tầng
 
+- **Địa chỉ máy chủ Live trên VPS (Google Cloud):** [http://136.66.95.155](http://136.66.95.155)
 - **Sổ tay vận hành & bảo trì VPS / GitHub / `.env`:** [docs/MAINTENANCE.md](./docs/MAINTENANCE.md)
 
 ---
