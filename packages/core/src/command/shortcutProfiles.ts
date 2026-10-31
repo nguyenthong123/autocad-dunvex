@@ -102,6 +102,8 @@ export const AutoCADCommandAliases: Record<string, CommandKeys> = {
     SPL: "create.bezier",
     O: "create.offset",
     OFFSET: "create.offset",
+    P: "view.pan",
+    PAN: "view.pan",
     EXT: "create.extrude",
     EXTRUDE: "create.extrude",
     REV: "create.revol",
@@ -154,6 +156,8 @@ export const AutoCADCommandAliases: Record<string, CommandKeys> = {
 
 export const AutoCADShortcuts: ShortcutMap = {
     ...Chili3dShortcuts,
+    "view.pan": "p",
+    "create.extrude": "e+x+t",
     "create.line": "l",
     "create.polygon": "p+l",
     "create.rect": "r+e+c",

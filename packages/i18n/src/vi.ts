@@ -299,6 +299,7 @@ const vi: Locale = {
         "command.workingPlane.fromSection": "Theo mặt cắt",
         "command.workingPlane.set": "Thiết lập mặt phẳng",
         "command.workingPlane.toggleDynamic": "Bật/Tắt mặt phẳng động",
+        "command.view.pan": "Di chuyển vùng nhìn (Pan)",
 
         // Object Snap (OsSnap) & Status Bar
         "statusBar.clearErrors": "Xóa nhật ký lỗi",
@@ -376,6 +377,8 @@ const vi: Locale = {
         "prompt.pressPull": "Chọn mặt hoặc cạnh để đẩy/kéo, hoặc chọn biên dạng phác thảo để đùn khối",
         "prompt.pressPullOneKind":
             "Đẩy/Kéo chỉ thao tác trên một loại đối tượng tại một thời điểm: mặt hoặc cạnh",
+        "prompt.pan":
+            "Nhấn giữ chuột trái để kéo vùng nhìn. Nhấn ESC, Enter, Space hoặc chuột phải để thoát.",
         "prompt.saveDocument{0}": "Bạn có muốn lưu các thay đổi cho {0} không?",
         "prompt.select.axis": "Vui lòng chọn trục",
         "prompt.select.boundary": "Vui lòng chọn cạnh biên",

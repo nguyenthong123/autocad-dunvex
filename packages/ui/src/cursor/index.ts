@@ -8,6 +8,8 @@ const cursors: Map<CursorType, string> = new Map([
     ["default", "default"],
     ["draw", `url(${draw}), default`],
     ["select.default", "crosshair"],
+    ["grab", "grab"],
+    ["grabbing", "grabbing"],
 ]);
 
 export class Cursor {

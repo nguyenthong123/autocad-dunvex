@@ -233,6 +233,7 @@ export class CameraController extends Observable implements ICameraController {
         if (fit) {
             this.fitContent({ duration: CAMERA_FLY_DURATION });
         }
+        this.view.update?.();
     }
 
     rotate(dx: number, dy: number): void {

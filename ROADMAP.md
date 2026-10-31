@@ -50,6 +50,7 @@ packages/web ──> packages/builder ──> packages/app ───────
 | **TASK-04** | Tối ưu chế độ vẽ kỹ thuật 2D (Orthographic Top View, Bắt điểm OsSnap, quản lý Layer & Dim kích thước) | `[x] DONE` | [docs/tasks/TASK-04-2d-drafting-workflow.md](./docs/tasks/TASK-04-2d-drafting-workflow.md) |
 | **TASK-05** | Tích hợp tính năng Đọc / Xuất bản vẽ định dạng `.DXF` (AutoCAD) | `[x] DONE` | [docs/tasks/TASK-05-dxf-import-export.md](./docs/tasks/TASK-05-dxf-import-export.md) |
 | **TASK-06** | Chuyển đổi cơ chế lưu trữ từ IndexedDB (Trình duyệt) sang Backend API / Cloud Storage trên VPS | `[x] DONE` | [docs/tasks/TASK-06-cloud-storage-api.md](./docs/tasks/TASK-06-cloud-storage-api.md) |
+| **TASK-07** | Bổ sung lệnh `P` (`PAN`) kéo màn hình bằng chuột trái & Khắc phục lỗi khựng khi nhập số kích thước lúc vẽ | `[x] DONE` | [docs/tasks/TASK-07-pan-and-smooth-numeric-input.md](./docs/tasks/TASK-07-pan-and-smooth-numeric-input.md) |
 
 ---
 

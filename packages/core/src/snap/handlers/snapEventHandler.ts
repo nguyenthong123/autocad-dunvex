@@ -265,7 +265,6 @@ export abstract class SnapEventHandler<D extends SnapData = SnapData> implements
         this._tempShapes?.forEach((id) => {
             this.document.visual.context.removeMesh(id);
         });
-        this.document.visual.update();
         this._tempShapes = undefined;
     }
 
@@ -301,7 +300,7 @@ export abstract class SnapEventHandler<D extends SnapData = SnapData> implements
             this.handleCancel();
         } else if (event.key === "Enter" || event.key === " ") {
             // should cancel when enter or space keydown, and should not trigger HotKeyService
-            event.preventDefault();
+            event.preventDefault?.();
             event.stopImmediatePropagation();
             this._snaped = undefined;
             this.handleCancel();
@@ -325,8 +324,10 @@ export abstract class SnapEventHandler<D extends SnapData = SnapData> implements
     }
 
     private handleNumericInput(view: IView, event: KeyboardEvent) {
-        if (!["#", "-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(event.key)) return;
+        if (!["#", "-", ".", ",", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(event.key))
+            return;
 
+        event.preventDefault?.();
         this._state = "inputing";
         PubSub.default.pub("showInput", event.key, (text: string) => {
             const error = this.inputError(text);

@@ -12,6 +12,10 @@ export class Flyout extends HTMLElement {
     private _onInputClose: (() => void) | undefined;
     private lastFocus: HTMLElement | null = null;
 
+    get hasActiveInput(): boolean {
+        return this._input !== undefined;
+    }
+
     constructor() {
         super();
         this.className = style.root;
@@ -71,12 +75,10 @@ export class Flyout extends HTMLElement {
         this._input.onCompleted(this.clearInput);
         this._onInputClose = options?.onClose;
         this.append(this._input);
-        setTimeout(() => {
-            // a readout leaves the keys where they are: nothing to focus, nothing to select
-            if (options?.takeFocus === false) return;
-            this._input?.focus();
-            if (options?.selectAll) this._input?.selectAll();
-        });
+        if (options?.takeFocus !== false) {
+            this._input.focus();
+            if (options?.selectAll) this._input.selectAll();
+        }
     };
 
     private readonly updateInput = (text: string) => {

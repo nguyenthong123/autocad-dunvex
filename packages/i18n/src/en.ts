@@ -293,6 +293,7 @@ export default {
         "command.sketch.trim": "Trim",
         "command.special.last": "__Last_COMMAND__",
         "command.test.performance": "Performance Test",
+        "command.view.pan": "Pan View",
         "command.wechat.group": "Wechat",
         "command.workingPlane.alignToPlane": "Align",
         "command.workingPlane.fromSection": "Section",
@@ -570,6 +571,8 @@ export default {
         "prompt.dragToPressPull": "Drag the arrow to set the distance, or type it",
         "prompt.pressPull": "Pick a face or an edge to push or pull, or a sketch profile to extrude",
         "prompt.pressPullOneKind": "Press Pull takes one kind at a time: faces or edges, not both",
+        "prompt.pan":
+            "Drag with left mouse button to pan view. Press ESC, Enter, Space or right-click to finish.",
         "prompt.pickArcBulge": "pick bulge point, ESC key to cancel",
         "prompt.pickArcEnd": "pick end point, ESC key to cancel",
         "prompt.pickArcHeight": "input arc height, ESC key to cancel",

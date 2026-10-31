@@ -60,6 +60,8 @@ export class Input extends HTMLElement implements IDisposable {
 
     override focus() {
         this.textbox.focus();
+        const len = this.textbox.value.length;
+        this.textbox.setSelectionRange?.(len, len);
     }
 
     /** Takes the whole text, so the next thing typed replaces it rather than landing inside it. */
@@ -92,9 +94,11 @@ export class Input extends HTMLElement implements IDisposable {
 
     private readonly handleKeyDown = (e: KeyboardEvent) => {
         e.stopPropagation();
-        if (e.key === "Enter") {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
             this.processEnterKey();
         } else if (e.key === "Escape") {
+            e.preventDefault();
             this._cancelledCallbacks.forEach((callback) => callback());
         } else {
             this.removeTip();

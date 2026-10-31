@@ -352,7 +352,7 @@ export class Viewport extends HTMLElement {
     };
 
     private readonly pointerMove = (event: PointerEvent) => {
-        if (this._flyout) {
+        if (this._flyout && !this._flyout.hasActiveInput) {
             this._flyout.style.top = `${event.offsetY}px`;
             this._flyout.style.left = `${event.offsetX}px`;
         }

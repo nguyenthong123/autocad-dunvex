@@ -230,7 +230,7 @@ export abstract class AxisDragHandler extends PreviewConfirmHandler {
     override keyDown(view: IView, event: KeyboardEvent): void {
         if (event.key === "Escape" && this._awaitingClick) {
             // The first Escape only leaves the click-move mode; the next cancels.
-            event.preventDefault();
+            event.preventDefault?.();
             event.stopImmediatePropagation();
             this.exitMoveMode(view);
             return;
@@ -433,8 +433,10 @@ export abstract class AxisDragHandler extends PreviewConfirmHandler {
     }
 
     private handleNumericInput(view: IView, event: KeyboardEvent): void {
-        if (!["#", "-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(event.key)) return;
+        if (!["#", "-", ".", ",", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(event.key))
+            return;
 
+        event.preventDefault?.();
         PubSub.default.pub("showInput", event.key, (text: string) => {
             if (Number.isNaN(Number(text))) return Result.err("error.input.invalidNumber" as I18nKeys);
 

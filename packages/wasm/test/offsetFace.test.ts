@@ -112,10 +112,7 @@ describe("ShapeFactory — offset face", () => {
         // A body OCCT can build an answer for but our checks refuse at every distance: this one
         // returns a valid-looking body whose moved face never arrives. Its second face is the
         // one that refuses; the point of the case is the report, not the face.
-        const brep = readFileSync(
-            path.resolve(import.meta.dirname, "models", "simplifySolid.brep"),
-            "utf-8",
-        );
+        const brep = readFileSync(path.resolve(import.meta.dirname, "models", "simplifySolid.brep"), "utf-8");
         const imported = unwrapOk(createTestConverter().convertFromBrep(brep));
         const solid = imported.findSubShapes(ShapeTypes.solid)[0];
         const faces = solid.findSubShapes(ShapeTypes.face) as IFace[];

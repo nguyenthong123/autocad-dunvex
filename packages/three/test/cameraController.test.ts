@@ -60,6 +60,7 @@ function createFakeView(overrides: Partial<ThreeView> = {}): ThreeView {
         detectVisual(_x: number, _y: number) {
             return [];
         },
+        update: rs.fn(),
         highlighter: {} as ThreeHighlighter,
         ...overrides,
     } as unknown as ThreeView;
@@ -756,8 +757,10 @@ describe("CameraController — transitions", () => {
         });
 
         test("setTopView2D switches camera to orthographic and aligns top-down", () => {
-            const cc = new CameraController(createFakeView());
+            const fakeView = createFakeView();
+            const cc = new CameraController(fakeView);
             cc.setTopView2D(false);
+            expect(fakeView.update).toHaveBeenCalled();
             expect(cc.cameraType).toBe("orthographic");
             advance(cc, 6);
             expect(cc.cameraPosition.x).toBeCloseTo(0);
