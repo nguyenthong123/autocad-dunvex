@@ -4,11 +4,12 @@
 import type { IDocument } from "../document";
 import type { AsyncController } from "../foundation";
 import type { I18nKeys } from "../i18n";
-import type { ShapeNode } from "../model";
+import { BoundingBox } from "../math";
+import { type INode, ShapeNode } from "../model";
 import { type INodeFilter, type IShapeFilter, isReferenceGeometryNode } from "../selectionFilter";
-import { type ShapeType, ShapeTypeUtils } from "../shape";
+import { type ShapeType, ShapeTypes, ShapeTypeUtils } from "../shape";
 import type { SnapResult } from "../snap";
-import type { VisualShapeData, VisualState } from "../visual";
+import { type INodeVisual, type VisualShapeData, type VisualState, VisualStates } from "../visual";
 import type { IStep } from "./step";
 
 export interface SelectShapeOptions {
@@ -68,6 +69,61 @@ function effectiveNodeFilter(options: SelectNodeOptions | undefined): INodeFilte
     };
 }
 
+export function extractVisualShapesFromNodes(
+    document: IDocument,
+    nodes: readonly INode[],
+    shapeType: ShapeType,
+    shapeFilter?: IShapeFilter,
+    nodeFilter?: INodeFilter,
+): VisualShapeData[] {
+    const result: VisualShapeData[] = [];
+    for (const node of nodes) {
+        if (nodeFilter && !nodeFilter.allow(node)) continue;
+        if (!(node instanceof ShapeNode) || !node.shape.isOk) continue;
+        const owner = document.visual.context.getVisual(node) as INodeVisual | undefined;
+        if (!owner) continue;
+        const rootShape = node.shape.value;
+        const worldTransform = owner.worldTransform();
+
+        // Case 1: The node's root shape directly matches shapeType
+        if (ShapeTypeUtils.contains(shapeType, rootShape.shapeType)) {
+            if (!shapeFilter || shapeFilter.allow(rootShape, worldTransform)) {
+                const box = rootShape.boundingBox();
+                const localCenter = BoundingBox.isValid(box) ? BoundingBox.center(box) : { x: 0, y: 0, z: 0 };
+                result.push({
+                    owner,
+                    shape: rootShape,
+                    transform: worldTransform,
+                    point: worldTransform.ofPoint(localCenter),
+                    indexes: [0],
+                });
+                continue;
+            }
+        }
+
+        // Case 2: shapeType requires Face and Node is non-solid with sub-faces
+        if (ShapeTypeUtils.hasFace(shapeType) && !ShapeTypeUtils.hasSolid(rootShape.shapeType)) {
+            const faces = rootShape.findSubShapes(ShapeTypes.face);
+            faces.forEach((face, idx) => {
+                if (!shapeFilter || shapeFilter.allow(face, worldTransform)) {
+                    const box = face.boundingBox();
+                    const localCenter = BoundingBox.isValid(box)
+                        ? BoundingBox.center(box)
+                        : { x: 0, y: 0, z: 0 };
+                    result.push({
+                        owner,
+                        shape: face,
+                        transform: worldTransform,
+                        point: worldTransform.ofPoint(localCenter),
+                        indexes: [idx],
+                    });
+                }
+            });
+        }
+    }
+    return result;
+}
+
 export abstract class SelectStep implements IStep {
     constructor(
         readonly snapeType: ShapeType,
@@ -114,7 +170,7 @@ export class SelectShapeStep extends SelectStep {
 export class GetOrSelectShapeStep extends SelectShapeStep {
     override execute(document: IDocument, controller: AsyncController): Promise<SnapResult | undefined> {
         const nodeFilter = effectiveShapeNodeFilter(this.options);
-        const shapes = document.selection.getSelectedShapes().filter((x) => {
+        let shapes = document.selection.getSelectedShapes().filter((x) => {
             let isValid = ShapeTypeUtils.contains(this.snapeType, x.shape.shapeType);
             if (this.options?.shapeFilter?.allow) {
                 isValid &&= this.options.shapeFilter.allow(x.shape, x.transform);
@@ -125,6 +181,27 @@ export class GetOrSelectShapeStep extends SelectShapeStep {
 
             return isValid;
         });
+
+        if (shapes.length === 0) {
+            const selectedNodes = document.selection.getSelectedNodes();
+            if (selectedNodes.length > 0) {
+                const fromNodes = extractVisualShapesFromNodes(
+                    document,
+                    selectedNodes,
+                    this.snapeType,
+                    this.options?.shapeFilter,
+                    nodeFilter,
+                );
+                if (fromNodes.length > 0) {
+                    document.selection.setSelectedShapes(
+                        fromNodes,
+                        this.options?.selectedState ?? VisualStates.faceSelected,
+                        false,
+                    );
+                    shapes = fromNodes;
+                }
+            }
+        }
 
         if (shapes.length > 0) {
             controller.success();

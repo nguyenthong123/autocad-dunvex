@@ -1,7 +1,7 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
-import { Plane, ShapeTypes, XYZ } from "@chili3d/core";
+import { Plane, ShapeNode, ShapeTypes, XYZ } from "@chili3d/core";
 import { TestDocument } from "@chili3d/core/test-utils";
 import { describe, expect, test } from "@rstest/core";
 import { prioritizeSketchFaces } from "../../src/commands/profileFaceSort";
@@ -46,5 +46,16 @@ describe("prioritizeSketchFaces", () => {
         const sketchB = faceOf(otherSketch, 1);
 
         expect(prioritizeSketchFaces([sketchA, sketchB])).toEqual([sketchA, sketchB]);
+    });
+
+    test("moves 2D shape faces ahead of solid bodies", () => {
+        const solidFace = faceOf(body, 0);
+        const planarNode = {
+            shape: { isOk: true, value: { shapeType: ShapeTypes.face } },
+        };
+        Object.setPrototypeOf(planarNode, ShapeNode.prototype);
+        const planarFace = faceOf(planarNode, 0);
+
+        expect(prioritizeSketchFaces([solidFace, planarFace])).toEqual([planarFace, solidFace]);
     });
 });

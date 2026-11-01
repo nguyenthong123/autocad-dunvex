@@ -1,7 +1,7 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
-import { type EdgeMeshData, ShapeTypes, XYZ } from "@chili3d/core";
+import { type EdgeMeshData, ShapeNode, ShapeTypes, XYZ } from "@chili3d/core";
 import { Box3, Mesh, MeshBasicMaterial, Points } from "three";
 import type { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
@@ -52,6 +52,32 @@ describe("ThreeGeometry", () => {
             expect(geo.faces()).toBeUndefined();
             expect(geo.edges()).toBeUndefined();
             expect(geo.vertexs()).toBeInstanceOf(Points);
+        });
+
+        test("applies polygonOffset for independent 2D planar face overlay", () => {
+            const node = createTestGeometryNode();
+            Object.setPrototypeOf(node, ShapeNode.prototype);
+            (node as any)._shape = {
+                isOk: true,
+                value: { shapeType: ShapeTypes.face },
+            };
+            const geo = new ThreeGeometry(node, context);
+            const mat = geo.faces()?.material as MeshBasicMaterial;
+            expect(mat.polygonOffset).toBe(true);
+            expect(mat.polygonOffsetFactor).toBe(-1.0);
+            expect(mat.polygonOffsetUnits).toBe(-4.0);
+        });
+
+        test("does not apply polygonOffset for 3D solid bodies", () => {
+            const node = createTestGeometryNode();
+            Object.setPrototypeOf(node, ShapeNode.prototype);
+            (node as any)._shape = {
+                isOk: true,
+                value: { shapeType: ShapeTypes.solid },
+            };
+            const geo = new ThreeGeometry(node, context);
+            const mat = geo.faces()?.material as MeshBasicMaterial;
+            expect(mat.polygonOffset).toBeFalsy();
         });
     });
 

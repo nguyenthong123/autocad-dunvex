@@ -2,9 +2,24 @@
 // See LICENSE file in the project root for full license information.
 
 import { rs } from "@rstest/core";
-import { AsyncController, type I18nKeys, type PickShapeOptions, ShapeTypes } from "../../src";
+import {
+    AsyncController,
+    BoundingBox,
+    type I18nKeys,
+    Matrix4,
+    type PickShapeOptions,
+    ShapeNode,
+    ShapeTypes,
+    XYZ,
+} from "../../src";
 import type { INodeFilter, IShapeFilter } from "../../src/selectionFilter";
-import { GetOrSelectNodeStep, GetOrSelectShapeStep, SelectNodeStep, SelectShapeStep } from "../../src/step";
+import {
+    extractVisualShapesFromNodes,
+    GetOrSelectNodeStep,
+    GetOrSelectShapeStep,
+    SelectNodeStep,
+    SelectShapeStep,
+} from "../../src/step";
 import type { IView, VisualShapeData } from "../../src/visual";
 import { createMockPicker, createMockSelection, TestDocument } from "../../test-utils";
 
@@ -336,6 +351,104 @@ describe("GetOrSelectShapeStep", () => {
 
         expect(pickCalled).toBe(true);
         controller.dispose();
+    });
+
+    test("should extract visual shapes from selected nodes when getSelectedShapes is empty", async () => {
+        const selection = createMockSelection();
+        selection.getSelectedShapes = () => [];
+        const picker = createMockPicker();
+        let pickCalled = false;
+        picker.pickShape = () => {
+            pickCalled = true;
+            return Promise.resolve([]);
+        };
+
+        const fakeShape = {
+            shapeType: ShapeTypes.face,
+            boundingBox: () => BoundingBox.zero,
+            findSubShapes: () => [],
+        };
+        const fakeNode = {
+            shape: { isOk: true, value: fakeShape },
+        };
+        Object.setPrototypeOf(fakeNode, ShapeNode.prototype);
+        const fakeVisual = {
+            worldTransform: () => Matrix4.identity(),
+            node: fakeNode,
+        };
+
+        selection.getSelectedNodes = () => [fakeNode as any];
+        selection.setSelectedShapes = rs.fn();
+
+        const doc = new TestDocument({
+            picker,
+            selection,
+            application: { activeView: {} as IView } as never,
+        });
+        doc.visual.context.getVisual = (n: any) => (n === fakeNode ? (fakeVisual as any) : undefined);
+        const controller = new AsyncController();
+
+        const step = new GetOrSelectShapeStep(ShapeTypes.face, tip() as never);
+        const result = await step.execute(doc, controller);
+
+        expect(result).toBeDefined();
+        expect(result!.shapes.length).toBe(1);
+        expect(result!.shapes[0].shape).toBe(fakeShape);
+        expect(pickCalled).toBe(false);
+        expect(controller.result?.status).toBe("success");
+        expect(selection.setSelectedShapes).toHaveBeenCalled();
+        controller.dispose();
+    });
+});
+
+describe("extractVisualShapesFromNodes", () => {
+    test("extracts shape when node matches shapeType directly", () => {
+        const doc = new TestDocument();
+        const fakeShape = {
+            shapeType: ShapeTypes.face,
+            boundingBox: () => new BoundingBox({ x: -10, y: -10, z: 0 }, { x: 10, y: 10, z: 0 }),
+            findSubShapes: () => [],
+        };
+        const fakeNode = {
+            shape: { isOk: true, value: fakeShape },
+        };
+        Object.setPrototypeOf(fakeNode, ShapeNode.prototype);
+        const fakeVisual = {
+            worldTransform: () => Matrix4.identity(),
+            node: fakeNode,
+        };
+        doc.visual.context.getVisual = () => fakeVisual as any;
+
+        const result = extractVisualShapesFromNodes(doc, [fakeNode as any], ShapeTypes.face);
+        expect(result.length).toBe(1);
+        expect(result[0].shape).toBe(fakeShape);
+        expect(result[0].point).toEqual(new XYZ({ x: 0, y: 0, z: 0 }));
+    });
+
+    test("extracts sub-faces from non-solid node when shapeType has face", () => {
+        const doc = new TestDocument();
+        const subFace = {
+            shapeType: ShapeTypes.face,
+            boundingBox: () => BoundingBox.zero,
+        };
+        const rootCompound = {
+            shapeType: ShapeTypes.compound,
+            boundingBox: () => BoundingBox.zero,
+            findSubShapes: (st: number) => (st === ShapeTypes.face ? [subFace] : []),
+        };
+        const fakeNode = {
+            shape: { isOk: true, value: rootCompound },
+        };
+        Object.setPrototypeOf(fakeNode, ShapeNode.prototype);
+        const fakeVisual = {
+            worldTransform: () => Matrix4.identity(),
+            node: fakeNode,
+        };
+        doc.visual.context.getVisual = () => fakeVisual as any;
+
+        const result = extractVisualShapesFromNodes(doc, [fakeNode as any], ShapeTypes.face);
+        expect(result.length).toBe(1);
+        expect(result[0].shape).toBe(subFace);
     });
 });
 

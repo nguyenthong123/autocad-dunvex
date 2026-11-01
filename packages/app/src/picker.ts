@@ -4,9 +4,11 @@
 import {
     type AsyncController,
     type CursorType,
+    extractVisualShapesFromNodes,
     type I18nKeys,
     type IDocument,
     type IEventHandler,
+    type INode,
     type IPicker,
     Logger,
     NodeSelectionHandler,
@@ -53,7 +55,35 @@ export class Picker implements IPicker {
         handler.sortDetected = options?.sortDetected;
         handler.finishOnClick = options?.finishOnClick ?? true;
         handler.onDetect = options?.onDetect;
-        await this.pickAsync(handler, prompt, controller, pickControl(multi, options));
+
+        const onNodeSelectionChanged = (nodes: INode[]) => {
+            if (!nodes || nodes.length === 0) return;
+            const matchedShapes = extractVisualShapesFromNodes(
+                this.document,
+                nodes,
+                shapeType,
+                options?.shapeFilter,
+                options?.nodeFilter,
+            );
+            if (matchedShapes.length === 0) return;
+            const picked = multi ? matchedShapes : [matchedShapes[0]];
+            this.document.selection.setSelectedShapes(picked, handler.selectedState, multi);
+            this.document.visual.update();
+            if (
+                picked.length > 0 &&
+                ((handler.canFinish?.(this.document.selection.getSelectedShapes()) ?? false) ||
+                    (!multi && handler.finishOnClick))
+            ) {
+                controller.success();
+            }
+        };
+        this.document.selection.onNodeChanged.sub(onNodeSelectionChanged);
+
+        try {
+            await this.pickAsync(handler, prompt, controller, pickControl(multi, options));
+        } finally {
+            this.document.selection.onNodeChanged.remove(onNodeSelectionChanged);
+        }
         return this.document.selection.getSelectedShapes();
     }
 
@@ -120,5 +150,8 @@ const bars = {
  */
 function pickControl(multi: boolean, options: PickShapeOptions | undefined): PickControl {
     if (multi) return "selection";
-    return options?.showConfirmControl === true || options?.finishOnClick === false ? "confirm" : "none";
+    if (options?.showConfirmControl === false) return "none";
+    if (options?.finishOnClick === false) return "confirm";
+    if (options?.showConfirmControl === true) return "confirm";
+    return "selection";
 }

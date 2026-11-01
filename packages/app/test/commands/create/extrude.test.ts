@@ -1,7 +1,16 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
-import { EditableShapeNode, type IShape, PubSub, ShapeTypes, XYZ } from "@chili3d/core";
+import {
+    BoundingBox,
+    EditableShapeNode,
+    GetOrSelectShapeStep,
+    type IShape,
+    Matrix4,
+    PubSub,
+    ShapeTypes,
+    XYZ,
+} from "@chili3d/core";
 import { afterAll, beforeAll, describe, expect, rs, test } from "@rstest/core";
 import { ExtrudeNode } from "../../../src/bodys/extrude";
 import { ExtrudeCommand } from "../../../src/commands/create/extrude";
@@ -28,10 +37,11 @@ describe("ExtrudeCommand", () => {
         expect(data.icon).toBe("icon-prism");
     });
 
-    test("getSteps should return two steps", () => {
+    test("getSteps should return two steps with first step as GetOrSelectShapeStep", () => {
         const cmd = new ExtrudeCommand();
         const steps = (cmd as any).getSteps();
         expect(steps.length).toBe(2);
+        expect(steps[0]).toBeInstanceOf(GetOrSelectShapeStep);
     });
 
     describe("instance sources", () => {
@@ -123,6 +133,28 @@ describe("ExtrudeCommand", () => {
             expect(data.point.isEqualTo(XYZ.zero)).toBe(true);
             expect(data.direction.isEqualTo(XYZ.unitZ)).toBe(true);
             expect(typeof data.preview).toBe("function");
+        });
+
+        test("should calculate axis point from BoundingBox.center when firstShape.point is undefined", () => {
+            const cmd = new ExtrudeCommand();
+            wireCommand(cmd);
+            seedStepDatas(cmd, [
+                shapeStepResult([
+                    {
+                        shape: {
+                            shapeType: ShapeTypes.face,
+                            normal: () => [XYZ.zero, XYZ.unitZ],
+                            boundingBox: () =>
+                                new BoundingBox(new XYZ({ x: 2, y: 2, z: 0 }), new XYZ({ x: 6, y: 6, z: 0 })),
+                        } as Partial<IShape>,
+                        transform: Matrix4.identity(),
+                        point: undefined,
+                    },
+                ]),
+            ]);
+            const data = (cmd as any).getLengthStepData();
+            expect(data.point.isEqualTo(new XYZ({ x: 4, y: 4, z: 0 }))).toBe(true);
+            expect(data.direction.isEqualTo(XYZ.unitZ)).toBe(true);
         });
 
         test("preview should return [] when point is undefined", () => {

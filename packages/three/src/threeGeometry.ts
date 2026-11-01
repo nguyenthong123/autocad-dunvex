@@ -56,6 +56,7 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
      */
     private _edgeParts: { line: LineSegments2; material: LineMaterial; ownsMaterial: boolean }[] = [];
     private _faces?: Mesh;
+    private _ownsFaceMaterial = false;
     private _vertexs?: Points;
     private _renderOnTop = false;
 
@@ -73,10 +74,23 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
         this._faceMaterial = material;
         if (!this._faces) return;
 
+        let mat = material;
+        if (this.isPlanarOrSurfaceOverlay()) {
+            if (this._ownsFaceMaterial) {
+                if (Array.isArray(this._faces.material)) {
+                    this._faces.material.forEach((m) => m.dispose());
+                } else {
+                    this._faces.material.dispose();
+                }
+            }
+            mat = this.applyPolygonOffset(material);
+            this._ownsFaceMaterial = true;
+        }
+
         if (this.locked) {
-            this._faces.userData["oldMaterial"] = material;
+            this._faces.userData["oldMaterial"] = mat;
         } else {
-            this._faces.material = material;
+            this._faces.material = mat;
         }
     }
 
@@ -221,6 +235,14 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
             this.disposeOnTopMaterial(this._faces);
             this.remove(this._faces);
             this._faces.geometry.dispose();
+            if (this._ownsFaceMaterial) {
+                if (Array.isArray(this._faces.material)) {
+                    this._faces.material.forEach((m) => m.dispose());
+                } else {
+                    this._faces.material.dispose();
+                }
+                this._ownsFaceMaterial = false;
+            }
             this._faces = null as any;
         }
     }
@@ -281,12 +303,47 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
         return { material, owned: true };
     }
 
+    private isPlanarOrSurfaceOverlay(): boolean {
+        if (!(this.geometryNode instanceof ShapeNode) || !this.geometryNode.shape.isOk) {
+            return false;
+        }
+        const st = this.geometryNode.shape.value.shapeType;
+        return (
+            st === ShapeTypes.face ||
+            st === ShapeTypes.wire ||
+            st === ShapeTypes.edge ||
+            st === ShapeTypes.compound
+        );
+    }
+
+    private applyPolygonOffset(mat: Material | Material[]): Material | Material[] {
+        if (Array.isArray(mat)) {
+            return mat.map((m) => {
+                const cloned = m.clone();
+                cloned.polygonOffset = true;
+                cloned.polygonOffsetFactor = -1.0;
+                cloned.polygonOffsetUnits = -4.0;
+                return cloned;
+            });
+        }
+        const cloned = mat.clone();
+        cloned.polygonOffset = true;
+        cloned.polygonOffsetFactor = -1.0;
+        cloned.polygonOffsetUnits = -4.0;
+        return cloned;
+    }
+
     private initFaces(data: FaceMeshData) {
         const buff = ThreeGeometryFactory.createFaceBufferGeometry(data);
         if (data.groups.length > 1) buff.groups = data.groups;
-        this._faces = new Mesh(buff, this._faceMaterial);
+        let mat = this._faceMaterial;
+        if (this.isPlanarOrSurfaceOverlay()) {
+            mat = this.applyPolygonOffset(this._faceMaterial);
+            this._ownsFaceMaterial = true;
+        }
+        this._faces = new Mesh(buff, mat);
         this._faces.layers.set(Constants.Layers.Solid);
-        if (this._renderOnTop) this.applyOnTopMaterial(this._faces, this._faceMaterial);
+        if (this._renderOnTop) this.applyOnTopMaterial(this._faces, mat);
         this.add(this._faces);
     }
 

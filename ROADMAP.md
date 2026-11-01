@@ -51,6 +51,7 @@ packages/web ──> packages/builder ──> packages/app ───────
 | **TASK-05** | Tích hợp tính năng Đọc / Xuất bản vẽ định dạng `.DXF` (AutoCAD) | `[x] DONE` | [docs/tasks/TASK-05-dxf-import-export.md](./docs/tasks/TASK-05-dxf-import-export.md) |
 | **TASK-06** | Chuyển đổi cơ chế lưu trữ từ IndexedDB (Trình duyệt) sang Backend API / Cloud Storage trên VPS | `[x] DONE` | [docs/tasks/TASK-06-cloud-storage-api.md](./docs/tasks/TASK-06-cloud-storage-api.md) |
 | **TASK-07** | Bổ sung lệnh `P` (`PAN`) kéo màn hình bằng chuột trái & Khắc phục lỗi khựng khi nhập số kích thước lúc vẽ | `[x] DONE` | [docs/tasks/TASK-07-pan-and-smooth-numeric-input.md](./docs/tasks/TASK-07-pan-and-smooth-numeric-input.md) |
+| **TASK-08** | Đồng bộ chọn đối tượng trên Cây bản vẽ (`Face1`), Chống Z-Fighting mặt đồng phẳng (`Prism1` vs `Face1`) & Hoàn thiện xác nhận lệnh `Extrude` / `Shell` | `[x] DONE` | [docs/tasks/TASK-08-tree-selection-and-coplanar-extrude.md](./docs/tasks/TASK-08-tree-selection-and-coplanar-extrude.md) |
 
 ---
 

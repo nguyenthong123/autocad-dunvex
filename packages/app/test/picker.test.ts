@@ -2,12 +2,20 @@
 // See LICENSE file in the project root for full license information.
 
 import type { I18nKeys, IDocument, IEventHandler, IPicker, IVisual, VisualShapeData } from "@chili3d/core";
-import { AsyncController, PubSub, ShapeTypes, VisualStates } from "@chili3d/core";
+import {
+    AsyncController,
+    BoundingBox,
+    Matrix4,
+    PubSub,
+    ShapeNode,
+    ShapeTypes,
+    VisualStates,
+} from "@chili3d/core";
 import {
     createMockDocument,
     createMockVisualWithDocument as createMockVisual,
 } from "@chili3d/core/test-utils";
-import { afterEach, beforeEach, describe, expect, test } from "@rstest/core";
+import { afterEach, beforeEach, describe, expect, rs, test } from "@rstest/core";
 import { Picker } from "../src/picker";
 
 function createMockHandler(): IEventHandler {
@@ -62,7 +70,7 @@ describe("Picker", () => {
             getSelectedShapes: () => [],
             getSelectedNodes: () => [],
             setSelectedNodes: () => 0,
-            setSelectedShapes: () => 0,
+            setSelectedShapes: rs.fn(() => 0),
             getSelectedNodeLength: () => 0,
             getSelectedVisualNodes: () => [],
             clearSelection: () => {},
@@ -332,7 +340,7 @@ describe("Picker", () => {
             expect(Array.isArray(result)).toBe(true);
         });
 
-        test("should use the none control for a single pick by default", async () => {
+        test("should use the selection control for a single pick by default", async () => {
             let pickAsyncArgs: any[] = [];
             picker.pickAsync = async (...args: any[]) => {
                 pickAsyncArgs = args;
@@ -341,7 +349,54 @@ describe("Picker", () => {
             const controller = new AsyncController();
             await picker.pickShape("common.ok" as I18nKeys, controller);
 
+            expect(pickAsyncArgs[3]).toBe("selection");
+        });
+
+        test("should use the none control when showConfirmControl is false", async () => {
+            let pickAsyncArgs: any[] = [];
+            picker.pickAsync = async (...args: any[]) => {
+                pickAsyncArgs = args;
+            };
+
+            const controller = new AsyncController();
+            await picker.pickShape("common.ok" as I18nKeys, controller, { showConfirmControl: false });
+
             expect(pickAsyncArgs[3]).toBe("none");
+        });
+
+        test("should respond to onNodeChanged and select shape from node", async () => {
+            const controller = new AsyncController();
+            const fakeShape = { shapeType: ShapeTypes.face, boundingBox: () => BoundingBox.zero };
+            const fakeNode = {
+                shape: { isOk: true, value: fakeShape },
+            };
+            Object.setPrototypeOf(fakeNode, ShapeNode.prototype);
+            const fakeVisual = {
+                worldTransform: () => Matrix4.identity(),
+                node: fakeNode,
+            };
+            (document.visual.context as any).getVisual = (n: any) =>
+                n === fakeNode ? (fakeVisual as any) : undefined;
+
+            let onNodeSubscribed = false;
+            let capturedCallback: any;
+            const nodeChangedSignal = (document.selection as any).onNodeChanged;
+            nodeChangedSignal.sub = (cb: any) => {
+                onNodeSubscribed = true;
+                capturedCallback = cb;
+            };
+            nodeChangedSignal.remove = rs.fn();
+
+            picker.pickAsync = async () => {
+                expect(onNodeSubscribed).toBe(true);
+                // Trigger tree node selection
+                capturedCallback([fakeNode]);
+            };
+
+            await picker.pickShape("common.ok" as I18nKeys, controller, { shapeType: ShapeTypes.face });
+            expect(controller.result?.status).toBe("success");
+            expect(document.selection.setSelectedShapes).toHaveBeenCalled();
+            expect(nodeChangedSignal.remove).toHaveBeenCalled();
         });
 
         test("should use the selection control when options.multi is true", async () => {

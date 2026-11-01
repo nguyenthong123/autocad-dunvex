@@ -2,16 +2,17 @@
 // See LICENSE file in the project root for full license information.
 
 import {
+    BoundingBox,
     command,
     type GeometryNode,
     GeometryUtils,
+    GetOrSelectShapeStep,
     type IFace,
     type IShape,
     type IStep,
     type LengthAtAxisSnapData,
     LengthAtAxisStep,
     Precision,
-    SelectShapeStep,
     type ShapeType,
     ShapeTypes,
 } from "@chili3d/core";
@@ -32,7 +33,7 @@ export class ExtrudeCommand extends CreateFromSelectionCommand {
 
     protected override getSteps(): IStep[] {
         return [
-            new SelectShapeStep(
+            new GetOrSelectShapeStep(
                 (ShapeTypes.face | ShapeTypes.edge | ShapeTypes.wire) as ShapeType,
                 "prompt.select.shape",
             ),
@@ -71,7 +72,10 @@ export class ExtrudeCommand extends CreateFromSelectionCommand {
     };
 
     private getAxis(shape: IShape) {
-        const point = this.stepDatas[0].shapes[0].point!;
+        const firstShape = this.stepDatas[0].shapes[0];
+        const point =
+            firstShape.point ??
+            firstShape.transform.ofPoint(BoundingBox.center(firstShape.shape.boundingBox()));
         const normal = GeometryUtils.normal(shape as any);
         return { point, normal };
     }

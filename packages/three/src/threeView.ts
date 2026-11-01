@@ -1044,6 +1044,37 @@ export class ThreeView extends Observable implements IView {
             my,
             this.detectSubShapes(shapeType, intersections, shapeFilter, nodeFilter),
         );
+        // Prioritize independent 2D planar face over solid face when coplanar
+        if (subs.length > 1 && subs[0].shape.shapeType === ShapeTypes.face) {
+            const isFirstSolid =
+                subs[0].owner.node instanceof ShapeNode &&
+                subs[0].owner.node.shape.isOk &&
+                ShapeTypeUtils.hasSolid(subs[0].owner.node.shape.value.shapeType);
+            if (isFirstSolid) {
+                const j = subs.findIndex((x, idx) => {
+                    if (idx === 0) return false;
+                    if (x.shape.shapeType !== ShapeTypes.face) return false;
+                    const is2D = !(
+                        x.owner.node instanceof ShapeNode &&
+                        x.owner.node.shape.isOk &&
+                        ShapeTypeUtils.hasSolid(x.owner.node.shape.value.shapeType)
+                    );
+                    if (!is2D) return false;
+                    if (subs[0].point && x.point) {
+                        if (subs[0].point.distanceTo(x.point) < 1e-2) return true;
+                        const nearest = (subs[0].shape as IFace).surface().nearestPoint(x.point) ?? [];
+                        if (nearest.length > 0 && nearest[0]!.distanceTo(x.point) < Precision.OnSurface) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
+                if (j > 0) {
+                    const v = subs.splice(j, 1);
+                    subs.splice(0, 0, ...v);
+                }
+            }
+        }
         // When an edge is on a face, the face will be snapped first,
         // so the nearest edge needs to be placed at the beginning of the array.
         if (subs.length > 1 && subs[0].shape.shapeType === ShapeTypes.face) {
