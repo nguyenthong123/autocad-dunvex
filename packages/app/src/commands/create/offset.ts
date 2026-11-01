@@ -2,10 +2,12 @@
 // See LICENSE file in the project root for full license information.
 
 import {
+    BoundingBox,
     Combobox,
     command,
     EditableShapeNode,
     GeometryUtils,
+    GetOrSelectShapeStep,
     I18n,
     type I18nKeys,
     type IEdge,
@@ -17,8 +19,8 @@ import {
     LengthAtAxisStep,
     MathUtils,
     MultistepCommand,
+    PubSub,
     property,
-    SelectShapeStep,
     type ShapeMeshData,
     type ShapeType,
     ShapeTypes,
@@ -48,6 +50,10 @@ export class OffsetCommand extends MultistepCommand {
         const ax = this.getAxis();
         const distance = this.stepDatas[1].point!.sub(ax.point).dot(ax.direction);
         const shape = this.createOffsetShape(ax.normal, distance!);
+        if (!shape.isOk) {
+            PubSub.default.pub("showToast", "error.default:{0}", shape.error);
+            return;
+        }
         const node = new EditableShapeNode({
             document: this.document,
             name: I18n.translate("command.create.offset"),
@@ -59,7 +65,7 @@ export class OffsetCommand extends MultistepCommand {
 
     protected override getSteps(): IStep[] {
         return [
-            new SelectShapeStep(
+            new GetOrSelectShapeStep(
                 (ShapeTypes.edge | ShapeTypes.wire | ShapeTypes.face) as ShapeType,
                 "prompt.select.shape",
             ),
@@ -92,7 +98,8 @@ export class OffsetCommand extends MultistepCommand {
     }
 
     protected getAxis(): { direction: XYZ; point: XYZ; normal: XYZ } {
-        const start = this.stepDatas[0].shapes[0].point!;
+        const first = this.stepDatas[0].shapes[0];
+        const start = first.point ?? first.transform.ofPoint(BoundingBox.center(first.shape.boundingBox()));
         const shape = this.transformdFirstShape(this.stepDatas[0]);
         if (shape.shapeType === ShapeTypes.edge) {
             return this.getEdgeAxis(shape as IEdge, start);

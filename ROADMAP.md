@@ -53,6 +53,7 @@ packages/web ──> packages/builder ──> packages/app ───────
 | **TASK-07** | Bổ sung lệnh `P` (`PAN`) kéo màn hình bằng chuột trái & Khắc phục lỗi khựng khi nhập số kích thước lúc vẽ | `[x] DONE` | [docs/tasks/TASK-07-pan-and-smooth-numeric-input.md](./docs/tasks/TASK-07-pan-and-smooth-numeric-input.md) |
 | **TASK-08** | Đồng bộ chọn đối tượng trên Cây bản vẽ (`Face1`), Chống Z-Fighting mặt đồng phẳng (`Prism1` vs `Face1`) & Hoàn thiện xác nhận lệnh `Extrude` / `Shell` | `[x] DONE` | [docs/tasks/TASK-08-tree-selection-and-coplanar-extrude.md](./docs/tasks/TASK-08-tree-selection-and-coplanar-extrude.md) |
 | **TASK-09** | Khắc phục lỗi công cụ Hình chữ nhật (`Rect` / `Box`) khi bật chế độ 2D + `ORTHO (F8)` và Hỗ trợ phím `Tab` nhập kích thước 2 chiều $[dx, dy]$ | `[x] DONE` | [docs/tasks/TASK-09-fix-rect-ortho-and-tab-input.md](./docs/tasks/TASK-09-fix-rect-ortho-and-tab-input.md) |
+| **TASK-10** | Rà soát & Khắc phục tổng thể các lỗi Hệ thống (Phím tắt đơn AutoCAD, Bắt điểm ORTHO trên bề mặt, Chống suy biến Extrude/Offset = 0, Đồng bộ Pre-selection & Reset Workplane 2D/3D) | `[x] DONE` | [docs/tasks/TASK-10-system-wide-stability-and-workflow-audit.md](./docs/tasks/TASK-10-system-wide-stability-and-workflow-audit.md) |
 
 ---
 

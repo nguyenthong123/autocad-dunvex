@@ -393,6 +393,59 @@ describe("SurfaceSnap", () => {
         expect(result).toBeUndefined();
     });
 
+    test("should constrain point along orthogonal axis when orthoMode is true", () => {
+        Config.instance.snapType = ObjectSnapTypes.onSurface;
+        Config.instance.orthoMode = true;
+
+        try {
+            const face = createMockFaceShape(new XYZ({ x: 30, y: 10, z: 0 }));
+            const shapeData = createMockVisualShapeData({
+                shape: face as any,
+                point: new XYZ({ x: 30, y: 10, z: 0 }),
+            });
+            const view = createSnapTestView({
+                detectShapes: () => [shapeData],
+            });
+            const refPoint = () => new XYZ({ x: 0, y: 0, z: 0 });
+            const snap = new SurfaceSnap(refPoint, true);
+            const data = createMouseAndDetected(view);
+
+            const result = snap.snap(data);
+            expect(result).not.toBeNull();
+            // dx = 30, dy = 10 -> dx > dy, so it locks to x-axis: (30, 0, 0)
+            expect(result!.point!.x).toBeCloseTo(30, 4);
+            expect(result!.point!.y).toBeCloseTo(0, 4);
+        } finally {
+            Config.instance.orthoMode = false;
+        }
+    });
+
+    test("should not constrain point when allowOrtho is false", () => {
+        Config.instance.snapType = ObjectSnapTypes.onSurface;
+        Config.instance.orthoMode = true;
+
+        try {
+            const face = createMockFaceShape(new XYZ({ x: 30, y: 10, z: 0 }));
+            const shapeData = createMockVisualShapeData({
+                shape: face as any,
+                point: new XYZ({ x: 30, y: 10, z: 0 }),
+            });
+            const view = createSnapTestView({
+                detectShapes: () => [shapeData],
+            });
+            const refPoint = () => new XYZ({ x: 0, y: 0, z: 0 });
+            const snap = new SurfaceSnap(refPoint, false);
+            const data = createMouseAndDetected(view);
+
+            const result = snap.snap(data);
+            expect(result).not.toBeNull();
+            expect(result!.point!.x).toBeCloseTo(30, 4);
+            expect(result!.point!.y).toBeCloseTo(10, 4);
+        } finally {
+            Config.instance.orthoMode = false;
+        }
+    });
+
     test("removeDynamicObject and clear should be no-ops", () => {
         const snap = new SurfaceSnap();
         expect(snap.removeDynamicObject()).toBeUndefined();

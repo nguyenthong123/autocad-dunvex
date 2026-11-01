@@ -40,7 +40,7 @@ export class PointSnapEventHandler extends SnapEventHandler<PointSnapData> {
             ? new PlaneSnap(pointData.plane, pointData.refPoint)
             : new WorkplaneSnap(pointData.refPoint);
         const trackingSnap = new TrackingSnap(pointData.refPoint, true);
-        const surfaceSnap = new SurfaceSnap();
+        const surfaceSnap = new SurfaceSnap(pointData.refPoint);
         return [objectSnap, trackingSnap, surfaceSnap, workplaneSnap];
     }
 
@@ -51,22 +51,24 @@ export class PointSnapEventHandler extends SnapEventHandler<PointSnapData> {
 
         if (absolute) {
             result.point = new XYZ({ x: values[0], y: values[1], z: values[2] });
-        } else if (values.length === 1 && this._snaped?.point) {
-            result.point = this.calculatePointFromDistance(refPoint, values[0]);
+        } else if (values.length === 1) {
+            result.point = this.calculatePointFromDistance(view, refPoint, values[0]);
         } else if (values.length > 1) {
-            result.point = this.calculatePointFromCoordinates(refPoint, values);
+            result.point = this.calculatePointFromCoordinates(view, refPoint, values);
         }
 
         return result;
     }
 
-    private calculatePointFromDistance(refPoint: XYZ, distance: number): XYZ {
-        const vector = this._snaped!.point!.sub(refPoint).normalize()!;
+    private calculatePointFromDistance(view: IView, refPoint: XYZ, distance: number): XYZ {
+        const plane = this.data.plane?.() ?? view.workplane;
+        const rawVec = this._snaped?.point?.sub(refPoint);
+        const vector = rawVec && rawVec.length() > Precision.Distance ? rawVec.normalize()! : plane.xvec;
         return refPoint.add(vector.multiply(distance));
     }
 
-    private calculatePointFromCoordinates(refPoint: XYZ, dims: number[]): XYZ {
-        const plane = this.data.plane?.() ?? this.snaped!.view.workplane;
+    private calculatePointFromCoordinates(view: IView, refPoint: XYZ, dims: number[]): XYZ {
+        const plane = this.data.plane?.() ?? this._snaped?.view.workplane ?? view.workplane;
         // one offset per axis there is: the plane has three, and a number with no axis to go on
         // is dropped rather than thrown on, as it was before the offsets began carrying a side
         const axes = [plane.xvec, plane.yvec, plane.normal].slice(0, dims.length);
@@ -103,8 +105,11 @@ export class PointSnapEventHandler extends SnapEventHandler<PointSnapData> {
     }
 
     private isInvalidSingleNumber(dims: number[]): boolean {
+        if (dims.length !== 1) return false;
+        if (Math.abs(dims[0]) < Precision.Distance) return true;
         const refPoint = this.getRefPoint();
-        return dims.length === 1 && refPoint! && (!this._snaped || this._snaped.point!.isEqualTo(refPoint));
+        if (!refPoint) return true;
+        return Boolean(this._snaped?.point?.isEqualTo(refPoint));
     }
 
     private getRefPoint(): XYZ | undefined {

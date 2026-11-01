@@ -4,6 +4,7 @@
 import {
     command,
     type GeometryNode,
+    GetOrSelectShapeStep,
     type IEdge,
     type ILine,
     type IStep,
@@ -80,7 +81,7 @@ export class Revolve extends CreateFromSelectionCommand {
      */
     protected override getSteps(): IStep[] {
         return [
-            new SelectShapeStep(
+            new GetOrSelectShapeStep(
                 (ShapeTypes.edge | ShapeTypes.face | ShapeTypes.wire) as ShapeType,
                 "prompt.select.section",
             ),

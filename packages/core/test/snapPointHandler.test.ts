@@ -472,6 +472,18 @@ describe("PointSnapEventHandler — getPointFromInput", () => {
         const result = handler["getPointFromInput"](view, "20");
         expect(result.point!.x).toBeCloseTo(20, 5);
     });
+
+    test("should calculate point from single distance along plane xvec when snapped is undefined", () => {
+        const handler = new PointSnapEventHandler(document, controller, {
+            dimension: 0b111,
+            refPoint: () => XYZ.zero,
+            plane: () => Plane.XY,
+        });
+        const view = createHandlerMockView({ workplane: Plane.XY });
+        const result = handler["getPointFromInput"](view, "25");
+        expect(result.point!.x).toBeCloseTo(25, 5);
+        expect(result.point!.y).toBeCloseTo(0, 5);
+    });
 });
 
 // ============================================================================
@@ -551,5 +563,25 @@ describe("PointSnapEventHandler — inputError", () => {
             point: new XYZ({ x: 10, y: 0, z: 0 }),
         };
         expect(handler["inputError"]("10")).toBeUndefined();
+    });
+
+    test("should return error for single number equal to 0", () => {
+        const handler = new PointSnapEventHandler(document, controller, {
+            dimension: 0b001,
+            refPoint: () => XYZ.zero,
+        });
+        (handler as unknown as { _snaped: { refPoint: XYZ; point: XYZ } })._snaped = {
+            refPoint: XYZ.zero,
+            point: new XYZ({ x: 10, y: 0, z: 0 }),
+        };
+        expect(handler["inputError"]("0")).toBe("error.input.cannotInputANumber");
+    });
+
+    test("should return no error for single number when snapped is undefined but refPoint exists", () => {
+        const handler = new PointSnapEventHandler(document, controller, {
+            dimension: 0b001,
+            refPoint: () => XYZ.zero,
+        });
+        expect(handler["inputError"]("15")).toBeUndefined();
     });
 });

@@ -1,7 +1,7 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
-import { Config, type IDocument, type OrbitMode } from "@chili3d/core";
+import { Config, type IDocument, type OrbitMode, Plane } from "@chili3d/core";
 import { createMockSelection } from "@chili3d/core/test-utils";
 import {
     BufferAttribute,
@@ -757,10 +757,11 @@ describe("CameraController — transitions", () => {
         });
 
         test("setTopView2D switches camera to orthographic and aligns top-down", () => {
-            const fakeView = createFakeView();
+            const fakeView = createFakeView({ workplane: Plane.YZ });
             const cc = new CameraController(fakeView);
             cc.setTopView2D(false);
             expect(fakeView.update).toHaveBeenCalled();
+            expect(fakeView.workplane).toStrictEqual(Plane.XY);
             expect(cc.cameraType).toBe("orthographic");
             advance(cc, 6);
             expect(cc.cameraPosition.x).toBeCloseTo(0);

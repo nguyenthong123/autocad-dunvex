@@ -6,6 +6,7 @@ import {
     command,
     debounce,
     EditableShapeNode,
+    GetOrSelectShapeStep,
     type I18nKeys,
     type IFace,
     type JoinType,
@@ -107,7 +108,7 @@ export class ShellCommand extends MultistepCommand {
 
     protected override getSteps() {
         return [
-            new SelectShapeStep(ShapeTypes.shape, "prompt.select.shape", {
+            new GetOrSelectShapeStep(ShapeTypes.shape, "prompt.select.shape", {
                 shapeFilter: {
                     allow: (shape) => {
                         return (

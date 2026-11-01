@@ -266,6 +266,8 @@ describe("SnapLengthAtAxisHandler — inputError", () => {
             direction: XYZ.unitX,
         });
         expect(handler["inputError"]("abc")).toBe("error.input.invalidNumber");
+        expect(handler["inputError"]("")).toBe("error.input.invalidNumber");
+        expect(handler["inputError"]("0")).toBe("error.input.invalidNumber");
     });
 
     test("should return no error for valid numeric input", () => {

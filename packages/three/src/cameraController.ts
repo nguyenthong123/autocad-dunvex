@@ -11,6 +11,7 @@ import {
     isReferenceGeometryNode,
     MathUtils,
     Observable,
+    Plane,
     type ViewMode,
     XYZ,
     type XYZLike,
@@ -225,6 +226,9 @@ export class CameraController extends Observable implements ICameraController {
 
     setTopView2D(fit: boolean = true): void {
         this.cameraType = "orthographic";
+        if (this.view) {
+            this.view.workplane = Plane.XY;
+        }
         const target = this.cameraTarget;
         const distance = Math.max(this._position.distanceTo(this._target), 1000);
         const eye = new XYZ(target.x, target.y, target.z + distance);

@@ -4,6 +4,7 @@
 import {
     command,
     debounce,
+    GetOrSelectShapeStep,
     type IShape,
     type IStep,
     instanceSourcesInUse,
@@ -80,7 +81,7 @@ export abstract class BooleanOperate extends MultistepCommand {
 
     protected override getSteps(): IStep[] {
         return [
-            new SelectShapeStep(ShapeTypes.shape, "prompt.select.shape", {
+            new GetOrSelectShapeStep(ShapeTypes.shape, "prompt.select.shape", {
                 nodeFilter: { allow: (node) => node instanceof ShapeNode && !isReferenceGeometryNode(node) },
             }),
             new SelectShapeStep(ShapeTypes.shape, "prompt.select.shape", {

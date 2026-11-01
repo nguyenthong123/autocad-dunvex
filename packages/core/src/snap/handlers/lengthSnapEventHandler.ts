@@ -48,7 +48,12 @@ export class SnapLengthAtAxisHandler extends SnapEventHandler<LengthAtAxisSnapDa
     }
 
     protected inputError(text: string): I18nKeys | undefined {
-        return Number.isNaN(Number(text)) ? "error.input.invalidNumber" : undefined;
+        const trimmed = text.trim();
+        if (trimmed.length === 0) return "error.input.invalidNumber";
+        const num = Number(trimmed);
+        return Number.isNaN(num) || Math.abs(num) < Precision.Distance
+            ? "error.input.invalidNumber"
+            : undefined;
     }
 }
 

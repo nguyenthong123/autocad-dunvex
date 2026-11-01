@@ -155,6 +155,16 @@ describe("ExtrudeNode", () => {
             expect(result.isOk).toBe(true);
         });
 
+        test("should return Result.err when length is zero", () => {
+            const prism = rs.fn((_shape: IShape, _vec: XYZ) => Result.ok(createMockShape() as any));
+            setupShapeFactoryMock({ prism });
+            const node = new ExtrudeNode({ document: doc, section, length: 0 });
+            const result = node.generateShape();
+            expect(result.isOk).toBe(false);
+            expect(result.error).toBe("Extrude length cannot be zero");
+            expect(prism).not.toHaveBeenCalled();
+        });
+
         test("should return Result.err when shapeFactory.prism fails", () => {
             setupShapeFactoryMock({
                 prism: () => Result.err("prism creation failed"),

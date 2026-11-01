@@ -148,6 +148,22 @@ describe("OffsetCommand", () => {
 
             expect((doc.visual.update as any).mock.calls.length).toBeGreaterThanOrEqual(1);
         });
+
+        test("should not add node when createOffsetShape fails", () => {
+            const cmd = new OffsetCommand();
+            const { doc } = wireCommand(cmd);
+
+            const edgeShape = makeEdgeShape(Result.err("Offset failed"));
+            seedStepDatas(cmd, [
+                shapeStepResult([{ shape: edgeShape, point: XYZ.zero }]),
+                { type: "input" as const, distance: 5, point: new XYZ({ x: 5, y: 0, z: 0 }) } as any,
+            ]);
+
+            const root = doc.modelManager.rootNode as any;
+            (cmd as any).executeMainTask();
+
+            expect(root.added).toHaveLength(0);
+        });
     });
 
     describe("createOffsetShape", () => {
@@ -217,6 +233,16 @@ describe("OffsetCommand", () => {
             expect(axis.point).toBe(start);
             expect(axis.normal).toBeDefined();
             expect(axis.direction).toBeDefined();
+        });
+
+        test("should use bounding box center when first.point is undefined", () => {
+            const cmd = new OffsetCommand();
+            wireCommand(cmd);
+            const edgeShape = makeEdgeShape(Result.ok({ shapeType: ShapeTypes.wire } as any));
+            seedStepDatas(cmd, [shapeStepResult([{ shape: edgeShape }])]);
+
+            const axis = (cmd as any).getAxis();
+            expect(axis.point).toBeDefined();
         });
 
         test("should route wires through getFaceOrWireAxis", () => {

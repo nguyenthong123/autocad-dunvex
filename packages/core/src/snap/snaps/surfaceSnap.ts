@@ -28,6 +28,11 @@ function projectOntoWorldSurface(data: VisualShapeData): XYZ | undefined {
 }
 
 export class SurfaceSnap implements ISnap {
+    constructor(
+        readonly refPoint?: () => XYZ,
+        readonly allowOrtho: boolean = true,
+    ) {}
+
     snap(data: MouseAndDetected): SnapResult | undefined {
         if (!Config.instance.enableSnap) return undefined;
         if (!ObjectSnapTypeUtils.hasType(Config.instance.snapType, ObjectSnapTypes.onSurface))
@@ -44,9 +49,20 @@ export class SurfaceSnap implements ISnap {
         if (shapes.length === 0) {
             return undefined;
         }
-        const point = projectOntoWorldSurface(shapes[0]);
+        let point = projectOntoWorldSurface(shapes[0]);
         if (point === undefined) {
             return undefined;
+        }
+        if (this.allowOrtho && Config.instance.orthoMode && this.refPoint) {
+            const ref = this.refPoint();
+            const plane = data.view.workplane;
+            const delta = point.sub(ref);
+            const dx = delta.dot(plane.xvec);
+            const dy = delta.dot(plane.yvec);
+            point =
+                Math.abs(dx) >= Math.abs(dy)
+                    ? ref.add(plane.xvec.multiply(dx))
+                    : ref.add(plane.yvec.multiply(dy));
         }
         return {
             shapes,

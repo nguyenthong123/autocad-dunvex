@@ -10,6 +10,7 @@ import {
     type IShape,
     type IWire,
     ParameterShapeNode,
+    Precision,
     property,
     Result,
     ShapeTypes,
@@ -66,6 +67,7 @@ export class ExtrudeNode extends ParameterShapeNode {
     }
 
     override generateShape(): Result<IShape> {
+        if (Math.abs(this.length) < Precision.Distance) return Result.err("Extrude length cannot be zero");
         const normal = GeometryUtils.normal(this.section as any);
         const vec = normal.multiply(this.length);
         if (this.section.shapeType === ShapeTypes.face) {

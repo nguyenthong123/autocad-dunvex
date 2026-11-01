@@ -69,6 +69,12 @@ export class SnapConfig extends HTMLElement {
                 } catch {
                     // Ignored in headless/test environments where no Application instance is set
                 }
+            } else {
+                try {
+                    getCurrentApplication()?.activeView?.update?.();
+                } catch {
+                    // Ignored in headless/test environments where no Application instance is set
+                }
             }
         },
     });
