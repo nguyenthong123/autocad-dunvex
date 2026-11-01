@@ -241,6 +241,33 @@ describe("ThreeGeometry", () => {
             geo.removeTemperaryMaterial();
             expect(geo.edges()?.material).toBe(wideMaterial);
         });
+
+        test("changeFaceMaterial updates effective face material and ownsFaceMaterial", () => {
+            const solidNode = createTestGeometryNode();
+            const solidGeo = new ThreeGeometry(solidNode, context);
+            expect(solidGeo.ownsFaceMaterial).toBe(false);
+
+            const planarNode = createTestGeometryNode();
+            Object.setPrototypeOf(planarNode, ShapeNode.prototype);
+            (planarNode as any)._shape = {
+                isOk: true,
+                value: { shapeType: ShapeTypes.face },
+            };
+            const planarGeo = new ThreeGeometry(planarNode, context);
+            expect(planarGeo.ownsFaceMaterial).toBe(true);
+
+            const customFaceMat = new MeshBasicMaterial({ color: 0x00ff00 });
+            planarGeo.changeFaceMaterial(customFaceMat as any);
+            expect(planarGeo.faces()?.material).not.toBe(customFaceMat); // cloned with polygonOffset
+            expect((planarGeo.faces()?.material as MeshBasicMaterial).polygonOffset).toBe(true);
+
+            const tempFaceMat = new MeshBasicMaterial({ color: 0xff0000 });
+            planarGeo.setFacesMateiralTemperary(tempFaceMat as any);
+            expect(planarGeo.faces()?.material).toBe(tempFaceMat);
+
+            planarGeo.removeTemperaryMaterial();
+            expect((planarGeo.faces()?.material as MeshBasicMaterial).polygonOffset).toBe(true);
+        });
     });
 
     describe("subShapeVisual / wholeVisual", () => {

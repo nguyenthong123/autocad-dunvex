@@ -54,7 +54,12 @@ export interface PubSubEventMap {
     /** Shows retryable input or selection feedback without recording it in the error log. */
     displayValidation: (message: string) => void;
     documentClosed: (document: IDocument) => void;
-    editMaterial: (document: IDocument, material: Material, callback: (material: Material) => void) => void;
+    editMaterial: (
+        document: IDocument,
+        material: Material | undefined,
+        callback: (material: Material) => void,
+        targetObjects?: any[],
+    ) => void;
     editVariables: (document: IDocument, onApplied: () => void) => void;
     executeCommand: (commandName: CommandKeys) => void;
     loggerError: (message: unknown, optionalParams: unknown[]) => void;

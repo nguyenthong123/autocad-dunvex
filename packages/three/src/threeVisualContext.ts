@@ -172,14 +172,9 @@ export class ThreeVisualContext implements IVisualContext {
         const target = material[path];
         if (target?.isColor === true) {
             target.set(value);
-            return;
-        }
-        if (target?.isVector2 === true) {
+        } else if (target?.isVector2 === true) {
             target.set(value.x, value.y);
-            return;
-        }
-
-        if (!path.includes(".")) {
+        } else if (!path.includes(".")) {
             if (value instanceof Texture) {
                 this.setTexture(material, path, value);
             } else {
@@ -197,6 +192,21 @@ export class ThreeVisualContext implements IVisualContext {
         } else {
             this.setTextureValue(source, material, path, value);
         }
+
+        for (const visual of this._NodeVisualMap.values()) {
+            if (visual instanceof ThreeGeometry && visual.ownsFaceMaterial) {
+                const matId = visual.geometryNode.materialId;
+                const matches =
+                    typeof matId === "string"
+                        ? matId === source?.id
+                        : Array.isArray(matId) && matId.includes(source?.id);
+                if (matches) {
+                    visual.changeFaceMaterial(this.getMaterial(matId));
+                }
+            }
+        }
+
+        this.visual.update();
     };
 
     /**

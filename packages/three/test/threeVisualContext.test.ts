@@ -156,6 +156,24 @@ describe("ThreeVisualContext (real instance)", () => {
 
             expect(threeMaterial.envMapIntensity).toBe(3);
         });
+
+        test("should update visuals that own their face material when material changes", () => {
+            const material = documentMaterial();
+            addMaterial(material);
+
+            const node = createTestGeometryNode({ materialId: material.id });
+            const mockVisual = Object.create(ThreeGeometry.prototype);
+            mockVisual._ownsFaceMaterial = true;
+            Object.defineProperty(mockVisual, "ownsFaceMaterial", { get: () => true });
+            mockVisual.geometryNode = node;
+            mockVisual.changeFaceMaterial = rs.fn();
+
+            (context as any)._NodeVisualMap.set(node, mockVisual);
+
+            material.roughness = 0.8;
+
+            expect(mockVisual.changeFaceMaterial).toHaveBeenCalled();
+        });
     });
 
     describe("addVisualObject / removeVisualObject", () => {

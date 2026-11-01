@@ -3,6 +3,7 @@
 
 import { ChatPanel } from "@chili3d/ai";
 import {
+    type GeometryNode,
     type IApplication,
     type ICommand,
     type IDocument,
@@ -295,10 +296,13 @@ export class Editor extends HTMLElement {
 
     private readonly _handleMaterialEdit = (
         document: IDocument,
-        editingMaterial: Material,
+        editingMaterial: Material | undefined,
         callback: (material: Material) => void,
+        targetObjects?: GeometryNode[],
     ) => {
-        const context = new MaterialDataContent(document, callback, editingMaterial);
+        const mat = editingMaterial ?? document.modelManager.materials.at(0);
+        if (!mat) return;
+        const context = new MaterialDataContent(document, callback, mat, targetObjects);
         this._viewportContainer.append(new MaterialEditor(context));
     };
 

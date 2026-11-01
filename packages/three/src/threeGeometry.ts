@@ -46,6 +46,7 @@ const OnTopMaterialKey = "onTopMaterial";
 
 export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry {
     private _faceMaterial: Material | Material[];
+    private _effectiveFaceMaterial?: Material | Material[];
     /**
      * The edge lines of the node: one `LineSegments2` per maximal run of one line type —
      * a mesh whose ranges carry a `lineType` (appended display-only edges, e.g. auxiliary
@@ -60,6 +61,10 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
     private _vertexs?: Points;
     private _renderOnTop = false;
 
+    get ownsFaceMaterial(): boolean {
+        return this._ownsFaceMaterial;
+    }
+
     constructor(
         readonly geometryNode: GeometryNode,
         readonly context: ThreeVisualContext,
@@ -70,27 +75,36 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
         geometryNode.onPropertyChanged(this.handleGeometryPropertyChanged);
     }
 
+    private updateEffectiveFaceMaterial() {
+        if (
+            this._ownsFaceMaterial &&
+            this._effectiveFaceMaterial &&
+            this._effectiveFaceMaterial !== this._faceMaterial
+        ) {
+            if (Array.isArray(this._effectiveFaceMaterial)) {
+                this._effectiveFaceMaterial.forEach((m) => m.dispose());
+            } else {
+                this._effectiveFaceMaterial.dispose();
+            }
+        }
+        if (this.isPlanarOrSurfaceOverlay()) {
+            this._effectiveFaceMaterial = this.applyPolygonOffset(this._faceMaterial);
+            this._ownsFaceMaterial = true;
+        } else {
+            this._effectiveFaceMaterial = this._faceMaterial;
+            this._ownsFaceMaterial = false;
+        }
+    }
+
     changeFaceMaterial(material: Material | Material[]) {
         this._faceMaterial = material;
+        this.updateEffectiveFaceMaterial();
         if (!this._faces) return;
 
-        let mat = material;
-        if (this.isPlanarOrSurfaceOverlay()) {
-            if (this._ownsFaceMaterial) {
-                if (Array.isArray(this._faces.material)) {
-                    this._faces.material.forEach((m) => m.dispose());
-                } else {
-                    this._faces.material.dispose();
-                }
-            }
-            mat = this.applyPolygonOffset(material);
-            this._ownsFaceMaterial = true;
-        }
-
         if (this.locked) {
-            this._faces.userData["oldMaterial"] = mat;
+            this._faces.userData["oldMaterial"] = this._effectiveFaceMaterial;
         } else {
-            this._faces.material = mat;
+            this._faces.material = this._effectiveFaceMaterial!;
         }
     }
 
@@ -107,7 +121,8 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
         this._renderOnTop = value;
         if (this._vertexs) this.applyOnTopMaterial(this._vertexs, defaultVertexMaterial);
         for (const part of this._edgeParts) this.applyOnTopMaterial(part.line, part.material);
-        if (this._faces) this.applyOnTopMaterial(this._faces, this._faceMaterial);
+        if (this._faces)
+            this.applyOnTopMaterial(this._faces, this._effectiveFaceMaterial ?? this._faceMaterial);
     }
 
     private applyOnTopMaterial(object: Mesh | LineSegments2 | Points, normalMaterial: Material | Material[]) {
@@ -235,11 +250,15 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
             this.disposeOnTopMaterial(this._faces);
             this.remove(this._faces);
             this._faces.geometry.dispose();
-            if (this._ownsFaceMaterial) {
-                if (Array.isArray(this._faces.material)) {
-                    this._faces.material.forEach((m) => m.dispose());
+            if (
+                this._ownsFaceMaterial &&
+                this._effectiveFaceMaterial &&
+                this._effectiveFaceMaterial !== this._faceMaterial
+            ) {
+                if (Array.isArray(this._effectiveFaceMaterial)) {
+                    this._effectiveFaceMaterial.forEach((m) => m.dispose());
                 } else {
-                    this._faces.material.dispose();
+                    this._effectiveFaceMaterial.dispose();
                 }
                 this._ownsFaceMaterial = false;
             }
@@ -336,14 +355,10 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
     private initFaces(data: FaceMeshData) {
         const buff = ThreeGeometryFactory.createFaceBufferGeometry(data);
         if (data.groups.length > 1) buff.groups = data.groups;
-        let mat = this._faceMaterial;
-        if (this.isPlanarOrSurfaceOverlay()) {
-            mat = this.applyPolygonOffset(this._faceMaterial);
-            this._ownsFaceMaterial = true;
-        }
-        this._faces = new Mesh(buff, mat);
+        this.updateEffectiveFaceMaterial();
+        this._faces = new Mesh(buff, this._effectiveFaceMaterial!);
         this._faces.layers.set(Constants.Layers.Solid);
-        if (this._renderOnTop) this.applyOnTopMaterial(this._faces, mat);
+        if (this._renderOnTop) this.applyOnTopMaterial(this._faces, this._effectiveFaceMaterial!);
         this.add(this._faces);
     }
 
@@ -364,8 +379,8 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
         for (const part of this._edgeParts) {
             if (part.line.material !== lockLineMaterial) part.line.material = part.material;
         }
-        if (this._faces && this._faces.material !== lockFaceMaterial)
-            this._faces.material = this._faceMaterial;
+        const effective = this._effectiveFaceMaterial ?? this._faceMaterial;
+        if (this._faces && this._faces.material !== lockFaceMaterial) this._faces.material = effective;
         // restore the on-top state the temporary material replaced
         if (this._renderOnTop) {
             if (this._vertexs) this.applyOnTopMaterial(this._vertexs, defaultVertexMaterial);
@@ -374,7 +389,7 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
                     this.applyOnTopMaterial(part.line, part.material);
             }
             if (this._faces && this._faces.material !== lockFaceMaterial)
-                this.applyOnTopMaterial(this._faces, this._faceMaterial);
+                this.applyOnTopMaterial(this._faces, effective);
         }
     }
 

@@ -112,23 +112,33 @@ export class MaterialEditor extends HTMLElement {
     }
 
     private material(material: Material) {
-        return span({
-            className: new Binding(this.dataContent, "editingMaterial", new ActiveStyleConverter(material)),
-            title: material.name,
-            style: {
-                backgroundColor: new Binding(material, "color", this.colorConverter),
-                backgroundImage: new PathBinding(material, "map.image", new UrlStringConverter()),
-                backgroundBlendMode: "multiply",
-                backgroundSize: "contain",
+        return span(
+            {
+                className: new Binding(
+                    this.dataContent,
+                    "editingMaterial",
+                    new ActiveStyleConverter(material),
+                ),
+                title: material.name,
+                style: {
+                    backgroundColor: new Binding(material, "color", this.colorConverter),
+                    backgroundImage: new PathBinding(material, "map.image", new UrlStringConverter()),
+                    backgroundBlendMode: "multiply",
+                    backgroundSize: "contain",
+                },
+                onclick: () => {
+                    this.dataContent.editingMaterial = material;
+                },
+                ondblclick: () => {
+                    this.dataContent.applyMaterial(material);
+                    this.remove();
+                },
             },
-            onclick: () => {
-                this.dataContent.editingMaterial = material;
-            },
-            ondblclick: () => {
-                this.dataContent.callback(material);
-                this.remove();
-            },
-        });
+            span({
+                className: style.materialLabel,
+                textContent: new Binding(material, "name"),
+            }),
+        );
     }
 
     private buttons() {
@@ -137,13 +147,16 @@ export class MaterialEditor extends HTMLElement {
             button({
                 textContent: new Localize("common.confirm"),
                 onclick: () => {
-                    this.dataContent.callback(this.dataContent.editingMaterial);
+                    this.dataContent.applyMaterial(this.dataContent.editingMaterial);
                     this.remove();
                 },
             }),
             button({
                 textContent: new Localize("common.cancel"),
-                onclick: () => this.remove(),
+                onclick: () => {
+                    this.dataContent.cancelEdit();
+                    this.remove();
+                },
             }),
         );
     }

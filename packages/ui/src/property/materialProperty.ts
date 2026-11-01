@@ -51,9 +51,15 @@ export class MaterialProperty extends PropertyBase {
                     cursor: "pointer",
                 },
                 onclick: (e) => {
-                    PubSub.default.pub("editMaterial", document, material, (material) => {
-                        this.setMaterial(e, material, index);
-                    });
+                    PubSub.default.pub(
+                        "editMaterial",
+                        document,
+                        material,
+                        (material) => {
+                            this.setMaterial(e, material, index);
+                        },
+                        this.objects,
+                    );
                 },
             }),
         );
