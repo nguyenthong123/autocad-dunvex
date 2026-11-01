@@ -97,6 +97,9 @@ export class Input extends HTMLElement implements IDisposable {
         if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             this.processEnterKey();
+        } else if (e.key === "Tab") {
+            e.preventDefault();
+            this.handleTabKey();
         } else if (e.key === "Escape") {
             e.preventDefault();
             this._cancelledCallbacks.forEach((callback) => callback());
@@ -104,6 +107,24 @@ export class Input extends HTMLElement implements IDisposable {
             this.removeTip();
         }
     };
+
+    private handleTabKey() {
+        this.removeTip();
+        const val = this.textbox.value;
+        const commaIdx = val.indexOf(",");
+        if (commaIdx === -1) {
+            this.textbox.value = `${val},`;
+            const len = this.textbox.value.length;
+            this.textbox.setSelectionRange?.(len, len);
+        } else {
+            const caret = this.textbox.selectionStart ?? val.length;
+            if (caret <= commaIdx) {
+                this.textbox.setSelectionRange?.(commaIdx + 1, val.length);
+            } else {
+                this.textbox.setSelectionRange?.(0, commaIdx);
+            }
+        }
+    }
 
     private processEnterKey() {
         this.textbox.readOnly = true;

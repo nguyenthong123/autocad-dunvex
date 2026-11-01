@@ -20,6 +20,7 @@ export interface LengthAtAxisSnapData extends SnapData {
 export interface SnapLengthAtPlaneData extends SnapData {
     point: () => XYZ;
     plane: (point: XYZ | undefined) => Plane;
+    disableOrtho?: boolean;
 }
 
 export class SnapLengthAtAxisHandler extends SnapEventHandler<LengthAtAxisSnapData> {
@@ -60,8 +61,8 @@ export class SnapLengthAtPlaneHandler extends SnapEventHandler<SnapLengthAtPlane
         readonly lengthData: SnapLengthAtPlaneData,
     ) {
         const objectSnap = new ObjectSnap(Config.instance.snapType, lengthData.point);
-        const trackingSnap = new TrackingSnap(lengthData.point, false);
-        const planeSnap = new PlaneSnap(lengthData.plane, lengthData.point);
+        const trackingSnap = new TrackingSnap(lengthData.disableOrtho ? undefined : lengthData.point, false);
+        const planeSnap = new PlaneSnap(lengthData.plane, lengthData.point, !lengthData.disableOrtho);
         super(document, controller, [objectSnap, trackingSnap, planeSnap], lengthData);
     }
 
@@ -84,15 +85,26 @@ export class SnapLengthAtPlaneHandler extends SnapEventHandler<SnapLengthAtPlane
     }
 
     private calculatePoint(text: string, plane: Plane): XYZ {
-        const numbers = text.split(",").map(Number);
+        const numbers = text
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0)
+            .map(Number);
         return numbers.length === 1
-            ? this.calculatePointFromDistance(numbers[0])
+            ? this.calculatePointFromDistance(numbers[0], plane)
             : this.calculatePointFromCoordinates(numbers, plane);
     }
 
-    private calculatePointFromDistance(distance: number): XYZ {
-        const vector = this._snaped?.point!.sub(this.data.point()).normalize();
-        return this.data.point().add(vector!.multiply(distance));
+    private calculatePointFromDistance(distance: number, plane: Plane): XYZ {
+        const refPoint = this.data.point();
+        if (this.lengthData.disableOrtho) {
+            const dx = this.followSnapedSign(refPoint, plane.xvec, distance);
+            const dy = this.followSnapedSign(refPoint, plane.yvec, distance);
+            return refPoint.add(plane.xvec.multiply(dx)).add(plane.yvec.multiply(dy));
+        }
+        const rawVec = this._snaped?.point?.sub(refPoint);
+        const vector = rawVec?.normalize() ?? plane.xvec;
+        return refPoint.add(vector.multiply(distance));
     }
 
     private calculatePointFromCoordinates(coords: number[], plane: Plane): XYZ {
@@ -103,8 +115,15 @@ export class SnapLengthAtPlaneHandler extends SnapEventHandler<SnapLengthAtPlane
     }
 
     protected inputError(text: string): I18nKeys | undefined {
-        const numbers = text.split(",").map(Number);
-        if (numbers.some(Number.isNaN) || (numbers.length !== 1 && numbers.length !== 2)) {
+        const parts = text
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0);
+        if (parts.length !== 1 && parts.length !== 2) {
+            return "error.input.invalidNumber";
+        }
+        const numbers = parts.map(Number);
+        if (numbers.some((n) => Number.isNaN(n) || Math.abs(n) < Precision.Distance)) {
             return "error.input.invalidNumber";
         }
         return undefined;

@@ -400,4 +400,46 @@ describe("SnapLengthAtPlaneHandler — inputError", () => {
         });
         expect(handler["inputError"]("10,20")).toBeUndefined();
     });
+
+    test("should return no error for single number with trailing comma (e.g. 1500,)", () => {
+        const handler = new SnapLengthAtPlaneHandler(document, controller, {
+            point: () => XYZ.zero,
+            plane: () => Plane.XY,
+        });
+        expect(handler["inputError"]("1500,")).toBeUndefined();
+    });
+
+    test("should return error if any input number is zero", () => {
+        const handler = new SnapLengthAtPlaneHandler(document, controller, {
+            point: () => XYZ.zero,
+            plane: () => Plane.XY,
+        });
+        expect(handler["inputError"]("0")).toBe("error.input.invalidNumber");
+        expect(handler["inputError"]("10,0")).toBe("error.input.invalidNumber");
+        expect(handler["inputError"]("0,20")).toBe("error.input.invalidNumber");
+    });
+
+    test("should calculate square (dx = d, dy = d) when disableOrtho is true and single number input", () => {
+        const handler = new SnapLengthAtPlaneHandler(document, controller, {
+            point: () => XYZ.zero,
+            plane: () => Plane.XY,
+            disableOrtho: true,
+        });
+        const view = createHandlerMockView({ workplane: Plane.XY });
+        // Without snaped point, defaults to positive quadrant
+        const res1 = handler["getPointFromInput"](view, "1500");
+        expect(res1.point!.x).toBe(1500);
+        expect(res1.point!.y).toBe(1500);
+
+        // When mouse is in negative X, positive Y quadrant
+        handler["_snaped"] = {
+            view,
+            shapes: [],
+            type: "onSurface",
+            point: new XYZ({ x: -10, y: 50, z: 0 }),
+        };
+        const res2 = handler["getPointFromInput"](view, "1500,");
+        expect(res2.point!.x).toBe(-1500);
+        expect(res2.point!.y).toBe(1500);
+    });
 });

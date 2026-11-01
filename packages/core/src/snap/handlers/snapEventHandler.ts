@@ -333,10 +333,15 @@ export abstract class SnapEventHandler<D extends SnapData = SnapData> implements
             const error = this.inputError(text);
             if (error) return Result.err(error);
 
+            const pointFromInput = this.getPointFromInput(view, text);
+            if (pointFromInput.point && this.data.validator && !this.data.validator(pointFromInput.point)) {
+                return Result.err("error.input.invalidNumber");
+            }
+
             // Annotated here, the one place the typed text is ever in hand, so that a handler's
             // own `getPointFromInput` need not carry the record through — and so that what the
             // result says was typed cannot drift from what this read.
-            this._snaped = { ...this.getPointFromInput(view, text), input: parseDimensionInput(text) };
+            this._snaped = { ...pointFromInput, input: parseDimensionInput(text) };
             this.handleSuccess();
             return Result.ok(text);
         });

@@ -48,6 +48,7 @@ export abstract class RectCommandBase extends CreateCommand {
             preview: this.previewRect,
             plane: (tmp: XYZ | undefined) => this.findPlane(view, point!, tmp),
             validator: this.handleValid,
+            disableOrtho: true,
             prompt: (snaped: SnapResult) => {
                 const data = this.rectDataFromTemp(snaped.point!);
                 return `${Math.abs(data.dx).toFixed(2)}, ${Math.abs(data.dy).toFixed(2)}`;
@@ -63,6 +64,9 @@ export abstract class RectCommandBase extends CreateCommand {
     protected previewRect = (end: XYZ | undefined) => {
         if (end === undefined) return [this.meshPoint(this.stepDatas[0].point!)];
         const { plane, dx, dy } = this.rectDataFromTemp(end);
+        if (MathUtils.anyEqualZero(dx, dy)) {
+            return [this.meshPoint(this.stepDatas[0].point!), this.meshPoint(end)];
+        }
 
         return [
             this.meshPoint(this.stepDatas[0].point!),

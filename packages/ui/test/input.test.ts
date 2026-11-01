@@ -200,6 +200,35 @@ describe("Input", () => {
             expect(input.children.length).toBeLessThan(childCountBefore);
         });
 
+        test("should handle Tab key to append comma or toggle dimension selection", () => {
+            const input = new Input("1500", () => Result.ok("ok"));
+            const textbox = mustQuery<HTMLInputElement>(input, "input");
+
+            // 1. Without comma: appends comma
+            const tabEvent1 = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+            textbox.dispatchEvent(tabEvent1);
+            expect(tabEvent1.defaultPrevented).toBe(true);
+            expect(textbox.value).toBe("1500,");
+            expect(textbox.selectionStart).toBe(5);
+            expect(textbox.selectionEnd).toBe(5);
+
+            // 2. User enters second dimension
+            textbox.value = "1500,2000";
+            textbox.setSelectionRange(9, 9);
+
+            // 3. Press Tab: caret at end (> commaIdx) -> selects first dimension (0 to 4)
+            const tabEvent2 = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+            textbox.dispatchEvent(tabEvent2);
+            expect(textbox.selectionStart).toBe(0);
+            expect(textbox.selectionEnd).toBe(4);
+
+            // 4. Press Tab again: caret in first dimension (<= commaIdx) -> selects second dimension (5 to 9)
+            const tabEvent3 = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+            textbox.dispatchEvent(tabEvent3);
+            expect(textbox.selectionStart).toBe(5);
+            expect(textbox.selectionEnd).toBe(9);
+        });
+
         test("should stop propagation of keyboard events", () => {
             const input = new Input("test", () => Result.ok("ok"));
 

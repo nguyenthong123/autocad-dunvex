@@ -6,9 +6,10 @@ import {
     type I18nKeys,
     type IDocument,
     type IShape,
+    MathUtils,
     type Plane,
     property,
-    type Result,
+    Result,
     serializable,
     serialize,
     type XYZ,
@@ -61,6 +62,9 @@ export class RectNode extends FacebaseNode {
     }
 
     generateShape(): Result<IShape, string> {
+        if (MathUtils.anyEqualZero(this.dx, this.dy)) {
+            return Result.err("Rectangle dx and dy cannot be zero");
+        }
         const points = RectNode.points(this.plane, this.dx, this.dy);
         const wire = shapeFactory.polygon(points);
         if (!wire.isOk || !this.isFace) return wire;

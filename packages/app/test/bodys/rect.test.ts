@@ -179,6 +179,20 @@ describe("RectNode", () => {
             expect(result.isOk).toBe(false);
         });
 
+        test("should return Result.err early when dx or dy is zero without calling shapeFactory.polygon", () => {
+            const polygon = rs.fn((_points: XYZLike[]) => Result.ok(createMockShape()));
+            setupShapeFactoryMock({ polygon });
+            const nodeZeroDx = new RectNode({ document: doc, plane, dx: 0, dy: 20 });
+            const res1 = nodeZeroDx.generateShape();
+            expect(res1.isOk).toBe(false);
+
+            const nodeZeroDy = new RectNode({ document: doc, plane, dx: 10, dy: 0 });
+            const res2 = nodeZeroDy.generateShape();
+            expect(res2.isOk).toBe(false);
+
+            expect(polygon).not.toHaveBeenCalled();
+        });
+
         test("should return wire directly when isFace is false", () => {
             const mockWire = createMockShape();
             setupShapeFactoryMock({

@@ -52,6 +52,7 @@ packages/web ──> packages/builder ──> packages/app ───────
 | **TASK-06** | Chuyển đổi cơ chế lưu trữ từ IndexedDB (Trình duyệt) sang Backend API / Cloud Storage trên VPS | `[x] DONE` | [docs/tasks/TASK-06-cloud-storage-api.md](./docs/tasks/TASK-06-cloud-storage-api.md) |
 | **TASK-07** | Bổ sung lệnh `P` (`PAN`) kéo màn hình bằng chuột trái & Khắc phục lỗi khựng khi nhập số kích thước lúc vẽ | `[x] DONE` | [docs/tasks/TASK-07-pan-and-smooth-numeric-input.md](./docs/tasks/TASK-07-pan-and-smooth-numeric-input.md) |
 | **TASK-08** | Đồng bộ chọn đối tượng trên Cây bản vẽ (`Face1`), Chống Z-Fighting mặt đồng phẳng (`Prism1` vs `Face1`) & Hoàn thiện xác nhận lệnh `Extrude` / `Shell` | `[x] DONE` | [docs/tasks/TASK-08-tree-selection-and-coplanar-extrude.md](./docs/tasks/TASK-08-tree-selection-and-coplanar-extrude.md) |
+| **TASK-09** | Khắc phục lỗi công cụ Hình chữ nhật (`Rect` / `Box`) khi bật chế độ 2D + `ORTHO (F8)` và Hỗ trợ phím `Tab` nhập kích thước 2 chiều $[dx, dy]$ | `[x] DONE` | [docs/tasks/TASK-09-fix-rect-ortho-and-tab-input.md](./docs/tasks/TASK-09-fix-rect-ortho-and-tab-input.md) |
 
 ---
 

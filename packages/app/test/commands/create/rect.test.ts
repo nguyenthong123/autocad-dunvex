@@ -141,6 +141,33 @@ describe("Rect", () => {
             const text = withStaticWorkplane(() => data.prompt({ point: new XYZ({ x: -4, y: -2, z: 0 }) }));
             expect(text).toBe("4.00, 2.00");
         });
+
+        test("nextSnapData should have disableOrtho set to true", () => {
+            const cmd = rectCmd(new XYZ({ x: 0, y: 0, z: 0 }), new XYZ({ x: 1, y: 0, z: 0 }));
+            const data = (cmd as any).nextSnapData();
+            expect(data.disableOrtho).toBe(true);
+        });
+
+        test("previewRect should not call meshCreatedShape when dx or dy is zero", () => {
+            const cmd = rectCmd(new XYZ({ x: 0, y: 0, z: 0 }), new XYZ({ x: 0, y: 0, z: 0 }));
+            withStaticWorkplane(() => {
+                // Same point: dx=0, dy=0
+                const previewSame = (cmd as any).previewRect(new XYZ({ x: 0, y: 0, z: 0 }));
+                expect(previewSame.length).toBe(2);
+
+                // dy = 0
+                const previewDyZero = (cmd as any).previewRect(new XYZ({ x: 5, y: 0, z: 0 }));
+                expect(previewDyZero.length).toBe(2);
+
+                // dx = 0
+                const previewDxZero = (cmd as any).previewRect(new XYZ({ x: 0, y: 5, z: 0 }));
+                expect(previewDxZero.length).toBe(2);
+
+                // undefined end
+                const previewUndefined = (cmd as any).previewRect(undefined);
+                expect(previewUndefined.length).toBe(1);
+            });
+        });
     });
 
     describe("rectDataFromTwoSteps", () => {

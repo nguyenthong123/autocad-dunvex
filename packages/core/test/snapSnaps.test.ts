@@ -169,6 +169,56 @@ describe("PlaneSnap", () => {
         expect(snap.removeDynamicObject()).toBeUndefined();
         expect(snap.clear()).toBeUndefined();
     });
+
+    test("should constrain to ortho axis when orthoMode is true and allowOrtho is true", () => {
+        const prevOrtho = Config.instance.orthoMode;
+        Config.instance.orthoMode = true;
+        try {
+            const view = createSnapTestView({
+                rayAt: () =>
+                    new Ray({ point: new XYZ({ x: 10, y: 2, z: 10 }), direction: XYZ.unitZ.reverse() }),
+                screenToWorld: () => new XYZ({ x: 10, y: 2, z: 0 }),
+            });
+            const snap = new PlaneSnap(
+                () => Plane.XY,
+                () => XYZ.zero,
+                true,
+            );
+            const data = createMouseAndDetected(view);
+            const result = snap.snap(data);
+            expect(result).not.toBeNull();
+            // Since dx (10) > dy (2), ortho locks to X axis: y becomes 0
+            expect(result?.point?.x).toBeCloseTo(10, 6);
+            expect(result?.point?.y).toBeCloseTo(0, 6);
+        } finally {
+            Config.instance.orthoMode = prevOrtho;
+        }
+    });
+
+    test("should NOT constrain to ortho axis when allowOrtho is false even if orthoMode is true", () => {
+        const prevOrtho = Config.instance.orthoMode;
+        Config.instance.orthoMode = true;
+        try {
+            const view = createSnapTestView({
+                rayAt: () =>
+                    new Ray({ point: new XYZ({ x: 10, y: 2, z: 10 }), direction: XYZ.unitZ.reverse() }),
+                screenToWorld: () => new XYZ({ x: 10, y: 2, z: 0 }),
+            });
+            const snap = new PlaneSnap(
+                () => Plane.XY,
+                () => XYZ.zero,
+                false,
+            );
+            const data = createMouseAndDetected(view);
+            const result = snap.snap(data);
+            expect(result).not.toBeNull();
+            // Free 2D movement on plane: dx=10, dy=2 preserved
+            expect(result?.point?.x).toBeCloseTo(10, 6);
+            expect(result?.point?.y).toBeCloseTo(2, 6);
+        } finally {
+            Config.instance.orthoMode = prevOrtho;
+        }
+    });
 });
 
 // ============================================================================

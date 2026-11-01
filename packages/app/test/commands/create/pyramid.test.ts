@@ -84,7 +84,7 @@ describe("Pyramid", () => {
             try {
                 const cmd = pyramidFromPoints(
                     new XYZ({ x: 0, y: 0, z: 0 }),
-                    new XYZ({ x: 4, y: 0, z: 0 }),
+                    new XYZ({ x: 4, y: 3, z: 0 }),
                     new XYZ({ x: 0, y: 0, z: 5 }),
                 );
                 const preview = (cmd as any).previewPyramid(undefined);

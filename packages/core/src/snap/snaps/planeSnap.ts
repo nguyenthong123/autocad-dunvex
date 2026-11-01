@@ -11,7 +11,10 @@ export abstract class PlaneSnapBase implements ISnap {
     clear(): void {}
     abstract snap(data: MouseAndDetected): SnapResult | undefined;
 
-    constructor(readonly refPoint?: () => XYZ) {}
+    constructor(
+        readonly refPoint?: () => XYZ,
+        readonly allowOrtho: boolean = true,
+    ) {}
 
     protected snapAtPlane(plane: Plane, data: MouseAndDetected): SnapResult | undefined {
         plane = ViewUtils.ensurePlane(data.view, plane);
@@ -19,7 +22,7 @@ export abstract class PlaneSnapBase implements ISnap {
         let point = plane.intersectRay(ray);
         if (!point) return undefined;
 
-        if (Config.instance.orthoMode && this.refPoint) {
+        if (this.allowOrtho && Config.instance.orthoMode && this.refPoint) {
             const ref = this.refPoint();
             const delta = point.sub(ref);
             const dx = delta.dot(plane.xvec);
@@ -43,6 +46,10 @@ export abstract class PlaneSnapBase implements ISnap {
 }
 
 export class WorkplaneSnap extends PlaneSnapBase {
+    constructor(refPoint?: () => XYZ, allowOrtho: boolean = true) {
+        super(refPoint, allowOrtho);
+    }
+
     snap(data: MouseAndDetected): SnapResult | undefined {
         return this.snapAtPlane(data.view.workplane, data);
     }
@@ -52,8 +59,9 @@ export class PlaneSnap extends PlaneSnapBase {
     constructor(
         readonly plane: (point: XYZ) => Plane,
         refPoint?: () => XYZ,
+        allowOrtho: boolean = true,
     ) {
-        super(refPoint);
+        super(refPoint, allowOrtho);
     }
 
     snap(data: MouseAndDetected): SnapResult | undefined {
