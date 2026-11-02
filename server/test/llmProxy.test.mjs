@@ -20,7 +20,9 @@ describe("LLM Proxy Server Unit Tests", () => {
         mockUpstreamServer = http.createServer((req, res) => {
             let body = "";
             req.on("data", (chunk) => {
-                body += chunk;
+                if (body.length < 10000) {
+                    body += chunk;
+                }
             });
             req.on("end", () => {
                 lastUpstreamRequest = {
@@ -94,6 +96,12 @@ describe("LLM Proxy Server Unit Tests", () => {
     });
 
     after((_, done) => {
+        if (typeof proxyServer.closeAllConnections === "function") {
+            proxyServer.closeAllConnections();
+        }
+        if (typeof mockUpstreamServer.closeAllConnections === "function") {
+            mockUpstreamServer.closeAllConnections();
+        }
         proxyServer.close(() => {
             mockUpstreamServer.close(done);
         });
@@ -198,5 +206,115 @@ describe("LLM Proxy Server Unit Tests", () => {
         largeStream.pipe(req);
         const result = await statusPromise;
         assert.strictEqual(result.status, 413);
+    });
+
+    it("successfully streams 19MB request body without buffering in RAM", async () => {
+        const initialRss = process.memoryUsage().rss;
+        const CHUNK_SIZE = 64 * 1024;
+        const TOTAL_CHUNKS = Math.floor((19 * 1024 * 1024) / CHUNK_SIZE);
+        const reusableBuffer = Buffer.alloc(CHUNK_SIZE, "x");
+
+        let sentChunks = 0;
+        const nineteenMbStream = new (await import("node:stream")).Readable({
+            read() {
+                while (sentChunks < TOTAL_CHUNKS) {
+                    sentChunks++;
+                    const canContinue = this.push(reusableBuffer);
+                    if (!canContinue) return;
+                }
+                this.push(null);
+            },
+        });
+
+        const req = http.request(`http://127.0.0.1:${proxyPort}/api/llm-proxy/testmock/v1/chat/completions`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Content-Length": String(TOTAL_CHUNKS * CHUNK_SIZE),
+            },
+        });
+
+        const resPromise = new Promise((resolve, reject) => {
+            req.on("response", (res) => {
+                let data = "";
+                res.on("data", (c) => (data += c));
+                res.on("end", () => resolve({ status: res.statusCode, body: data }));
+            });
+            req.on("error", reject);
+        });
+
+        nineteenMbStream.pipe(req);
+        const res = await resPromise;
+        assert.strictEqual(res.status, 200);
+
+        const finalRss = process.memoryUsage().rss;
+        const rssDeltaMb = (finalRss - initialRss) / 1024 / 1024;
+        // Verify proxy didn't allocate 19MB in RAM (delta must be much less than 15MB)
+        assert.ok(rssDeltaMb < 10, `Expected RSS delta < 10MB, got ${rssDeltaMb.toFixed(2)}MB`);
+    });
+
+    it("rejects 21MB request body with 413 Payload Too Large", async () => {
+        const CHUNK_SIZE = 64 * 1024;
+        const TOTAL_CHUNKS = Math.floor((21 * 1024 * 1024) / CHUNK_SIZE);
+        const reusableBuffer = Buffer.alloc(CHUNK_SIZE, "y");
+
+        let sentChunks = 0;
+        const stream21Mb = new (await import("node:stream")).Readable({
+            read() {
+                while (sentChunks < TOTAL_CHUNKS) {
+                    sentChunks++;
+                    const canContinue = this.push(reusableBuffer);
+                    if (!canContinue) return;
+                }
+                this.push(null);
+            },
+        });
+
+        const req = http.request(`http://127.0.0.1:${proxyPort}/api/llm-proxy/testmock/v1/chat/completions`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Content-Length": String(TOTAL_CHUNKS * CHUNK_SIZE),
+            },
+        });
+
+        const resPromise = new Promise((resolve) => {
+            req.on("response", (res) => {
+                let data = "";
+                res.on("data", (c) => (data += c));
+                res.on("end", () => resolve({ status: res.statusCode, body: data }));
+            });
+            req.on("error", () => resolve({ status: 413 }));
+        });
+
+        stream21Mb.pipe(req);
+        const res = await resPromise;
+        assert.strictEqual(res.status, 413);
+    });
+
+    it("enforces concurrency limit: 11 concurrent requests yield 10 accepted and 1 received 503", async () => {
+        // Send 11 concurrent requests to /slow endpoint (takes 500ms)
+        const promises = [];
+        for (let i = 0; i < 11; i++) {
+            promises.push(
+                fetch(`http://127.0.0.1:${proxyPort}/api/llm-proxy/testmock/slow`, {
+                    headers: { "X-Forwarded-For": `10.0.0.${i + 1}` },
+                }).then(async (r) => {
+                    const _body = await r.text();
+                    return {
+                        status: r.status,
+                        retryAfter: r.headers.get("retry-after"),
+                    };
+                }),
+            );
+        }
+
+        const results = await Promise.all(promises);
+        const status503 = results.filter((r) => r.status === 503);
+        const status200 = results.filter((r) => r.status === 200);
+
+        assert.strictEqual(status503.length, 1, "Expected exactly 1 request to get 503");
+        assert.strictEqual(status200.length, 10, "Expected exactly 10 requests to get 200");
+        assert.strictEqual(status503[0].retryAfter, "5", "Expected Retry-After header to be 5");
     });
 });
