@@ -198,3 +198,18 @@ Dưới đây là số liệu đo đạc thực tế từ Git repository tại t
   - Điều kiện C (bảo mật khóa): Khóa `sk-test-SECRET-123456789` không xuất hiện trong log server (`Key leakage found in logs? false`).
   - Điều kiện D (SSE chunked streaming): Nhận đủ 2 chunks tuần tự (53B, 67B) kèm header `text/event-stream`.
   - Kết quả: `✅ ALL 4 LOCAL PROXY CONDITIONS VERIFIED SUCCESSFULLY!`.
+
+## 6. Nhật ký deploy (ghi sau khi triển khai)
+
+- **Nhánh:** `dev` (từ `main` `0b5f99e9`, fast-forward, phương án A).
+- **Kiểm thử trước deploy:** `npm run check` (0 lỗi; cảnh báo có sẵn), `npm run test` (9.994 pass, 0 fail, 1 skip), `node --test server/test/llmProxy.test.mjs` (6/6), `scripts/verifyLlmProxyLocal.mjs` (4/4).
+- **Lệnh deploy:** `FORCE_BUILD=1 bash scripts/deploy-vps.sh` (build lại để tránh dist cũ).
+- **Vấn đề phát hiện:** `storage-api` mount `./server` chỉ đọc nên file mới đã có, nhưng tiến trình Node còn chạy code cũ (21 giờ). Khắc phục: `docker compose restart storage-api`. Route `/api/llm-proxy/` từng trả 404 trước khi restart.
+- **Kiểm tra sau deploy (VPS thật):**
+  - `GET /` → 200.
+  - `GET /api/llm-proxy/anthropic/v1/models` (không khóa) → 401 từ upstream Anthropic, chứng minh đã chuyển tiếp.
+  - `GET /api/llm-proxy/evil/v1/models` → 404 (vendor ngoài allowlist).
+  - `GET /api/llm-proxy/anthropic/v1/forbidden` → 404 (đường dẫn ngoài whitelist).
+  - `nginx -t` trong container chili3d: syntax ok. Có cảnh báo trùng khai báo `wasm` tại `nginx.conf` dòng 9, cần dọn sau.
+  - RAM: chili3d 10,19 MiB / 128 MiB; storage-api 23,36 MiB / 64 MiB.
+- **Chưa kiểm chứng:** gọi API thật với khóa thật của hãng nào (chưa có). Chỉ kiểm chứng route và upstream trả lỗi xác thực đúng.
