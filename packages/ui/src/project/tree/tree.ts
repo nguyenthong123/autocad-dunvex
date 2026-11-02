@@ -271,16 +271,23 @@ export class Tree extends HTMLElement {
         };
         menu.appendChild(renameOption);
 
-        if (item.node instanceof VisualNode || item.node instanceof GeometryNode) {
+        if (item.node) {
             const zoomOption = document.createElement("div");
             zoomOption.className = style.contextMenuItem ?? "contextMenuItem";
             zoomOption.textContent = "🔍 Phóng tới đối tượng (Zoom to Object)";
             zoomOption.onclick = (e) => {
                 e.stopPropagation();
                 this.closeContextMenu();
-                this.document.selection.setSelectedNodes([item.node!], false);
                 const activeView = (this.document as any).application?.activeView;
-                if (activeView) {
+                if (!activeView) return;
+
+                if (item.node === this.document.modelManager.rootNode) {
+                    activeView.cameraController?.fitContent?.({
+                        duration: CAMERA_FLY_DURATION,
+                        scope: "all",
+                    });
+                } else {
+                    this.document.selection.setSelectedNodes([item.node!], false);
                     activeView.cameraController?.fitContent?.({
                         duration: CAMERA_FLY_DURATION,
                         scope: "selection",
@@ -288,6 +295,27 @@ export class Tree extends HTMLElement {
                 }
             };
             menu.appendChild(zoomOption);
+        }
+
+        if (item.node && item.node !== this.document.modelManager.rootNode) {
+            const deleteOption = document.createElement("div");
+            deleteOption.className = style.contextMenuItem ?? "contextMenuItem";
+            deleteOption.textContent = "🗑️ Xóa đối tượng (Delete)";
+            deleteOption.onclick = (e) => {
+                e.stopPropagation();
+                this.closeContextMenu();
+                this.document.selection.setSelectedNodes([item.node!], false);
+                const app = (this.document as any).application;
+                if (app?.commandService) {
+                    app.commandService.executeCommand("modify.deleteNode");
+                } else {
+                    Transaction.execute(this.document, "delete", () => {
+                        item.node!.parent?.remove(item.node!);
+                    });
+                    this.document.visual?.update?.();
+                }
+            };
+            menu.appendChild(deleteOption);
         }
         document.body.appendChild(menu);
         this.contextMenuEl = menu;

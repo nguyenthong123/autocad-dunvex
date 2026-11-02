@@ -235,12 +235,80 @@ export class ModelManager extends Observable {
                 }
             };
             syncVisibility(this.rootNode);
+            this.sanitizeOutlierAnnotations();
             this.ensureMaterials();
             this.ensureInstances();
         } finally {
             this._deserializing = false;
         }
         this.notifyNodeChanged([{ action: "add", node: this.rootNode }]);
+    }
+
+    private sanitizeOutlierAnnotations() {
+        if (!this.rootNode) return;
+        const allNodes = NodeUtils.findNodes(this.rootNode);
+
+        // Find bounding box and centers of all geometry nodes (ShapeNode, GeometryNode)
+        let minX = Infinity;
+        let minY = Infinity;
+        let minZ = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        let maxZ = -Infinity;
+        let hasGeometry = false;
+
+        for (const node of allNodes) {
+            if (node instanceof ShapeNode || node instanceof GeometryNode) {
+                try {
+                    const bb = node.boundingBox();
+                    if (bb && Number.isFinite(bb.min.x) && Number.isFinite(bb.max.x)) {
+                        hasGeometry = true;
+                        minX = Math.min(minX, bb.min.x);
+                        minY = Math.min(minY, bb.min.y);
+                        minZ = Math.min(minZ, bb.min.z);
+                        maxX = Math.max(maxX, bb.max.x);
+                        maxY = Math.max(maxY, bb.max.y);
+                        maxZ = Math.max(maxZ, bb.max.z);
+                    }
+                } catch {
+                    // Ignore bounding box calculation failures
+                }
+            }
+        }
+
+        const geomSize = hasGeometry ? Math.max(maxX - minX, maxY - minY, maxZ - minZ) : 0;
+        const geomCenterX = hasGeometry ? (minX + maxX) / 2 : 0;
+        const geomCenterY = hasGeometry ? (minY + maxY) / 2 : 0;
+        const geomCenterZ = hasGeometry ? (minZ + maxZ) / 2 : 0;
+
+        for (const node of allNodes) {
+            const candidate = node as any;
+            const start = candidate.startPoint as { x: number; y: number; z?: number } | undefined;
+            const end = candidate.endPoint as { x: number; y: number; z?: number } | undefined;
+
+            if (start && end && typeof start.x === "number" && typeof end.x === "number") {
+                const distStart = Math.hypot(
+                    start.x - geomCenterX,
+                    start.y - geomCenterY,
+                    (start.z ?? 0) - geomCenterZ,
+                );
+                const distEnd = Math.hypot(
+                    end.x - geomCenterX,
+                    end.y - geomCenterY,
+                    (end.z ?? 0) - geomCenterZ,
+                );
+                const dimLength = Math.hypot(end.x - start.x, end.y - start.y, (end.z ?? 0) - (start.z ?? 0));
+
+                const hasNoAssociation = !candidate.associationJson;
+                // If point is > 100,000mm away, or dimension length > 100,000mm while model is < 50,000mm
+                const isOutlierDistance = distStart > 100000 || distEnd > 100000;
+                const isOutlierLength = dimLength > 100000 && (!hasGeometry || geomSize < 50000);
+
+                if (isOutlierDistance || (isOutlierLength && hasNoAssociation)) {
+                    node.visible = false;
+                }
+            }
+        }
     }
 
     private ensureInstances() {

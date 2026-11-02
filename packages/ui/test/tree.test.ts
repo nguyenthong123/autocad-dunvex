@@ -475,4 +475,30 @@ describe("Tree", () => {
             expect(body.move).not.toHaveBeenCalled();
         });
     });
+
+    describe("contextMenu", () => {
+        test("shows Zoom to Object and Delete on non-root items", () => {
+            fixture = createFixture();
+            const model1El = fixture.tree.treeItem(fixture.model1 as unknown as INode)!;
+            const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+            model1El.dispatchEvent(event);
+
+            const menu = document.body.lastElementChild;
+            expect(menu).not.toBeNull();
+            expect(menu?.textContent).toContain("Phóng tới đối tượng");
+            expect(menu?.textContent).toContain("Xóa đối tượng");
+        });
+
+        test("shows Zoom to Object but not Delete on rootNode", () => {
+            fixture = createFixture();
+            const rootEl = fixture.tree.treeItem(fixture.root as unknown as INode)!;
+            const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+            rootEl.dispatchEvent(event);
+
+            const menu = document.body.lastElementChild;
+            expect(menu).not.toBeNull();
+            expect(menu?.textContent).toContain("Phóng tới đối tượng");
+            expect(menu?.textContent).not.toContain("Xóa đối tượng");
+        });
+    });
 });

@@ -3,6 +3,7 @@
 
 import {
     Component,
+    DimensionAnnotation,
     FolderNode,
     Id,
     type INode,
@@ -470,6 +471,55 @@ describe("ModelManager", () => {
             expect(modelManager.materials.at(0)!.name).toBe("Material 1");
             const meshNode = modelManager.findNode((n) => n.id === "mesh-1") as any;
             expect(meshNode.materialId).toBe(modelManager.materials.at(0)!.id);
+        });
+
+        test("deserialize hides outlier DimensionAnnotation that is far away in space", async () => {
+            const data = {
+                nodes: [
+                    {
+                        [InternalClassName]: "FolderNode",
+                        name: "Root",
+                        id: "root-1",
+                        visible: true,
+                    },
+                    {
+                        [InternalClassName]: "MeshNode",
+                        name: "NormalMesh",
+                        id: "mesh-1",
+                        parentId: "root-1",
+                        visible: true,
+                        mesh: { faces: [], vertices: [], normals: [] },
+                    },
+                    {
+                        [InternalClassName]: "DimensionAnnotation",
+                        name: "RogueDim",
+                        id: "dim-rogue",
+                        parentId: "root-1",
+                        visible: true,
+                        startPoint: { x: -435529, y: -114410, z: 0 },
+                        endPoint: { x: -811966, y: -114410, z: 0 },
+                        textPoint: { x: -245755, y: -40708, z: 0 },
+                    },
+                    {
+                        [InternalClassName]: "DimensionAnnotation",
+                        name: "NormalDim",
+                        id: "dim-normal",
+                        parentId: "root-1",
+                        visible: true,
+                        startPoint: { x: 0, y: 0, z: 0 },
+                        endPoint: { x: 100, y: 0, z: 0 },
+                        textPoint: { x: 50, y: 10, z: 0 },
+                    },
+                ],
+                components: [],
+                materials: [],
+            };
+            await modelManager.deserialize(data);
+            const rogueDim = modelManager.findNode((n) => n.id === "dim-rogue") as any;
+            const normalDim = modelManager.findNode((n) => n.id === "dim-normal") as any;
+
+            expect(rogueDim.visible).toBe(false);
+            expect(normalDim.visible).toBe(true);
         });
     });
 

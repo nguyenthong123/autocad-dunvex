@@ -513,6 +513,100 @@ describe("CameraController — fitContent", () => {
         expect(cc.cameraPosition.distanceTo(cc.cameraTarget)).toBeCloseTo(expectedDistance);
     });
 
+    test("fitContent ignores AnnotationBatch when geometry is present", () => {
+        const visualShapes = new Object3D();
+        addMesh(visualShapes, 10);
+
+        // Huge annotation batch out in space
+        const annotBatch = new Object3D();
+        annotBatch.name = "AnnotationBatch";
+        const annotMesh = addMesh(annotBatch, 20);
+        annotMesh.position.set(500000, 500000, 0);
+        visualShapes.add(annotBatch);
+
+        const document = {
+            selection: createMockSelection(),
+            visual: {
+                context: {
+                    visualShapes,
+                    getNode: () => undefined,
+                },
+            },
+        } as unknown as IDocument;
+        const view = createFakeView({
+            document,
+            content: { visualShapes } as unknown as ThreeVisualContext,
+        });
+        const cc = new CameraController(view);
+        cc.fitContent();
+
+        // Must frame the 10mm mesh, completely ignoring the 500,000mm annotation!
+        const radius = Math.sqrt(3 * 10 * 10);
+        const expectedDistance = radius / Math.sin((25 * Math.PI) / 180);
+        expect(cc.cameraPosition.distanceTo(cc.cameraTarget)).toBeCloseTo(expectedDistance);
+    });
+
+    test("fitContent falls back to AnnotationBatch when no geometry exists", () => {
+        const visualShapes = new Object3D();
+
+        const annotBatch = new Object3D();
+        annotBatch.name = "AnnotationBatch";
+        addMesh(annotBatch, 20);
+        visualShapes.add(annotBatch);
+
+        const document = {
+            selection: createMockSelection(),
+            visual: {
+                context: {
+                    visualShapes,
+                    getNode: () => undefined,
+                },
+            },
+        } as unknown as IDocument;
+        const view = createFakeView({
+            document,
+            content: { visualShapes } as unknown as ThreeVisualContext,
+        });
+        const cc = new CameraController(view);
+        cc.fitContent();
+
+        // When no geometry exists, frames the 20mm annotation batch
+        const radius = Math.sqrt(3 * 20 * 20);
+        const expectedDistance = radius / Math.sin((25 * Math.PI) / 180);
+        expect(cc.cameraPosition.distanceTo(cc.cameraTarget)).toBeCloseTo(expectedDistance);
+    });
+
+    test("fitContent filters out rogue outlier geometry", () => {
+        const visualShapes = new Object3D();
+        // 3 normal meshes clustered around origin
+        for (let i = 0; i < 3; i++) {
+            const m = addMesh(visualShapes, 10);
+            m.position.set(i * 5, 0, 0);
+        }
+        // Rogue outlier at 600,000 mm
+        const rogue = addMesh(visualShapes, 10);
+        rogue.position.set(600000, 600000, 0);
+
+        const document = {
+            selection: createMockSelection(),
+            visual: {
+                context: {
+                    visualShapes,
+                    getNode: () => undefined,
+                },
+            },
+        } as unknown as IDocument;
+        const view = createFakeView({
+            document,
+            content: { visualShapes } as unknown as ThreeVisualContext,
+        });
+        const cc = new CameraController(view);
+        cc.fitContent();
+
+        // Framing distance must be close to origin cluster, not blown up by 600,000mm rogue
+        expect(cc.cameraPosition.distanceTo(cc.cameraTarget)).toBeLessThan(500);
+    });
+
     test("fitContent with orthographic camera updates the frustum", () => {
         const view = createFakeView();
         addBoxMesh(view, 10);

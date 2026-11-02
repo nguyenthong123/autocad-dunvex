@@ -2,6 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 import {
+    Annotation,
     CAMERA_FLY_DURATION,
     type CameraTransitionOptions,
     type CameraType,
@@ -10,9 +11,11 @@ import {
     type IVisualObject,
     isReferenceGeometryNode,
     MathUtils,
+    NodeUtils,
     Observable,
     Plane,
     type ViewMode,
+    VisualNode,
     XYZ,
     type XYZLike,
 } from "@chili3d/core";
@@ -333,26 +336,79 @@ export class CameraController extends Observable implements ICameraController {
             // Reference geometry (a datum plane's display square) is not model content:
             // including it makes Fit frame a 500 mm helper square instead of the part.
             // Recurse so a plane nested in a Group/Component visual is skipped too.
-            const visit = (object: Object3D) => {
+            const isAnnotation = (obj: Object3D): boolean => {
+                if (obj.name === "AnnotationBatch") return true;
+                const node = context.getNode(obj as unknown as IVisualObject);
+                if (node instanceof Annotation) return true;
+                return false;
+            };
+
+            const collectCandidateBoxes = (object: Object3D, list: Box3[], skipAnnotations: boolean) => {
                 if (!object.visible) return;
                 const node = context.getNode(object as unknown as IVisualObject);
                 if (
                     node !== undefined &&
                     (!node.visible || !node.parentVisible || isReferenceGeometryNode(node))
-                )
-                    return;
-                if (object.children.length === 0) {
-                    this.expandValidBox(box, object);
+                ) {
                     return;
                 }
-                for (const child of object.children) visit(child);
+                if (skipAnnotations && isAnnotation(object)) {
+                    return;
+                }
+                if (object.children.length === 0) {
+                    const b = new Box3().setFromObject(object);
+                    if (this.isFiniteBox(b)) {
+                        list.push(b);
+                    }
+                    return;
+                }
+                for (const child of object.children) {
+                    collectCandidateBoxes(child, list, skipAnnotations);
+                }
             };
-            for (const child of context.visualShapes.children) visit(child);
+
+            const geomBoxes: Box3[] = [];
+            for (const child of context.visualShapes.children) {
+                collectCandidateBoxes(child, geomBoxes, true);
+            }
+
+            // Fallback to annotations only if the drawing has no geometric solids/curves at all
+            let candidateBoxes = geomBoxes;
+            if (candidateBoxes.length === 0) {
+                const annotBoxes: Box3[] = [];
+                for (const child of context.visualShapes.children) {
+                    collectCandidateBoxes(child, annotBoxes, false);
+                }
+                candidateBoxes = annotBoxes;
+            }
+
+            // Filter outliers if multiple objects exist
+            const filteredBoxes = this.filterOutlierBoxes(candidateBoxes);
+            for (const b of filteredBoxes) {
+                box.union(b);
+            }
         } else {
             for (const shape of shapes) {
-                const visual = context.getVisual(shape) as ThreeGeometry | undefined;
-                if (visual && visual.visible) {
-                    this.expandValidBox(box, visual);
+                const visual = context.getVisual(shape);
+                if (visual && (visual as unknown as Object3D).visible) {
+                    this.expandValidBox(box, visual as unknown as Object3D);
+                } else if (shape instanceof VisualNode) {
+                    const bb = shape.boundingBox();
+                    if (bb) {
+                        box.union(new Box3(ThreeHelper.fromXYZ(bb.min), ThreeHelper.fromXYZ(bb.max)));
+                    }
+                } else if (NodeUtils.isLinkedListNode(shape)) {
+                    for (const child of NodeUtils.children(shape)) {
+                        const childVis = context.getVisual(child);
+                        if (childVis && (childVis as unknown as Object3D).visible) {
+                            this.expandValidBox(box, childVis as unknown as Object3D);
+                        } else if (child instanceof VisualNode) {
+                            const bb = child.boundingBox();
+                            if (bb) {
+                                box.union(new Box3(ThreeHelper.fromXYZ(bb.min), ThreeHelper.fromXYZ(bb.max)));
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -363,6 +419,50 @@ export class CameraController extends Observable implements ICameraController {
             sphere.radius = SHAPE_EMPTY_SIZE;
         }
         return sphere;
+    }
+
+    private filterOutlierBoxes(boxes: Box3[]): Box3[] {
+        if (boxes.length <= 1) return boxes;
+
+        const centers: Vector3[] = [];
+        const sizes: number[] = [];
+
+        for (const b of boxes) {
+            const center = new Vector3();
+            b.getCenter(center);
+            centers.push(center);
+            const size = new Vector3();
+            b.getSize(size);
+            sizes.push(size.length());
+        }
+
+        // Calculate median center & median size
+        const xs = centers.map((c) => c.x).sort((a, b) => a - b);
+        const ys = centers.map((c) => c.y).sort((a, b) => a - b);
+        const zs = centers.map((c) => c.z).sort((a, b) => a - b);
+        const sortedSizes = [...sizes].sort((a, b) => a - b);
+
+        const mid = Math.floor(boxes.length / 2);
+        const medX = xs[mid];
+        const medY = ys[mid];
+        const medZ = zs[mid];
+        const medSize = sortedSizes[mid];
+        const medCenter = new Vector3(medX, medY, medZ);
+
+        const validBoxes: Box3[] = [];
+        for (let i = 0; i < boxes.length; i++) {
+            const dist = centers[i].distanceTo(medCenter);
+            const size = sizes[i];
+            // Outlier check: distance > 100,000mm and > 50 * median size (if median size > 0)
+            const isFarOutlier = dist > 100000 && (medSize > 0 ? dist > 50 * medSize : true);
+            const isSizeOutlier = size > 100000 && (medSize > 0 ? size > 50 * medSize : true);
+
+            if (!isFarOutlier && !isSizeOutlier) {
+                validBoxes.push(boxes[i]);
+            }
+        }
+
+        return validBoxes.length > 0 ? validBoxes : boxes;
     }
 
     private expandValidBox(target: Box3, object: Object3D | undefined) {

@@ -275,9 +275,19 @@ export class Application extends Observable implements IApplication {
             Config.instance.is2DDraftingMode = viewState.is2DDraftingMode;
         }
 
+        const isOutlier = (p?: { x: number; y: number; z?: number }) => {
+            if (!p) return false;
+            return Math.abs(p.x) > 100000 || Math.abs(p.y) > 100000 || Math.abs(p.z ?? 0) > 100000;
+        };
+        const hasValidViewState =
+            viewState?.position &&
+            viewState?.target &&
+            !isOutlier(viewState.position) &&
+            !isOutlier(viewState.target);
+
         if (Config.instance.is2DDraftingMode) {
             view.cameraController.setTopView2D?.(false);
-        } else if (viewState?.position && viewState?.target) {
+        } else if (hasValidViewState) {
             view.cameraController.lookAt(
                 viewState.position,
                 viewState.target,

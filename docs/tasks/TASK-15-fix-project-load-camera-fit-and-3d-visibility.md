@@ -1,6 +1,6 @@
 # TASK-15: Khắc phục Triệt để Lỗi Mất Hiển thị Khối (`Prism` / `Mesh`), Đồng bộ Mở Mắt (`Visibility`) & Tự động Căn chỉnh Camera 2D/3D khi Tải lại Dự án
 
-> **Trạng thái:** `[?] WAITING_REVIEW`
+> **Trạng thái:** `[x] DONE`
 > **Mức độ ưu tiên:** P0 (Critical - Tải lại dự án bị mất toàn bộ các khối `Prism`, bấm mở con mắt vẫn không hiện đối tượng)
 > **Phụ thuộc:** `TASK-12`, `TASK-13`, `TASK-14`
 
@@ -219,7 +219,7 @@ Qua rà soát chi tiết toàn bộ luồng `ModelManager.deserialize` $\rightar
 
 ## 5. Nhật ký Thực thi & Báo cáo Thay đổi (Execution Log - Do AI Thực thi ghi)
 
-- **Trạng thái thực thi:** `[?] WAITING_REVIEW`
+- **Trạng thái thực thi:** `[x] DONE` (Đã được AI Kiến trúc sư kiểm tra nghiệm thu toàn bộ source code)
 - **Thời gian hoàn thành:** 2026-11-02 17:55 (UTC+7)
 - **Mã Commit (Git Hash):** `63100297` (nhánh `main`)
 
