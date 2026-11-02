@@ -1,7 +1,7 @@
 # TASK-24: Kết nối API tự động (Dán khóa là nhận danh sách mô hình) qua VPS LLM Proxy
 
 - **Trạng thái:** `[?] WAITING_REVIEW`
-- **Mã Commit:** Sẽ cập nhật sau commit
+- **Mã Commit:** `e22aabd1`
 - **Ưu tiên:** Cao
 - **Phụ trách:** AI Thực thi (Worker AI)
 
@@ -105,7 +105,7 @@
 ## 5. Nhật ký Thực thi & Báo cáo Thay đổi (Execution Log)
 
 - **Ngày thực hiện:** 02/11/2026
-- **Mã Commit:** Sẽ cập nhật theo HEAD sau commit
+- **Mã Commit:** `e22aabd1` (và commit hoàn thiện tài liệu)
 - **Các file đã thêm mới:**
   - `server/llmProxy.mjs`: Module proxy bảo mật upstream LLM providers, xử lý rate limit, body size, unbuffered streaming và header stripping.
   - `server/test/llmProxy.test.mjs`: Bộ kiểm thử tự động 6 bài test cho LLM proxy.
