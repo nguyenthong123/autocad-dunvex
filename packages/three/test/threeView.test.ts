@@ -11,7 +11,7 @@ import {
     Plane,
     Ray,
     Result,
-    type ShapeNode,
+    ShapeNode,
     ShapeTypes,
     type VisualNode,
     XY,
@@ -709,6 +709,41 @@ describe("ThreeView — detectShapes", () => {
         view.mode = "solid";
         const result = view.detectShapes(ShapeTypes.face, 50, 50);
         expect(Array.isArray(result)).toBe(true);
+    });
+
+    test("detectShapes prioritizes 2D non-solid entities over solid bodies", () => {
+        const { view } = createTestView();
+        const solidNode = {
+            shape: { isOk: true, value: { shapeType: ShapeTypes.solid } },
+        };
+        Object.setPrototypeOf(solidNode, ShapeNode.prototype);
+
+        const profileNode = {
+            shape: { isOk: true, value: { shapeType: ShapeTypes.face } },
+        };
+        Object.setPrototypeOf(profileNode, ShapeNode.prototype);
+
+        const solidSub = {
+            shape: { shapeType: ShapeTypes.face },
+            owner: { node: solidNode },
+            indexes: [0],
+            transform: Matrix4.identity(),
+        };
+
+        const profileSub = {
+            shape: { shapeType: ShapeTypes.face },
+            owner: { node: profileNode },
+            indexes: [0],
+            transform: Matrix4.identity(),
+        };
+
+        (view as any).findIntersectedShapes = () => [{}, {}];
+        (view as any).detectSubShapes = () => [solidSub, profileSub];
+
+        const result = view.detectShapes(ShapeTypes.face, 50, 50);
+        expect(result.length).toBe(2);
+        expect(result[0]).toBe(profileSub);
+        expect(result[1]).toBe(solidSub);
     });
 });
 

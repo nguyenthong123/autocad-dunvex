@@ -8,6 +8,7 @@ import {
     BoundingBox,
     Combobox,
     command,
+    extractVisualShapesFromNodes,
     type I18nKeys,
     type IDocument,
     Id,
@@ -29,12 +30,14 @@ import {
     type Result,
     SELECTED_FACE_STATE,
     type ShapeMeshData,
+    ShapeNode,
     ShapeTypes,
     ShapeTypeUtils,
     type SnapResult,
     type TargetCandidate,
     type TargetSelection,
     Transaction,
+    type VisualNode,
     type VisualShapeData,
     XYZ,
     type XYZLike,
@@ -119,7 +122,11 @@ const EXTRUDE_END_CONDITIONS: Record<string, ExtrudeEndCondition> = {
 export class SelectSketchProfilesStep implements IStep {
     constructor(
         private readonly allowNode: (node: INode) => boolean = (node) =>
-            node instanceof SketchNode || node instanceof ParametricBodyNode,
+            node instanceof SketchNode ||
+            node instanceof ParametricBodyNode ||
+            (node instanceof ShapeNode &&
+                node.shape.isOk &&
+                !ShapeTypeUtils.hasSolid(node.shape.value.shapeType)),
     ) {}
 
     async execute(document: IDocument, controller: AsyncController): Promise<SnapResult | undefined> {
@@ -169,14 +176,37 @@ export class SelectSketchProfilesStep implements IStep {
         const selectedSketch = document.selection
             .getSelectedNodes()
             .find((x): x is SketchNode => x instanceof SketchNode && this.allowNode(x));
-        if (selectedSketch === undefined) return undefined;
-        const faces = SelectSketchProfilesStep.sketchProfileFaces(document, selectedSketch);
-        controller.success();
-        // Show the profiles as selected, exactly as if the user had picked them.
-        if (faces.length > 0) {
-            document.selection.setSelectedShapes(faces, SELECTED_FACE_STATE, false);
+        if (selectedSketch !== undefined) {
+            const faces = SelectSketchProfilesStep.sketchProfileFaces(document, selectedSketch);
+            controller.success();
+            // Show the profiles as selected, exactly as if the user had picked them.
+            if (faces.length > 0) {
+                document.selection.setSelectedShapes(faces, SELECTED_FACE_STATE, false);
+            }
+            return { view, shapes: faces, nodes: [selectedSketch], type: "shape" };
         }
-        return { view, shapes: faces, nodes: [selectedSketch], type: "shape" };
+
+        const selectedNodes = document.selection.getSelectedNodes().filter(this.allowNode);
+        const nonSolidNode = selectedNodes.find(
+            (x) =>
+                x instanceof ShapeNode && x.shape.isOk && !ShapeTypeUtils.hasSolid(x.shape.value.shapeType),
+        );
+        if (nonSolidNode) {
+            const faces = extractVisualShapesFromNodes(
+                document,
+                [nonSolidNode],
+                ShapeTypes.face,
+                { allow: (s) => (s as IFace).surface().isPlanar() },
+                { allow: this.allowNode },
+            );
+            if (faces.length > 0) {
+                controller.success();
+                document.selection.setSelectedShapes(faces, SELECTED_FACE_STATE, false);
+                return { view, shapes: faces, nodes: [nonSolidNode as VisualNode], type: "shape" };
+            }
+        }
+
+        return undefined;
     }
 
     /** Interactive pick: planar faces of allowed nodes only, sketches before solid faces. */

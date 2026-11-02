@@ -473,6 +473,7 @@ export const I18N_KEYS = [
     "material.texture.wrapS",
     "material.texture.wrapT",
     "model.visible",
+    "option.command.allowSolidFace",
     "option.command.circularPattern",
     "option.command.construction",
     "option.command.continuity",

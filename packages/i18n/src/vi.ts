@@ -10,6 +10,8 @@ const vi: Locale = {
     translation: {
         ...en.translation,
 
+        "option.command.allowSolidFace": "Cho phép chọn mặt khối 3D",
+
         // Common
         "common.3DNavigation": "Kiểu điều hướng 3D",
         "common.angle": "Góc",

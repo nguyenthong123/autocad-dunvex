@@ -1032,7 +1032,7 @@ export class ThreeView extends Observable implements IView {
         nodeFilter?: INodeFilter,
         includeHiddenVisuals = false,
     ): VisualShapeData[] {
-        const intersections = this.findIntersectedShapes(shapeType, mx, my, includeHiddenVisuals);
+        const intersections = this.findIntersectedShapes(shapeType, mx, my, includeHiddenVisuals, nodeFilter);
         // A vertex pick asks for the vertex ITSELF, wherever it lives: vertex is otherwise
         // "whole" (a point node picked as one shape), but here the sub-shape is the answer.
         if (ShapeTypeUtils.isWhole(shapeType) && shapeType !== ShapeTypes.vertex) {
@@ -1044,47 +1044,38 @@ export class ThreeView extends Observable implements IView {
             my,
             this.detectSubShapes(shapeType, intersections, shapeFilter, nodeFilter),
         );
-        // Prioritize independent 2D planar face over solid face when coplanar
-        if (subs.length > 1 && subs[0].shape.shapeType === ShapeTypes.face) {
-            const isFirstSolid =
-                subs[0].owner.node instanceof ShapeNode &&
-                subs[0].owner.node.shape.isOk &&
-                ShapeTypeUtils.hasSolid(subs[0].owner.node.shape.value.shapeType);
-            if (isFirstSolid) {
-                const j = subs.findIndex((x, idx) => {
-                    if (idx === 0) return false;
-                    if (x.shape.shapeType !== ShapeTypes.face) return false;
-                    const is2D = !(
-                        x.owner.node instanceof ShapeNode &&
-                        x.owner.node.shape.isOk &&
-                        ShapeTypeUtils.hasSolid(x.owner.node.shape.value.shapeType)
-                    );
-                    if (!is2D) return false;
-                    if (subs[0].point && x.point) {
-                        if (subs[0].point.distanceTo(x.point) < 1e-2) return true;
-                        const nearest = (subs[0].shape as IFace).surface().nearestPoint(x.point) ?? [];
-                        if (nearest.length > 0 && nearest[0]!.distanceTo(x.point) < Precision.OnSurface) {
-                            return true;
-                        }
-                    }
-                    return false;
+
+        const is2DNode = (item: VisualShapeData) =>
+            item.owner.node instanceof ShapeNode &&
+            item.owner.node.shape.isOk &&
+            !ShapeTypeUtils.hasSolid(item.owner.node.shape.value.shapeType);
+
+        // Rule 1: Prioritize independent 2D profile entities over 3D solids
+        if (subs.length > 1) {
+            const has2D = subs.some(is2DNode);
+            const hasSolid = subs.some((x) => !is2DNode(x));
+            if (has2D && hasSolid) {
+                subs.sort((a, b) => {
+                    const a2D = is2DNode(a) ? 1 : 0;
+                    const b2D = is2DNode(b) ? 1 : 0;
+                    return b2D - a2D;
                 });
-                if (j > 0) {
-                    const v = subs.splice(j, 1);
-                    subs.splice(0, 0, ...v);
-                }
             }
         }
-        // When an edge is on a face, the face will be snapped first,
-        // so the nearest edge needs to be placed at the beginning of the array.
-        if (subs.length > 1 && subs[0].shape.shapeType === ShapeTypes.face) {
-            const i = subs.findIndex((x) => x.shape.shapeType === ShapeTypes.edge);
-            if (i < 0) return subs;
 
-            const nearest = (subs[0].shape as IFace).surface().nearestPoint(subs[i].point!) ?? [];
-            if (nearest.length > 0 && nearest[0]!.distanceTo(subs[i].point!) < Precision.OnSurface) {
-                const v = subs.splice(i, 1);
-                subs.splice(0, 0, ...v);
+        // Rule 2: When an edge is on a face:
+        // Do NOT replace a 2D face with an edge! Only promote edge over face if subs[0] is not a 2D face.
+        if (subs.length > 1 && subs[0].shape.shapeType === ShapeTypes.face) {
+            const isFirst2DFace = is2DNode(subs[0]);
+            if (!isFirst2DFace) {
+                const i = subs.findIndex((x) => x.shape.shapeType === ShapeTypes.edge);
+                if (i >= 0) {
+                    const nearest = (subs[0].shape as IFace).surface().nearestPoint(subs[i].point!) ?? [];
+                    if (nearest.length > 0 && nearest[0]!.distanceTo(subs[i].point!) < Precision.OnSurface) {
+                        const v = subs.splice(i, 1);
+                        subs.splice(0, 0, ...v);
+                    }
+                }
             }
         }
         return subs;
@@ -1265,17 +1256,30 @@ export class ThreeView extends Observable implements IView {
         mx: number,
         my: number,
         includeHiddenVisuals: boolean,
+        nodeFilter?: INodeFilter,
     ) {
         const raycaster = this.initRaycaster(mx, my);
-        const shapes = this.initIntersectableShapes(shapeType, includeHiddenVisuals);
-        return raycaster.intersectObjects(shapes, false);
+        const shapes = this.initIntersectableShapes(shapeType, includeHiddenVisuals, nodeFilter);
+        const hits = raycaster.intersectObjects(shapes, false);
+        hits.sort((a, b) => a.distance - b.distance);
+        return hits;
     }
 
-    private initIntersectableShapes(shapeType: ShapeType, includeHiddenVisuals: boolean) {
+    private initIntersectableShapes(
+        shapeType: ShapeType,
+        includeHiddenVisuals: boolean,
+        nodeFilter?: INodeFilter,
+    ) {
         let shapes: Object3D[] = [];
         this.document.visual.context.visuals().forEach((x) => {
             const pickable = includeHiddenVisuals || x.visible;
-            if (x instanceof ThreeVisualObject && pickable && x.node.visible && x.node.parentVisible) {
+            if (
+                x instanceof ThreeVisualObject &&
+                pickable &&
+                x.node.visible &&
+                x.node.parentVisible &&
+                (!nodeFilter || nodeFilter.allow(x.node))
+            ) {
                 shapes.push(...x.subShapeVisual(shapeType));
             }
         });

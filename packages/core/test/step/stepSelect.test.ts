@@ -9,6 +9,7 @@ import {
     Matrix4,
     type PickShapeOptions,
     ShapeNode,
+    type ShapeType,
     ShapeTypes,
     XYZ,
 } from "../../src";
@@ -449,6 +450,36 @@ describe("extractVisualShapesFromNodes", () => {
         const result = extractVisualShapesFromNodes(doc, [fakeNode as any], ShapeTypes.face);
         expect(result.length).toBe(1);
         expect(result[0].shape).toBe(subFace);
+    });
+
+    test("extracts sub-wires or edges from non-solid node when shapeType has wire or edge", () => {
+        const doc = new TestDocument();
+        const subWire = {
+            shapeType: ShapeTypes.wire,
+            boundingBox: () => BoundingBox.zero,
+        };
+        const rootCompound = {
+            shapeType: ShapeTypes.compound,
+            boundingBox: () => BoundingBox.zero,
+            findSubShapes: (st: number) => (st === ShapeTypes.wire ? [subWire] : []),
+        };
+        const fakeNode = {
+            shape: { isOk: true, value: rootCompound },
+        };
+        Object.setPrototypeOf(fakeNode, ShapeNode.prototype);
+        const fakeVisual = {
+            worldTransform: () => Matrix4.identity(),
+            node: fakeNode,
+        };
+        doc.visual.context.getVisual = () => fakeVisual as any;
+
+        const result = extractVisualShapesFromNodes(
+            doc,
+            [fakeNode as any],
+            (ShapeTypes.face | ShapeTypes.wire | ShapeTypes.edge) as ShapeType,
+        );
+        expect(result.length).toBe(1);
+        expect(result[0].shape).toBe(subWire);
     });
 });
 

@@ -481,6 +481,7 @@ export default {
         "material.texture.wrapS": "Wrap S",
         "material.texture.wrapT": "Wrap T",
         "model.visible": "可见",
+        "option.command.allowSolidFace": "允许选择3D实体面",
         "option.command.circularPattern": "弧形阵列",
         "option.command.construction": "构造线",
         "option.command.continuity": "连续性",

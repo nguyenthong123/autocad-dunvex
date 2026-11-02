@@ -101,24 +101,38 @@ export function extractVisualShapesFromNodes(
             }
         }
 
-        // Case 2: shapeType requires Face and Node is non-solid with sub-faces
-        if (ShapeTypeUtils.hasFace(shapeType) && !ShapeTypeUtils.hasSolid(rootShape.shapeType)) {
-            const faces = rootShape.findSubShapes(ShapeTypes.face);
-            faces.forEach((face, idx) => {
-                if (!shapeFilter || shapeFilter.allow(face, worldTransform)) {
-                    const box = face.boundingBox();
-                    const localCenter = BoundingBox.isValid(box)
-                        ? BoundingBox.center(box)
-                        : { x: 0, y: 0, z: 0 };
-                    result.push({
-                        owner,
-                        shape: face,
-                        transform: worldTransform,
-                        point: worldTransform.ofPoint(localCenter),
-                        indexes: [idx],
-                    });
-                }
-            });
+        // Case 2: Non-solid node (2D profile, SketchNode, Compound of faces/wires/edges)
+        if (!ShapeTypeUtils.hasSolid(rootShape.shapeType)) {
+            const pushSubShapes = (subType: ShapeType) => {
+                const subs = rootShape.findSubShapes(subType);
+                let added = false;
+                subs.forEach((sub, idx) => {
+                    if (!shapeFilter || shapeFilter.allow(sub, worldTransform)) {
+                        const box = sub.boundingBox();
+                        const localCenter = BoundingBox.isValid(box)
+                            ? BoundingBox.center(box)
+                            : { x: 0, y: 0, z: 0 };
+                        result.push({
+                            owner,
+                            shape: sub,
+                            transform: worldTransform,
+                            point: worldTransform.ofPoint(localCenter),
+                            indexes: [idx],
+                        });
+                        added = true;
+                    }
+                });
+                return added;
+            };
+
+            if (ShapeTypeUtils.hasFace(shapeType) && pushSubShapes(ShapeTypes.face)) {
+                continue;
+            }
+            if (ShapeTypeUtils.hasWire(shapeType) && pushSubShapes(ShapeTypes.wire)) {
+                continue;
+            }
+            if (ShapeTypeUtils.hasEdge(shapeType) && pushSubShapes(ShapeTypes.edge)) {
+            }
         }
     }
     return result;

@@ -488,6 +488,7 @@ export default {
         "material.texture.wrapS": "Wrap S",
         "material.texture.wrapT": "Wrap T",
         "model.visible": "Visible",
+        "option.command.allowSolidFace": "Allow 3D solid faces",
         "option.command.circularPattern": "Circular Pattern",
         "option.command.construction": "Construction",
         "option.command.continuity": "Continuity",

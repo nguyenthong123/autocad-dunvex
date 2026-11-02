@@ -327,7 +327,7 @@ export class Tree extends HTMLElement {
         }
 
         if (this.document.visual.eventHandler instanceof ShapeSelectionHandler) {
-            return this.document.visual.eventHandler.shapeType === ShapeTypes.shape;
+            return true;
         }
 
         return false;

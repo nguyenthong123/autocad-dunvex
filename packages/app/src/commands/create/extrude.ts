@@ -8,13 +8,20 @@ import {
     GeometryUtils,
     GetOrSelectShapeStep,
     type IFace,
+    type INode,
     type IShape,
     type IStep,
+    isReferenceGeometryNode,
     type LengthAtAxisSnapData,
     LengthAtAxisStep,
+    NodeUtils,
     Precision,
+    property,
+    ShapeNode,
     type ShapeType,
     ShapeTypes,
+    ShapeTypeUtils,
+    VisualStates,
 } from "@chili3d/core";
 import { closedProfileToFace, ExtrudeNode } from "../../bodys";
 import { CreateFromSelectionCommand } from "../createCommand";
@@ -24,6 +31,38 @@ import { CreateFromSelectionCommand } from "../createCommand";
     icon: "icon-prism",
 })
 export class ExtrudeCommand extends CreateFromSelectionCommand {
+    @property("option.command.allowSolidFace")
+    get allowSolidFace(): boolean {
+        return this.getPrivateValue("allowSolidFace", false);
+    }
+    set allowSolidFace(value: boolean) {
+        this.setProperty("allowSolidFace", value);
+    }
+
+    private static is2DProfileNode(node: INode): boolean {
+        if (!(node instanceof ShapeNode) || !node.shape.isOk) return false;
+        return !ShapeTypeUtils.hasSolid(node.shape.value.shapeType);
+    }
+
+    private has2DProfilesInScene(): boolean {
+        const root = this.document.modelManager.rootNode;
+        if (!root) return false;
+        for (const node of NodeUtils.children(root)) {
+            if (node.visible && node.parentVisible && ExtrudeCommand.is2DProfileNode(node)) {
+                return true;
+            }
+        }
+        const added = (root as any).added;
+        if (Array.isArray(added)) {
+            for (const node of added) {
+                if (node.visible && node.parentVisible && ExtrudeCommand.is2DProfileNode(node)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     protected override geometryNode(): GeometryNode {
         const shape = this.transformdFirstShape(this.stepDatas[0], false);
         const { point, normal } = this.getAxis(shape);
@@ -36,6 +75,29 @@ export class ExtrudeCommand extends CreateFromSelectionCommand {
             new GetOrSelectShapeStep(
                 (ShapeTypes.face | ShapeTypes.edge | ShapeTypes.wire) as ShapeType,
                 "prompt.select.shape",
+                {
+                    nodeFilter: {
+                        allow: (node) => {
+                            if (isReferenceGeometryNode(node)) return false;
+                            if (this.allowSolidFace) return true;
+                            if (this.has2DProfilesInScene()) {
+                                return ExtrudeCommand.is2DProfileNode(node);
+                            }
+                            return true;
+                        },
+                    },
+                    shapeFilter: {
+                        allow: (shape) => {
+                            return (
+                                shape.shapeType === ShapeTypes.face ||
+                                shape.shapeType === ShapeTypes.wire ||
+                                shape.shapeType === ShapeTypes.edge
+                            );
+                        },
+                    },
+                    selectedState: VisualStates.faceSelected,
+                    highlightState: VisualStates.faceHighlight,
+                },
             ),
             new LengthAtAxisStep("prompt.pickNextPoint", this.getLengthStepData, true),
         ];

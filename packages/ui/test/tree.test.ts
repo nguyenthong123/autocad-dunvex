@@ -46,7 +46,7 @@ import "./_helpers/mockElement";
 
 // Core value imports must come AFTER the mock helper — importing them earlier would
 // load the real "@chili3d/core" before the mock registers.
-import { NodeSelectionHandler, VisualNode } from "@chili3d/core";
+import { NodeSelectionHandler, ShapeSelectionHandler, VisualNode } from "@chili3d/core";
 import { Tree } from "../src/project/tree/tree";
 import { TreeGroup } from "../src/project/tree/treeItemGroup";
 import { TreeModel } from "../src/project/tree/treeModel";
@@ -280,6 +280,18 @@ describe("Tree", () => {
             expect(fixture.doc.selection.setSelectedNodes).toHaveBeenCalledWith([fixture.model1], false);
             // current node becomes the clicked model's parent group
             expect(fixture.doc.modelManager.currentNode).toBe(fixture.groupA);
+        });
+
+        test("should select node via click when shape selection handler is active for subshapes", () => {
+            fixture = createFixture();
+            const handler = new (ShapeSelectionHandler as unknown as new () => unknown)();
+            (handler as any).shapeType = 14; // face | edge | wire
+            fixture.doc.visual.eventHandler = handler as typeof fixture.doc.visual.eventHandler;
+            const model1El = fixture.tree.treeItem(fixture.model1 as unknown as INode) as HTMLElement;
+
+            model1El.click();
+
+            expect(fixture.doc.selection.setSelectedNodes).toHaveBeenCalledWith([fixture.model1], false);
         });
 
         test("should not select via click without an active selection handler", () => {

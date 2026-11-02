@@ -56,6 +56,7 @@ packages/web ──> packages/builder ──> packages/app ───────
 | **TASK-10** | Rà soát & Khắc phục tổng thể các lỗi Hệ thống (Phím tắt đơn AutoCAD, Bắt điểm ORTHO trên bề mặt, Chống suy biến Extrude/Offset = 0, Đồng bộ Pre-selection & Reset Workplane 2D/3D) | `[x] DONE` | [docs/tasks/TASK-10-system-wide-stability-and-workflow-audit.md](./docs/tasks/TASK-10-system-wide-stability-and-workflow-audit.md) |
 | **TASK-11** | Tách biệt Vật liệu theo từng Đối tượng (Per-Object Material Isolation) & Đồng bộ Hiển thị Đa vật liệu trên 2D/3D | `[x] DONE` | [docs/tasks/TASK-11-per-object-material-isolation.md](./docs/tasks/TASK-11-per-object-material-isolation.md) |
 | **TASK-12** | Khắc phục Đổi tên Dự án (Inline Rename), Ổn định Sao chép mảng (`Array`), Chống mất dữ liệu Hình học (`*_copy`) & Tích hợp Lưu trữ SQLite + Xác thực Tài khoản (Auth) | `[x] DONE` | [docs/tasks/TASK-12-inline-rename-array-fix-and-sqlite-auth.md](./docs/tasks/TASK-12-inline-rename-array-fix-and-sqlite-auth.md) |
+| **TASK-13** | Đồng bộ chọn Đối tượng từ Cây bản vẽ (Model Tree) cho lệnh Đùn khối (`Extrude`) & Tối ưu Raycasting Lọc biên dạng 2D trên Viewport 3D | `[x] DONE` | [docs/tasks/TASK-13-extrude-tree-selection-and-raycast-2d-filter.md](./docs/tasks/TASK-13-extrude-tree-selection-and-raycast-2d-filter.md) |
 
 ---
 

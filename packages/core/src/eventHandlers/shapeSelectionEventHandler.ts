@@ -4,7 +4,7 @@
 import type { IDocument } from "../document";
 import type { AsyncController } from "../foundation";
 import type { INodeFilter, IShapeFilter } from "../selectionFilter";
-import type { IShape, ShapeType } from "../shape";
+import { type IShape, type ShapeType, ShapeTypes, ShapeTypeUtils } from "../shape";
 import { type IView, type VisualShapeData, type VisualState, VisualStates } from "../visual";
 import { SelectionHandler } from "./selectionEventHandler";
 
@@ -88,6 +88,16 @@ export abstract class ShapeSelectionHandler extends SelectionHandler {
                 x.shape.shapeType,
                 ...x.indexes,
             );
+            if (
+                this.highlightState === VisualStates.faceHighlight &&
+                ShapeTypeUtils.hasFace(x.shape.shapeType)
+            ) {
+                this.document.visual.highlighter.addState(
+                    x.owner,
+                    VisualStates.edgeHighlight,
+                    ShapeTypes.edge,
+                );
+            }
         });
         this._highlights = detecteds;
         // Detection re-runs on every pointer move, so the callback reports the new aim
@@ -104,6 +114,16 @@ export abstract class ShapeSelectionHandler extends SelectionHandler {
                 x.shape.shapeType,
                 ...x.indexes,
             );
+            if (
+                this.highlightState === VisualStates.faceHighlight &&
+                ShapeTypeUtils.hasFace(x.shape.shapeType)
+            ) {
+                this.document.visual.highlighter.removeState(
+                    x.owner,
+                    VisualStates.edgeHighlight,
+                    ShapeTypes.edge,
+                );
+            }
         });
         this._highlights = undefined;
     }

@@ -210,4 +210,35 @@ describe("ExtrudeCommand", () => {
             expect(preview).toHaveLength(1);
         });
     });
+
+    describe("2D profile filtering", () => {
+        test("nodeFilter rejects solid nodes when 2D profiles are in the scene", () => {
+            const cmd = new ExtrudeCommand();
+            const { doc } = wireCommand(cmd);
+
+            const profileShape = mockShape({ shapeType: ShapeTypes.face });
+            const profileNode = new EditableShapeNode({
+                document: doc,
+                name: "Rectangle1",
+                shape: profileShape,
+            });
+            doc.modelManager.rootNode.add(profileNode);
+
+            const solidShape = mockShape({ shapeType: ShapeTypes.solid });
+            const solidNode = new EditableShapeNode({ document: doc, name: "Prism1", shape: solidShape });
+            doc.modelManager.rootNode.add(solidNode);
+
+            const steps = (cmd as any).getSteps();
+            const getOrSelectStep = steps[0] as GetOrSelectShapeStep;
+            const nodeFilter = (getOrSelectStep as any).options?.nodeFilter;
+
+            expect(nodeFilter).toBeDefined();
+            expect(nodeFilter.allow(profileNode)).toBe(true);
+            expect(nodeFilter.allow(solidNode)).toBe(false);
+
+            // When allowSolidFace is enabled, solid nodes are allowed
+            cmd.allowSolidFace = true;
+            expect(nodeFilter.allow(solidNode)).toBe(true);
+        });
+    });
 });

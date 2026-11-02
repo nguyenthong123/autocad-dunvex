@@ -388,6 +388,7 @@ export default {
         "material.texture.wrapS": "заворот S",
         "material.texture.wrapT": "заворот T",
         "model.visible": "Видимость",
+        "option.command.allowSolidFace": "Разрешить грани 3D тел",
         "option.command.circularPattern": "Шаблон по кругу",
         "option.command.construction": "Построение",
         "option.command.distance": "Расстояние",
