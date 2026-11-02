@@ -7,6 +7,7 @@ import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { handleLlmProxy } from "./llmProxy.mjs";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const DATA_DIR = path.resolve(process.env.DATA_DIR ?? "./data/storage");
@@ -251,7 +252,8 @@ export const server = createServer(async (req, res) => {
         res.writeHead(204, {
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Allow-Headers":
+                "Content-Type, Authorization, x-api-key, anthropic-version, accept",
         });
         res.end();
         return;
@@ -370,6 +372,12 @@ export const server = createServer(async (req, res) => {
             sendJson(res, 200, {
                 user: { id: user.id, username: user.username, storeName: user.store_name },
             });
+            return;
+        }
+
+        // ================= LLM PROXY ROUTES =================
+        if (pathname.startsWith("/api/llm-proxy/")) {
+            await handleLlmProxy(req, res, pathname);
             return;
         }
 

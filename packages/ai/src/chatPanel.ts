@@ -14,6 +14,7 @@ import {
 } from "@chili3d/core";
 import {
     button,
+    createElement,
     div,
     form,
     img,
@@ -40,10 +41,12 @@ import {
     writeConversations,
 } from "./history";
 import { runAgent } from "./llm/agent";
+import { discoverProvider } from "./llm/discovery";
 import { splitDataUrl } from "./llm/imageData";
 import { journalEntriesFromMessages, journalFromStored, mergeJournal } from "./llm/journal";
 import { dropSupersededImages, dropSupersededThinking, dropTrailingSynthetic } from "./llm/messages";
 import { buildSystemPrompt } from "./llm/prompt";
+import { KNOWN_VENDORS } from "./llm/providerRegistry";
 import { readReference } from "./llm/referenceReader";
 import type { ChatMessage, ImagePart, TokenUsage, Tool } from "./llm/types";
 import {
@@ -537,6 +540,11 @@ export class ChatPanel extends HTMLElement {
     private providerSelect!: HTMLSelectElement;
     private baseURLInput!: HTMLInputElement;
     private modelInput!: HTMLInputElement;
+    private modelSelect!: HTMLSelectElement;
+    private checkKeyButton!: HTMLButtonElement;
+    private statusBanner!: HTMLElement;
+    private corsWarning!: HTMLElement;
+    private discoveryDebounceTimer?: any;
     private contextWindowSelect!: HTMLSelectElement;
     private effortSelect!: HTMLSelectElement;
     /**
@@ -816,6 +824,7 @@ export class ChatPanel extends HTMLElement {
             ...PROVIDER_PRESETS.map((p) => option({ value: p.id, textContent: p.label })),
         );
         this.baseURLInput = input({ className: style.field, placeholder: "base URL (OpenAI-compatible)" });
+        this.modelSelect = select({ className: style.field });
         this.modelInput = input({ className: style.field, placeholder: "model" });
         this.effortSelect = select(
             { className: style.field },
@@ -841,11 +850,49 @@ export class ChatPanel extends HTMLElement {
         });
         this.apiKeyInput = input({
             className: style.field,
+            style: "flex: 1 1 auto",
             placeholder: "API Key",
             type: "password",
             name: "password",
             autocomplete: "current-password",
         });
+        this.checkKeyButton = button({
+            className: style.checkKeyButton,
+            type: "button",
+            textContent: new Localize("ai.checkKey"),
+            onclick: () => void this.runDiscovery(),
+        });
+        this.statusBanner = div({ className: style.statusBanner, style: "display: none" });
+        this.corsWarning = div({
+            className: style.corsWarning,
+            style: "display: none",
+            textContent: new Localize("ai.advancedWarning"),
+        });
+
+        this.apiKeyInput.oninput = () => {
+            clearTimeout(this.discoveryDebounceTimer);
+            const val = this.apiKeyInput?.value.trim() ?? "";
+            if (val.length >= 8) {
+                this.discoveryDebounceTimer = setTimeout(() => void this.runDiscovery(), 600);
+            }
+        };
+
+        this.baseURLInput.oninput = () => {
+            this.updateCorsWarning();
+        };
+
+        this.modelSelect.onchange = () => {
+            if (this.modelSelect && this.modelInput) {
+                if (this.modelSelect.value === "__custom__") {
+                    this.modelInput.style.display = "block";
+                    this.modelInput.value = "";
+                    this.modelInput.focus();
+                } else {
+                    this.modelInput.value = this.modelSelect.value;
+                    this.modelInput.style.display = "none";
+                }
+            }
+        };
 
         this.providerSelect.onchange = () => this.onProviderChanged();
     }
@@ -870,6 +917,9 @@ export class ChatPanel extends HTMLElement {
     }
 
     private createSettingsForm(): HTMLElement {
+        const details = createElement("details");
+        const summary = createElement("summary");
+
         return form(
             {
                 style: "display: contents",
@@ -881,14 +931,33 @@ export class ChatPanel extends HTMLElement {
             div(
                 { className: style.settingsBody },
                 this.usernameInput,
-                this.settingsField(new Localize("ai.provider"), this.providerSelect),
-                this.settingsField(new Localize("ai.baseURL"), this.baseURLInput),
-                this.settingsField(new Localize("ai.model"), this.modelInput),
-                this.settingsField(new Localize("ai.reasoningEffort"), this.effortSelect),
-                div({ className: style.settingsHint, textContent: new Localize("ai.reasoningEffortHint") }),
-                this.settingsField(new Localize("ai.contextWindow"), this.contextWindowSelect),
-                this.settingsField(new Localize("ai.apiKey"), this.apiKeyInput),
+                this.settingsField(
+                    new Localize("ai.apiKey"),
+                    div({ className: style.apiKeyRow }, this.apiKeyInput, this.checkKeyButton),
+                ),
                 div({ className: style.settingsHint, textContent: new Localize("ai.apiKeyHint") }),
+                this.statusBanner,
+                this.settingsField(
+                    new Localize("ai.model"),
+                    div(
+                        { style: "display: flex; flex-direction: column; gap: 4px;" },
+                        this.modelSelect,
+                        this.modelInput,
+                    ),
+                ),
+                details(
+                    { className: style.advancedDetails },
+                    summary({ className: style.advancedSummary, textContent: new Localize("ai.advanced") }),
+                    this.settingsField(new Localize("ai.provider"), this.providerSelect),
+                    this.settingsField(new Localize("ai.baseURL"), this.baseURLInput),
+                    this.corsWarning,
+                    this.settingsField(new Localize("ai.reasoningEffort"), this.effortSelect),
+                    div({
+                        className: style.settingsHint,
+                        textContent: new Localize("ai.reasoningEffortHint"),
+                    }),
+                    this.settingsField(new Localize("ai.contextWindow"), this.contextWindowSelect),
+                ),
             ),
             this.settingsFooter(),
         );
@@ -911,6 +980,104 @@ export class ChatPanel extends HTMLElement {
         );
     }
 
+    private updateCorsWarning() {
+        if (!this.corsWarning || !this.baseURLInput) return;
+        const val = this.baseURLInput.value.trim();
+        if (
+            !val ||
+            val.startsWith("/api/llm-proxy/") ||
+            (typeof window !== "undefined" && val.startsWith(window.location?.origin ?? ""))
+        ) {
+            this.corsWarning.style.display = "none";
+        } else {
+            this.corsWarning.style.display = "block";
+        }
+    }
+
+    private syncModelSelect(modelName: string) {
+        if (!this.modelSelect) return;
+        this.modelSelect.innerHTML = "";
+        if (modelName) {
+            this.modelSelect.append(option({ value: modelName, textContent: modelName }));
+        }
+        this.modelSelect.append(
+            option({ value: "__custom__", textContent: I18n.translate("ai.customModel") }),
+        );
+        this.modelSelect.value = modelName;
+        this.modelSelect.style.display = "block";
+        if (this.modelInput) this.modelInput.style.display = "none";
+    }
+
+    private async runDiscovery() {
+        const key = this.apiKeyInput?.value.trim() ?? "";
+        if (!key || !this.statusBanner || !this.checkKeyButton) return;
+
+        this.checkKeyButton.disabled = true;
+        this.statusBanner.style.display = "block";
+        this.statusBanner.className = `${style.statusBanner} ${style.statusLoading}`;
+        this.statusBanner.textContent = I18n.translate("ai.discovering");
+
+        try {
+            const result = await discoverProvider(key);
+            if (result.success && result.vendor) {
+                this.statusBanner.className = `${style.statusBanner} ${style.statusSuccess}`;
+                this.statusBanner.textContent = I18n.translate("ai.discoverySuccess", result.vendor.name);
+
+                if (this.baseURLInput) {
+                    this.baseURLInput.value = result.vendor.proxyBaseURL;
+                    this.updateCorsWarning();
+                }
+
+                if (this.providerSelect) {
+                    const targetProtocol = result.vendor.protocol;
+                    const matchedPreset =
+                        PROVIDER_PRESETS.find((p) => p.provider === targetProtocol) ?? PROVIDER_PRESETS[0];
+                    this.providerSelect.value = matchedPreset.id;
+                    this.appliedPreset = matchedPreset;
+                }
+
+                if (this.usernameInput) {
+                    this.usernameInput.value = result.vendor.id;
+                }
+
+                if (this.modelSelect && this.modelInput) {
+                    this.modelSelect.innerHTML = "";
+                    for (const m of result.models) {
+                        this.modelSelect.append(
+                            option({
+                                value: m.id,
+                                textContent: m.name ? `${m.name} (${m.id})` : m.id,
+                            }),
+                        );
+                    }
+                    this.modelSelect.append(
+                        option({
+                            value: "__custom__",
+                            textContent: I18n.translate("ai.customModel"),
+                        }),
+                    );
+                    const chosen = result.selectedModel ?? result.models[0]?.id ?? "";
+                    this.modelSelect.value = chosen;
+                    this.modelInput.value = chosen;
+                    this.modelSelect.style.display = "block";
+                    this.modelInput.style.display = "none";
+                }
+            } else {
+                this.statusBanner.className = `${style.statusBanner} ${style.statusError}`;
+                if (result.error?.includes("401") || result.error?.includes("Unauthorized")) {
+                    this.statusBanner.textContent = I18n.translate("ai.discoveryNotFound");
+                } else {
+                    this.statusBanner.textContent = I18n.translate("ai.discoveryError", result.error ?? "");
+                }
+            }
+        } catch (err: any) {
+            this.statusBanner.className = `${style.statusBanner} ${style.statusError}`;
+            this.statusBanner.textContent = I18n.translate("ai.discoveryError", err?.message || String(err));
+        } finally {
+            this.checkKeyButton.disabled = false;
+        }
+    }
+
     /**
      * The provider select changed, so the preset can fill the fields the user has not made their
      * own — a field still holding what the last preset put there is the preset's to change, and
@@ -930,9 +1097,11 @@ export class ChatPanel extends HTMLElement {
         }
         if (unclaimed(this.modelInput.value, previous?.defaultModel)) {
             this.modelInput.value = preset.defaultModel;
+            this.syncModelSelect(preset.defaultModel);
         }
         this.appliedPreset = preset;
         if (this.usernameInput) this.usernameInput.value = preset.id;
+        this.updateCorsWarning();
     }
 
     /** Nothing saved to start from, so the preset's own values stand in — blank fields help nobody. */
@@ -941,10 +1110,12 @@ export class ChatPanel extends HTMLElement {
         if (!preset) return;
         this.baseURLInput.value = preset.baseURL ?? "";
         this.modelInput.value = preset.defaultModel;
+        this.syncModelSelect(preset.defaultModel);
         this.syncContextWindowValue(DEFAULT_CONTEXT_WINDOW);
         this.effortSelect.value = "";
         if (this.usernameInput) this.usernameInput.value = preset.id;
         this.appliedPreset = preset;
+        this.updateCorsWarning();
     }
 
     /**
@@ -969,6 +1140,7 @@ export class ChatPanel extends HTMLElement {
 
     private showSettings() {
         if (!this.settingsOverlay) return;
+        if (this.statusBanner) this.statusBanner.style.display = "none";
         const saved = loadConfig();
         if (saved && this.providerSelect && this.baseURLInput && this.modelInput && this.apiKeyInput) {
             const preset = PROVIDER_PRESETS.find((p) => p.provider === saved.provider);
@@ -978,10 +1150,12 @@ export class ChatPanel extends HTMLElement {
             this.appliedPreset = preset;
             this.baseURLInput.value = saved.baseURL ?? "";
             this.modelInput.value = saved.model;
+            this.syncModelSelect(saved.model);
             this.syncContextWindowValue(saved.contextWindow ?? DEFAULT_CONTEXT_WINDOW);
             this.effortSelect.value = saved.reasoningEffort ?? "";
             this.apiKeyInput.value = saved.apiKey;
             if (this.usernameInput) this.usernameInput.value = preset?.id ?? saved.provider;
+            this.updateCorsWarning();
         } else {
             this.applyPresetDefaults();
         }
@@ -994,10 +1168,15 @@ export class ChatPanel extends HTMLElement {
 
     private async saveSettings() {
         const preset = PROVIDER_PRESETS.find((p) => p.id === this.providerSelect?.value);
+        const chosenModel =
+            this.modelSelect?.value === "__custom__"
+                ? (this.modelInput?.value.trim() ?? "")
+                : this.modelInput?.value || this.modelSelect?.value || "";
+
         const config: LLMConfig = {
             provider: preset?.provider ?? "anthropic",
             baseURL: this.baseURLInput?.value || undefined,
-            model: this.modelInput?.value ?? "",
+            model: chosenModel,
             contextWindow: Number(this.contextWindowSelect?.value) || DEFAULT_CONTEXT_WINDOW,
             reasoningEffort: (this.effortSelect?.value || undefined) as ReasoningEffort | undefined,
             apiKey: this.apiKeyInput?.value.trim() ?? "",

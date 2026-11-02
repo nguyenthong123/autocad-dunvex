@@ -12,6 +12,19 @@ const vi: Locale = {
 
         "option.command.allowSolidFace": "Cho phép chọn mặt khối 3D",
 
+        // AI Assistant
+        "ai.advanced": "Nâng cao",
+        "ai.advancedWarning":
+            "Lưu ý: Gọi trực tiếp từ trình duyệt có thể bị chặn bởi chính sách CORS của nhà cung cấp.",
+        "ai.checkKey": "Kiểm tra khóa",
+        "ai.customModel": "Tùy chỉnh...",
+        "ai.customModelPlaceholder": "Nhập tên mô hình",
+        "ai.discovering": "Đang nhận diện nhà cung cấp và tải danh sách mô hình...",
+        "ai.discoveryError": "Lỗi kết nối: {0}",
+        "ai.discoveryNotFound": "Không thể nhận diện nhà cung cấp hoặc khóa không hợp lệ",
+        "ai.discoverySuccess": "Đã kết nối: {0}",
+        "ai.selectModel": "Chọn mô hình",
+
         // Common
         "common.3DNavigation": "Kiểu điều hướng 3D",
         "common.angle": "Góc",

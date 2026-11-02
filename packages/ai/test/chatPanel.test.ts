@@ -1827,6 +1827,60 @@ describe("ChatPanel", () => {
         expect(localStorage.getItem("chili3d.app.ai.config")).not.toContain("sk-session");
     });
 
+    test("checkKeyButton triggers auto-discovery and configures proxy and model options", async () => {
+        const panel = new ChatPanel();
+        const anyPanel = panel as any;
+        (anyPanel.settingsButtonEl as HTMLButtonElement).click();
+
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = rs.fn(async (url: any) => {
+            if (String(url).includes("/api/llm-proxy/anthropic/v1/models")) {
+                return {
+                    status: 200,
+                    json: async () => ({
+                        data: [
+                            { id: "claude-3-7-sonnet-20250219", display_name: "Claude 3.7 Sonnet" },
+                            { id: "claude-3-5-haiku-20241022", display_name: "Claude 3.5 Haiku" },
+                        ],
+                    }),
+                } as any;
+            }
+            return { status: 404, json: async () => ({}) } as any;
+        });
+
+        try {
+            anyPanel.apiKeyInput.value = "sk-ant-api03-test";
+            await anyPanel.runDiscovery();
+
+            expect(anyPanel.baseURLInput.value).toBe("/api/llm-proxy/anthropic");
+            expect(anyPanel.statusBanner.textContent).toBe("ai.discoverySuccess");
+            expect(anyPanel.modelSelect.options.length).toBe(3); // 2 models + __custom__
+            expect(anyPanel.modelSelect.value).toBe("claude-3-7-sonnet-20250219");
+            expect(anyPanel.modelInput.value).toBe("claude-3-7-sonnet-20250219");
+
+            // Changing model in select updates modelInput
+            anyPanel.modelSelect.value = "claude-3-5-haiku-20241022";
+            anyPanel.modelSelect.onchange?.(new Event("change"));
+            expect(anyPanel.modelInput.value).toBe("claude-3-5-haiku-20241022");
+
+            // Choosing custom reveals modelInput
+            anyPanel.modelSelect.value = "__custom__";
+            anyPanel.modelSelect.onchange?.(new Event("change"));
+            expect(anyPanel.modelInput.style.display).toBe("block");
+
+            // Updating base URL to external triggers CORS warning
+            anyPanel.baseURLInput.value = "https://custom-external.example.com";
+            anyPanel.baseURLInput.oninput?.(new Event("input"));
+            expect(anyPanel.corsWarning.style.display).toBe("block");
+
+            anyPanel.baseURLInput.value = "/api/llm-proxy/anthropic";
+            anyPanel.baseURLInput.oninput?.(new Event("input"));
+            expect(anyPanel.corsWarning.style.display).toBe("none");
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
+
     test("enter sends, shift+enter inserts a newline", async () => {
         saveConfig({ provider: "anthropic", apiKey: "k", model: "m" });
         const panel = new ChatPanel();

@@ -779,6 +779,91 @@
     color: var(--foreground-color);
 }
 
+.apiKeyRow {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.checkKeyButton {
+    background: var(--button-background-color, #2563eb);
+    color: var(--button-foreground-color, #ffffff);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s ease;
+}
+
+.checkKeyButton:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+.checkKeyButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.statusBanner {
+    font-size: 11px;
+    line-height: 1.4;
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-top: 4px;
+}
+
+.statusLoading {
+    background: rgba(59, 130, 246, 0.12);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.statusSuccess {
+    background: rgba(34, 197, 94, 0.12);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.statusError {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.advancedDetails {
+    margin-top: 8px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 8px;
+}
+
+.advancedSummary {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--foreground-muted-color);
+    cursor: pointer;
+    user-select: none;
+    outline: none;
+    padding: 4px 0;
+}
+
+.advancedSummary:hover {
+    color: var(--foreground-color);
+}
+
+.corsWarning {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    line-height: 1.4;
+    margin-top: 4px;
+}
+
 .field {
     background: var(--input-background-color);
     color: var(--input-text-color);

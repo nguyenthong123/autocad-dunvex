@@ -17,7 +17,7 @@
         "preview": "rspack preview",
         "release": "node scripts/release.mjs",
         "setup:wasm": "node scripts/setup_wasm_deps.mjs",
-        "test": "rstest && node --test server/test/storageServer.test.mjs",
+        "test": "rstest && node --test server/test/storageServer.test.mjs server/test/llmProxy.test.mjs",
         "test:scenarios": "node scripts/scenario.mjs",
         "testc": "rstest --coverage"
     },

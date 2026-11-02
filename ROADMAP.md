@@ -67,6 +67,7 @@ packages/web ──> packages/builder ──> packages/app ───────
 | **TASK-22** | Củng cố đa mô hình cho agent trong app: bảng năng lực mô hình, phân loại lỗi trung lập, lịch sử gắn nhà cung cấp, kiểm thử hợp đồng với API thật | `[ ] TODO` | [docs/tasks/TASK-22-multi-provider-hardening.md](./docs/tasks/TASK-22-multi-provider-hardening.md) |
 | **TASK-23** | Nâng cấp agent trong app: bộ đánh giá bằng số liệu, công cụ kế hoạch, bước kiểm chứng bắt buộc sau khi ghi | `[ ] TODO` | [docs/tasks/TASK-23-agent-maturity-eval-plan-verify.md](./docs/tasks/TASK-23-agent-maturity-eval-plan-verify.md) · [docs/AGENT-DEVELOPMENT-GUIDE.md](./docs/AGENT-DEVELOPMENT-GUIDE.md) |
 | **TASK-19** | Khắc phục Triệt để Hiện tượng Sọc Caro Đỏ-Xám (Z-Fighting) giữa Bức Tường (`Prism3`) và Các Thanh Lam / Tấm Ốp (`Prism10`, `Prism11`, `Prism12`) | `[?] WAITING_REVIEW` | [docs/tasks/TASK-19-fix-wall-slat-zfighting.md](./docs/tasks/TASK-19-fix-wall-slat-zfighting.md) |
+| **TASK-24** | Kết nối API tự động (dán khóa là nhận danh sách mô hình) qua VPS LLM Proxy, chống chặn CORS trình duyệt, tự động lọc mô hình Chat & bảo mật khóa | `[?] WAITING_REVIEW` | [docs/tasks/TASK-24-auto-discover-api-models.md](./docs/tasks/TASK-24-auto-discover-api-models.md) |
 
 ---
 
