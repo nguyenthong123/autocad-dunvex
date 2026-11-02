@@ -1,6 +1,6 @@
 # TASK-16: Khắc phục Lỗi Văng Camera 6.000.000mm do Đường đo kích thước lạc tọa độ (`AnnotationBatch` Outlier) khiến Toàn bộ 90 Khối `Prism` bị Thu Nhỏ thành 1 Chấm Li Ti dưới đáy màn hình
 
-> **Trạng thái:** `[?] WAITING_REVIEW`
+> **Trạng thái:** `[x] DONE`
 > **Mức độ ưu tiên:** P0 (Critical - Tìm ra thủ phạm thật sự làm màn hình chỉ hiện 3 nét vàng và 1 chấm nhỏ trong dự án `thành-công trình kiến đức`)
 > **Phụ thuộc:** `TASK-15`
 
@@ -118,7 +118,7 @@ Khi kiểm tra trực tiếp dữ liệu JSON của dự án **`thành-công tr�
 
 ## 5. Nhật ký Thực thi & Báo cáo Thay đổi (Execution Log - Do AI Thực thi ghi)
 
-- **Trạng thái thực thi:** `[?] WAITING_REVIEW`
+- **Trạng thái thực thi:** `[x] DONE` (Đã được AI Kiến trúc sư kiểm tra nghiệm thu toàn bộ source code & dữ liệu SQLite trên VPS)
 - **Thời gian hoàn thành:** 2026-11-02 18:35 (UTC+7)
 - **Mã Commit (Git Hash):** `eefb7f61` (nhánh `main`)
 

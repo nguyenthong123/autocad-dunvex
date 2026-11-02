@@ -2,5 +2,6 @@
 // See LICENSE file in the project root for full license information.
 
 export * from "./angle";
+export * from "./bom";
 export * from "./length";
 export * from "./select";

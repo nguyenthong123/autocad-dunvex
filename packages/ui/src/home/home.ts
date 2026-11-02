@@ -436,20 +436,59 @@ export class Home extends HTMLElement {
 
     private handleDocumentClick(item: RecentDocumentDTO) {
         if (this.hasOpen(item.id)) {
-            PubSub.default.pub("displayHome", false);
-        } else {
-            PubSub.default.pub(
-                "showPermanent",
-                async () => {
-                    const document = await this.app.openDocument(item.id);
-                    document?.application.activeView?.cameraController.fitContent({
-                        duration: CAMERA_FLY_DURATION,
-                    });
-                },
-                "toast.excuting{0}",
-                I18n.translate("command.doc.open"),
+            const openDoc = Array.from(this.app.documents).find((d) => d.id === item.id);
+            const targetView = this.app.views.find(
+                (v) => v.document.id === item.id || v.document === openDoc,
             );
+            if (targetView) {
+                this.app.activeView = targetView;
+                PubSub.default.pub("displayHome", false);
+                const doSync = () => {
+                    if (targetView.width > 1 && targetView.height > 1) {
+                        targetView.resize(targetView.width, targetView.height);
+                    }
+                    targetView.cameraController?.fitContent?.({ scope: "all", duration: 0 });
+                    targetView.update?.();
+                };
+                if (typeof requestAnimationFrame === "function") {
+                    requestAnimationFrame(doSync);
+                } else {
+                    doSync();
+                }
+                return;
+            }
+            if (openDoc) {
+                this.app.documents.delete(openDoc);
+            }
         }
+
+        PubSub.default.pub(
+            "showPermanent",
+            async () => {
+                const document = await this.app.openDocument(item.id);
+                PubSub.default.pub("displayHome", false);
+                const activeView = document?.application.activeView;
+                if (activeView) {
+                    const doFit = () => {
+                        if (activeView.width > 1 && activeView.height > 1) {
+                            activeView.resize(activeView.width, activeView.height);
+                        }
+                        activeView.cameraController?.fitContent?.({
+                            scope: "all",
+                            duration: CAMERA_FLY_DURATION,
+                        });
+                        activeView.update?.();
+                    };
+                    if (typeof requestAnimationFrame === "function") {
+                        requestAnimationFrame(doFit);
+                    } else {
+                        doFit();
+                    }
+                }
+            },
+            "toast.excuting{0}",
+            I18n.translate("command.doc.open"),
+        );
     }
 }
 

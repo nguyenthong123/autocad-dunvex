@@ -70,6 +70,17 @@ export class Application extends Observable implements IApplication {
         return this.getPrivateValue("activeView", undefined);
     }
     set activeView(value: IView | undefined) {
+        if (value?.document) {
+            if (this.has3DContent(value.document)) {
+                Config.instance.is2DDraftingMode = false;
+                Config.instance.dynamicWorkplane = true;
+            } else {
+                const is2D = (value.document as any).userData?.viewState?.is2DDraftingMode;
+                if (typeof is2D === "boolean") {
+                    Config.instance.is2DDraftingMode = is2D;
+                }
+            }
+        }
         this.setProperty("activeView", value, () => {
             PubSub.default.pub("activeViewChanged", value);
         });
@@ -204,6 +215,13 @@ export class Application extends Observable implements IApplication {
     }
 
     async openDocument(id: string): Promise<IDocument | undefined> {
+        const existingDoc = Array.from(this.documents).find((d) => d.id === id);
+        const existingView = this.views.find((v) => v.document.id === id || v.document === existingDoc);
+        if (existingView) {
+            this.activeView = existingView;
+            existingView.cameraController?.fitContent?.({ scope: "all", duration: 0 });
+            return existingView.document;
+        }
         const document = await Document.open(this, id);
         await this.createActiveView(document);
         return document;

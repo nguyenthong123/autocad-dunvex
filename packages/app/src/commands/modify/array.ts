@@ -12,6 +12,7 @@ import {
     cloneForCopyNode,
     command,
     Dimensions,
+    FolderNode,
     GeometryNode,
     type I18nKeys,
     type ICurve,
@@ -316,6 +317,26 @@ export class ArrayCommand extends MultistepCommand {
                             insert: component.origin,
                         }),
                     );
+                } else if (
+                    nodes.length >= 2 &&
+                    typeof (this.document.modelManager as any)?.notifyNodeChanged === "function"
+                ) {
+                    const firstModel = this.models?.[0];
+                    const baseName = firstModel?.name ?? nodes[0]?.name ?? "Đối tượng";
+                    const folderName = `Mảng ${baseName} (${nodes.length})`;
+                    const folder = new FolderNode({ document: this.document, name: folderName });
+                    const targetParent =
+                        firstModel?.parent instanceof FolderNode
+                            ? firstModel.parent
+                            : (this.document.modelManager.currentNode ?? this.document.modelManager.rootNode);
+                    if (typeof (targetParent as any).add === "function") {
+                        (targetParent as any).add(folder);
+                    } else if (typeof (targetParent as any).addNode === "function") {
+                        (targetParent as any).addNode(folder);
+                    } else {
+                        this.document.modelManager.addNode(folder);
+                    }
+                    folder.add(...nodes);
                 } else {
                     this.document.modelManager.addNode(...nodes);
                 }
@@ -725,6 +746,26 @@ export class ArrayCommand extends MultistepCommand {
                             insert: component.origin,
                         }),
                     );
+                } else if (
+                    nodes.length >= 2 &&
+                    typeof (this.document.modelManager as any)?.notifyNodeChanged === "function"
+                ) {
+                    const firstModel = this.models?.[0];
+                    const baseName = firstModel?.name ?? nodes[0]?.name ?? "Đối tượng";
+                    const folderName = `Mảng ${baseName} (${nodes.length})`;
+                    const folder = new FolderNode({ document: this.document, name: folderName });
+                    const targetParent =
+                        firstModel?.parent instanceof FolderNode
+                            ? firstModel.parent
+                            : (this.document.modelManager.currentNode ?? this.document.modelManager.rootNode);
+                    if (typeof (targetParent as any).add === "function") {
+                        (targetParent as any).add(folder);
+                    } else if (typeof (targetParent as any).addNode === "function") {
+                        (targetParent as any).addNode(folder);
+                    } else {
+                        this.document.modelManager.addNode(folder);
+                    }
+                    folder.add(...nodes);
                 } else {
                     this.document.modelManager.addNode(...nodes);
                 }

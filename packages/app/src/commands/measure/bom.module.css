@@ -1,0 +1,174 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    min-width: 760px;
+    max-width: 950px;
+    color: var(--foreground-color);
+    box-sizing: border-box;
+}
+
+.scopeBar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.scopeBtn {
+    padding: 6px 14px;
+    border: 1px solid var(--border-color);
+    background: var(--control-background-color);
+    color: var(--foreground-color);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.scopeBtn:hover {
+    background: var(--hover-color, rgba(255, 255, 255, 0.1));
+}
+
+.scopeBtn.active {
+    background: var(--primary-color, #007acc);
+    color: #fff;
+    border-color: var(--primary-color, #007acc);
+}
+
+.tableWrap {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 420px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: left;
+}
+
+.table th {
+    position: sticky;
+    top: 0;
+    background: var(--panel-header-background, var(--control-background-color));
+    padding: 8px 10px;
+    border-bottom: 2px solid var(--border-color);
+    font-weight: 600;
+    white-space: nowrap;
+    z-index: 1;
+}
+
+.table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.table tr:hover {
+    background: var(--hover-color, rgba(255, 255, 255, 0.05));
+}
+
+.colorCell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.colorSwatch {
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+}
+
+.numberInput {
+    width: 85px;
+    padding: 4px 6px;
+    border: 1px solid var(--border-color);
+    background: var(--input-background, var(--background-color));
+    color: var(--foreground-color);
+    border-radius: 4px;
+    text-align: right;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+.unitSelect {
+    padding: 4px 6px;
+    border: 1px solid var(--border-color);
+    background: var(--input-background, var(--background-color));
+    color: var(--foreground-color);
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.selectBtn {
+    padding: 3px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    background: var(--control-background-color);
+    border: 1px solid var(--border-color);
+    color: var(--foreground-color);
+    transition: background 0.15s ease;
+}
+
+.selectBtn:hover {
+    background: var(--primary-color, #007acc);
+    color: #fff;
+}
+
+.summaryBar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--control-background-color);
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border-color);
+}
+
+.summaryBar strong {
+    color: var(--primary-color, #007acc);
+}
+
+.actionsBar {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.actionBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border-color);
+    background: var(--control-background-color);
+    color: var(--foreground-color);
+    transition: all 0.15s ease;
+}
+
+.actionBtn:hover {
+    background: var(--hover-color, rgba(255, 255, 255, 0.1));
+    border-color: var(--primary-color, #007acc);
+}
+
+.emptyMsg {
+    padding: 30px;
+    text-align: center;
+    color: var(--secondary-foreground-color, #888);
+    font-size: 14px;
+}

@@ -23,7 +23,7 @@ export class CommandBar extends HTMLElement {
         this._input = input({
             type: "text",
             className: style.input,
-            placeholder: "Nhập lệnh AutoCAD (VD: L, REC, C, TR, DLI)...",
+            placeholder: "Nhập lệnh AutoCAD (VD: L, REC, C, TR, BOM, TK)...",
             oninput: () => this.handleInput(),
             onkeydown: (e: KeyboardEvent) => this.handleKeyDown(e),
             onblur: () => setTimeout(() => this.hidePopup(), 150),

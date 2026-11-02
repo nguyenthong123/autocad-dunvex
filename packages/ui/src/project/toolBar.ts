@@ -18,6 +18,7 @@ export class ToolBar extends HTMLElement {
     private render() {
         const buttons = [
             { icon: "icon-folder-plus", tip: "items.tool.newFolder", command: this.newGroup },
+            { icon: "icon-folder", tip: "command.modify.autoOrganizeTree", command: this.autoOrganize },
             { icon: "icon-unexpand", tip: "items.tool.unexpandAll", command: this.unExpandAll },
             { icon: "icon-expand", tip: "items.tool.expandAll", command: this.expandAll },
         ];
@@ -39,6 +40,10 @@ export class ToolBar extends HTMLElement {
 
     private readonly newGroup = () => {
         PubSub.default.pub("executeCommand", "create.folder");
+    };
+
+    private readonly autoOrganize = () => {
+        PubSub.default.pub("executeCommand", "modify.autoOrganizeTree");
     };
 
     private readonly expandAll = () => {

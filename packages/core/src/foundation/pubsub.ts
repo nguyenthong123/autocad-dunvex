@@ -90,6 +90,7 @@ export interface PubSubEventMap {
     showProperties(document: IDocument, nodes: INode[]): void;
     showSelectionControl: (controller: AsyncController) => void;
     showToast: (message: I18nKeys, ...args: any[]) => void;
+    startRenameNode: (node: INode) => void;
     statusBarTip: (tip: I18nKeys, ...args: any[]) => void;
     toggleChatPanel: () => void;
     /**

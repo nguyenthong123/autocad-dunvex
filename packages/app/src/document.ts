@@ -87,13 +87,18 @@ export class Document extends Observable implements IDocument {
     }
 
     serialize(): Serialized {
-        const view = this.application?.activeView;
+        const view = this.application?.views.find((v) => v.document === this) ?? this.application?.activeView;
         if (view) {
             const cam = view.cameraController as any;
             if (cam) {
                 const pos = cam.cameraPosition ?? cam.position;
                 const tgt = cam.cameraTarget ?? cam.target;
                 const up = cam.cameraUp ?? cam.up;
+                const existingViewState = (this.userData as any)?.viewState;
+                const is2D =
+                    this.application?.activeView === view
+                        ? Config.instance.is2DDraftingMode
+                        : (existingViewState?.is2DDraftingMode ?? Config.instance.is2DDraftingMode);
                 this.userData = {
                     ...this.userData,
                     viewState: {
@@ -102,7 +107,7 @@ export class Document extends Observable implements IDocument {
                         target: tgt ? { x: tgt.x, y: tgt.y, z: tgt.z } : undefined,
                         up: up ? { x: up.x, y: up.y, z: up.z } : undefined,
                         mode: cam.mode,
-                        is2DDraftingMode: Config.instance.is2DDraftingMode,
+                        is2DDraftingMode: is2D,
                     },
                 };
             }
@@ -146,13 +151,20 @@ export class Document extends Observable implements IDocument {
         // courtesy — a view that cannot be captured, or a store that refuses the write,
         // must not turn a written document into a failed save (and a missing success toast).
         try {
-            const image = this.application.activeView?.toImage();
-            await this.application.storage.put(Constants.DBName, Constants.RecentTable, this.id, {
+            const ownView =
+                this.application.views?.find((v) => v.document === this) ?? this.application.activeView;
+            const isCurrentView =
+                ownView && (!this.application.views || this.application.activeView === ownView);
+            const image = isCurrentView ? ownView?.toImage() : undefined;
+            const recentData: any = {
                 id: this.id,
                 name: this.name,
                 date: Date.now(),
-                image,
-            });
+            };
+            if (image) {
+                recentData.image = image;
+            }
+            await this.application.storage.put(Constants.DBName, Constants.RecentTable, this.id, recentData);
         } catch (error) {
             Logger.warn(`document "${this.name}" saved, but its recent entry could not be written`, error);
         }

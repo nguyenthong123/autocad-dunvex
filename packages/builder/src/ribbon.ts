@@ -102,7 +102,7 @@ export const DefaultRibbon: RibbonTabProfile[] = [
             },
             {
                 groupName: "ribbon.group.measure",
-                items: [["measure.length", "measure.angle", "measure.select"]],
+                items: [["measure.length", "measure.angle", "measure.select"], "measure.bom"],
             },
             {
                 groupName: "ribbon.group.annotation",

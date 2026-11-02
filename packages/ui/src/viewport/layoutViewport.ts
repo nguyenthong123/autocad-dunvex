@@ -65,6 +65,16 @@ export class LayoutViewport extends HTMLElement {
         this._viewports.forEach((v) => {
             if (v.view === view) {
                 v.classList.remove(style.hidden);
+                v.view.update();
+                if (typeof requestAnimationFrame === "function") {
+                    requestAnimationFrame(() => {
+                        const rect = v.getBoundingClientRect();
+                        if (rect.width > 1 && rect.height > 1) {
+                            v.view.resize(rect.width, rect.height);
+                        }
+                        v.view.update();
+                    });
+                }
             } else {
                 v.classList.add(style.hidden);
             }

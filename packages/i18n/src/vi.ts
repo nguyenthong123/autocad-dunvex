@@ -223,6 +223,10 @@ const vi: Locale = {
         "command.modify.simplifyShape": "Đơn giản hóa hình học",
         "command.modify.split": "Cắt tách (Split)",
         "command.modify.trim": "Cắt xén (Trim)",
+        "command.modify.hideSelected": "Ẩn đối tượng đang chọn",
+        "command.modify.showAll": "Hiện lại toàn bộ bản vẽ",
+        "command.modify.isolateSelected": "Cô lập đối tượng đang chọn",
+        "command.modify.autoOrganizeTree": "Tự động gom gọn Cây bản vẽ",
 
         // Commands - Annotate & Dimension
         "command.annotate.angle": "Góc",
@@ -296,6 +300,7 @@ const vi: Locale = {
 
         // Measure
         "command.measure.angle": "Đo góc",
+        "command.measure.bom": "Thống kê vật tư (BOM)",
         "command.measure.length": "Đo chiều dài",
         "command.measure.select": "Chọn đo",
 
@@ -465,6 +470,7 @@ const vi: Locale = {
         "toast.select.noSelected": "Chưa có đối tượng nào được chọn",
         "toast.snap.notFoundValidPoint": "Không tìm thấy điểm hợp lệ",
         "toast.success": "Thành công",
+        "toast.bom.copied": "Đã sao chép bảng kê vào clipboard! Có thể dán ngay vào Zalo.",
         "toast.text.defaultFontFailed":
             "Không thể tải phông chữ mặc định — chữ tạm thời ẩn trong khi thử tải lại",
 

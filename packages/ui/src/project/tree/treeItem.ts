@@ -195,8 +195,13 @@ export abstract class TreeItem extends HTMLElement {
 
     private readonly onVisibleIconClick = (e: MouseEvent) => {
         e.stopPropagation();
+        const selected = this.document.selection.getSelectedNodes();
+        const targets = selected.length > 1 && selected.includes(this.node) ? selected : [this.node];
+        const nextVisible = !this.node.visible;
         Transaction.execute(this.document, "change visible", () => {
-            this.node.visible = !this.node.visible;
+            for (const target of targets) {
+                target.visible = nextVisible;
+            }
         });
         this.document.visual.update();
     };

@@ -47,13 +47,19 @@ export class Tree extends HTMLElement {
         this.document.modelManager.addNodeObserver(this.handleNodeChanged);
         this.document.modelManager.onPropertyChanged(this.handleCurrentNodeChanged);
         this.document.selection.onNodeChanged.sub(this.handleSelectionChanged);
+        PubSub.default.sub("startRenameNode", this.handleStartRenameNode);
     }
 
     disconnectedCallback() {
         this.document.modelManager.removeNodeObserver(this.handleNodeChanged);
         this.document.modelManager.removePropertyChanged(this.handleCurrentNodeChanged);
         this.document.selection.onNodeChanged.remove(this.handleSelectionChanged);
+        PubSub.default.remove("startRenameNode", this.handleStartRenameNode);
     }
+
+    private readonly handleStartRenameNode = (node: INode) => {
+        this.nodeMap.get(node)?.startInlineRename();
+    };
 
     private readonly handleCurrentNodeChanged = (
         prop: keyof ModelManager,
@@ -86,6 +92,7 @@ export class Tree extends HTMLElement {
         this.document.modelManager.removeNodeObserver(this.handleNodeChanged);
         this.document.modelManager.removePropertyChanged(this.handleCurrentNodeChanged);
         this.document.selection.onNodeChanged.remove(this.handleSelectionChanged);
+        PubSub.default.remove("startRenameNode", this.handleStartRenameNode);
         this.document = null as any;
     }
 
@@ -261,23 +268,66 @@ export class Tree extends HTMLElement {
         menu.style.top = `${y}px`;
         menu.style.zIndex = "9999";
 
-        const renameOption = document.createElement("div");
-        renameOption.className = style.contextMenuItem ?? "contextMenuItem";
-        renameOption.textContent = "✏️ Đổi tên (Rename)";
-        renameOption.onclick = (e) => {
-            e.stopPropagation();
-            this.closeContextMenu();
-            item.startInlineRename();
-        };
-        menu.appendChild(renameOption);
+        const selectedNodesList = this.document.selection.getSelectedNodes();
+        const isMulti = selectedNodesList.length > 1 && selectedNodesList.includes(item.node!);
+        const targetNodes = isMulti ? selectedNodesList : item.node ? [item.node] : [];
 
-        if (item.node) {
-            const zoomOption = document.createElement("div");
-            zoomOption.className = style.contextMenuItem ?? "contextMenuItem";
-            zoomOption.textContent = "🔍 Phóng tới đối tượng (Zoom to Object)";
-            zoomOption.onclick = (e) => {
+        const addItem = (text: string, onClick: () => void) => {
+            const opt = document.createElement("div");
+            opt.className = style.contextMenuItem ?? "contextMenuItem";
+            opt.textContent = text;
+            opt.onclick = (e) => {
                 e.stopPropagation();
                 this.closeContextMenu();
+                onClick();
+            };
+            menu.appendChild(opt);
+        };
+
+        // 1. Rename
+        addItem("✏️ Đổi tên (Rename)", () => item.startInlineRename());
+
+        // 2. Group Selected (G)
+        addItem("📁 Gom vào thư mục mới (Group - G)", () => {
+            PubSub.default.pub("executeCommand", "create.folder");
+        });
+
+        // 3. Auto organize (*_copy)
+        addItem("✨ Tự động gom gọn các bản sao (*_copy)", () => {
+            PubSub.default.pub("executeCommand", "modify.autoOrganizeTree");
+        });
+
+        if (targetNodes.length > 0) {
+            // 4. Hide Selected
+            addItem(`👁️ Ẩn đối tượng đang chọn (${targetNodes.length})`, () => {
+                Transaction.execute(this.document, "Hide Selected", () => {
+                    for (const n of targetNodes) n.visible = false;
+                });
+                this.document.visual.update();
+            });
+
+            // 5. Show Selected
+            addItem(`👁️ Hiện đối tượng đang chọn (${targetNodes.length})`, () => {
+                Transaction.execute(this.document, "Show Selected", () => {
+                    for (const n of targetNodes) n.visible = true;
+                });
+                this.document.visual.update();
+            });
+
+            // 6. Isolate Selected
+            addItem("🎯 Cô lập: Chỉ hiện đối tượng đang chọn (Isolate)", () => {
+                PubSub.default.pub("executeCommand", "modify.isolateSelected");
+            });
+        }
+
+        // 7. Show All
+        addItem("☀️ Hiện lại toàn bộ bản vẽ (Show All)", () => {
+            PubSub.default.pub("executeCommand", "modify.showAll");
+        });
+
+        // 8. Zoom to object
+        if (item.node) {
+            addItem("🔍 Phóng tới đối tượng (Zoom to Object)", () => {
                 const activeView = (this.document as any).application?.activeView;
                 if (!activeView) return;
 
@@ -287,35 +337,35 @@ export class Tree extends HTMLElement {
                         scope: "all",
                     });
                 } else {
-                    this.document.selection.setSelectedNodes([item.node!], false);
+                    this.document.selection.setSelectedNodes(targetNodes, false);
                     activeView.cameraController?.fitContent?.({
                         duration: CAMERA_FLY_DURATION,
                         scope: "selection",
                     });
                 }
-            };
-            menu.appendChild(zoomOption);
+            });
         }
 
-        if (item.node && item.node !== this.document.modelManager.rootNode) {
-            const deleteOption = document.createElement("div");
-            deleteOption.className = style.contextMenuItem ?? "contextMenuItem";
-            deleteOption.textContent = "🗑️ Xóa đối tượng (Delete)";
-            deleteOption.onclick = (e) => {
-                e.stopPropagation();
-                this.closeContextMenu();
-                this.document.selection.setSelectedNodes([item.node!], false);
+        // 9. Delete Selected
+        if (
+            targetNodes.length > 0 &&
+            !(targetNodes.length === 1 && targetNodes[0] === this.document.modelManager.rootNode)
+        ) {
+            const deleteNodes = targetNodes.filter((n) => n !== this.document.modelManager.rootNode);
+            addItem(`🗑️ Xóa đối tượng đang chọn (${deleteNodes.length})`, () => {
+                this.document.selection.setSelectedNodes(deleteNodes, false);
                 const app = (this.document as any).application;
                 if (app?.commandService) {
                     app.commandService.executeCommand("modify.deleteNode");
                 } else {
                     Transaction.execute(this.document, "delete", () => {
-                        item.node!.parent?.remove(item.node!);
+                        for (const n of deleteNodes) {
+                            n.parent?.remove(n);
+                        }
                     });
                     this.document.visual?.update?.();
                 }
-            };
-            menu.appendChild(deleteOption);
+            });
         }
         document.body.appendChild(menu);
         this.contextMenuEl = menu;
@@ -417,18 +467,41 @@ export class Tree extends HTMLElement {
         event.stopPropagation();
         this.clearDropTargetHighlight();
 
-        const node = this.getTreeItem(event.target as HTMLElement)?.node;
+        const treeItem = this.getTreeItem(event.target as HTMLElement);
+        const node = treeItem?.node;
         if (node === undefined || !this.canDropNode(node)) return;
         Transaction.execute(this.document, "move node", () => {
-            // Drop INTO folders only — dropping onto a parametric body (also a linked
-            // list, holding hidden consumed tools) inserts as its sibling instead.
             const isFolder = node instanceof FolderNode;
-            const newParent = isFolder ? (node as INodeLinkedList) : node.parent;
-            if (!(newParent instanceof FolderNode)) return; // never drop into a body
-            const target = isFolder ? undefined : node;
-            this.dragging?.forEach((x) => {
-                x.parent?.move(x, newParent, target);
-            });
+            if (isFolder) {
+                const newParent = node as INodeLinkedList;
+                this.dragging?.forEach((x) => {
+                    x.parent?.move(x, newParent, undefined);
+                });
+            } else {
+                const rect = treeItem?.getBoundingClientRect();
+                const hasCoord =
+                    typeof event.clientY === "number" &&
+                    event.clientY > 0 &&
+                    rect !== undefined &&
+                    rect.height > 0;
+                const offsetY = hasCoord ? (event.clientY - rect.top) / rect.height : 0.1;
+
+                if (hasCoord && offsetY >= 0.25 && offsetY <= 0.75 && node.parent instanceof FolderNode) {
+                    const parentFolder = node.parent;
+                    const groupFolder = new FolderNode({ document: this.document, name: `📁 ${node.name}` });
+                    parentFolder.add(groupFolder);
+                    parentFolder.move(node, groupFolder, undefined);
+                    this.dragging?.forEach((x) => {
+                        x.parent?.move(x, groupFolder, undefined);
+                    });
+                } else {
+                    const newParent = node.parent;
+                    if (!(newParent instanceof FolderNode)) return;
+                    this.dragging?.forEach((x) => {
+                        x.parent?.move(x, newParent, node);
+                    });
+                }
+            }
             this.dragging = undefined;
         });
     };

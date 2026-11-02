@@ -69,13 +69,13 @@ describe("ToolBar", () => {
             expect(tb.className).toBe("tb-panel");
         });
 
-        test("should create three buttons (newFolder, expandAll, unexpandAll)", () => {
+        test("should create four buttons (newFolder, autoOrganize, unexpandAll, expandAll)", () => {
             const pv = createMockProjectView() as any;
             const tb = new ToolBar(pv);
 
-            // Should have 3 anchor children
+            // Should have 4 anchor children
             const anchors = tb.querySelectorAll("a");
-            expect(anchors.length).toBe(3);
+            expect(anchors.length).toBe(4);
         });
 
         test("should store reference to projectView", () => {
@@ -89,7 +89,7 @@ describe("ToolBar", () => {
             const tb = new ToolBar(pv);
 
             const svgs = tb.querySelectorAll("svg");
-            expect(svgs.length).toBe(3);
+            expect(svgs.length).toBe(4);
         });
     });
 
@@ -113,10 +113,10 @@ describe("ToolBar", () => {
             const tb = new ToolBar(pv);
             expect(pv.activeTree()).toBeUndefined();
 
-            // Find the expand button (index 2 based on the array)
+            // Find the expand button (index 3 based on the array)
             const svgs = tb.querySelectorAll("svg");
-            expect(svgs.length).toBe(3);
-            const onclick = (svgs[2] as SVGElement as any)._onclick as (() => void) | undefined; // expandAll is last
+            expect(svgs.length).toBe(4);
+            const onclick = (svgs[3] as SVGElement as any)._onclick as (() => void) | undefined; // expandAll is last
             expect(onclick).toBeDefined();
             onclick!();
 
@@ -130,8 +130,8 @@ describe("ToolBar", () => {
             expect(pv.activeTree()).toBeUndefined();
 
             const svgs = tb.querySelectorAll("svg");
-            expect(svgs.length).toBe(3);
-            const onclick = (svgs[1] as SVGElement as any)._onclick as (() => void) | undefined; // unExpandAll is second
+            expect(svgs.length).toBe(4);
+            const onclick = (svgs[2] as SVGElement as any)._onclick as (() => void) | undefined; // unExpandAll is third
             expect(onclick).toBeDefined();
             onclick!();
 
@@ -163,8 +163,8 @@ describe("ToolBar", () => {
 
             const tb = new ToolBar(pv);
             const svgs = tb.querySelectorAll("svg");
-            expect(svgs.length).toBe(3);
-            const onclick = (svgs[2] as SVGElement as any)._onclick as (() => void) | undefined;
+            expect(svgs.length).toBe(4);
+            const onclick = (svgs[3] as SVGElement as any)._onclick as (() => void) | undefined;
             expect(onclick).toBeDefined();
 
             expect(item.isExpanded).toBe(false);
