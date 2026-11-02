@@ -6,6 +6,7 @@ import {
     type IDocument,
     type IShape,
     ParameterShapeNode,
+    type ParameterShapeNodeOptions,
     property,
     type Result,
     serializable,
@@ -13,8 +14,7 @@ import {
     type XYZ,
 } from "@chili3d/core";
 
-export interface PointOptions {
-    document: IDocument;
+export interface PointOptions extends ParameterShapeNodeOptions {
     position: XYZ;
 }
 
@@ -34,7 +34,7 @@ export class PointNode extends ParameterShapeNode {
     }
 
     constructor(options: PointOptions) {
-        super({ document: options.document });
+        super(options);
         this.setPrivateValue("position", options.position);
     }
 

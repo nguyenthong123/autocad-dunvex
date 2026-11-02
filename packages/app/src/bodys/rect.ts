@@ -7,6 +7,7 @@ import {
     type IDocument,
     type IShape,
     MathUtils,
+    type ParameterShapeNodeOptions,
     type Plane,
     property,
     Result,
@@ -15,8 +16,7 @@ import {
     type XYZ,
 } from "@chili3d/core";
 
-export interface RectOptions {
-    document: IDocument;
+export interface RectOptions extends ParameterShapeNodeOptions {
     plane: Plane;
     dx: number;
     dy: number;
@@ -55,7 +55,7 @@ export class RectNode extends FacebaseNode {
     }
 
     constructor(options: RectOptions) {
-        super({ document: options.document });
+        super(options);
         this.setPrivateValue("plane", options.plane);
         this.setPrivateValue("dx", options.dx);
         this.setPrivateValue("dy", options.dy);

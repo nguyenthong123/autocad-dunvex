@@ -157,6 +157,9 @@ export class Serializer {
     }
 
     static deserializeProperties(document: IDocument, instance: any, data: Record<string, any>) {
+        if (typeof data["id"] === "string" && instance && "id" in instance && instance.id !== data["id"]) {
+            instance.id = data["id"];
+        }
         const keys = Object.keys(data);
         for (const key of keys) {
             if (key !== InternalClassName && document !== data[key] && instance[key] !== data[key]) {

@@ -6,6 +6,7 @@ import {
     type I18nKeys,
     type IDocument,
     type IShape,
+    type ParameterShapeNodeOptions,
     property,
     type Result,
     serializable,
@@ -13,8 +14,7 @@ import {
     type XYZ,
 } from "@chili3d/core";
 
-export interface CircleOptions {
-    document: IDocument;
+export interface CircleOptions extends ParameterShapeNodeOptions {
     normal: XYZ;
     center: XYZ;
     radius: number;
@@ -50,7 +50,7 @@ export class CircleNode extends FacebaseNode {
     }
 
     constructor(options: CircleOptions) {
-        super({ document: options.document });
+        super(options);
         this.setPrivateValue("normal", options.normal);
         this.setPrivateValue("center", options.center);
         this.setPrivateValue("radius", options.radius);

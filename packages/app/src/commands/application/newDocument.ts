@@ -12,6 +12,12 @@ let count = 1;
 })
 export class NewDocument implements ICommand {
     async execute(app: IApplication): Promise<void> {
-        await app.newDocument(`undefined ${count++}`);
+        const baseName = "Dự án";
+        const existingNames = new Set(Array.from(app.documents).map((d) => d.name));
+        let index = count++;
+        while (existingNames.has(`${baseName} ${index}`)) {
+            index++;
+        }
+        await app.newDocument(`${baseName} ${index}`);
     }
 }

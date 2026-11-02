@@ -55,6 +55,7 @@ packages/web ──> packages/builder ──> packages/app ───────
 | **TASK-09** | Khắc phục lỗi công cụ Hình chữ nhật (`Rect` / `Box`) khi bật chế độ 2D + `ORTHO (F8)` và Hỗ trợ phím `Tab` nhập kích thước 2 chiều $[dx, dy]$ | `[x] DONE` | [docs/tasks/TASK-09-fix-rect-ortho-and-tab-input.md](./docs/tasks/TASK-09-fix-rect-ortho-and-tab-input.md) |
 | **TASK-10** | Rà soát & Khắc phục tổng thể các lỗi Hệ thống (Phím tắt đơn AutoCAD, Bắt điểm ORTHO trên bề mặt, Chống suy biến Extrude/Offset = 0, Đồng bộ Pre-selection & Reset Workplane 2D/3D) | `[x] DONE` | [docs/tasks/TASK-10-system-wide-stability-and-workflow-audit.md](./docs/tasks/TASK-10-system-wide-stability-and-workflow-audit.md) |
 | **TASK-11** | Tách biệt Vật liệu theo từng Đối tượng (Per-Object Material Isolation) & Đồng bộ Hiển thị Đa vật liệu trên 2D/3D | `[x] DONE` | [docs/tasks/TASK-11-per-object-material-isolation.md](./docs/tasks/TASK-11-per-object-material-isolation.md) |
+| **TASK-12** | Khắc phục Đổi tên Dự án (Inline Rename), Ổn định Sao chép mảng (`Array`), Chống mất dữ liệu Hình học (`*_copy`) & Tích hợp Lưu trữ SQLite + Xác thực Tài khoản (Auth) | `[x] DONE` | [docs/tasks/TASK-12-inline-rename-array-fix-and-sqlite-auth.md](./docs/tasks/TASK-12-inline-rename-array-fix-and-sqlite-auth.md) |
 
 ---
 

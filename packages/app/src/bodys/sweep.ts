@@ -8,14 +8,14 @@ import {
     type IShape,
     type IWire,
     ParameterShapeNode,
+    type ParameterShapeNodeOptions,
     type Result,
     ShapeTypes,
     serializable,
     serialize,
 } from "@chili3d/core";
 
-export interface SweepOptions {
-    document: IDocument;
+export interface SweepOptions extends ParameterShapeNodeOptions {
     profile: (IWire | IEdge)[];
     path: IWire | IEdge;
     round: boolean;
@@ -52,7 +52,7 @@ export class SweepedNode extends ParameterShapeNode {
     }
 
     constructor(options: SweepOptions) {
-        super({ document: options.document });
+        super(options);
         this.setPrivateValue(
             "profile",
             options.profile.map((p) => this.ensureWire(p)),

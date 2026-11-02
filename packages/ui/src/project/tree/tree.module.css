@@ -19,3 +19,29 @@
     outline: 2px solid var(--primary-color);
     opacity: 0.8;
 }
+
+.contextMenu {
+    position: fixed;
+    background: var(--background-color, #ffffff);
+    color: var(--text-color, #333333);
+    border: 1px solid var(--border-color, #cccccc);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 4px;
+    min-width: 140px;
+    user-select: none;
+    font-size: 12px;
+}
+
+.contextMenuItem {
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    &:hover {
+        background-color: var(--hover-background-color, #f0f0f0);
+    }
+}

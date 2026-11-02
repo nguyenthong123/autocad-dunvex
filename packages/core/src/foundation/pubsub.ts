@@ -39,6 +39,7 @@ export interface PubSubEventMap {
     activeViewChanged: (view: IView | undefined) => void;
     applicationError: (message: unknown, optionalParams: unknown[]) => void;
     applicationErrorReady: () => void;
+    authChanged: (user: any) => void;
     bridgeStatusChanged: (status: BridgeStatus | undefined, title?: string) => void;
     /** Hide the standalone confirm bar (see `showConfirmControl`). */
     clearConfirmControl: () => void;

@@ -140,6 +140,10 @@ export class CommandService implements IService {
         const runningCommand = this.app.executingCommand;
         const runningKey = CommandStore.getComandData(runningCommand)?.key;
         if (runningKey === commandName) {
+            if (isCancelableCommand(runningCommand)) {
+                await runningCommand.cancel();
+                return true;
+            }
             PubSub.default.pub("showToast", "toast.command.{0}excuting", commandLabel(commandName));
             return false;
         }

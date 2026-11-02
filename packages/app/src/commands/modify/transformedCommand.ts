@@ -19,7 +19,7 @@ import {
     property,
     Transaction,
     VisualConfig,
-    type VisualNode,
+    VisualNode,
     type XYZ,
 } from "@chili3d/core";
 
@@ -48,17 +48,30 @@ export abstract class TransformedCommand extends MultistepCommand {
         };
     };
 
+    private getActiveSelectedModels(transformable: (node: VisualNode) => boolean): VisualNode[] {
+        const selectedNodes = this.document.selection.getSelectedVisualNodes().filter(transformable);
+        if (selectedNodes.length > 0) return selectedNodes;
+
+        const fromShapes = new Set<VisualNode>();
+        for (const shape of this.document.selection.getSelectedShapes()) {
+            if (shape.owner instanceof VisualNode && transformable(shape.owner)) {
+                fromShapes.add(shape.owner);
+            }
+        }
+        return Array.from(fromShapes);
+    }
+
     private async ensureSelectedModels() {
         // Reference geometry (datum planes) and inputs such as sketches are defined in
         // world space and are not placements of a body: moving them would only
         // desynchronise their references (or, for a sketch, do nothing at all).
         const transformable = (node: VisualNode) =>
             !isReferenceGeometryNode(node) && node.transformMode !== "none";
-        const selected = this.document.selection.getSelectedVisualNodes();
-        this.models = selected.filter(transformable);
+        this.models = this.getActiveSelectedModels(transformable);
         if (this.models.length > 0) return true;
         // A selection made only of inputs (a sketch, a datum plane) is not "nothing
         // selected": say why it cannot move instead of opening the picker again.
+        const selected = this.document.selection.getSelectedVisualNodes();
         if (selected.length > 0) {
             PubSub.default.pub("showToast", "toast.node.notTransformable");
             return false;

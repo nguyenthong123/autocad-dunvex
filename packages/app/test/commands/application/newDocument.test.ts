@@ -29,6 +29,7 @@ describe("NewDocument", () => {
         const cmd = new NewDocument();
         await cmd.execute(app);
 
-        expect(newDocName).toContain("undefined");
+        expect(newDocName).toContain("Dự án");
+        expect(newDocName).not.toContain("undefined");
     });
 });

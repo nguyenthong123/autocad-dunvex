@@ -20,7 +20,8 @@ import {
     type RibbonTab,
     type RibbonTabKeys,
 } from "@chili3d/core";
-import { a, collection, createIcon, div, label, span, svg } from "@chili3d/element";
+import { a, button, collection, createIcon, div, label, span, svg } from "@chili3d/element";
+import { getAuthUser, logout, showAuthDialog } from "../auth/authDialog";
 import style from "./ribbon.module.css";
 import { RibbonPushButton } from "./ribbonButton";
 import { RibbonGroupElement } from "./ribbonGroup";
@@ -156,6 +157,61 @@ export class RibbonUI extends HTMLElement {
     }
 
     private createViewItem(view: IView) {
+        const textSpan = span({ textContent: new Binding(view.document, "name") });
+        const nameEl = div({ className: style.name }, textSpan);
+        let isEditing = false;
+
+        nameEl.ondblclick = (e: MouseEvent) => {
+            e.stopPropagation();
+            if (isEditing) return;
+            isEditing = true;
+
+            const inputEl = document.createElement("input");
+            inputEl.type = "text";
+            inputEl.value = view.document.name;
+            inputEl.className = style.tabInput ?? "tabInput";
+
+            const stop = (ev: Event) => ev.stopPropagation();
+            inputEl.addEventListener("click", stop);
+            inputEl.addEventListener("dblclick", stop);
+            inputEl.addEventListener("mousedown", stop);
+            inputEl.addEventListener("pointerdown", stop);
+
+            const cleanup = () => {
+                if (!isEditing) return;
+                isEditing = false;
+                inputEl.remove();
+                textSpan.style.display = "";
+            };
+
+            const commitRename = () => {
+                if (!isEditing) return;
+                const newName = inputEl.value.trim();
+                if (newName && newName !== view.document.name) {
+                    view.document.name = newName;
+                }
+                cleanup();
+            };
+
+            inputEl.addEventListener("keydown", (ke: KeyboardEvent) => {
+                ke.stopPropagation();
+                if (ke.key === "Enter") {
+                    commitRename();
+                } else if (ke.key === "Escape") {
+                    cleanup();
+                }
+            });
+
+            inputEl.addEventListener("blur", () => {
+                commitRename();
+            });
+
+            textSpan.style.display = "none";
+            nameEl.appendChild(inputEl);
+            inputEl.focus();
+            inputEl.select();
+        };
+
         return div(
             {
                 className: new Binding(
@@ -167,7 +223,7 @@ export class RibbonUI extends HTMLElement {
                     this.app.activeView = view;
                 },
             },
-            div({ className: style.name }, span({ textContent: new Binding(view.document, "name") })),
+            nameEl,
             svg({
                 className: style.close,
                 icon: "icon-times",
@@ -179,9 +235,48 @@ export class RibbonUI extends HTMLElement {
         );
     }
 
+    private accountPill() {
+        const pill = div({ className: style.accountPill ?? "accountPill" });
+        const update = () => {
+            pill.innerHTML = "";
+            const user = getAuthUser();
+            if (user) {
+                const nameLabel = span({
+                    className: style.accountName ?? "accountName",
+                    textContent: `👤 ${user.storeName || user.username}`,
+                    title: `Tài khoản: ${user.username} (${user.storeName})`,
+                });
+                const logoutBtn = button({
+                    className: style.logoutButton ?? "logoutButton",
+                    textContent: "Đăng xuất",
+                    onclick: (e) => {
+                        e.stopPropagation();
+                        logout();
+                    },
+                });
+                pill.append(nameLabel, logoutBtn);
+            } else {
+                const loginBtn = button({
+                    className: style.loginButton ?? "loginButton",
+                    textContent: "Đăng nhập / Đăng ký",
+                    onclick: (e) => {
+                        e.stopPropagation();
+                        showAuthDialog();
+                    },
+                });
+                pill.append(loginBtn);
+            }
+        };
+
+        update();
+        PubSub.default.sub("authChanged", update);
+        return pill;
+    }
+
     private rightPanel() {
         return div(
             { className: style.right },
+            this.accountPill(),
             a(
                 { href: "https://github.com/xiangechen/chili3d", target: "_blank" },
                 svg({ title: "Github", className: style.icon, icon: "icon-github" }),

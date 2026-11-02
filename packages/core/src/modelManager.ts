@@ -223,10 +223,30 @@ export class ModelManager extends Observable {
             const rootNode = await NodeUtils.deserializeNode(this.document, data.nodes);
             this.rootNode = rootNode!;
             this.ensureMaterials();
+            this.ensureInstances();
         } finally {
             this._deserializing = false;
         }
         this.notifyNodeChanged([{ action: "add", node: this.rootNode }]);
+    }
+
+    private ensureInstances() {
+        if (!this.rootNode) return;
+        const allNodes = NodeUtils.children(this.rootNode);
+        for (const node of allNodes) {
+            if ((node as any).isInstance === true || node.constructor?.name === "BodyInstanceNode") {
+                const instance = node as any;
+                const src = instance.source;
+                if (src) {
+                    instance._mesh = undefined;
+                    try {
+                        const _ = instance.mesh;
+                    } catch {
+                        // ignore if wasm/mesh not ready yet in test environment
+                    }
+                }
+            }
+        }
     }
 
     /**

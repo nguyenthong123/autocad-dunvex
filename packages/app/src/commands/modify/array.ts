@@ -39,7 +39,7 @@ import {
     ShapeTypes,
     type SnapLengthAtPlaneData,
     Transaction,
-    type VisualNode,
+    VisualNode,
     XYZ,
 } from "@chili3d/core";
 
@@ -77,11 +77,40 @@ export class ArrayCommand extends MultistepCommand {
 
     @property("common.isGroup")
     get isGroup() {
-        return this.getPrivateValue("isGroup", true);
+        return this.getPrivateValue("isGroup", false);
     }
     set isGroup(value: boolean) {
         this.setProperty("isGroup", value);
     }
+
+    @property("common.offsetX")
+    get offsetX() {
+        return this.getPrivateValue("offsetX", 1000);
+    }
+    set offsetX(value: number) {
+        this.setProperty("offsetX", value);
+    }
+
+    @property("common.offsetY")
+    get offsetY() {
+        return this.getPrivateValue("offsetY", 0);
+    }
+    set offsetY(value: number) {
+        this.setProperty("offsetY", value);
+    }
+
+    @property("common.offsetZ")
+    get offsetZ() {
+        return this.getPrivateValue("offsetZ", 0);
+    }
+    set offsetZ(value: number) {
+        this.setProperty("offsetZ", value);
+    }
+
+    @property("command.modify.array")
+    readonly applyQuickArray = () => {
+        this.executeQuickArray();
+    };
 
     get showCount(): boolean {
         return this.getPrivateValue(
@@ -194,12 +223,25 @@ export class ArrayCommand extends MultistepCommand {
         this.setProperty("numberZ", value, () => this.resetMesh());
     }
 
+    private getActiveSelectedModels(transformable: (node: VisualNode) => boolean): VisualNode[] {
+        const selectedNodes = this.document.selection.getSelectedVisualNodes().filter(transformable);
+        if (selectedNodes.length > 0) return selectedNodes;
+
+        const fromShapes = new Set<VisualNode>();
+        for (const shape of this.document.selection.getSelectedShapes()) {
+            if (shape.owner instanceof VisualNode && transformable(shape.owner)) {
+                fromShapes.add(shape.owner);
+            }
+        }
+        return Array.from(fromShapes);
+    }
+
     private async ensureSelectedModels() {
         const transformable = (node: VisualNode) =>
             !isReferenceGeometryNode(node) && node.transformMode !== "none";
-        const selected = this.document.selection.getSelectedVisualNodes();
-        this.models = selected.filter(transformable);
+        this.models = this.getActiveSelectedModels(transformable);
         if (this.models.length > 0) return true;
+        const selected = this.document.selection.getSelectedVisualNodes();
         if (selected.length > 0) {
             PubSub.default.pub("showToast", "toast.node.notTransformable");
             return false;
@@ -217,6 +259,76 @@ export class ArrayCommand extends MultistepCommand {
         }
 
         return false;
+    }
+
+    private executeQuickArray() {
+        const transformable = (node: VisualNode) =>
+            !isReferenceGeometryNode(node) && node.transformMode !== "none";
+        if (!this.models || this.models.length === 0) {
+            this.models = this.getActiveSelectedModels(transformable);
+        }
+        if (!this.models || this.models.length === 0) {
+            PubSub.default.pub("showToast", "toast.select.noSelected");
+            return;
+        }
+        const freeModels = this.models.filter((x) => !isConsumedTool(x));
+        if (freeModels.length === 0) {
+            PubSub.default.pub("showToast", "toast.consumedTool.forbidden");
+            return;
+        }
+        this.models = freeModels;
+
+        let matrixs: Matrix4[];
+        if (this.patternType === "option.command.patternType.rectangular") {
+            const dx = this.offsetX === 0 && this.numberX > 1 ? 100 : this.offsetX;
+            const dy = this.offsetY === 0 && this.numberY > 1 ? 100 : this.offsetY;
+            const dz = this.offsetZ === 0 && this.numberZ > 1 ? 100 : this.offsetZ;
+            matrixs = this.getBoxTransforms(new XYZ(dx, 0, 0), new XYZ(0, dy, 0), new XYZ(0, 0, dz));
+        } else {
+            const offset = new XYZ(this.offsetX, this.offsetY, this.offsetZ);
+            const dir = offset.lengthSq() < 1e-9 ? new XYZ(100, 0, 0) : offset;
+            matrixs = this.getLinearTransforms(dir);
+        }
+
+        Transaction.execute(this.document, "Array", () => {
+            const nodes: VisualNode[] = [];
+            for (const matrix of matrixs) {
+                this.models?.forEach((model) => {
+                    if ((model as { copiesAsInstance?: boolean }).copiesAsInstance === true) {
+                        if (matrix.equals(Matrix4.identity())) return;
+                    }
+                    nodes.push(cloneForCopyNode(model, matrix));
+                });
+            }
+            const hasInstances = nodes.some((node) => isInstanceNode(node));
+            if (nodes.length > 0) {
+                if (this.isGroup && hasInstances) {
+                    PubSub.default.pub("showToast", "toast.instance.groupUnsupported");
+                }
+                if (this.isGroup && !hasInstances) {
+                    const component = new Component({ name: "Array", nodes });
+                    this.document.modelManager.components.push(component);
+                    this.document.modelManager.addNode(
+                        new ComponentNode({
+                            document: this.document,
+                            name: "Array",
+                            componentId: component.id,
+                            insert: component.origin,
+                        }),
+                    );
+                } else {
+                    this.document.modelManager.addNode(...nodes);
+                }
+            }
+            this.models?.forEach((model) => {
+                if ((model as { copiesAsInstance?: boolean }).copiesAsInstance === true) return;
+                model.parent?.remove(model);
+            });
+            this.positions = undefined;
+            this.models = undefined;
+        });
+
+        this.cancel();
     }
 
     protected override async canExcute(): Promise<boolean> {

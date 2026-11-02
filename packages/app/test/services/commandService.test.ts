@@ -297,6 +297,17 @@ describe("CommandService", () => {
             expect(cancelableCmd.cancelCalls).toBe(1);
         });
 
+        test("should cancel existing cancelable command and restart when same command is triggered", async () => {
+            registerCommand("test.cancelable", TestCancelableCommand);
+
+            const cancelableCmd = new TestCancelableCommand();
+            app.executingCommand = cancelableCmd;
+
+            PubSub.default.pub("executeCommand", "test.cancelable" as CommandKeys);
+            await cancelableCmd.cancelled;
+            expect(cancelableCmd.cancelCalls).toBe(1);
+        });
+
         test("should not reject when no command is running", async () => {
             registerCommand("test.box");
 

@@ -41,3 +41,16 @@
 .hidden {
     display: none;
 }
+
+.renameInput {
+    flex: 1 1 auto;
+    font-size: 12px;
+    border: 1px solid var(--primary-color, #1890ff);
+    border-radius: 3px;
+    background: var(--input-background, #ffffff);
+    color: inherit;
+    padding: 1px 4px;
+    outline: none;
+    margin-right: 4px;
+    min-width: 60px;
+}

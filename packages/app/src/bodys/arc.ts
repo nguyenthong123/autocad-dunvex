@@ -6,6 +6,7 @@ import {
     type IDocument,
     type IShape,
     ParameterShapeNode,
+    type ParameterShapeNodeOptions,
     property,
     type Result,
     serializable,
@@ -13,8 +14,7 @@ import {
     type XYZ,
 } from "@chili3d/core";
 
-export interface ArcOptions {
-    document: IDocument;
+export interface ArcOptions extends ParameterShapeNodeOptions {
     normal: XYZ;
     center: XYZ;
     start: XYZ;
@@ -57,7 +57,7 @@ export class ArcNode extends ParameterShapeNode {
     }
 
     constructor(options: ArcOptions) {
-        super({ document: options.document });
+        super(options);
         this.setPrivateValue("normal", options.normal);
         this.setPrivateValue("center", options.center);
         this.setPrivateValue("start", options.start);

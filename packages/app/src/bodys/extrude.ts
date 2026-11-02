@@ -10,6 +10,7 @@ import {
     type IShape,
     type IWire,
     ParameterShapeNode,
+    type ParameterShapeNodeOptions,
     Precision,
     property,
     Result,
@@ -18,8 +19,7 @@ import {
     serialize,
 } from "@chili3d/core";
 
-export interface PrismOptions {
-    document: IDocument;
+export interface PrismOptions extends ParameterShapeNodeOptions {
     section: IShape;
     length: number;
 }
@@ -61,7 +61,7 @@ export class ExtrudeNode extends ParameterShapeNode {
     }
 
     constructor(options: PrismOptions) {
-        super({ document: options.document });
+        super(options);
         this.setPrivateValue("section", options.section);
         this.setPrivateValue("length", options.length);
     }

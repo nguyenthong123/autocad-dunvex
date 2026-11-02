@@ -6,6 +6,7 @@ import {
     type IDocument,
     type IShape,
     ParameterShapeNode,
+    type ParameterShapeNodeOptions,
     property,
     type Result,
     serializable,
@@ -13,8 +14,7 @@ import {
     type XYZ,
 } from "@chili3d/core";
 
-export interface HelixOptions {
-    document: IDocument;
+export interface HelixOptions extends ParameterShapeNodeOptions {
     origin: XYZ;
     normal: XYZ;
     xDir: XYZ;
@@ -76,7 +76,7 @@ export class HelixNode extends ParameterShapeNode {
     }
 
     constructor(options: HelixOptions) {
-        super({ document: options.document });
+        super(options);
         this.setPrivateValue("origin", options.origin);
         this.setPrivateValue("normal", options.normal);
         this.setPrivateValue("xDir", options.xDir);

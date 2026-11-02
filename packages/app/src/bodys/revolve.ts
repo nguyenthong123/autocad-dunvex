@@ -7,6 +7,7 @@ import {
     type IShape,
     type Line,
     ParameterShapeNode,
+    type ParameterShapeNodeOptions,
     Result,
     ShapeTypes,
     serializable,
@@ -14,8 +15,7 @@ import {
 } from "@chili3d/core";
 import { closedProfileToFace } from "./extrude";
 
-export interface RevolveOptions {
-    document: IDocument;
+export interface RevolveOptions extends ParameterShapeNodeOptions {
     profile: IShape;
     axis: Line;
     angle: number;
@@ -52,7 +52,7 @@ export class RevolvedNode extends ParameterShapeNode {
     }
 
     constructor(options: RevolveOptions) {
-        super({ document: options.document });
+        super(options);
         this.setPrivateValue("profile", options.profile);
         this.setPrivateValue("axis", options.axis);
         this.setPrivateValue("angle", options.angle);

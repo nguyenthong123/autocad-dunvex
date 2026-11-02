@@ -13,6 +13,7 @@ import {
     type RecentDocumentDTO,
 } from "@chili3d/core";
 import { a, button, collection, div, img, label, span, svg } from "@chili3d/element";
+import { getAuthUser, logout, showAuthDialog } from "../auth/authDialog";
 import style from "./home.module.css";
 import { LanguageSelector } from "./languageSelector";
 import { Navigation3DSelector } from "./navigation3DSelector";
@@ -81,10 +82,28 @@ export class Home extends HTMLElement {
         }
     }
 
+    private _documents?: ObservableCollection<RecentDocumentDTO>;
+
     private async getDocuments() {
-        return new ObservableCollection(
+        this._documents = new ObservableCollection(
             ...(await this.app.storage.page(Constants.DBName, Constants.RecentTable, 0)),
         );
+        return this._documents;
+    }
+
+    private async refreshDocuments() {
+        if (!this._documents) return;
+        try {
+            const newDocs = (await this.app.storage.page(
+                Constants.DBName,
+                Constants.RecentTable,
+                0,
+            )) as RecentDocumentDTO[];
+            this._documents.clear();
+            this._documents.push(...newDocs);
+        } catch (e) {
+            console.warn("Failed to refresh documents", e);
+        }
     }
 
     async render() {
@@ -94,12 +113,58 @@ export class Home extends HTMLElement {
         this.app.mainWindow?.appendChild(this);
     }
 
+    private accountSection() {
+        const container = div({ className: style.accountSection ?? "accountSection" });
+        const update = () => {
+            container.innerHTML = "";
+            const user = getAuthUser();
+            if (user) {
+                const userBadge = div(
+                    { className: style.userBadge ?? "userBadge" },
+                    div(
+                        { className: style.userInfo ?? "userInfo" },
+                        span({
+                            className: style.userName ?? "userName",
+                            textContent: `👤 ${user.storeName || user.username}`,
+                        }),
+                        span({ className: style.userSub ?? "userSub", textContent: user.username }),
+                    ),
+                    button(
+                        {
+                            className: style.logoutBtn ?? "logoutBtn",
+                            onclick: () => logout(),
+                        },
+                        span({ textContent: "Đăng xuất" }),
+                    ),
+                );
+                container.append(userBadge);
+            } else {
+                const loginBtn = button(
+                    {
+                        className: style.authButton ?? "authButton",
+                        onclick: () => showAuthDialog(() => this.refreshDocuments()),
+                    },
+                    span({ textContent: "👤 Đăng nhập / Đăng ký" }),
+                );
+                container.append(loginBtn);
+            }
+        };
+
+        update();
+        PubSub.default.sub("authChanged", () => {
+            update();
+            this.refreshDocuments();
+        });
+        return container;
+    }
+
     private leftSection() {
         return div(
             { className: style.left },
             div(
                 { className: style.top },
                 this.logoSection(),
+                this.accountSection(),
                 this.applicationCommands(),
                 this.currentDocument(),
             ),

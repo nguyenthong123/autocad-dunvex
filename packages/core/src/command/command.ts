@@ -91,7 +91,7 @@ export abstract class CancelableCommand extends Observable implements ICancelabl
 
         this.controller?.cancel();
         while (!this._isCompleted) {
-            await new Promise((r) => setTimeout(r, 30));
+            await new Promise((r) => setTimeout(r, 5));
         }
     }
 

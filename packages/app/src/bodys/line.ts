@@ -6,6 +6,7 @@ import {
     type IDocument,
     type IShape,
     ParameterShapeNode,
+    type ParameterShapeNodeOptions,
     property,
     type Result,
     serializable,
@@ -13,8 +14,7 @@ import {
     type XYZ,
 } from "@chili3d/core";
 
-export interface LineOptions {
-    document: IDocument;
+export interface LineOptions extends ParameterShapeNodeOptions {
     start: XYZ;
     end: XYZ;
 }
@@ -44,7 +44,7 @@ export class LineNode extends ParameterShapeNode {
     }
 
     constructor(options: LineOptions) {
-        super({ document: options.document });
+        super(options);
         this.setPrivateValue("start", options.start);
         this.setPrivateValue("end", options.end);
     }

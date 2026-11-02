@@ -126,9 +126,16 @@ describe("ArrayCommand", () => {
         expect(cmd.count).toBe(10);
     });
 
-    test("isGroup should default to true", () => {
+    test("isGroup should default to false", () => {
         const cmd = new ArrayCommand();
-        expect(cmd.isGroup).toBe(true);
+        expect(cmd.isGroup).toBe(false);
+    });
+
+    test("offsets should have expected defaults", () => {
+        const cmd = new ArrayCommand();
+        expect(cmd.offsetX).toBe(1000);
+        expect(cmd.offsetY).toBe(0);
+        expect(cmd.offsetZ).toBe(0);
     });
 
     test("isGroup setter should update property", () => {

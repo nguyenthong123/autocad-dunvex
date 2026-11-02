@@ -73,6 +73,7 @@ export class Tree extends HTMLElement {
     }
 
     dispose(): void {
+        this.closeContextMenu();
         this.lastClicked = undefined;
         this.dragging = undefined;
         this.highlightedGroup = undefined;
@@ -186,6 +187,7 @@ export class Tree extends HTMLElement {
         item.addEventListener("drop", this.onDrop);
         item.addEventListener("click", this.onClick);
         item.addEventListener("dblclick", this.onDoubleClick);
+        item.addEventListener("contextmenu", this.onContextMenu);
     }
 
     private removeEvents(item: HTMLElement) {
@@ -196,6 +198,7 @@ export class Tree extends HTMLElement {
         item.removeEventListener("drop", this.onDrop);
         item.removeEventListener("click", this.onClick);
         item.removeEventListener("dblclick", this.onDoubleClick);
+        item.removeEventListener("contextmenu", this.onContextMenu);
     }
 
     private getTreeItem(item: HTMLElement | null): TreeItem | undefined {
@@ -222,11 +225,70 @@ export class Tree extends HTMLElement {
 
     /** Lets feature packages react to a node double-click (e.g. sketch editing). */
     private readonly onDoubleClick = (event: MouseEvent) => {
-        const node = this.getTreeItem(event.target as HTMLElement)?.node;
-        if (node === undefined) return;
+        const item = this.getTreeItem(event.target as HTMLElement);
+        if (!item || !item.node) return;
         event.stopPropagation();
-        PubSub.default.pub("nodeDoubleClicked", node);
+        PubSub.default.pub("nodeDoubleClicked", item.node);
+
+        if (
+            (item.node === this.document.modelManager.rootNode ||
+                item.node instanceof FolderNode ||
+                item.node instanceof VisualNode) &&
+            item.node.constructor?.name !== "SketchNode"
+        ) {
+            item.startInlineRename();
+        }
     };
+
+    private contextMenuEl?: HTMLElement;
+
+    private readonly onContextMenu = (event: MouseEvent) => {
+        const item = this.getTreeItem(event.target as HTMLElement);
+        if (!item || !item.node) return;
+        event.preventDefault();
+        event.stopPropagation();
+        this.showContextMenu(event.clientX, event.clientY, item);
+    };
+
+    private showContextMenu(x: number, y: number, item: TreeItem) {
+        this.closeContextMenu();
+        const menu = document.createElement("div");
+        menu.className = style.contextMenu ?? "contextMenu";
+        menu.style.position = "fixed";
+        menu.style.left = `${x}px`;
+        menu.style.top = `${y}px`;
+        menu.style.zIndex = "9999";
+
+        const renameOption = document.createElement("div");
+        renameOption.className = style.contextMenuItem ?? "contextMenuItem";
+        renameOption.textContent = "✏️ Đổi tên (Rename)";
+        renameOption.onclick = (e) => {
+            e.stopPropagation();
+            this.closeContextMenu();
+            item.startInlineRename();
+        };
+
+        menu.appendChild(renameOption);
+        document.body.appendChild(menu);
+        this.contextMenuEl = menu;
+
+        const onDocClick = (e: MouseEvent) => {
+            if (!menu.contains(e.target as Node)) {
+                this.closeContextMenu();
+                window.removeEventListener("pointerdown", onDocClick, true);
+            }
+        };
+        setTimeout(() => {
+            window.addEventListener("pointerdown", onDocClick, true);
+        }, 0);
+    }
+
+    private closeContextMenu() {
+        if (this.contextMenuEl) {
+            this.contextMenuEl.remove();
+            this.contextMenuEl = undefined;
+        }
+    }
 
     private handleShiftClick(item: INode) {
         if (this.lastClicked) {

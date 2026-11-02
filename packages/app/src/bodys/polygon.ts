@@ -6,6 +6,7 @@ import {
     type I18nKeys,
     type IDocument,
     type IShape,
+    type ParameterShapeNodeOptions,
     property,
     type Result,
     serializable,
@@ -13,8 +14,7 @@ import {
     type XYZ,
 } from "@chili3d/core";
 
-export interface PolygonOptions {
-    document: IDocument;
+export interface PolygonOptions extends ParameterShapeNodeOptions {
     points: XYZ[];
 }
 
@@ -34,7 +34,7 @@ export class PolygonNode extends FacebaseNode {
     }
 
     constructor(options: PolygonOptions) {
-        super({ document: options.document });
+        super(options);
         this.setPrivateValue("points", options.points);
     }
 

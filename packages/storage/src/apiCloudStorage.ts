@@ -23,11 +23,32 @@ export class ApiCloudStorage implements IStorage {
         }
     }
 
+    private getUserId(): string | undefined {
+        try {
+            if (typeof window !== "undefined" && window.localStorage) {
+                const raw = localStorage.getItem("dunvex_auth_user");
+                if (raw) {
+                    const u = JSON.parse(raw);
+                    if (u?.id) return String(u.id);
+                }
+            }
+        } catch {}
+        return undefined;
+    }
+
+    private scopedId(id: string): string {
+        const uid = this.getUserId();
+        return uid ? `${uid}:${id}` : id;
+    }
+
     private headers(): Record<string, string> {
         const headers: Record<string, string> = {
             "Content-Type": "application/json",
         };
-        const token = this._getAuthToken?.();
+        let token = this._getAuthToken?.();
+        if (!token && typeof window !== "undefined" && window.localStorage) {
+            token = localStorage.getItem("dunvex_auth_token") || undefined;
+        }
         if (token) {
             // biome-ignore lint/complexity/useLiteralKeys: required by noPropertyAccessFromIndexSignature
             headers["Authorization"] = `Bearer ${token}`;
@@ -43,6 +64,7 @@ export class ApiCloudStorage implements IStorage {
 
     async get(database: string, table: string, id: string): Promise<any> {
         const url = `${this._baseUrl}/${encodeURIComponent(database)}/${encodeURIComponent(table)}/${encodeURIComponent(id)}`;
+        const localId = this.scopedId(id);
         try {
             const response = await fetch(url, {
                 method: "GET",
@@ -51,7 +73,7 @@ export class ApiCloudStorage implements IStorage {
             if (response.ok) {
                 const data = await response.json();
                 try {
-                    await this._fallback?.put(database, table, id, data);
+                    await this._fallback?.put(database, table, localId, data);
                 } catch {
                     // Fallback cache write ignored if store not yet ready
                 }
@@ -64,7 +86,11 @@ export class ApiCloudStorage implements IStorage {
         } catch (err) {
             Logger.warn(`CloudStorage get failed, falling back to IndexedDB: ${String(err)}`);
             try {
-                return await this._fallback?.get(database, table, id);
+                let res = await this._fallback?.get(database, table, localId);
+                if (res === undefined && localId !== id) {
+                    res = await this._fallback?.get(database, table, id);
+                }
+                return res;
             } catch {
                 return undefined;
             }
@@ -73,9 +99,10 @@ export class ApiCloudStorage implements IStorage {
 
     async put(database: string, table: string, id: string, value: any): Promise<boolean> {
         let fallbackOk = false;
+        const localId = this.scopedId(id);
         if (this._fallback) {
             try {
-                await this._fallback.put(database, table, id, value);
+                await this._fallback.put(database, table, localId, value);
                 fallbackOk = true;
             } catch {
                 fallbackOk = false;
@@ -100,9 +127,10 @@ export class ApiCloudStorage implements IStorage {
     }
 
     async delete(database: string, table: string, id: string): Promise<boolean> {
+        const localId = this.scopedId(id);
         if (this._fallback) {
             try {
-                await this._fallback.delete(database, table, id);
+                await this._fallback.delete(database, table, localId);
             } catch {
                 // Ignore fallback error
             }
@@ -135,7 +163,20 @@ export class ApiCloudStorage implements IStorage {
             return items;
         } catch (err) {
             Logger.warn(`CloudStorage page failed, falling back to IndexedDB: ${String(err)}`);
-            return (await this._fallback?.page(database, table, page)) ?? [];
+            const fallbackItems = (await this._fallback?.page(database, table, page)) ?? [];
+            const uid = this.getUserId();
+            if (uid) {
+                const prefix = `${uid}:`;
+                return fallbackItems
+                    .filter((item: any) => typeof item?.id === "string" && item.id.startsWith(prefix))
+                    .map((item: any) => ({
+                        ...item,
+                        id: item.id.slice(prefix.length),
+                    }));
+            }
+            return fallbackItems.filter(
+                (item: any) => typeof item?.id !== "string" || !item.id.includes(":"),
+            );
         }
     }
 }

@@ -48,6 +48,9 @@ export class Document extends Observable implements IDocument {
         if (this.modelManager.rootNode) this.modelManager.rootNode.name = name;
     }
 
+    private _lastSavedUndoCount = 0;
+    private _autoSaveTimer?: any;
+
     constructor(
         readonly application: IApplication,
         name: string,
@@ -63,6 +66,23 @@ export class Document extends Observable implements IDocument {
         this.visual = application.visualFactory.create(this);
 
         application.documents.add(this);
+
+        if (typeof setInterval !== "undefined") {
+            this._autoSaveTimer = setInterval(async () => {
+                if (
+                    !this.isDisposed &&
+                    !this.history.disabled &&
+                    this.history.undoCount() !== this._lastSavedUndoCount
+                ) {
+                    try {
+                        await this.save();
+                        Logger.info(`Auto-saved document: ${this.name}`);
+                    } catch (e) {
+                        Logger.warn("Auto-save failed", e);
+                    }
+                }
+            }, 60000);
+        }
     }
 
     serialize(): Serialized {
@@ -82,6 +102,11 @@ export class Document extends Observable implements IDocument {
     override disposeInternal(): void {
         super.disposeInternal();
 
+        if (this._autoSaveTimer) {
+            clearInterval(this._autoSaveTimer);
+            this._autoSaveTimer = undefined;
+        }
+
         this.modelManager.dispose();
         this.visual.dispose();
         this.history.dispose();
@@ -94,6 +119,7 @@ export class Document extends Observable implements IDocument {
     async save() {
         const data = this.serialize();
         await this.application.storage.put(Constants.DBName, Constants.DocumentTable, this.id, data);
+        this._lastSavedUndoCount = this.history.undoCount();
 
         // The document is saved at this point. The thumbnail and the recents entry are a
         // courtesy — a view that cannot be captured, or a store that refuses the write,
@@ -151,7 +177,12 @@ export class Document extends Observable implements IDocument {
             );
             return undefined;
         }
-        const document = new Document(app, data["name"], data["id"]);
+        let docName = typeof data["name"] === "string" ? data["name"] : "";
+        if (!docName || /^undefined(\s+|$)/i.test(docName)) {
+            docName = docName.replace(/^undefined\s*/i, "Dự án ") || "Dự án 1";
+            if (docName === "Dự án ") docName = "Dự án 1";
+        }
+        const document = new Document(app, docName, data["id"]);
         document.history.disabled = true;
         // Before the models: a body's feature chain resolves its parameters against
         // the table, and deserializing a body rebuilds it.

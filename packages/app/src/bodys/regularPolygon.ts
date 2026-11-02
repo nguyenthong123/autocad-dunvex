@@ -6,6 +6,7 @@ import {
     type I18nKeys,
     type IDocument,
     type IShape,
+    type ParameterShapeNodeOptions,
     property,
     type Result,
     serializable,
@@ -13,8 +14,7 @@ import {
     type XYZ,
 } from "@chili3d/core";
 
-export interface RegularPolygonOptions {
-    document: IDocument;
+export interface RegularPolygonOptions extends ParameterShapeNodeOptions {
     normal: XYZ;
     xvec: XYZ;
     center: XYZ;
@@ -66,7 +66,7 @@ export class RegularPolygonNode extends FacebaseNode {
     }
 
     constructor(options: RegularPolygonOptions) {
-        super({ document: options.document });
+        super(options);
         this.setPrivateValue("normal", options.normal);
         this.setPrivateValue("xvec", options.xvec);
         this.setPrivateValue("center", options.center);

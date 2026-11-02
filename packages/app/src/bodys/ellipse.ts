@@ -6,6 +6,7 @@ import {
     type I18nKeys,
     type IDocument,
     type IShape,
+    type ParameterShapeNodeOptions,
     property,
     type Result,
     serializable,
@@ -13,8 +14,7 @@ import {
     type XYZ,
 } from "@chili3d/core";
 
-export interface EllipseOptions {
-    document: IDocument;
+export interface EllipseOptions extends ParameterShapeNodeOptions {
     normal: XYZ;
     center: XYZ;
     xvec: XYZ;
@@ -66,7 +66,7 @@ export class EllipseNode extends FacebaseNode {
     }
 
     constructor(options: EllipseOptions) {
-        super({ document: options.document });
+        super(options);
         this.setPrivateValue("normal", options.normal);
         this.setPrivateValue("center", options.center);
         this.setPrivateValue("xvec", options.xvec);

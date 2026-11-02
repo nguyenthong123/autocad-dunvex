@@ -122,6 +122,65 @@ export abstract class TreeItem extends HTMLElement {
 
     abstract mainElement(): HTMLElement;
 
+    private _isEditing = false;
+
+    startInlineRename(): void {
+        if (this._isEditing || !this.node) return;
+        this._isEditing = true;
+
+        const inputEl = document.createElement("input");
+        inputEl.type = "text";
+        inputEl.value = this.node.name;
+        inputEl.className = style.renameInput ?? "renameInput";
+
+        const stop = (e: Event) => e.stopPropagation();
+        inputEl.addEventListener("click", stop);
+        inputEl.addEventListener("dblclick", stop);
+        inputEl.addEventListener("pointerdown", stop);
+        inputEl.addEventListener("mousedown", stop);
+
+        const cleanup = () => {
+            if (!this._isEditing) return;
+            this._isEditing = false;
+            inputEl.remove();
+            this.name.style.display = "";
+        };
+
+        const commit = () => {
+            if (!this._isEditing) return;
+            const newName = inputEl.value.trim();
+            if (newName && newName !== this.node.name) {
+                if (this.node === this.document.modelManager.rootNode) {
+                    this.document.name = newName;
+                    this.node.name = newName;
+                } else {
+                    Transaction.execute(this.document, "Rename Node", () => {
+                        this.node.name = newName;
+                    });
+                }
+            }
+            cleanup();
+        };
+
+        inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
+            e.stopPropagation();
+            if (e.key === "Enter") {
+                commit();
+            } else if (e.key === "Escape") {
+                cleanup();
+            }
+        });
+
+        inputEl.addEventListener("blur", () => {
+            commit();
+        });
+
+        this.name.style.display = "none";
+        this.name.insertAdjacentElement("beforebegin", inputEl);
+        inputEl.focus();
+        inputEl.select();
+    }
+
     dispose() {
         this.remove();
         this.node.removePropertyChanged(this.onPropertyChanged);
