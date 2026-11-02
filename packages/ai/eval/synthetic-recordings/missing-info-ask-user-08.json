@@ -1,0 +1,25 @@
+{
+    "scenarioId": "missing-info-ask-user-08",
+    "source": "synthetic-hand-written",
+    "turns": [
+        {
+            "turnIndex": 0,
+            "events": [
+                {
+                    "type": "thinking_delta",
+                    "text": "Yêu cầu vẽ bàn làm việc nhưng chưa có thông số kích thước. Cần hỏi người dùng bằng ask_user."
+                },
+                {
+                    "type": "tool_call",
+                    "id": "call_ask_1",
+                    "name": "ask_user",
+                    "arguments": "{\"question\":\"Bạn muốn bàn làm việc có kích thước (dài x rộng x cao) là bao nhiêu mm?\"}"
+                },
+                {
+                    "type": "done",
+                    "stopReason": "tool_use"
+                }
+            ]
+        }
+    ]
+}

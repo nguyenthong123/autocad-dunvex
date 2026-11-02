@@ -1,0 +1,38 @@
+{
+    "scenarioId": "multi-step-modeling-12",
+    "source": "synthetic-hand-written",
+    "turns": [
+        {
+            "turnIndex": 0,
+            "events": [
+                {
+                    "type": "thinking_delta",
+                    "text": "Tạo chân đế hộp 100x100x10 và cột trụ r=10, h=80 đặt trên chân đế."
+                },
+                {
+                    "type": "tool_call",
+                    "id": "call_multi_1",
+                    "name": "run_program",
+                    "arguments": "{\"ops\":[{\"id\":\"base\",\"method\":\"box\",\"args\":{\"dx\":100,\"dy\":100,\"dz\":10}},{\"id\":\"col\",\"method\":\"cylinder\",\"args\":{\"normal\":{\"x\":0,\"y\":0,\"z\":1},\"center\":{\"x\":50,\"y\":50,\"z\":10},\"radius\":10,\"dz\":80}}]}"
+                },
+                {
+                    "type": "done",
+                    "stopReason": "tool_use"
+                }
+            ]
+        },
+        {
+            "turnIndex": 1,
+            "events": [
+                {
+                    "type": "text",
+                    "text": "Đã tạo xong chân đế 100x100x10 mm và cột trụ r=10 mm, h=80 mm đặt trên chân đế."
+                },
+                {
+                    "type": "done",
+                    "stopReason": "end_turn"
+                }
+            ]
+        }
+    ]
+}

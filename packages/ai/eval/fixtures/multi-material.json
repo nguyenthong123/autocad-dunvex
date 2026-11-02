@@ -1,0 +1,53 @@
+{
+    "name": "Multi Material Project",
+    "nodes": [
+        {
+            "__cla$$__": "FolderNode",
+            "name": "Root",
+            "id": "root",
+            "visible": true
+        },
+        {
+            "__cla$$__": "MeshNode",
+            "name": "ColumnA",
+            "id": "col_a",
+            "parentId": "root",
+            "visible": true,
+            "materialId": "mat_steel",
+            "mesh": { "faces": [], "vertices": [], "normals": [] }
+        },
+        {
+            "__cla$$__": "MeshNode",
+            "name": "ColumnB",
+            "id": "col_b",
+            "parentId": "root",
+            "visible": true,
+            "materialId": "mat_steel",
+            "mesh": { "faces": [], "vertices": [], "normals": [] }
+        },
+        {
+            "__cla$$__": "MeshNode",
+            "name": "PanelWood",
+            "id": "panel_01",
+            "parentId": "root",
+            "visible": true,
+            "materialId": "mat_wood",
+            "mesh": { "faces": [], "vertices": [], "normals": [] }
+        }
+    ],
+    "components": [],
+    "materials": [
+        {
+            "__cla$$__": "Material",
+            "id": "mat_steel",
+            "name": "Steel",
+            "color": "#444444"
+        },
+        {
+            "__cla$$__": "Material",
+            "id": "mat_wood",
+            "name": "Oak Wood",
+            "color": "#bb7733"
+        }
+    ]
+}

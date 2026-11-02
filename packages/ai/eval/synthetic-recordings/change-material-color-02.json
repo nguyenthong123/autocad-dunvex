@@ -1,0 +1,38 @@
+{
+    "scenarioId": "change-material-color-02",
+    "source": "synthetic-hand-written",
+    "turns": [
+        {
+            "turnIndex": 0,
+            "events": [
+                {
+                    "type": "thinking_delta",
+                    "text": "Đổi màu khối Box1 sang màu đỏ."
+                },
+                {
+                    "type": "tool_call",
+                    "id": "call_mat_1",
+                    "name": "set_material",
+                    "arguments": "{\"id\":\"box_01\",\"color\":\"#ff0000\"}"
+                },
+                {
+                    "type": "done",
+                    "stopReason": "tool_use"
+                }
+            ]
+        },
+        {
+            "turnIndex": 1,
+            "events": [
+                {
+                    "type": "text",
+                    "text": "Đã đổi màu khối Box1 sang màu đỏ (#ff0000) thành công."
+                },
+                {
+                    "type": "done",
+                    "stopReason": "end_turn"
+                }
+            ]
+        }
+    ]
+}

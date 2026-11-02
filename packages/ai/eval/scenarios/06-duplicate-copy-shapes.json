@@ -1,0 +1,17 @@
+{
+    "id": "duplicate-copy-shapes-06",
+    "description": "Nhân bản khối Cube1 sang vị trí mới x=100",
+    "prompt": "Nhân bản khối Cube1 sang vị trí mới x=100.",
+    "fixture": "fixtures/single-cube.json",
+    "status": "needs-review",
+    "expect": {
+        "countNodes": {
+            "equals": 2
+        },
+        "toolCalled": ["duplicate_node"]
+    },
+    "budget": {
+        "maxToolCalls": 10,
+        "maxSeconds": 45
+    }
+}

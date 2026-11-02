@@ -1,0 +1,38 @@
+{
+    "scenarioId": "draw-single-box-03",
+    "source": "synthetic-hand-written",
+    "turns": [
+        {
+            "turnIndex": 0,
+            "events": [
+                {
+                    "type": "thinking_delta",
+                    "text": "Tạo khối hộp 40x30x20."
+                },
+                {
+                    "type": "tool_call",
+                    "id": "call_box_1",
+                    "name": "run_program",
+                    "arguments": "{\"ops\":[{\"id\":\"box1\",\"method\":\"box\",\"args\":{\"dx\":40,\"dy\":30,\"dz\":20}}]}"
+                },
+                {
+                    "type": "done",
+                    "stopReason": "tool_use"
+                }
+            ]
+        },
+        {
+            "turnIndex": 1,
+            "events": [
+                {
+                    "type": "text",
+                    "text": "Đã tạo khối hộp kích thước 40x30x20 mm tại gốc tọa độ."
+                },
+                {
+                    "type": "done",
+                    "stopReason": "end_turn"
+                }
+            ]
+        }
+    ]
+}

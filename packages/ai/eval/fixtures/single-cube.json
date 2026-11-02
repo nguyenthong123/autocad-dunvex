@@ -1,0 +1,28 @@
+{
+    "name": "Single Cube",
+    "nodes": [
+        {
+            "__cla$$__": "FolderNode",
+            "name": "Root",
+            "id": "root",
+            "visible": true
+        },
+        {
+            "__cla$$__": "EditableShapeNode",
+            "name": "Cube1",
+            "id": "cube_01",
+            "parentId": "root",
+            "visible": true,
+            "materialId": "mat_wood"
+        }
+    ],
+    "components": [],
+    "materials": [
+        {
+            "__cla$$__": "Material",
+            "id": "mat_wood",
+            "name": "Oak Wood",
+            "color": "#8b5a2b"
+        }
+    ]
+}

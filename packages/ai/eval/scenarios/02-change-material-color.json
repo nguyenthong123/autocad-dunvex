@@ -1,0 +1,18 @@
+{
+    "id": "change-material-color-02",
+    "description": "Đổi vật liệu của khối Box1 sang màu đỏ (mat_red)",
+    "prompt": "Hãy đổi vật liệu của khối Box1 sang vật liệu mat_red.",
+    "fixture": "fixtures/floor-box.json",
+    "status": "needs-review",
+    "expect": {
+        "nodeProperties": {
+            "id": "box_01",
+            "materialId": "mat_red"
+        },
+        "toolCalled": ["set_material"]
+    },
+    "budget": {
+        "maxToolCalls": 5,
+        "maxSeconds": 30
+    }
+}

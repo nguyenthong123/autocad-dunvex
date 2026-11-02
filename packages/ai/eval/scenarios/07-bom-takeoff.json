@@ -1,0 +1,13 @@
+{
+    "id": "bom-takeoff-07",
+    "description": "Bóc tách khối lượng vật tư (BOM) hiện có trong bản vẽ",
+    "prompt": "Bóc tách khối lượng và thống kê các vật liệu hiện có trong dự án.",
+    "fixture": "fixtures/multi-material.json",
+    "expect": {
+        "toolCalled": ["get_document_state"]
+    },
+    "budget": {
+        "maxToolCalls": 10,
+        "maxSeconds": 45
+    }
+}

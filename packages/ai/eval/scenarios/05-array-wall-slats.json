@@ -1,0 +1,22 @@
+{
+    "id": "array-wall-slats-05",
+    "description": "Phủ bức tường kích thước 530 x 370 bằng các thanh lam 5 x 21 x 100 cách nhau 5 mm",
+    "prompt": "Phủ bức tường 530 x 370 bằng thanh lam 5 x 21 x 100 cách nhau 5 mm.",
+    "fixture": "fixtures/wall-empty.json",
+    "status": "pending-TASK-21",
+    "expect": {
+        "countNodes": {
+            "name": "lam*",
+            "equals": 25
+        },
+        "boundsWithin": {
+            "region": "wall",
+            "mm": 0.5
+        },
+        "noOverlap": true
+    },
+    "budget": {
+        "maxToolCalls": 40,
+        "maxSeconds": 120
+    }
+}

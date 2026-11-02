@@ -1,0 +1,50 @@
+{
+    "name": "Floor and Box",
+    "nodes": [
+        {
+            "__cla$$__": "FolderNode",
+            "name": "Root",
+            "id": "root",
+            "visible": true
+        },
+        {
+            "__cla$$__": "MeshNode",
+            "name": "Floor",
+            "id": "floor_01",
+            "parentId": "root",
+            "visible": true,
+            "materialId": "mat_floor",
+            "mesh": { "faces": [], "vertices": [], "normals": [] }
+        },
+        {
+            "__cla$$__": "MeshNode",
+            "name": "Box1",
+            "id": "box_01",
+            "parentId": "root",
+            "visible": true,
+            "materialId": "mat_default",
+            "mesh": { "faces": [], "vertices": [], "normals": [] }
+        }
+    ],
+    "components": [],
+    "materials": [
+        {
+            "__cla$$__": "Material",
+            "id": "mat_default",
+            "name": "Default Material",
+            "color": "#cccccc"
+        },
+        {
+            "__cla$$__": "Material",
+            "id": "mat_floor",
+            "name": "Floor Material",
+            "color": "#888888"
+        },
+        {
+            "__cla$$__": "Material",
+            "id": "mat_red",
+            "name": "Red Wood",
+            "color": "#ff0000"
+        }
+    ]
+}

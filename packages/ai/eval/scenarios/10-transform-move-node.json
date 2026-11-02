@@ -1,0 +1,13 @@
+{
+    "id": "transform-move-node-10",
+    "description": "Di chuyển khối Cube1 sang phải +50 mm theo trục X",
+    "prompt": "Di chuyển khối Cube1 theo trục X thêm 50 mm.",
+    "fixture": "fixtures/single-cube.json",
+    "expect": {
+        "toolCalled": ["transform_node"]
+    },
+    "budget": {
+        "maxToolCalls": 5,
+        "maxSeconds": 30
+    }
+}

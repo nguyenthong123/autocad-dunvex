@@ -1,0 +1,16 @@
+{
+    "id": "missing-info-ask-user-08",
+    "description": "Xử lý yêu cầu thiếu thông tin quan trọng bằng cách hỏi người dùng (ask_user)",
+    "prompt": "Hãy vẽ giúp tôi một chiếc bàn làm việc.",
+    "fixture": "fixtures/empty.json",
+    "expect": {
+        "askUserCalled": true,
+        "countNodes": {
+            "equals": 0
+        }
+    },
+    "budget": {
+        "maxToolCalls": 5,
+        "maxSeconds": 30
+    }
+}

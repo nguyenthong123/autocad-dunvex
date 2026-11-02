@@ -1,0 +1,13 @@
+{
+    "name": "Empty Scene",
+    "nodes": [
+        {
+            "__cla$$__": "FolderNode",
+            "name": "Root",
+            "id": "root",
+            "visible": true
+        }
+    ],
+    "components": [],
+    "materials": []
+}

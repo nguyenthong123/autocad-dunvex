@@ -1,0 +1,38 @@
+{
+    "scenarioId": "draw-cylinder-04",
+    "source": "synthetic-hand-written",
+    "turns": [
+        {
+            "turnIndex": 0,
+            "events": [
+                {
+                    "type": "thinking_delta",
+                    "text": "Tạo khối trụ Cylinder bán kính 15mm, cao 50mm."
+                },
+                {
+                    "type": "tool_call",
+                    "id": "call_cyl_1",
+                    "name": "run_program",
+                    "arguments": "{\"ops\":[{\"id\":\"cyl1\",\"method\":\"cylinder\",\"args\":{\"normal\":{\"x\":0,\"y\":0,\"z\":1},\"center\":{\"x\":0,\"y\":0,\"z\":0},\"radius\":15,\"dz\":50}}]}"
+                },
+                {
+                    "type": "done",
+                    "stopReason": "tool_use"
+                }
+            ]
+        },
+        {
+            "turnIndex": 1,
+            "events": [
+                {
+                    "type": "text",
+                    "text": "Đã tạo khối trụ Cylinder bán kính 15 mm, chiều cao 50 mm."
+                },
+                {
+                    "type": "done",
+                    "stopReason": "end_turn"
+                }
+            ]
+        }
+    ]
+}

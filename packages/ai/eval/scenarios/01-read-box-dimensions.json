@@ -1,0 +1,17 @@
+{
+    "id": "read-box-dimensions-01",
+    "description": "Đọc kích thước (dài, rộng, cao) của khối hộp Box1 từ tài liệu hiện có",
+    "prompt": "Khối hộp Box1 có kích thước (dài, rộng, cao) là bao nhiêu mm?",
+    "fixture": "fixtures/floor-box.json",
+    "expect": {
+        "nodeProperties": {
+            "name": "Box1",
+            "id": "box_01"
+        },
+        "toolCalled": ["get_document_state"]
+    },
+    "budget": {
+        "maxToolCalls": 5,
+        "maxSeconds": 30
+    }
+}

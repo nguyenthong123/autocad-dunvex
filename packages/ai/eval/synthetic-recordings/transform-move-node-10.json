@@ -1,0 +1,38 @@
+{
+    "scenarioId": "transform-move-node-10",
+    "source": "synthetic-hand-written",
+    "turns": [
+        {
+            "turnIndex": 0,
+            "events": [
+                {
+                    "type": "thinking_delta",
+                    "text": "Di chuyển khối Cube1 thêm 50mm theo trục X."
+                },
+                {
+                    "type": "tool_call",
+                    "id": "call_trans_1",
+                    "name": "transform_node",
+                    "arguments": "{\"id\":\"cube_01\",\"translate\":{\"x\":50,\"y\":0,\"z\":0}}"
+                },
+                {
+                    "type": "done",
+                    "stopReason": "tool_use"
+                }
+            ]
+        },
+        {
+            "turnIndex": 1,
+            "events": [
+                {
+                    "type": "text",
+                    "text": "Đã di chuyển khối Cube1 sang phải 50 mm theo trục X."
+                },
+                {
+                    "type": "done",
+                    "stopReason": "end_turn"
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,38 @@
+{
+    "scenarioId": "bom-takeoff-07",
+    "source": "synthetic-hand-written",
+    "turns": [
+        {
+            "turnIndex": 0,
+            "events": [
+                {
+                    "type": "thinking_delta",
+                    "text": "Kiểm tra danh sách khối và vật liệu để lập bảng thống kê BOM."
+                },
+                {
+                    "type": "tool_call",
+                    "id": "call_bom_1",
+                    "name": "get_document_state",
+                    "arguments": "{}"
+                },
+                {
+                    "type": "done",
+                    "stopReason": "tool_use"
+                }
+            ]
+        },
+        {
+            "turnIndex": 1,
+            "events": [
+                {
+                    "type": "text",
+                    "text": "Bảng thống kê vật tư:\n- Thép (mat_steel): 2 cột (ColumnA, ColumnB)\n- Gỗ (mat_wood): 1 tấm (PanelWood)"
+                },
+                {
+                    "type": "done",
+                    "stopReason": "end_turn"
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,23 @@
+{
+    "scenarioId": "impossible-request-refusal-09",
+    "source": "synthetic-hand-written",
+    "turns": [
+        {
+            "turnIndex": 0,
+            "events": [
+                {
+                    "type": "thinking_delta",
+                    "text": "Yêu cầu vẽ đa giác 4 chiều phi Euclid trong CAD 3D là bất khả thi. Cần từ chối trung thực."
+                },
+                {
+                    "type": "text",
+                    "text": "Tôi không thể tạo một đa giác 4 chiều phi Euclid vì không gian mô hình của phần mềm là hệ tọa độ 3 chiều Euclid tiêu chuẩn."
+                },
+                {
+                    "type": "done",
+                    "stopReason": "end_turn"
+                }
+            ]
+        }
+    ]
+}

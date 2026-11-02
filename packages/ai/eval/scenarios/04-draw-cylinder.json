@@ -1,0 +1,16 @@
+{
+    "id": "draw-cylinder-04",
+    "description": "Vẽ khối trụ bán kính r=15 mm, chiều cao h=50 mm",
+    "prompt": "Tạo một khối trụ Cylinder bán kính r=15 mm, chiều cao h=50 mm.",
+    "fixture": "fixtures/empty.json",
+    "expect": {
+        "countNodes": {
+            "min": 1
+        },
+        "toolCalled": ["run_program"]
+    },
+    "budget": {
+        "maxToolCalls": 10,
+        "maxSeconds": 60
+    }
+}

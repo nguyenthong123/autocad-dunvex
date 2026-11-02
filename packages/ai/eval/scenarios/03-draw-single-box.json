@@ -1,0 +1,16 @@
+{
+    "id": "draw-single-box-03",
+    "description": "Vẽ một khối hộp mới kích thước 40 x 30 x 20 mm",
+    "prompt": "Vẽ một khối hộp mới kích thước dx=40, dy=30, dz=20 mm đặt tại gốc tọa độ.",
+    "fixture": "fixtures/empty.json",
+    "expect": {
+        "countNodes": {
+            "min": 1
+        },
+        "toolCalled": ["run_program"]
+    },
+    "budget": {
+        "maxToolCalls": 10,
+        "maxSeconds": 60
+    }
+}

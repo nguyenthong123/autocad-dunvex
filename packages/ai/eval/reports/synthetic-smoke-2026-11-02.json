@@ -1,0 +1,234 @@
+{
+    "timestamp": "2026-11-02T15:14:31.224Z",
+    "label": "synthetic-smoke-test",
+    "mode": "replay-synthetic",
+    "warning": "KHÔNG phải baseline chất lượng agent — chỉ dùng để kiểm tra khung chạy (smoke test) với kịch bản tổng hợp viết tay.",
+    "summary": {
+        "total": 12,
+        "passed": 9,
+        "failed": 0,
+        "pending": 1,
+        "needsReview": 2,
+        "avgToolCalls": 0.7,
+        "avgDurationMs": 1,
+        "passRatePercent": 100
+    },
+    "results": [
+        {
+            "id": "read-box-dimensions-01",
+            "status": "pass",
+            "durationMs": 4,
+            "toolCallsCount": 1,
+            "toolCalls": [
+                {
+                    "name": "get_document_state",
+                    "arguments": "{}",
+                    "result": "{\"hasActiveDocument\":true,\"name\":\"test\",\"nodeCount\":2,\"nodes\":[{\"id\":\"floor_01\",\"type\":\"MeshNode\",\"name\":\"Floor\",\"parentId\":\"root\"},{\"id\":\"box_01\",\"type\":\"MeshNode\",\"name\":\"Box1\",\"parentId\":\"root\"}]}"
+                }
+            ],
+            "tokenUsage": {
+                "inputTokens": 0,
+                "outputTokens": 0,
+                "cacheReadTokens": 0,
+                "cacheCreationTokens": 0
+            },
+            "errors": []
+        },
+        {
+            "id": "change-material-color-02",
+            "status": "needs-review",
+            "durationMs": 0,
+            "toolCallsCount": 0,
+            "tokenUsage": {
+                "inputTokens": 0,
+                "outputTokens": 0,
+                "cacheReadTokens": 0,
+                "cacheCreationTokens": 0
+            },
+            "errors": [],
+            "reviewReason": "Expectation needs review (relaxed or mismatched in synthetic run, waiting for user decision)"
+        },
+        {
+            "id": "draw-single-box-03",
+            "status": "pass",
+            "durationMs": 3,
+            "toolCallsCount": 1,
+            "toolCalls": [
+                {
+                    "name": "run_program",
+                    "arguments": "{\"ops\":[{\"id\":\"box1\",\"method\":\"box\",\"args\":{\"dx\":40,\"dy\":30,\"dz\":20}}]}",
+                    "result": "{\"created\":[{\"id\":\"box1\",\"nodeId\":\"XJ02hxNCsDOoX2v7yRamU\",\"name\":\"box\"}],\"removed\":[],\"results\":{}}"
+                }
+            ],
+            "tokenUsage": {
+                "inputTokens": 0,
+                "outputTokens": 0,
+                "cacheReadTokens": 0,
+                "cacheCreationTokens": 0
+            },
+            "errors": []
+        },
+        {
+            "id": "draw-cylinder-04",
+            "status": "pass",
+            "durationMs": 1,
+            "toolCallsCount": 1,
+            "toolCalls": [
+                {
+                    "name": "run_program",
+                    "arguments": "{\"ops\":[{\"id\":\"cyl1\",\"method\":\"cylinder\",\"args\":{\"normal\":{\"x\":0,\"y\":0,\"z\":1},\"center\":{\"x\":0,\"y\":0,\"z\":0},\"radius\":15,\"dz\":50}}]}",
+                    "result": "{\"created\":[{\"id\":\"cyl1\",\"nodeId\":\"KUYJzyMJPqSiVuWe4K57U\",\"name\":\"cylinder\"}],\"removed\":[],\"results\":{}}"
+                }
+            ],
+            "tokenUsage": {
+                "inputTokens": 0,
+                "outputTokens": 0,
+                "cacheReadTokens": 0,
+                "cacheCreationTokens": 0
+            },
+            "errors": []
+        },
+        {
+            "id": "array-wall-slats-05",
+            "status": "pending",
+            "durationMs": 0,
+            "toolCallsCount": 0,
+            "tokenUsage": {
+                "inputTokens": 0,
+                "outputTokens": 0,
+                "cacheReadTokens": 0,
+                "cacheCreationTokens": 0
+            },
+            "errors": [],
+            "pendingReason": "Depends on TASK-21 (measure_nodes / apply_array fast path)"
+        },
+        {
+            "id": "duplicate-copy-shapes-06",
+            "status": "needs-review",
+            "durationMs": 0,
+            "toolCallsCount": 0,
+            "tokenUsage": {
+                "inputTokens": 0,
+                "outputTokens": 0,
+                "cacheReadTokens": 0,
+                "cacheCreationTokens": 0
+            },
+            "errors": [],
+            "reviewReason": "Expectation needs review (relaxed or mismatched in synthetic run, waiting for user decision)"
+        },
+        {
+            "id": "bom-takeoff-07",
+            "status": "pass",
+            "durationMs": 1,
+            "toolCallsCount": 1,
+            "toolCalls": [
+                {
+                    "name": "get_document_state",
+                    "arguments": "{}",
+                    "result": "{\"hasActiveDocument\":true,\"name\":\"test\",\"nodeCount\":3,\"nodes\":[{\"id\":\"col_a\",\"type\":\"MeshNode\",\"name\":\"ColumnA\",\"parentId\":\"root\"},{\"id\":\"col_b\",\"type\":\"MeshNode\",\"name\":\"ColumnB\",\"parentId\":\"root\"},{\"id\":\"panel_01\",\"type\":\"MeshNode\",\"name\":\"PanelWood\",\"parentId\":\"root\"}]}"
+                }
+            ],
+            "tokenUsage": {
+                "inputTokens": 0,
+                "outputTokens": 0,
+                "cacheReadTokens": 0,
+                "cacheCreationTokens": 0
+            },
+            "errors": []
+        },
+        {
+            "id": "missing-info-ask-user-08",
+            "status": "pass",
+            "durationMs": 2,
+            "toolCallsCount": 1,
+            "toolCalls": [
+                {
+                    "name": "ask_user",
+                    "arguments": "{\"question\":\"Bạn muốn bàn làm việc có kích thước (dài x rộng x cao) là bao nhiêu mm?\"}",
+                    "result": "{\"error\":\"no chat panel is open to answer this question\"}"
+                }
+            ],
+            "tokenUsage": {
+                "inputTokens": 0,
+                "outputTokens": 0,
+                "cacheReadTokens": 0,
+                "cacheCreationTokens": 0
+            },
+            "errors": []
+        },
+        {
+            "id": "impossible-request-refusal-09",
+            "status": "pass",
+            "durationMs": 1,
+            "toolCallsCount": 0,
+            "toolCalls": [],
+            "tokenUsage": {
+                "inputTokens": 0,
+                "outputTokens": 0,
+                "cacheReadTokens": 0,
+                "cacheCreationTokens": 0
+            },
+            "errors": []
+        },
+        {
+            "id": "transform-move-node-10",
+            "status": "pass",
+            "durationMs": 2,
+            "toolCallsCount": 1,
+            "toolCalls": [
+                {
+                    "name": "transform_node",
+                    "arguments": "{\"id\":\"cube_01\",\"translate\":{\"x\":50,\"y\":0,\"z\":0}}",
+                    "result": "{\"id\":\"cube_01\",\"transform\":[1,0,0,0,0,1,0,0,0,0,1,0,50,0,0,1]}"
+                }
+            ],
+            "tokenUsage": {
+                "inputTokens": 0,
+                "outputTokens": 0,
+                "cacheReadTokens": 0,
+                "cacheCreationTokens": 0
+            },
+            "errors": []
+        },
+        {
+            "id": "delete-node-11",
+            "status": "pass",
+            "durationMs": 1,
+            "toolCallsCount": 1,
+            "toolCalls": [
+                {
+                    "name": "delete_node",
+                    "arguments": "{\"id\":\"cube_01\"}",
+                    "result": "{\"deleted\":\"cube_01\"}"
+                }
+            ],
+            "tokenUsage": {
+                "inputTokens": 0,
+                "outputTokens": 0,
+                "cacheReadTokens": 0,
+                "cacheCreationTokens": 0
+            },
+            "errors": []
+        },
+        {
+            "id": "multi-step-modeling-12",
+            "status": "pass",
+            "durationMs": 1,
+            "toolCallsCount": 1,
+            "toolCalls": [
+                {
+                    "name": "run_program",
+                    "arguments": "{\"ops\":[{\"id\":\"base\",\"method\":\"box\",\"args\":{\"dx\":100,\"dy\":100,\"dz\":10}},{\"id\":\"col\",\"method\":\"cylinder\",\"args\":{\"normal\":{\"x\":0,\"y\":0,\"z\":1},\"center\":{\"x\":50,\"y\":50,\"z\":10},\"radius\":10,\"dz\":80}}]}",
+                    "result": "{\"created\":[{\"id\":\"base\",\"nodeId\":\"7mglazb1Z_QtShCEPycef\",\"name\":\"box\"},{\"id\":\"col\",\"nodeId\":\"-4OyLuLdf5aXjxcpr_nHa\",\"name\":\"cylinder\"}],\"removed\":[],\"results\":{}}"
+                }
+            ],
+            "tokenUsage": {
+                "inputTokens": 0,
+                "outputTokens": 0,
+                "cacheReadTokens": 0,
+                "cacheCreationTokens": 0
+            },
+            "errors": []
+        }
+    ]
+}

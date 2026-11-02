@@ -1,0 +1,38 @@
+{
+    "scenarioId": "read-box-dimensions-01",
+    "source": "synthetic-hand-written",
+    "turns": [
+        {
+            "turnIndex": 0,
+            "events": [
+                {
+                    "type": "thinking_delta",
+                    "text": "Đọc trạng thái tài liệu để tìm khối Box1."
+                },
+                {
+                    "type": "tool_call",
+                    "id": "call_read_1",
+                    "name": "get_document_state",
+                    "arguments": "{}"
+                },
+                {
+                    "type": "done",
+                    "stopReason": "tool_use"
+                }
+            ]
+        },
+        {
+            "turnIndex": 1,
+            "events": [
+                {
+                    "type": "text",
+                    "text": "Khối Box1 có kích thước chiều dài dx=100 mm, dy=50 mm, dz=20 mm."
+                },
+                {
+                    "type": "done",
+                    "stopReason": "end_turn"
+                }
+            ]
+        }
+    ]
+}

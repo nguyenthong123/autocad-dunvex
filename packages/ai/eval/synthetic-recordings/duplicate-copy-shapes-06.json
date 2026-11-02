@@ -1,0 +1,38 @@
+{
+    "scenarioId": "duplicate-copy-shapes-06",
+    "source": "synthetic-hand-written",
+    "turns": [
+        {
+            "turnIndex": 0,
+            "events": [
+                {
+                    "type": "thinking_delta",
+                    "text": "Nhân bản khối Cube1 bằng transformedMul."
+                },
+                {
+                    "type": "tool_call",
+                    "id": "call_dup_1",
+                    "name": "run_program",
+                    "arguments": "{\"ops\":[{\"id\":\"cube_copy\",\"method\":\"transformedMul\",\"args\":{\"shape\":\"cube_01\",\"translate\":{\"x\":100,\"y\":0,\"z\":0}}}]}"
+                },
+                {
+                    "type": "done",
+                    "stopReason": "tool_use"
+                }
+            ]
+        },
+        {
+            "turnIndex": 1,
+            "events": [
+                {
+                    "type": "text",
+                    "text": "Đã nhân bản khối Cube1 sang vị trí mới thành công."
+                },
+                {
+                    "type": "done",
+                    "stopReason": "end_turn"
+                }
+            ]
+        }
+    ]
+}

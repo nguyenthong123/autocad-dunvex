@@ -1,0 +1,16 @@
+{
+    "id": "delete-node-11",
+    "description": "Xóa khối Cube1 khỏi bản vẽ",
+    "prompt": "Xóa khối Cube1 khỏi dự án.",
+    "fixture": "fixtures/single-cube.json",
+    "expect": {
+        "countNodes": {
+            "equals": 0
+        },
+        "toolCalled": ["delete_node"]
+    },
+    "budget": {
+        "maxToolCalls": 5,
+        "maxSeconds": 30
+    }
+}
