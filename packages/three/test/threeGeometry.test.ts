@@ -153,6 +153,30 @@ describe("ThreeGeometry", () => {
             const matWall = geoWall.faces()?.material as MeshBasicMaterial;
             expect(matWall.polygonOffset).toBeFalsy();
         });
+
+        test("assigns tier 0 to thick solid with custom material (e.g. 300x400x500 cabinet), documenting coplanar behavior", () => {
+            const thickCabinetNode = createTestGeometryNode();
+            Object.setPrototypeOf(thickCabinetNode, ShapeNode.prototype);
+            (thickCabinetNode as any)._shape = {
+                isOk: true,
+                value: { shapeType: ShapeTypes.solid },
+            };
+            (thickCabinetNode as any).materialId = "custom-wood";
+            (thickCabinetNode as any).document = {
+                modelManager: {
+                    materials: [
+                        { id: "default-mat", name: "LightGray", color: 0xd3d3d3 },
+                        { id: "custom-wood", name: "Gỗ sồi", color: 0x8b5a2b },
+                    ],
+                },
+            };
+            const geoCabinet = new ThreeGeometry(thickCabinetNode, context);
+            geoCabinet.box = () => new Box3(new Vector3(0, 0, 0), new Vector3(300, 400, 500));
+            (geoCabinet as any).updateEffectiveFaceMaterial();
+            const matCabinet = geoCabinet.faces()?.material as MeshBasicMaterial;
+            // Demonstrates that thick solids stay Tier 0 even with custom material:
+            expect(matCabinet.polygonOffset).toBeFalsy();
+        });
     });
 
     describe("faces / edges / vertexs accessors", () => {
