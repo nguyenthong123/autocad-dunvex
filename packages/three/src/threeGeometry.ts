@@ -82,6 +82,54 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
         geometryNode.onPropertyChanged(this.handleGeometryPropertyChanged);
     }
 
+    private hasCustomFaceMaterial(): boolean {
+        const doc = this.geometryNode.document;
+        const materials = doc?.modelManager?.materials;
+        if (!materials || materials.length <= 1) return false;
+        const matId = Array.isArray(this.geometryNode.materialId)
+            ? this.geometryNode.materialId[0]
+            : this.geometryNode.materialId;
+        const firstMaterial = materials.at(0);
+        return Boolean(firstMaterial && matId && matId !== firstMaterial.id);
+    }
+
+    private isThinOverlaySolid(): boolean {
+        if (!(this.geometryNode instanceof ShapeNode) || !this.geometryNode.shape.isOk) {
+            return false;
+        }
+        if (this.geometryNode.shape.value.shapeType !== ShapeTypes.solid) {
+            return false;
+        }
+        const box = this.box();
+        if (!box) return false;
+        const dx = Math.abs(box.max.x - box.min.x);
+        const dy = Math.abs(box.max.y - box.min.y);
+        const dz = Math.abs(box.max.z - box.min.z);
+        const minDim = Math.min(dx, dy, dz);
+        const maxDim = Math.max(dx, dy, dz);
+        return minDim <= 50.0 && maxDim >= 100.0 && minDim / maxDim <= 0.2;
+    }
+
+    private getPolygonOffsetTier(): number {
+        if (!(this.geometryNode instanceof ShapeNode) || !this.geometryNode.shape.isOk) {
+            return 0;
+        }
+
+        // Tier 2: 2D shapes (Face, Wire, Edge, Compound)
+        if (this.isPlanarOrSurfaceOverlay()) {
+            return 2;
+        }
+
+        // Tier 1: Khối 3D solid dạng tấm mỏng ốp tường (minDim <= 50mm) hoặc khối có vật liệu riêng
+        if (this.geometryNode.shape.value.shapeType === ShapeTypes.solid) {
+            if (this.isThinOverlaySolid() || this.hasCustomFaceMaterial()) {
+                return 1;
+            }
+        }
+
+        return 0;
+    }
+
     private updateEffectiveFaceMaterial() {
         if (
             this._ownsFaceMaterial &&
@@ -94,8 +142,9 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
                 this._effectiveFaceMaterial.dispose();
             }
         }
-        if (this.isPlanarOrSurfaceOverlay()) {
-            this._effectiveFaceMaterial = this.applyPolygonOffset(this._faceMaterial);
+        const tier = this.getPolygonOffsetTier();
+        if (tier > 0) {
+            this._effectiveFaceMaterial = this.applyPolygonOffset(this._faceMaterial, tier);
             this._ownsFaceMaterial = true;
         } else {
             this._effectiveFaceMaterial = this._faceMaterial;
@@ -403,28 +452,31 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
         );
     }
 
-    private applyPolygonOffset(mat: Material | Material[]): Material | Material[] {
+    private applyPolygonOffset(mat: Material | Material[], tier: number): Material | Material[] {
+        const factor = tier >= 2 ? -1.0 : -0.5;
+        const units = tier >= 2 ? -4.0 : -2.0;
         if (Array.isArray(mat)) {
             return mat.map((m) => {
                 const cloned = m.clone();
                 cloned.polygonOffset = true;
-                cloned.polygonOffsetFactor = -1.0;
-                cloned.polygonOffsetUnits = -4.0;
+                cloned.polygonOffsetFactor = factor;
+                cloned.polygonOffsetUnits = units;
                 return cloned;
             });
         }
         const cloned = mat.clone();
         cloned.polygonOffset = true;
-        cloned.polygonOffsetFactor = -1.0;
-        cloned.polygonOffsetUnits = -4.0;
+        cloned.polygonOffsetFactor = factor;
+        cloned.polygonOffsetUnits = units;
         return cloned;
     }
 
     private initFaces(data: FaceMeshData) {
         const buff = ThreeGeometryFactory.createFaceBufferGeometry(data);
         if (data.groups.length > 1) buff.groups = data.groups;
+        this._faces = new Mesh(buff);
         this.updateEffectiveFaceMaterial();
-        this._faces = new Mesh(buff, this._effectiveFaceMaterial!);
+        this._faces.material = this._effectiveFaceMaterial!;
         this._faces.layers.set(Constants.Layers.Solid);
         if (this._renderOnTop) this.applyOnTopMaterial(this._faces, this._effectiveFaceMaterial!);
         this.add(this._faces);

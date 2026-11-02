@@ -31,6 +31,7 @@ export class Tree extends HTMLElement {
     private highlightedGroup: TreeGroup | undefined;
     private lastClicked: INode | undefined;
     private lastSelected: INode[] | undefined;
+    private _isClickingTree = false;
 
     constructor(private document: IDocument) {
         super();
@@ -139,7 +140,9 @@ export class Tree extends HTMLElement {
             this.selectedNodes.add(model);
             this.nodeMap.get(model)?.addStyle(style.selected);
         });
-        this.scrollToNode(selected);
+        if (!this._isClickingTree && selected.length === 1) {
+            this.scrollToNode(selected);
+        }
     };
 
     private ensureHasHTML(records: NodeRecord[]) {
@@ -154,7 +157,20 @@ export class Tree extends HTMLElement {
         const node = selected.at(0);
         if (node) {
             this.expandParents(node);
-            this.nodeMap.get(node)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            const el = this.nodeMap.get(node);
+            if (!el) return;
+            const targetEl = (el as any).mainElement ? (el as any).mainElement() : el;
+            if (
+                typeof targetEl.getBoundingClientRect === "function" &&
+                typeof this.getBoundingClientRect === "function"
+            ) {
+                const elRect = targetEl.getBoundingClientRect();
+                const treeRect = this.getBoundingClientRect();
+                if (elRect.top >= treeRect.top && elRect.bottom <= treeRect.bottom && treeRect.height > 0) {
+                    return;
+                }
+            }
+            el.scrollIntoView({ block: "nearest", behavior: "auto" });
         }
     }
 
@@ -223,10 +239,15 @@ export class Tree extends HTMLElement {
         if (!item) return;
         event.stopPropagation();
 
-        if (event.shiftKey) {
-            this.handleShiftClick(item);
-        } else {
-            this.document.selection.setSelectedNodes([item], event.ctrlKey);
+        try {
+            this._isClickingTree = true;
+            if (event.shiftKey) {
+                this.handleShiftClick(item);
+            } else {
+                this.document.selection.setSelectedNodes([item], event.ctrlKey);
+            }
+        } finally {
+            this._isClickingTree = false;
         }
 
         this.handleLastClickItem(item);

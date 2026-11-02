@@ -24,7 +24,7 @@ import {
     DirectionalLight,
     Group,
     Layers,
-    type Mesh,
+    Mesh,
     MeshBasicMaterial,
     OrthographicCamera,
     PerspectiveCamera,
@@ -1469,5 +1469,96 @@ describe("ThreeView — isolate with real objects", () => {
         const defaultLayer = new Layers();
         defaultLayer.set(Constants.Layers.Default);
         expect(geo.layers.test(defaultLayer)).toBe(true);
+    });
+});
+
+// ============================================================================
+// ThreeView — sortCoplanarHits (TASK-18)
+// ============================================================================
+
+describe("ThreeView — sortCoplanarHits (TASK-18)", () => {
+    test("prioritizes closer hits when distance difference > 6mm", () => {
+        const { view } = createTestView();
+        const hitA: any = { distance: 100, object: new Mesh() };
+        const hitB: any = { distance: 110, object: new Mesh() };
+
+        const sorted = (view as any).sortCoplanarHits([hitB, hitA]);
+        expect(sorted[0]).toBe(hitA);
+        expect(sorted[1]).toBe(hitB);
+    });
+
+    test("prioritizes smaller bounding box diagonal when hits are coplanar (within 6mm)", () => {
+        const { view, context } = createTestView();
+
+        const wallNode = createTestGeometryNode();
+        const wallGeo = new ThreeGeometry(wallNode, context);
+        wallGeo.boundingBox = () => ({
+            min: new XYZ({ x: -250, y: -170, z: -180 }),
+            max: new XYZ({ x: 250, y: 170, z: 180 }),
+        });
+        context.visualShapes.add(wallGeo);
+
+        const slatNode = createTestGeometryNode();
+        const slatGeo = new ThreeGeometry(slatNode, context);
+        slatGeo.boundingBox = () => ({
+            min: new XYZ({ x: -25, y: -50, z: -2.5 }),
+            max: new XYZ({ x: 25, y: 50, z: 2.5 }),
+        });
+        context.visualShapes.add(slatGeo);
+
+        const wallMesh = new Mesh();
+        wallGeo.add(wallMesh);
+        const slatMesh = new Mesh();
+        slatGeo.add(slatMesh);
+
+        const hitWall: any = { distance: 500.0, object: wallMesh };
+        const hitSlat: any = { distance: 500.0, object: slatMesh };
+
+        // Even though hitWall is first in raycast result, sortCoplanarHits prioritizes small slat
+        const sorted = (view as any).sortCoplanarHits([hitWall, hitSlat]);
+        expect(sorted[0]).toBe(hitSlat);
+        expect(sorted[1]).toBe(hitWall);
+    });
+
+    test("prioritizes 2D shape over 3D solid when coplanar", () => {
+        const { view, context } = createTestView();
+
+        const solidNode = createTestGeometryNode();
+        Object.setPrototypeOf(solidNode, ShapeNode.prototype);
+        (solidNode as any)._shape = {
+            isOk: true,
+            value: { shapeType: ShapeTypes.solid },
+        };
+        const solidGeo = new ThreeGeometry(solidNode, context);
+        solidGeo.boundingBox = () => ({
+            min: new XYZ({ x: 0, y: 0, z: 0 }),
+            max: new XYZ({ x: 100, y: 100, z: 100 }),
+        });
+        context.visualShapes.add(solidGeo);
+
+        const faceNode = createTestGeometryNode();
+        Object.setPrototypeOf(faceNode, ShapeNode.prototype);
+        (faceNode as any)._shape = {
+            isOk: true,
+            value: { shapeType: ShapeTypes.face },
+        };
+        const faceGeo = new ThreeGeometry(faceNode, context);
+        faceGeo.boundingBox = () => ({
+            min: new XYZ({ x: 0, y: 0, z: 0 }),
+            max: new XYZ({ x: 100, y: 100, z: 0 }),
+        });
+        context.visualShapes.add(faceGeo);
+
+        const solidMesh = new Mesh();
+        solidGeo.add(solidMesh);
+        const faceMesh = new Mesh();
+        faceGeo.add(faceMesh);
+
+        const hitSolid: any = { distance: 200.0, object: solidMesh };
+        const hitFace: any = { distance: 200.0, object: faceMesh };
+
+        const sorted = (view as any).sortCoplanarHits([hitSolid, hitFace]);
+        expect(sorted[0]).toBe(hitFace);
+        expect(sorted[1]).toBe(hitSolid);
     });
 });

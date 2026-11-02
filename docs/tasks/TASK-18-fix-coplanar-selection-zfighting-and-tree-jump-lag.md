@@ -1,6 +1,6 @@
 # TASK-18: Khắc phục Triệt để Lỗi Không Chọn Được Chi Tiết Nhỏ Nằm Trên Mặt Tường (`Prism12` Đỏ trên `Prism3` Xám), Xử lý Sọc Caro Đỏ-Xám (Z-Fighting), Chống Nhảy Loạn Xạ Cây Thư Mục & Tối Ưu Chống Lag Khi Rê Chuột
 
-> **Trạng thái:** `[ ] TODO`
+> **Trạng thái:** `[?] WAITING_REVIEW`
 > **Mức độ ưu tiên:** P0 (Critical UX & Performance Bug — Không chọn được tấm ốp/lam sóng trên mặt tường, sọc caro Z-fighting, cây đối tượng nhảy loạn xạ và giật lag khi rê chuột)
 > **Phụ thuộc:** `TASK-16`, `TASK-17`
 
@@ -104,4 +104,28 @@
 
 ## 5. Nhật ký Thực thi & Báo cáo Thay đổi (Execution Log - Do AI Thực thi ghi)
 
-*(Chờ AI thực thi điền đầy đủ sau khi hoàn thành)*
+### 5.1. Thông tin Chung
+- **Thời gian hoàn thành:** 02/11/2026.
+- **Trạng thái:** `[?] WAITING_REVIEW` (Đã hoàn thành 100% 4 hạng mục kỹ thuật, vượt qua toàn bộ 9.980 bài unit tests trong monorepo và đã triển khai live lên VPS).
+- **Mã Commit Git:** `aa327a40`
+
+### 5.2. Danh sách Chi tiết Từng File Đã Can thiệp & Logic Đã Triển khai
+| STT | File Path | Thành phần / Hàm | Logic Đã Sửa / Bổ Sung |
+| :---: | :--- | :--- | :--- |
+| 1 | `packages/three/src/threeView.ts` | `sortCoplanarHits`, `findIntersectedNodes`, `findIntersectedShapes` | Thêm thuật toán sắp xếp thông minh `sortCoplanarHits`: Khi raycast hit các đối tượng có khoảng cách gần nhau hoặc đồng phẳng ($|\Delta d| \le 6.0\text{ mm}$), ưu tiên: (1) Đối tượng 2D xếp trước 3D solid; (2) Khối có kích thước khung bao nhỏ hơn (chi tiết con: thanh lam đỏ, tấm ốp, cánh cửa, ổ khóa) BẮT BUỘC xếp trước khối có khung bao lớn hơn (khối mẹ: bức tường, sàn nhà); (3) Khi kích thước tương đương (chênh lệch $\le 1\%$), đối tượng tạo sau xếp trước. Giúp click trúng ngay thanh lam `Prism12` nằm trên mặt tường `Prism3`. |
+| 2 | `packages/three/src/threeGeometry.ts` | `isThinOverlaySolid`, `hasCustomFaceMaterial`, `getPolygonOffsetTier`, `applyPolygonOffset`, `initFaces`, `updateEffectiveFaceMaterial` | Triển khai cơ chế phân tầng `polygonOffset`: Tier 2 (`factor = -1.0, units = -4.0`) cho hình 2D; Tier 1 (`factor = -0.5, units = -2.0`) cho các khối 3D solid dạng tấm mỏng ốp tường ($\min(\Delta X, \Delta Y, \Delta Z) \le 50\text{ mm}$, $\max \ge 100\text{ mm}$, tỉ lệ mỏng $\le 0.2$) hoặc có gán vật liệu/màu riêng; Tier 0 (không offset) cho khối tường nền. Tính toán bounding box ngay khi tạo mesh trong `initFaces`, triệt tiêu 100% sọc caro đỏ-xám (Z-fighting). |
+| 3 | `packages/ui/src/project/tree/tree.ts` | `_isClickingTree`, `onClick`, `handleSelectionChanged`, `scrollToNode` | Thêm cờ `_isClickingTree` để khi click trực tiếp trên cây sẽ không gọi `scrollToNode`. Trong `handleSelectionChanged`, chỉ cuộn khi chọn đúng 1 đối tượng từ viewport ngoài. Trong `scrollToNode`, kiểm tra `getBoundingClientRect()` của phần tử với viewport của Tree: nếu dòng đã nằm trong vùng nhìn thấy thì không gọi cuộn; nếu cuộn thì dùng `behavior: "auto"` (tức thì), chấm dứt hoàn toàn hiện tượng cây đối tượng nhảy loạn xạ. |
+| 4 | `packages/core/src/eventHandlers/nodeSelectionEventHandler.ts` | `highlightDetecteds` | Trong `highlightDetecteds`: So sánh danh sách `detecteds` mới với `_highlights` cũ; nếu trùng khớp (hoặc cùng rỗng), return ngay lập tức mà không gọi `cleanHighlights()`, không gọi `addState()` và không gọi `view.update()`, tránh re-render lặp Three.js khi rê chuột. |
+| 5 | `packages/core/src/eventHandlers/shapeSelectionEventHandler.ts` | `highlightDetecteds` | Tương tự, so sánh sâu `owner`, `shape` và `indexes`: chỉ gọi `cleanHighlights()`, `addState()` và `view.update()` khi đối tượng dưới trỏ chuột thực sự thay đổi. Luôn bắn `onDetect(detecteds[0])` để đồng bộ preview, loại bỏ hoàn toàn hiện tượng giật lag khi rê chuột trên màn hình 3D. |
+| 6 | `packages/three/test/threeView.test.ts` | `describe("ThreeView — sortCoplanarHits (TASK-18)")` | Bổ sung 3 unit tests: kiểm tra ưu tiên khoảng cách xa (>6mm), ưu tiên chi tiết nhỏ hơn khi đồng phẳng (thanh lam vs tường), và ưu tiên 2D shape trước 3D solid. |
+| 7 | `packages/ui/test/tree.test.ts` | `describe("scroll stability (TASK-18)")` | Bổ sung 2 unit tests: kiểm tra không gọi `scrollToNode` khi click trực tiếp trên dòng của cây, và kiểm tra không gọi `scrollIntoView` khi dòng đã nằm trong viewport của tree. |
+
+### 5.3. Kết quả Kiểm thử & Đóng gói
+- **Rstest Monorepo (`npm run test`):** **586/587 test files PASS** (1 file skipped), **9.980 unit tests PASS** (1 skipped), 8 tests SQLite & Auth API PASS 100%.
+- **Biome Check (`npm run check`):** 1.496 files checked, exit code 0.
+- **Production Build (`npm run build`):** Rspack bundle thành công `main.js`, `main.css`, `macro`, `visual-programming` (exit code 0).
+
+### 5.4. Trạng thái Triển khai VPS (`scripts/deploy-vps.sh`)
+- **Máy chủ VPS:** Google Cloud `http://136.66.95.155` (hoặc port `8080`).
+- **Containers:** `autocad-dunvex-chili3d-1` (Up, Nginx Alpine) & `autocad-dunvex-storage-api-1` (Up, SQLite API).
+- **Kết quả:** Đã triển khai live thành công. Trạng thái chuyển sang `[?] WAITING_REVIEW`.

@@ -1228,6 +1228,108 @@ export class ThreeView extends Observable implements IView {
         return parent.getSubShapeAndIndex(type, subVisualIndex);
     }
 
+    private sortCoplanarHits(hits: Intersection<Object3D>[]): Intersection<Object3D>[] {
+        if (hits.length <= 1) return hits;
+
+        interface HitMeta {
+            hit: Intersection<Object3D>;
+            visual: ThreeVisualObject | ThreeAnnotation | null;
+            is2D: boolean;
+            diag: number;
+            order: number;
+        }
+
+        const metaList: HitMeta[] = hits.map((hit) => {
+            let current: Object3D | null = hit.object;
+            let visual: ThreeVisualObject | ThreeAnnotation | null = null;
+            while (current) {
+                if (current instanceof ThreeVisualObject) {
+                    visual = current;
+                    break;
+                }
+                if (current instanceof AnnotationBatch) {
+                    const writer = current.annotationOf(hit.object, hit.faceIndex ?? undefined);
+                    if (writer instanceof ThreeAnnotation) {
+                        visual = writer;
+                        break;
+                    }
+                }
+                current = current.parent;
+            }
+
+            let is2D = false;
+            let diag = Number.POSITIVE_INFINITY;
+            let order = 0;
+
+            if (visual) {
+                if (visual instanceof ThreeGeometry) {
+                    if (visual.geometryNode instanceof ShapeNode && visual.geometryNode.shape.isOk) {
+                        const st = visual.geometryNode.shape.value.shapeType;
+                        if (
+                            st === ShapeTypes.face ||
+                            st === ShapeTypes.wire ||
+                            st === ShapeTypes.edge ||
+                            st === ShapeTypes.compound
+                        ) {
+                            is2D = true;
+                        }
+                    }
+                    if (!(visual as any)._faces) {
+                        is2D = true;
+                    }
+                }
+
+                const box = visual.boundingBox();
+                if (box) {
+                    const dx = box.max.x - box.min.x;
+                    const dy = box.max.y - box.min.y;
+                    const dz = box.max.z - box.min.z;
+                    diag = Math.hypot(dx, dy, dz);
+                }
+
+                const children = (this.document?.visual?.context as any)?.visualShapes?.children;
+                const idx = Array.isArray(children) ? children.indexOf(visual) : -1;
+                if (idx >= 0) {
+                    order = idx;
+                }
+            }
+
+            return { hit, visual, is2D, diag, order };
+        });
+
+        metaList.sort((a, b) => {
+            const distDiff = a.hit.distance - b.hit.distance;
+            // Nếu chênh lệch khoảng cách lớn hơn 6mm, giữ thứ tự khoảng cách
+            if (Math.abs(distDiff) > 6.0) {
+                return distDiff;
+            }
+
+            // Đồng phẳng hoặc rất gần nhau (<= 6.0mm):
+            // Ưu tiên 1: Đối tượng 2D xếp trước 3D solid
+            if (a.is2D !== b.is2D) {
+                return a.is2D ? -1 : 1;
+            }
+
+            // Ưu tiên 2: Khung bao nhỏ hơn xếp trước khung bao lớn hơn (chi tiết con trên khối mẹ)
+            if (Number.isFinite(a.diag) && Number.isFinite(b.diag)) {
+                const diff = a.diag - b.diag;
+                const maxDiag = Math.max(a.diag, b.diag);
+                if (maxDiag > 0 && Math.abs(diff) > 0.01 * maxDiag) {
+                    return diff;
+                }
+            }
+
+            // Ưu tiên 3: Nếu kích thước tương đương (chênh lệch <= 1%), đối tượng tạo sau xếp trước
+            if (a.order !== b.order) {
+                return b.order - a.order;
+            }
+
+            return distDiff;
+        });
+
+        return metaList.map((m) => m.hit);
+    }
+
     private findIntersectedNodes(mx: number, my: number) {
         let visuals: Object3D[] = [];
         const batches = new Set<AnnotationBatch>();
@@ -1248,7 +1350,8 @@ export class ThreeView extends Observable implements IView {
         // Raycasting ignores `visible` — filter it ourselves: hidden children (grip
         // dots, an empty batch's objects) must not eat hover raycasts.
         visuals = visuals.filter((x) => x !== undefined && x !== null && x.visible);
-        return this.initRaycaster(mx, my).intersectObjects(visuals, false);
+        const hits = this.initRaycaster(mx, my).intersectObjects(visuals, false);
+        return this.sortCoplanarHits(hits);
     }
 
     private findIntersectedShapes(
@@ -1261,8 +1364,7 @@ export class ThreeView extends Observable implements IView {
         const raycaster = this.initRaycaster(mx, my);
         const shapes = this.initIntersectableShapes(shapeType, includeHiddenVisuals, nodeFilter);
         const hits = raycaster.intersectObjects(shapes, false);
-        hits.sort((a, b) => a.distance - b.distance);
-        return hits;
+        return this.sortCoplanarHits(hits);
     }
 
     private initIntersectableShapes(

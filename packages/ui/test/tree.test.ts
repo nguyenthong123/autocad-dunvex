@@ -501,4 +501,53 @@ describe("Tree", () => {
             expect(menu?.textContent).not.toContain("Xóa đối tượng");
         });
     });
+
+    describe("scroll stability (TASK-18)", () => {
+        test("should not trigger scrollToNode when clicking directly on tree item", () => {
+            fixture = createFixture();
+            const model1El = fixture.tree.treeItem(fixture.model1 as unknown as INode)!;
+            const scrollSpy = rs.spyOn(fixture.tree as any, "scrollToNode");
+
+            // Dispatch click on the tree item
+            const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true });
+            model1El.mainElement().dispatchEvent(clickEvent);
+
+            expect(scrollSpy).not.toHaveBeenCalled();
+        });
+
+        test("should skip scrollIntoView when node row is already in tree viewport bounds", () => {
+            fixture = createFixture();
+            const model1El = fixture.tree.treeItem(fixture.model1 as unknown as INode)!;
+            const mainEl = model1El.mainElement();
+
+            // Mock getBoundingClientRect so model1 is inside tree viewport
+            fixture.tree.getBoundingClientRect = () => ({
+                top: 0,
+                bottom: 500,
+                height: 500,
+                left: 0,
+                right: 300,
+                width: 300,
+                x: 0,
+                y: 0,
+                toJSON: () => {},
+            });
+            mainEl.getBoundingClientRect = () => ({
+                top: 50,
+                bottom: 80,
+                height: 30,
+                left: 0,
+                right: 300,
+                width: 300,
+                x: 0,
+                y: 50,
+                toJSON: () => {},
+            });
+
+            const scrollIntoViewSpy = rs.spyOn(model1El, "scrollIntoView");
+            (fixture.tree as any).scrollToNode([fixture.model1]);
+
+            expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+        });
+    });
 });

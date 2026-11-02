@@ -85,11 +85,23 @@ export class NodeSelectionHandler extends SelectionHandler {
     }
 
     private highlightDetecteds(view: IView, detecteds: IVisualObject[]) {
+        const prev = this._highlights ?? [];
+        if (prev.length === detecteds.length) {
+            let identical = true;
+            for (let i = 0; i < prev.length; i++) {
+                if (prev[i] !== detecteds[i]) {
+                    identical = false;
+                    break;
+                }
+            }
+            if (identical) return;
+        }
+
         this.cleanHighlights();
         detecteds.forEach((x) => {
             view.document.visual.highlighter.addState(x, this.highlighState, ShapeTypes.shape);
         });
-        this._highlights = detecteds;
+        this._highlights = detecteds.length > 0 ? detecteds : undefined;
         view.update();
     }
 

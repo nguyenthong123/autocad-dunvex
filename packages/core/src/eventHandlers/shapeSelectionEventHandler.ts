@@ -80,6 +80,27 @@ export abstract class ShapeSelectionHandler extends SelectionHandler {
     }
 
     protected highlightDetecteds(view: IView, detecteds: VisualShapeData[]) {
+        this.onDetect?.(detecteds[0]);
+
+        const prev = this._highlights ?? [];
+        if (prev.length === detecteds.length) {
+            let identical = true;
+            for (let i = 0; i < prev.length; i++) {
+                const a = prev[i];
+                const b = detecteds[i];
+                if (
+                    a.owner !== b.owner ||
+                    a.shape !== b.shape ||
+                    a.indexes.length !== b.indexes.length ||
+                    !a.indexes.every((idx, j) => idx === b.indexes[j])
+                ) {
+                    identical = false;
+                    break;
+                }
+            }
+            if (identical) return;
+        }
+
         this.cleanHighlights();
         detecteds.forEach((x) => {
             this.document.visual.highlighter.addState(
@@ -99,10 +120,7 @@ export abstract class ShapeSelectionHandler extends SelectionHandler {
                 );
             }
         });
-        this._highlights = detecteds;
-        // Detection re-runs on every pointer move, so the callback reports the new aim
-        // even when it has not changed; a preview built off it should compare identities.
-        this.onDetect?.(detecteds[0]);
+        this._highlights = detecteds.length > 0 ? detecteds : undefined;
         view.update();
     }
 
