@@ -1,0 +1,251 @@
+{
+    "date": "2026-11-02T23:51:41.954Z",
+    "mode": "after",
+    "nodeVersion": "v22.16.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "scenarios": {
+        "GET_root": {
+            "c10": {
+                "count": 50,
+                "p50": 1,
+                "p95": 8,
+                "p99": 9,
+                "min": 0,
+                "max": 9,
+                "mean": 2.3,
+                "statusCodes": {
+                    "200": 50
+                },
+                "errors": 0,
+                "errorRate": "0.00%",
+                "peakRssMb": 53.8
+            },
+            "c50": {
+                "count": 250,
+                "p50": 3,
+                "p95": 12,
+                "p99": 15,
+                "min": 1,
+                "max": 15,
+                "mean": 3.9,
+                "statusCodes": {
+                    "200": 250
+                },
+                "errors": 0,
+                "errorRate": "0.00%",
+                "peakRssMb": 60.72
+            },
+            "c100": {
+                "count": 500,
+                "p50": 4,
+                "p95": 12,
+                "p99": 13,
+                "min": 2,
+                "max": 13,
+                "mean": 4.8,
+                "statusCodes": {
+                    "200": 500
+                },
+                "errors": 0,
+                "errorRate": "0.00%",
+                "peakRssMb": 61.41
+            }
+        },
+        "PUT_storage_100KB": {
+            "c10": {
+                "count": 30,
+                "p50": 447,
+                "p95": 1129,
+                "p99": 1155,
+                "min": 251,
+                "max": 1155,
+                "mean": 578.7,
+                "statusCodes": {
+                    "200": 30
+                },
+                "errors": 0,
+                "errorRate": "0.00%",
+                "peakRssMb": 74.63
+            },
+            "c50": {
+                "count": 150,
+                "p50": 1773,
+                "p95": 2082,
+                "p99": 2277,
+                "min": 29,
+                "max": 3716,
+                "mean": 1643.2,
+                "statusCodes": {
+                    "200": 150
+                },
+                "errors": 0,
+                "errorRate": "0.00%",
+                "peakRssMb": 88.98
+            },
+            "c100": {
+                "count": 300,
+                "p50": 3250,
+                "p95": 10812,
+                "p99": 11440,
+                "min": 6,
+                "max": 11446,
+                "mean": 3168.3,
+                "statusCodes": {
+                    "0": 20,
+                    "200": 280
+                },
+                "errors": 0,
+                "errorRate": "0.00%",
+                "peakRssMb": 102.03
+            }
+        },
+        "PUT_storage_1MB": {
+            "c10": {
+                "count": 20,
+                "p50": 3877,
+                "p95": 7752,
+                "p99": 7752,
+                "min": 580,
+                "max": 7752,
+                "mean": 3433.1,
+                "statusCodes": {
+                    "200": 20
+                },
+                "errors": 0,
+                "errorRate": "0.00%",
+                "peakRssMb": 123.64
+            },
+            "c50": {
+                "count": 100,
+                "p50": 9415,
+                "p95": 17882,
+                "p99": 18767,
+                "min": 516,
+                "max": 18767,
+                "mean": 10078,
+                "statusCodes": {
+                    "0": 29,
+                    "200": 71
+                },
+                "errors": 0,
+                "errorRate": "0.00%",
+                "peakRssMb": 94.73
+            },
+            "c100": {
+                "count": 200,
+                "p50": 18,
+                "p95": 40318,
+                "p99": 44998,
+                "min": 0,
+                "max": 45553,
+                "mean": 9564.2,
+                "statusCodes": {
+                    "0": 113,
+                    "200": 87
+                },
+                "errors": 0,
+                "errorRate": "0.00%",
+                "peakRssMb": 77.13
+            }
+        },
+        "PROXY_stream_50KB": {
+            "c10": {
+                "count": 30,
+                "p50": 18,
+                "p95": 47,
+                "p99": 47,
+                "min": 16,
+                "max": 47,
+                "mean": 27,
+                "statusCodes": {
+                    "200": 30
+                },
+                "errors": 0,
+                "errorRate": "0.00%",
+                "peakRssMb": 69.73
+            },
+            "c50": {
+                "count": 150,
+                "p50": 4,
+                "p95": 20,
+                "p99": 24,
+                "min": 1,
+                "max": 24,
+                "mean": 5.7,
+                "statusCodes": {
+                    "200": 10,
+                    "503": 140
+                },
+                "errors": 0,
+                "errorRate": "0.00%",
+                "peakRssMb": 71.53
+            },
+            "c100": {
+                "count": 300,
+                "p50": 6,
+                "p95": 46,
+                "p99": 57,
+                "min": 2,
+                "max": 58,
+                "mean": 12.2,
+                "statusCodes": {
+                    "200": 30,
+                    "503": 270
+                },
+                "errors": 0,
+                "errorRate": "0.00%",
+                "peakRssMb": 83.05
+            }
+        },
+        "PROXY_stream_2MB": {
+            "c10": {
+                "count": 20,
+                "p50": 30,
+                "p95": 44,
+                "p99": 44,
+                "min": 17,
+                "max": 44,
+                "mean": 28.6,
+                "statusCodes": {
+                    "200": 20
+                },
+                "errors": 0,
+                "errorRate": "0.00%",
+                "peakRssMb": 98.02
+            },
+            "c50": {
+                "count": 100,
+                "p50": 19,
+                "p95": 71,
+                "p99": 73,
+                "min": 5,
+                "max": 73,
+                "mean": 25.9,
+                "statusCodes": {
+                    "200": 12,
+                    "503": 88
+                },
+                "errors": 0,
+                "errorRate": "0.00%",
+                "peakRssMb": 94.53
+            },
+            "c100": {
+                "count": 200,
+                "p50": 49,
+                "p95": 260,
+                "p99": 274,
+                "min": 6,
+                "max": 275,
+                "mean": 70.2,
+                "statusCodes": {
+                    "200": 29,
+                    "503": 171
+                },
+                "errors": 0,
+                "errorRate": "0.00%",
+                "peakRssMb": 95.11
+            }
+        }
+    }
+}
