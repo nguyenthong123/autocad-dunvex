@@ -485,6 +485,34 @@ describe("CameraController — fitContent", () => {
         expect(part.parent).toBe(visualShapes);
     });
 
+    test("fitContent ignores invisible objects and nodes with visible false", () => {
+        const visualShapes = new Object3D();
+        const part = addMesh(visualShapes, 10);
+        const hiddenPart = addMesh(visualShapes, 1000);
+        hiddenPart.visible = false;
+
+        const document = {
+            selection: createMockSelection(),
+            visual: {
+                context: {
+                    visualShapes,
+                    getNode: () => undefined,
+                },
+            },
+        } as unknown as IDocument;
+        const view = createFakeView({
+            document,
+            content: { visualShapes } as unknown as ThreeVisualContext,
+        });
+        const cc = new CameraController(view);
+        cc.fitContent();
+
+        // The 1000 mm hidden part must not blow up the framing distance!
+        const radius = Math.sqrt(3 * 10 * 10);
+        const expectedDistance = radius / Math.sin((25 * Math.PI) / 180);
+        expect(cc.cameraPosition.distanceTo(cc.cameraTarget)).toBeCloseTo(expectedDistance);
+    });
+
     test("fitContent with orthographic camera updates the frustum", () => {
         const view = createFakeView();
         addBoxMesh(view, 10);

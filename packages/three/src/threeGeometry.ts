@@ -219,6 +219,14 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
         if (vertexs !== undefined && vertexs.position.length > 0) this.initVertexs(vertexs);
         if (hasFaces && faces) this.initFaces(faces);
         if (hasEdges && edges) this.initEdges(edges);
+        this.updateWorldMatrix(true, true);
+    }
+
+    rebuildMesh(): void {
+        (this.geometryNode as any).invalidateMesh?.();
+        this.removeMeshes();
+        this.generateShape();
+        this.updateWorldMatrix(true, true);
     }
 
     /**

@@ -323,6 +323,7 @@ export class CameraController extends Observable implements ICameraController {
     }
 
     private getBoundingSphere(context: ThreeVisualContext, scope: "auto" | "all" | "selection" = "auto") {
+        context.visualShapes.updateMatrixWorld(true);
         // "all" exists for captures that must be comparable: the user's current selection would
         // otherwise decide the framing, so two frames of the same model could differ.
         const shapes = scope === "all" ? [] : this.view.document.selection.getSelectedVisualNodes();
@@ -333,8 +334,13 @@ export class CameraController extends Observable implements ICameraController {
             // including it makes Fit frame a 500 mm helper square instead of the part.
             // Recurse so a plane nested in a Group/Component visual is skipped too.
             const visit = (object: Object3D) => {
+                if (!object.visible) return;
                 const node = context.getNode(object as unknown as IVisualObject);
-                if (node !== undefined && isReferenceGeometryNode(node)) return;
+                if (
+                    node !== undefined &&
+                    (!node.visible || !node.parentVisible || isReferenceGeometryNode(node))
+                )
+                    return;
                 if (object.children.length === 0) {
                     this.expandValidBox(box, object);
                     return;
@@ -344,19 +350,23 @@ export class CameraController extends Observable implements ICameraController {
             for (const child of context.visualShapes.children) visit(child);
         } else {
             for (const shape of shapes) {
-                this.expandValidBox(box, context.getVisual(shape) as ThreeGeometry);
+                const visual = context.getVisual(shape) as ThreeGeometry | undefined;
+                if (visual && visual.visible) {
+                    this.expandValidBox(box, visual);
+                }
             }
         }
 
         const sphere = new Sphere();
         box.getBoundingSphere(sphere);
-        if (sphere.radius < 0) {
+        if (sphere.radius < 0 || !Number.isFinite(sphere.radius)) {
             sphere.radius = SHAPE_EMPTY_SIZE;
         }
         return sphere;
     }
 
-    private expandValidBox(target: Box3, object: Object3D) {
+    private expandValidBox(target: Box3, object: Object3D | undefined) {
+        if (!object || !object.visible) return;
         const candidate = new Box3().setFromObject(object);
         if (this.isFiniteBox(candidate)) {
             target.union(candidate);
@@ -405,6 +415,12 @@ export class CameraController extends Observable implements ICameraController {
 
     private updateCameraNearFar() {
         const distance = this._position.distanceTo(this._target);
+
+        if (this.camera instanceof OrthographicCamera) {
+            this.camera.near = -Math.max(10000, distance * 10);
+            this.camera.far = Math.max(10000, distance * 100);
+            return;
+        }
 
         const nearPlane = Math.max(0.01, Math.min(distance / 1000, distance / 10));
         const farPlane = Math.max(1000, distance * 100);

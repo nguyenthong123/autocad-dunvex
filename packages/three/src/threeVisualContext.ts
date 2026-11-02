@@ -29,6 +29,7 @@ import {
     type ShapeType,
     ShapeTypes,
     Texture,
+    VisualConfig,
     XY,
     type XYZ,
 } from "@chili3d/core";
@@ -42,7 +43,7 @@ import {
     LineSegments,
     Mesh,
     type MeshLambertMaterial,
-    type MeshPhysicalMaterial,
+    MeshPhysicalMaterial,
     Object3D,
     PMREMGenerator,
     Points,
@@ -489,8 +490,19 @@ export class ThreeVisualContext implements IVisualContext {
     }
 
     setVisible(node: INode, visible: boolean): void {
-        const shape = this.getVisual(node);
-        if (shape === undefined || shape.visible === visible) return;
+        let shape = this.getVisual(node);
+        if (shape === undefined && visible) {
+            try {
+                this.displayNode(node);
+                shape = this.getVisual(node);
+            } catch (err) {
+                console.warn(`Failed to recover visual for node ${node.name}:`, err);
+            }
+        }
+        if (shape === undefined) return;
+        if (shape instanceof ThreeGeometry && visible && shape.children.length === 0) {
+            shape.rebuildMesh();
+        }
         shape.visible = visible;
         if (shape instanceof ThreeComponentObject) {
             // Three's own traversal hides member annotations on render, but the pick
@@ -529,7 +541,11 @@ export class ThreeVisualContext implements IVisualContext {
     addNode(nodes: INode[]) {
         nodes.forEach((node) => {
             if (!this._NodeVisualMap.has(node)) {
-                this.displayNode(node);
+                try {
+                    this.displayNode(node);
+                } catch (err) {
+                    console.warn(`Failed to display node ${node.name} (${node.id}):`, err);
+                }
             }
         });
     }
@@ -613,23 +629,24 @@ export class ThreeVisualContext implements IVisualContext {
         return shapes;
     }
 
+    private getFallbackMaterial(): ThreeMaterial {
+        const first = this.materialMap.values().next().value;
+        if (first) return first;
+        const defaultMat = new MeshPhysicalMaterial({ color: VisualConfig.defaultFaceColor });
+        this.materialMap.set("__default__", defaultMat);
+        return defaultMat;
+    }
+
     getMaterial(id: string | string[]): ThreeMaterial | ThreeMaterial[] {
         if (Array.isArray(id)) {
             const materials = [];
             for (const i of id) {
-                const material = this.materialMap.get(i);
-                if (!material) {
-                    throw new Error(`Material not found: ${i}`);
-                }
+                const material = this.materialMap.get(i) ?? this.getFallbackMaterial();
                 materials.push(material);
             }
             return materials.length === 1 ? materials[0] : materials;
         }
 
-        const material = this.materialMap.get(id);
-        if (!material) {
-            throw new Error(`Material not found: ${id}`);
-        }
-        return material;
+        return this.materialMap.get(id) ?? this.getFallbackMaterial();
     }
 }

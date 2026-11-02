@@ -1,6 +1,7 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
+import { VisualConfig } from "./config";
 import type { IDocument } from "./document";
 import {
     type CollectionChangedArgs,
@@ -11,9 +12,12 @@ import {
     Transaction,
 } from "./foundation";
 import { Material } from "./material";
+import { NodeChildList } from "./model/childList";
 import { type Component, ComponentNode } from "./model/component";
 import { FolderNode } from "./model/folderNode";
+import { GeometryNode } from "./model/geometryNode";
 import { type INode, type INodeLinkedList, NodeUtils } from "./model/node";
+import { ShapeNode } from "./model/shapeNode";
 import { type Serialized, Serializer } from "./serialize";
 
 export type OnNodeChanged = (records: NodeRecord[]) => void;
@@ -222,6 +226,15 @@ export class ModelManager extends Observable {
         try {
             const rootNode = await NodeUtils.deserializeNode(this.document, data.nodes);
             this.rootNode = rootNode!;
+            const syncVisibility = (parent: INodeLinkedList) => {
+                NodeChildList.of(parent)?.setChildrenParentVisible();
+                for (const child of NodeUtils.children(parent)) {
+                    if (NodeUtils.isLinkedListNode(child)) {
+                        NodeChildList.of(child)?.setChildrenParentVisible();
+                    }
+                }
+            };
+            syncVisibility(this.rootNode);
             this.ensureMaterials();
             this.ensureInstances();
         } finally {
@@ -234,10 +247,28 @@ export class ModelManager extends Observable {
         if (!this.rootNode) return;
         const allNodes = NodeUtils.children(this.rootNode);
         for (const node of allNodes) {
+            if (
+                node instanceof ShapeNode &&
+                !(node as any).isInstance &&
+                node.constructor?.name !== "BodyInstanceNode"
+            ) {
+                try {
+                    const _ = node.shape;
+                } catch {
+                    // ignore if kernel not ready or shape computation failed
+                }
+            }
+        }
+        for (const node of allNodes) {
             if ((node as any).isInstance === true || node.constructor?.name === "BodyInstanceNode") {
                 const instance = node as any;
                 const src = instance.source;
                 if (src) {
+                    try {
+                        const _ = src.shape;
+                    } catch {
+                        // ignore
+                    }
                     instance._mesh = undefined;
                     try {
                         const _ = instance.mesh;
@@ -258,6 +289,35 @@ export class ModelManager extends Observable {
      * `Material` the user can restyle.
      */
     private ensureMaterials() {
+        const isGeometry = (n: INode) =>
+            n instanceof GeometryNode ||
+            "materialId" in n ||
+            (n as any).shape !== undefined ||
+            (n as any).mesh !== undefined;
+
+        let hasGeometry = false;
+        if (this.rootNode) {
+            hasGeometry = NodeUtils.findNode(this.rootNode, isGeometry) !== undefined;
+        }
+        if (!hasGeometry) {
+            for (const c of this.components) {
+                if (c.nodes.some(isGeometry)) {
+                    hasGeometry = true;
+                    break;
+                }
+            }
+        }
+
+        if (this.materials.length === 0 && hasGeometry) {
+            this.materials.push(
+                new Material({
+                    document: this.document,
+                    name: "Material 1",
+                    color: VisualConfig.defaultFaceColor,
+                }),
+            );
+        }
+        const defaultMaterialId = this.materials.at(0)?.id;
         const known = new Set(this.materials.map((x) => x.id));
         const backfill = (materialId: string | string[] | undefined) => {
             for (const id of materialIdsOf(materialId)) {
@@ -274,9 +334,31 @@ export class ModelManager extends Observable {
 
         // The nodes a component owns hang off the component, not off the linked-list tree,
         // so both walks are needed to cover everything that can carry a `materialId`.
-        for (const node of NodeUtils.children(this.rootNode)) backfill(materialIdOf(node));
+        for (const node of NodeUtils.children(this.rootNode)) {
+            if (node instanceof GeometryNode || "materialId" in node) {
+                if (
+                    !node.materialId ||
+                    node.materialId === "" ||
+                    (Array.isArray(node.materialId) && node.materialId.length === 0)
+                ) {
+                    if (defaultMaterialId) (node as any).materialId = defaultMaterialId;
+                }
+            }
+            backfill(materialIdOf(node));
+        }
         for (const component of this.components) {
-            for (const node of component.nodes) backfill(materialIdOf(node));
+            for (const node of component.nodes) {
+                if (node instanceof GeometryNode || "materialId" in node) {
+                    if (
+                        !node.materialId ||
+                        node.materialId === "" ||
+                        (Array.isArray(node.materialId) && node.materialId.length === 0)
+                    ) {
+                        if (defaultMaterialId) (node as any).materialId = defaultMaterialId;
+                    }
+                }
+                backfill(materialIdOf(node));
+            }
         }
     }
 

@@ -3,6 +3,7 @@
 
 import {
     Mesh as CoreMesh,
+    GeometryNode,
     type IDocument,
     type IVisual,
     type IVisualObject,
@@ -263,12 +264,14 @@ describe("ThreeVisualContext (real instance)", () => {
             expect(context.getMaterial("test-id")).toBe(mat);
         });
 
-        test("should throw for unknown material id", () => {
-            expect(() => context.getMaterial("nonexistent")).toThrow("Material not found: nonexistent");
+        test("should return fallback material for unknown material id without throwing", () => {
+            const mat = context.getMaterial("nonexistent");
+            expect(mat).toBeDefined();
         });
 
-        test("should throw for unknown material in array", () => {
-            expect(() => context.getMaterial(["nonexistent1"])).toThrow();
+        test("should return fallback material for unknown material in array without throwing", () => {
+            const mat = context.getMaterial(["nonexistent1"]);
+            expect(mat).toBeDefined();
         });
 
         test("should return array of materials for array input", () => {
@@ -288,6 +291,42 @@ describe("ThreeVisualContext (real instance)", () => {
 
             const result = context.getMaterial(["id1"]);
             expect(result).toBe(mat);
+        });
+
+        test("should return fallback material for empty string material id", () => {
+            const mat = context.getMaterial("");
+            expect(mat).toBeDefined();
+        });
+    });
+
+    describe("setVisible auto-recovery and rebuild", () => {
+        test("should recover visual when getVisual is undefined and visible is true", () => {
+            const node = createTestGeometryNode();
+            Object.setPrototypeOf(node, GeometryNode.prototype);
+            expect(context.getVisual(node)).toBeUndefined();
+
+            context.setVisible(node, true);
+
+            const recovered = context.getVisual(node);
+            expect(recovered).toBeDefined();
+            expect(recovered?.visible).toBe(true);
+        });
+
+        test("should call rebuildMesh when visual exists but has 0 children and visible is true", () => {
+            const node = createTestGeometryNode();
+            Object.setPrototypeOf(node, GeometryNode.prototype);
+            context.addNode([node]);
+            const visual = context.getVisual(node) as ThreeGeometry;
+            expect(visual).toBeDefined();
+
+            const rebuildSpy = rs.fn();
+            visual.rebuildMesh = rebuildSpy;
+            // Clear children to simulate empty mesh
+            visual.clear();
+            expect(visual.children.length).toBe(0);
+
+            context.setVisible(node, true);
+            expect(rebuildSpy).toHaveBeenCalled();
         });
     });
 

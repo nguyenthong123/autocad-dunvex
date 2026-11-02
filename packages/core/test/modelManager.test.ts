@@ -7,6 +7,7 @@ import {
     Id,
     type INode,
     InternalClassName,
+    MeshNode,
     type ModelManager,
     type NodeRecord,
     type OnNodeChanged,
@@ -441,6 +442,34 @@ describe("ModelManager", () => {
             expect(calls.length).toBe(1);
             expect(calls[0][0].node).toBe(modelManager.rootNode);
             expect(childVisibleAtNotify).toBe(true);
+        });
+
+        test("deserialize creates default material if materials array is empty and geometry exists", async () => {
+            const data = {
+                nodes: [
+                    {
+                        [InternalClassName]: "FolderNode",
+                        name: "Root",
+                        id: "root-1",
+                        visible: true,
+                    },
+                    {
+                        [InternalClassName]: "MeshNode",
+                        name: "Mesh 1",
+                        id: "mesh-1",
+                        parentId: "root-1",
+                        visible: true,
+                        mesh: { faces: [], vertices: [], normals: [] },
+                    },
+                ],
+                components: [],
+                materials: [],
+            };
+            await modelManager.deserialize(data);
+            expect(modelManager.materials.length).toBeGreaterThan(0);
+            expect(modelManager.materials.at(0)!.name).toBe("Material 1");
+            const meshNode = modelManager.findNode((n) => n.id === "mesh-1") as any;
+            expect(meshNode.materialId).toBe(modelManager.materials.at(0)!.id);
         });
     });
 

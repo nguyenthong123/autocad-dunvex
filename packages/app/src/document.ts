@@ -3,6 +3,7 @@
 
 import {
     type Act,
+    Config,
     Constants,
     History,
     I18n,
@@ -86,6 +87,26 @@ export class Document extends Observable implements IDocument {
     }
 
     serialize(): Serialized {
+        const view = this.application?.activeView;
+        if (view) {
+            const cam = view.cameraController as any;
+            if (cam) {
+                const pos = cam.cameraPosition ?? cam.position;
+                const tgt = cam.cameraTarget ?? cam.target;
+                const up = cam.cameraUp ?? cam.up;
+                this.userData = {
+                    ...this.userData,
+                    viewState: {
+                        cameraType: cam.cameraType,
+                        position: pos ? { x: pos.x, y: pos.y, z: pos.z } : undefined,
+                        target: tgt ? { x: tgt.x, y: tgt.y, z: tgt.z } : undefined,
+                        up: up ? { x: up.x, y: up.y, z: up.z } : undefined,
+                        mode: cam.mode,
+                        is2DDraftingMode: Config.instance.is2DDraftingMode,
+                    },
+                };
+            }
+        }
         const serialized = {
             [InternalClassName]: "Document",
             version: __DOCUMENT_VERSION__,

@@ -60,6 +60,14 @@ export class ExtrudeNode extends ParameterShapeNode {
         this.setPropertyEmitShapeChanged("length", value);
     }
 
+    @serialize()
+    get cachedShape(): IShape | undefined {
+        return this.getPrivateValue("cachedShape", undefined);
+    }
+    set cachedShape(value: IShape | undefined) {
+        this.setPrivateValue("cachedShape", value);
+    }
+
     constructor(options: PrismOptions) {
         super(options);
         this.setPrivateValue("section", options.section);
@@ -67,23 +75,45 @@ export class ExtrudeNode extends ParameterShapeNode {
     }
 
     override generateShape(): Result<IShape> {
-        if (Math.abs(this.length) < Precision.Distance) return Result.err("Extrude length cannot be zero");
-        const normal = GeometryUtils.normal(this.section as any);
-        const vec = normal.multiply(this.length);
-        if (this.section.shapeType === ShapeTypes.face) {
-            const sur = (this.section as IFace).surface();
-            if (!sur.isPlanar()) {
-                return shapeFactory.makeThickSolidBySimple(this.section, this.length);
-            }
-        } else if (
-            (this.section.shapeType === ShapeTypes.wire || this.section.shapeType === ShapeTypes.edge) &&
-            this.section.isClosed()
-        ) {
-            // Extruding a closed profile (wire or circle edge) as a face produces a solid instead of a shell.
-            const face = closedProfileToFace(this.section);
-            if (!face.isOk) return Result.err(face.error);
-            return shapeFactory.prism(face.value, vec);
+        if (!this.section) {
+            if (this.cachedShape) return Result.ok(this.cachedShape);
+            return Result.err("No section defined for ExtrudeNode");
         }
-        return shapeFactory.prism(this.section, vec);
+        if (Math.abs(this.length) < Precision.Distance) return Result.err("Extrude length cannot be zero");
+        try {
+            const normal = GeometryUtils.normal(this.section as any);
+            const vec = normal.multiply(this.length);
+            let result: Result<IShape>;
+            if (this.section.shapeType === ShapeTypes.face) {
+                const sur = (this.section as IFace).surface();
+                if (!sur.isPlanar()) {
+                    result = shapeFactory.makeThickSolidBySimple(this.section, this.length);
+                } else {
+                    result = shapeFactory.prism(this.section, vec);
+                }
+            } else if (
+                (this.section.shapeType === ShapeTypes.wire || this.section.shapeType === ShapeTypes.edge) &&
+                this.section.isClosed()
+            ) {
+                // Extruding a closed profile (wire or circle edge) as a face produces a solid instead of a shell.
+                const face = closedProfileToFace(this.section);
+                if (!face.isOk) {
+                    result = Result.err(face.error);
+                } else {
+                    result = shapeFactory.prism(face.value, vec);
+                }
+            } else {
+                result = shapeFactory.prism(this.section, vec);
+            }
+            if (result.isOk) {
+                this.cachedShape = result.value;
+            } else if (this.cachedShape) {
+                return Result.ok(this.cachedShape);
+            }
+            return result;
+        } catch (err: any) {
+            if (this.cachedShape) return Result.ok(this.cachedShape);
+            return Result.err(err?.message ?? "Failed to generate extrude shape");
+        }
     }
 }

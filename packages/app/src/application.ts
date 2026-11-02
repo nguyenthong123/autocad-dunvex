@@ -20,12 +20,15 @@ import {
     type IWindow,
     Logger,
     Material,
+    NodeUtils,
     Observable,
     ObservableCollection,
     PLUGIN_FILE_EXTENSION,
     Plane,
     PubSub,
     type Serialized,
+    ShapeNode,
+    ShapeTypes,
     setCurrentApplication,
     VisualConfig,
     type VisualItemConfig,
@@ -241,12 +244,60 @@ export class Application extends Observable implements IApplication {
         });
     }
 
+    private has3DContent(document: IDocument): boolean {
+        if (!document.modelManager.rootNode) return false;
+        const allNodes = NodeUtils.children(document.modelManager.rootNode);
+        for (const node of allNodes) {
+            if (node.constructor?.name === "ExtrudeNode" || (node as any).display?.() === "body.extrude")
+                return true;
+            if (node instanceof ShapeNode && node.shape?.isOk) {
+                const st = node.shape.value.shapeType;
+                if (st === ShapeTypes.solid || st === ShapeTypes.compoundSolid || st === ShapeTypes.shell) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     protected async createActiveView(document: IDocument | undefined) {
         if (document === undefined) return undefined;
         const view = document.visual.createView("3d", Plane.XY);
         this.activeView = view;
+
+        const has3D = this.has3DContent(document);
+        const viewState = (document as any).userData?.viewState;
+
+        if (has3D) {
+            Config.instance.is2DDraftingMode = false;
+            Config.instance.dynamicWorkplane = true;
+        } else if (viewState && typeof viewState.is2DDraftingMode === "boolean") {
+            Config.instance.is2DDraftingMode = viewState.is2DDraftingMode;
+        }
+
         if (Config.instance.is2DDraftingMode) {
             view.cameraController.setTopView2D?.(false);
+        } else if (viewState?.position && viewState?.target) {
+            view.cameraController.lookAt(
+                viewState.position,
+                viewState.target,
+                viewState.up ?? { x: 0, y: 0, z: 1 },
+                { duration: 0 },
+            );
+        }
+
+        const doFit = () => {
+            if (view.width > 1 && view.height > 1) {
+                view.resize(view.width, view.height);
+            }
+            view.cameraController.fitContent({ scope: "all", duration: 0 });
+        };
+
+        doFit();
+        if (typeof requestAnimationFrame === "function") {
+            requestAnimationFrame(() => {
+                doFit();
+            });
         }
     }
 }

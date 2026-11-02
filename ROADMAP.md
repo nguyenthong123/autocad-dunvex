@@ -58,6 +58,7 @@ packages/web ──> packages/builder ──> packages/app ───────
 | **TASK-12** | Khắc phục Đổi tên Dự án (Inline Rename), Ổn định Sao chép mảng (`Array`), Chống mất dữ liệu Hình học (`*_copy`) & Tích hợp Lưu trữ SQLite + Xác thực Tài khoản (Auth) | `[x] DONE` | [docs/tasks/TASK-12-inline-rename-array-fix-and-sqlite-auth.md](./docs/tasks/TASK-12-inline-rename-array-fix-and-sqlite-auth.md) |
 | **TASK-13** | Đồng bộ chọn Đối tượng từ Cây bản vẽ (Model Tree) cho lệnh Đùn khối (`Extrude`) & Tối ưu Raycasting Lọc biên dạng 2D trên Viewport 3D | `[x] DONE` | [docs/tasks/TASK-13-extrude-tree-selection-and-raycast-2d-filter.md](./docs/tasks/TASK-13-extrude-tree-selection-and-raycast-2d-filter.md) |
 | **TASK-14** | Hỗ trợ Đổi màu Đường kẻ (`Line`, `Wire`, `Arc`, `Circle` khung dây) & Đổi màu Hàng loạt khi Quét chọn Nhiều Vật thể (Multi-Selection Material Sync) | `[x] DONE` | [docs/tasks/TASK-14-line-wire-color-and-material-sync.md](./docs/tasks/TASK-14-line-wire-color-and-material-sync.md) |
+| **TASK-15** | Khắc phục Triệt để Lỗi Mất Hiển thị Khối (`Prism` / `Mesh`), Đồng bộ Mở Mắt (`Visibility`) & Tự động Căn chỉnh Camera 2D/3D khi Tải lại Dự án | `[?] WAITING_REVIEW` | [docs/tasks/TASK-15-fix-project-load-camera-fit-and-3d-visibility.md](./docs/tasks/TASK-15-fix-project-load-camera-fit-and-3d-visibility.md) |
 
 ---
 
@@ -68,8 +69,21 @@ packages/web ──> packages/builder ──> packages/app ───────
 
 ---
 
-## 4. Quy ước cập nhật trạng thái
+## 4. Quy ước Trạng thái & Quy tắc Bắt buộc dành cho AI Thực thi (Worker AI Workflow Rules)
 
-- `[ ] TODO`: Công việc chưa bắt đầu.
-- `[~] IN_PROGRESS`: Công việc đang được triển khai.
-- `[x] DONE`: Công việc đã hoàn thành và vượt qua toàn bộ danh sách kiểm thử nghiệm thu (Verification Checklist).
+### 4.1. Vòng đời Trạng thái Công việc (Task Lifecycle)
+- `[ ] TODO`: Đã phân tích nguyên nhân gốc rễ và lập hồ sơ kỹ thuật chi tiết trong `docs/tasks/TASK-XX-*.md`, chờ giao việc.
+- `[~] IN_PROGRESS`: AI thực thi đang tiến hành sửa code và viết kiểm thử.
+- `[?] WAITING_REVIEW` (**Chờ Review / Nghiệm thu**): AI thực thi đã hoàn thành code, pass 100% test & build, đã deploy lên VPS và **đã ghi đầy đủ Nhật ký Thực thi (Execution Log)** vào cuối file `docs/tasks/TASK-XX-*.md`.
+- `[x] DONE`: Đã được Người dùng và AI Kiến trúc sư kiểm tra nghiệm thu và xác nhận đóng task.
+
+### 4.2. Quy tắc Bắt buộc để Lưu vết (Traceability Rules — Tuyệt đối tuân thủ)
+1. **Không tự ý nhảy cóc sang `[x] DONE`:**
+   - Khi AI thực thi làm xong một `TASK-XX`, chỉ được chuyển trạng thái trong `ROADMAP.md` và trong file `docs/tasks/TASK-XX-*.md` từ `[ ] TODO` / `[~] IN_PROGRESS` sang **`[?] WAITING_REVIEW`**.
+   - Chỉ khi Người dùng xác nhận nghiệm thu đạt yêu cầu thì mới chuyển sang `[x] DONE`.
+2. **Bắt buộc ghi "Nhật ký Thực thi & Báo cáo Thay đổi (Execution Log)" vào cuối file `docs/tasks/TASK-XX-*.md`:**
+   - Trước khi commit kết thúc nhiệm vụ, AI thực thi **BẮT BUỘC** phải cập nhật mục **`## 5. Nhật ký Thực thi & Báo cáo Thay đổi (Execution Log)`** ở cuối file `docs/tasks/TASK-XX-*.md` với đầy đủ các thông tin:
+     - **Ngày giờ thực hiện & Mã Commit (`git rev-parse --short HEAD`)**.
+     - **Danh sách chi tiết từng file đã sửa / thêm mới** (kèm tên hàm/class và mô tả rõ đã sửa logic gì để sau này truy vết lỗi nhanh chóng).
+     - **Danh sách các bài Unit Test đã thêm/cập nhật** và kết quả chạy `npm run test` + `npm run build`.
+     - **Trạng thái Deploy lên VPS** (`http://136.66.95.155`).

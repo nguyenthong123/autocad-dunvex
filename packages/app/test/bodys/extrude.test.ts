@@ -221,5 +221,26 @@ describe("ExtrudeNode", () => {
             const result = node.generateShape();
             expect(result.isOk).toBe(false);
         });
+
+        test("should return cachedShape when section is undefined but cachedShape exists", () => {
+            const fallbackShape = createMockShape();
+            const node = new ExtrudeNode({ document: doc, section: undefined as any, length: 20 });
+            node.cachedShape = fallbackShape as any;
+            const result = node.generateShape();
+            expect(result.isOk).toBe(true);
+            expect(result.value).toBe(fallbackShape);
+        });
+
+        test("should fallback to cachedShape when prism computation fails", () => {
+            const fallbackShape = createMockShape();
+            setupShapeFactoryMock({
+                prism: () => Result.err("prism failed"),
+            });
+            const node = new ExtrudeNode({ document: doc, section, length: 20 });
+            node.cachedShape = fallbackShape as any;
+            const result = node.generateShape();
+            expect(result.isOk).toBe(true);
+            expect(result.value).toBe(fallbackShape);
+        });
     });
 });

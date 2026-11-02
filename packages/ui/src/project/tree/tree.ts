@@ -3,7 +3,9 @@
 
 import {
     Annotation,
+    CAMERA_FLY_DURATION,
     FolderNode,
+    GeometryNode,
     type IDocument,
     type INode,
     type INodeLinkedList,
@@ -267,8 +269,26 @@ export class Tree extends HTMLElement {
             this.closeContextMenu();
             item.startInlineRename();
         };
-
         menu.appendChild(renameOption);
+
+        if (item.node instanceof VisualNode || item.node instanceof GeometryNode) {
+            const zoomOption = document.createElement("div");
+            zoomOption.className = style.contextMenuItem ?? "contextMenuItem";
+            zoomOption.textContent = "🔍 Phóng tới đối tượng (Zoom to Object)";
+            zoomOption.onclick = (e) => {
+                e.stopPropagation();
+                this.closeContextMenu();
+                this.document.selection.setSelectedNodes([item.node!], false);
+                const activeView = (this.document as any).application?.activeView;
+                if (activeView) {
+                    activeView.cameraController?.fitContent?.({
+                        duration: CAMERA_FLY_DURATION,
+                        scope: "selection",
+                    });
+                }
+            };
+            menu.appendChild(zoomOption);
+        }
         document.body.appendChild(menu);
         this.contextMenuEl = menu;
 
