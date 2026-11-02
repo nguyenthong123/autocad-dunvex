@@ -3,6 +3,7 @@
 
 import assert from "node:assert";
 import { rmSync } from "node:fs";
+import http from "node:http";
 import { after, before, describe, it } from "node:test";
 
 const TEST_DIR = "./data/test_storage";
@@ -24,6 +25,9 @@ describe("StorageServer SQLite & Auth API", () => {
     });
 
     after((_, done) => {
+        if (typeof server.closeAllConnections === "function") {
+            server.closeAllConnections();
+        }
         server.close(() => {
             try {
                 rmSync(TEST_DIR, { recursive: true, force: true });
@@ -208,5 +212,70 @@ describe("StorageServer SQLite & Auth API", () => {
             .prepare("SELECT * FROM project_snapshots WHERE project_id = ?")
             .all("proj_abc_123");
         assert.strictEqual(snapshotRows.length, 0);
+    });
+
+    it("rejects payload exceeding STORAGE_MAX_BODY_BYTES with 413", async () => {
+        const req = http.request(`${baseUrl}/api/storage/dunvex/documents/too_large_doc`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Content-Length": String(15 * 1024 * 1024),
+                Authorization: `Bearer ${tokenA}`,
+            },
+        });
+
+        const resPromise = new Promise((resolve) => {
+            req.on("response", (res) => {
+                let data = "";
+                res.on("data", (c) => (data += c));
+                res.on("end", () => resolve({ status: res.statusCode, body: data }));
+            });
+            req.on("error", () => resolve({ status: 413 }));
+        });
+
+        req.write("x");
+        req.end();
+        const res = await resPromise;
+        assert.strictEqual(res.status, 413);
+        assert.match(res.body, /Payload Too Large/i);
+    });
+
+    it("rejects streaming body exceeding STORAGE_MAX_BODY_BYTES with 413", async () => {
+        const CHUNK_SIZE = 64 * 1024;
+        const TOTAL_CHUNKS = Math.floor((11 * 1024 * 1024) / CHUNK_SIZE);
+        const reusableBuffer = Buffer.alloc(CHUNK_SIZE, "z");
+
+        let sentChunks = 0;
+        const stream11Mb = new (await import("node:stream")).Readable({
+            read() {
+                while (sentChunks < TOTAL_CHUNKS) {
+                    sentChunks++;
+                    const canContinue = this.push(reusableBuffer);
+                    if (!canContinue) return;
+                }
+                this.push(null);
+            },
+        });
+
+        const req = http.request(`${baseUrl}/api/storage/dunvex/documents/large_stream_doc`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${tokenA}`,
+            },
+        });
+
+        const resPromise = new Promise((resolve) => {
+            req.on("response", (res) => {
+                let data = "";
+                res.on("data", (c) => (data += c));
+                res.on("end", () => resolve({ status: res.statusCode, body: data }));
+            });
+            req.on("error", () => resolve({ status: 413 }));
+        });
+
+        stream11Mb.pipe(req);
+        const res = await resPromise;
+        assert.strictEqual(res.status, 413);
     });
 });

@@ -76,7 +76,7 @@ function hashPassword(password) {
 }
 
 function verifyPassword(password, stored) {
-    if (!stored || !stored.includes(":")) return false;
+    if (!stored?.includes(":")) return false;
     const [salt, hash] = stored.split(":");
     const calcHash = scryptSync(password, salt, 64).toString("hex");
     const calcBuf = Buffer.from(calcHash);
@@ -217,30 +217,44 @@ async function migrateLegacyJsonIfNeeded() {
 
 migrateLegacyJsonIfNeeded().catch(() => {});
 
-async function readBody(req) {
+export const STORAGE_MAX_BODY_BYTES = Number.parseInt(
+    process.env.STORAGE_MAX_BODY_BYTES || "10485760", // 10MB default
+    10,
+);
+
+export async function readBody(req, maxBytes = STORAGE_MAX_BODY_BYTES) {
     const chunks = [];
+    let totalBytes = 0;
     for await (const chunk of req) {
+        totalBytes += chunk.length;
+        if (totalBytes > maxBytes) {
+            const err = new Error("PAYLOAD_TOO_LARGE");
+            err.statusCode = 413;
+            throw err;
+        }
         chunks.push(chunk);
     }
     return Buffer.concat(chunks).toString("utf8");
 }
 
-function sendJson(res, status, payload) {
+function sendJson(res, status, payload, onEnd = null) {
     res.writeHead(status, {
         "Content-Type": "application/json; charset=utf-8",
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization",
     });
-    res.end(JSON.stringify(payload));
+    res.end(JSON.stringify(payload), () => {
+        if (onEnd) onEnd();
+    });
 }
 
 function extractAuthUserId(req) {
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith("Bearer ")) {
+    if (authHeader?.startsWith("Bearer ")) {
         const token = authHeader.slice(7).trim();
         const payload = verifyJwt(token);
-        if (payload && payload.sub) {
+        if (payload?.sub) {
             return payload.sub;
         }
     }
@@ -347,13 +361,13 @@ export const server = createServer(async (req, res) => {
 
         if (pathname === "/api/auth/me" && req.method === "GET") {
             const authHeader = req.headers.authorization;
-            if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            if (!authHeader?.startsWith("Bearer ")) {
                 sendJson(res, 401, { error: "Chưa đăng nhập" });
                 return;
             }
             const token = authHeader.slice(7).trim();
             const payload = verifyJwt(token);
-            if (!payload || !payload.sub) {
+            if (!payload?.sub) {
                 sendJson(res, 401, { error: "Phiên làm việc đã hết hạn hoặc không hợp lệ" });
                 return;
             }
@@ -382,13 +396,31 @@ export const server = createServer(async (req, res) => {
         }
 
         // ================= STORAGE ROUTES =================
+        const incomingContentLength = req.headers["content-length"];
+        if (incomingContentLength) {
+            const parsedLen = Number.parseInt(incomingContentLength, 10);
+            if (!Number.isNaN(parsedLen) && parsedLen > STORAGE_MAX_BODY_BYTES) {
+                sendJson(
+                    res,
+                    413,
+                    {
+                        error: `Payload Too Large (Max ${Math.round(STORAGE_MAX_BODY_BYTES / (1024 * 1024))}MB)`,
+                    },
+                    () => {
+                        req.destroy();
+                    },
+                );
+                return;
+            }
+        }
+
         const match = pathname.match(/^\/api\/storage\/([^/]+)\/([^/]+)(?:\/([^/]+))?$/);
         if (!match) {
             sendJson(res, 404, { error: "Not Found" });
             return;
         }
 
-        const [, dbName, table, id] = match;
+        const [, _dbName, table, id] = match;
         const userId = extractAuthUserId(req);
         const userDb = getUserDb(userId);
 
@@ -632,6 +664,19 @@ export const server = createServer(async (req, res) => {
 
         sendJson(res, 405, { error: "Method Not Allowed" });
     } catch (err) {
+        if (err.statusCode === 413 || err.message === "PAYLOAD_TOO_LARGE") {
+            sendJson(
+                res,
+                413,
+                {
+                    error: `Payload Too Large (Max ${Math.round(STORAGE_MAX_BODY_BYTES / (1024 * 1024))}MB)`,
+                },
+                () => {
+                    req.destroy();
+                },
+            );
+            return;
+        }
         sendJson(res, 500, { error: String(err) });
     }
 });
