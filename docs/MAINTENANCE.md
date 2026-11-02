@@ -57,14 +57,22 @@ Dự án sử dụng một cặp khóa SSH Ed25519 độc lập để không tr�
 
 ## 3. Kiến trúc Triển khai trên VPS 1GB RAM (Zero-Compile Deployment)
 
-Do máy chủ VPS có cấu hình tiết kiệm (**1 vCPU / 1GB RAM**), toàn bộ quá trình biên dịch nặng (Rspack, SWC, TypeScript, WebAssembly ~30MB) **bắt buộc thực hiện trên máy Local**. Máy chủ VPS chỉ nhận gói tài sản tĩnh đã đóng gói (`dist/`), dịch vụ lưu trữ siêu nhẹ (`server/storageServer.mjs`) và chạy qua Docker Compose:
+Do máy chủ VPS có cấu hình thực tế (**2 vCPU / 953 MB RAM**, kiểm tra bằng lệnh `nproc` và `free -m`), toàn bộ quá trình biên dịch nặng (Rspack, SWC, TypeScript, WebAssembly ~30MB) **bắt buộc thực hiện trên máy Local**. Máy chủ VPS chỉ nhận gói tài sản tĩnh đã đóng gói (`dist/`), dịch vụ lưu trữ siêu nhẹ (`server/storageServer.mjs`) và chạy qua Docker Compose:
+
+> **Lệnh tự kiểm tra cấu hình phần cứng VPS:**
+> ```bash
+> # Kiểm tra số lượng vCPU (kết quả đo thực tế trên VPS: 2 vCPU):
+> nproc
+> # Kiểm tra dung lượng RAM và Swap (kết quả đo thực tế: 953 MB RAM, 2047 MB Swap):
+> free -m
+> ```
 
 ```
 [ Người dùng (Trình duyệt) ]
          │
          ▼  HTTP (Cổng 80 / 8080)
 ┌──────────────────────────────────────────────────────────┐
-│ Máy chủ VPS (1GB RAM) - Thư mục: /opt/autocad-dunvex     │
+│ Máy chủ VPS (2 vCPU / 953 MB RAM) - /opt/autocad-dunvex  │
 │                                                          │
 │  ┌────────────────────────────────────────────────────┐  │
 │  │ Container 1: chili3d (nginx:alpine - Max 128MB)    │  │
