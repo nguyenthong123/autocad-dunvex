@@ -159,6 +159,7 @@
 ## 5. Nhật ký Thực thi & Báo cáo Thay đổi (Execution Log - Do AI Thực thi ghi)
 
 - **Ngày thực hiện:** 02/11/2026
+- **Git Commit:** `3a7edc2b`
 - **Trạng thái bàn giao:** `[?] WAITING_REVIEW`
 - **Môi trường triển khai:** VPS `http://136.66.95.155` (Docker Compose: `autocad-dunvex-chili3d-1` & `autocad-dunvex-storage-api-1` Up)
 
