@@ -15,6 +15,7 @@ export class MaterialDataContent extends Observable {
     readonly targetObjects: GeometryNode[];
     private _initialMaterial?: Material;
     private _autoCreatedMaterial?: Material;
+    private readonly _initialObjectMaterialIds = new Map<GeometryNode, string | string[]>();
 
     get autoCreatedMaterial(): Material | undefined {
         return this._autoCreatedMaterial;
@@ -41,6 +42,13 @@ export class MaterialDataContent extends Observable {
         this.targetObjects = targetObjects ?? [];
         this._initialMaterial = editingMaterial;
 
+        for (const obj of this.targetObjects) {
+            this._initialObjectMaterialIds.set(
+                obj,
+                Array.isArray(obj.materialId) ? [...obj.materialId] : obj.materialId,
+            );
+        }
+
         if (
             editingMaterial &&
             this.callback &&
@@ -53,9 +61,26 @@ export class MaterialDataContent extends Observable {
             this._autoCreatedMaterial = cloned;
             this.setPrivateValue("editingMaterial", cloned);
             this.callback(cloned);
+        } else if (
+            editingMaterial &&
+            this.callback &&
+            this.targetObjects.length > 0 &&
+            this.hasMixedMaterials(editingMaterial.id)
+        ) {
+            this.setPrivateValue("editingMaterial", editingMaterial);
+            this.callback(editingMaterial);
         } else {
             this.setPrivateValue("editingMaterial", editingMaterial);
         }
+    }
+
+    private hasMixedMaterials(materialId: string): boolean {
+        return this.targetObjects.some((obj) => {
+            if (typeof obj.materialId === "string") {
+                return obj.materialId !== materialId;
+            }
+            return !obj.materialId.includes(materialId);
+        });
     }
 
     private *allDocumentNodes(): Generator<INode> {
@@ -112,15 +137,17 @@ export class MaterialDataContent extends Observable {
     }
 
     cancelEdit() {
-        if (this._autoCreatedMaterial) {
-            if (this._initialMaterial && this.callback) {
-                this.callback(this._initialMaterial);
-            }
-            if (!this.isMaterialUsedByAnyNode(this._autoCreatedMaterial.id)) {
-                this.document.modelManager.materials.remove(this._autoCreatedMaterial);
-            }
-            this._autoCreatedMaterial = undefined;
+        if (this._initialMaterial && this.callback) {
+            this.callback(this._initialMaterial);
         }
+        for (const [obj, initMatId] of this._initialObjectMaterialIds.entries()) {
+            obj.materialId = Array.isArray(initMatId) ? [...initMatId] : initMatId;
+        }
+        if (this._autoCreatedMaterial && !this.isMaterialUsedByAnyNode(this._autoCreatedMaterial.id)) {
+            this.document.modelManager.materials.remove(this._autoCreatedMaterial);
+        }
+        this._autoCreatedMaterial = undefined;
+        this.document.visual?.update?.();
     }
 
     applyMaterial(material: Material) {

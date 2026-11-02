@@ -147,8 +147,9 @@ class MockConverter {
 
 class MockExpander extends HTMLElement {
     contenxtPanel: HTMLElement;
-    constructor(_title: string) {
+    constructor(title: string) {
         super();
+        this.dataset["title"] = title;
         this.contenxtPanel = document.createElement("div");
         this.appendChild(this.contenxtPanel);
     }

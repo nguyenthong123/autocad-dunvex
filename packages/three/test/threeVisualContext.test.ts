@@ -174,6 +174,24 @@ describe("ThreeVisualContext (real instance)", () => {
 
             expect(mockVisual.changeFaceMaterial).toHaveBeenCalled();
         });
+
+        test("should update visuals even when ownsFaceMaterial is false (wire/line nodes)", () => {
+            const material = documentMaterial();
+            addMaterial(material);
+
+            const node = createTestGeometryNode({ materialId: material.id });
+            const mockVisual = Object.create(ThreeGeometry.prototype);
+            mockVisual._ownsFaceMaterial = false;
+            Object.defineProperty(mockVisual, "ownsFaceMaterial", { get: () => false });
+            mockVisual.geometryNode = node;
+            mockVisual.changeFaceMaterial = rs.fn();
+
+            (context as any)._NodeVisualMap.set(node, mockVisual);
+
+            material.color = 0xff0000;
+
+            expect(mockVisual.changeFaceMaterial).toHaveBeenCalled();
+        });
     });
 
     describe("addVisualObject / removeVisualObject", () => {

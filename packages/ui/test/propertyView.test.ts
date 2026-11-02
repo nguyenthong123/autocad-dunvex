@@ -54,7 +54,7 @@ rs.mock("../src/property/matrixProperty", () => {
 });
 
 // Now import the module under test
-import { type INode, Node, VisualNode } from "@chili3d/core";
+import { GeometryNode, type INode, Node, VisualNode } from "@chili3d/core";
 import { PropertyView } from "../src/property/propertyView";
 import { mustQuery } from "./_helpers/domHelpers";
 
@@ -65,6 +65,18 @@ class TestNode extends (Node as unknown as new () => object) {
     color = "#ff0000";
     display() {
         return "TestNode";
+    }
+}
+
+class TestLineNode extends (GeometryNode as unknown as new () => object) {
+    display() {
+        return "LineNode";
+    }
+}
+
+class TestBoxNode extends (GeometryNode as unknown as new () => object) {
+    display() {
+        return "BoxNode";
     }
 }
 
@@ -491,6 +503,21 @@ describe("PropertyView", () => {
             const arr = [new Same(), new Same()];
             // biome-ignore lint/suspicious/noExplicitAny: accessing private method for testing
             expect((pv as any).isAllElementsOfTypeFirstElement(arr)).toBe(true);
+        });
+
+        test("shows common.material when multiple geometry nodes of different classes are selected", () => {
+            const pv = new PropertyView({ className: "test-panel" });
+            const doc = createMockDocument();
+            const handler = pubSubRecorder.handlers.get("showProperties");
+
+            const line = new TestLineNode();
+            const box = new TestBoxNode();
+
+            handler!(doc, [line as unknown as INode, box as unknown as INode]);
+
+            const expanders = pv.querySelectorAll("chili-mock-expander");
+            const titles = Array.from(expanders).map((e) => (e as HTMLElement).dataset["title"]);
+            expect(titles).toContain("common.material");
         });
     });
 });

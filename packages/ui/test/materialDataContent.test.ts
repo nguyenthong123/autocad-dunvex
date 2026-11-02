@@ -122,4 +122,32 @@ describe("MaterialDataContent", () => {
         document.modelManager.materials.push(mat2);
         expect(content.generateNextMaterialName()).toBe("Material 3");
     });
+
+    test("should sync all targetObjects to editingMaterial when targetObjects have mixed materials", () => {
+        const mat2 = new Material({ document, name: "Material 2", color: 0x222222 });
+        document.modelManager.materials.push(mat2);
+
+        const node1 = new TestGeomNode({ document, materialId: mat2.id });
+        const node2 = new TestGeomNode({ document, materialId: mat1.id });
+        document.modelManager.rootNode.add(node1);
+        document.modelManager.rootNode.add(node2);
+
+        const callback = rs.fn((m: Material) => {
+            node1.materialId = m.id;
+            node2.materialId = m.id;
+        });
+
+        const content = new MaterialDataContent(document, callback, mat2, [node1, node2]);
+
+        // mat2 is used only by node1 (within targetObjects), but node2 has mat1 (mixed).
+        // It should call callback(mat2) to align both nodes to mat2.
+        expect(callback).toHaveBeenCalledWith(mat2);
+        expect(node1.materialId).toBe(mat2.id);
+        expect(node2.materialId).toBe(mat2.id);
+
+        // When cancelling, each node must be restored to its individual initial materialId!
+        content.cancelEdit();
+        expect(node1.materialId).toBe(mat2.id);
+        expect(node2.materialId).toBe(mat1.id);
+    });
 });

@@ -194,7 +194,7 @@ export class ThreeVisualContext implements IVisualContext {
         }
 
         for (const visual of this._NodeVisualMap.values()) {
-            if (visual instanceof ThreeGeometry && visual.ownsFaceMaterial) {
+            if (visual instanceof ThreeGeometry) {
                 const matId = visual.geometryNode.materialId;
                 const matches =
                     typeof matId === "string"

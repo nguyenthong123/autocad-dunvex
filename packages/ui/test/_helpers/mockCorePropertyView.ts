@@ -20,6 +20,12 @@ rs.mock("@chili3d/core", () => {
     const actual = rs.hoisted(() => require("@chili3d/core"));
     const { LocalizeMock, BindingMock, TransactionMock } = rs.hoisted(() => require("./coreMocks"));
 
+    class VisualNodeMock {
+        display() {
+            return "VisualObject";
+        }
+    }
+
     return {
         ...actual,
         Localize: LocalizeMock,
@@ -38,9 +44,10 @@ rs.mock("@chili3d/core", () => {
         Node: class {},
         FolderNode: class {},
         GroupNode: class {},
-        VisualNode: class {
-            display() {
-                return "VisualObject";
+        VisualNode: VisualNodeMock,
+        GeometryNode: class extends VisualNodeMock {
+            override display() {
+                return "GeometryNode";
             }
         },
         // rs.hoisted(require(...)) may snapshot a partial core module; provide the

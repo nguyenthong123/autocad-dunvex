@@ -17,8 +17,10 @@ import {
     ShapeTypes,
     ShapeTypeUtils,
     type VertexMeshData,
+    VisualConfig,
 } from "@chili3d/core";
 import {
+    type Color,
     type Material,
     Mesh,
     type MeshLambertMaterial,
@@ -55,7 +57,12 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
      * whether that material is its own copy to dispose with us (per-segment colours or
      * dashing rule the shared per-width materials out — see `edgeMaterialFor`).
      */
-    private _edgeParts: { line: LineSegments2; material: LineMaterial; ownsMaterial: boolean }[] = [];
+    private _edgeParts: {
+        line: LineSegments2;
+        material: LineMaterial;
+        ownsMaterial: boolean;
+        lineType?: string;
+    }[] = [];
     private _faces?: Mesh;
     private _ownsFaceMaterial = false;
     private _vertexs?: Points;
@@ -99,7 +106,10 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
     changeFaceMaterial(material: Material | Material[]) {
         this._faceMaterial = material;
         this.updateEffectiveFaceMaterial();
-        if (!this._faces) return;
+        if (!this._faces) {
+            this.updateEdgeMaterials();
+            return;
+        }
 
         if (this.locked) {
             this._faces.userData["oldMaterial"] = this._effectiveFaceMaterial;
@@ -294,7 +304,50 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
             if (runs.length > 1) line.userData[EdgeVertexOffsetKey] = run.startVertex;
             if (this._renderOnTop) this.applyOnTopMaterial(line, material);
             this.add(line);
-            this._edgeParts.push({ line, material, ownsMaterial: owned });
+            this._edgeParts.push({ line, material, ownsMaterial: owned, lineType: run.lineType });
+        }
+    }
+
+    private getCustomEdgeColor(): Color | undefined {
+        if (this._faces !== undefined) return undefined;
+        const mat = Array.isArray(this._faceMaterial) ? this._faceMaterial[0] : this._faceMaterial;
+        const matColor = (mat as any)?.color;
+        if (!matColor?.isColor) return undefined;
+        const materials = this.geometryNode.document?.modelManager?.materials;
+        const matId = Array.isArray(this.geometryNode.materialId)
+            ? this.geometryNode.materialId[0]
+            : this.geometryNode.materialId;
+        const firstMaterial = materials?.at?.(0);
+        const isUntouchedDefault =
+            firstMaterial !== undefined &&
+            matId === firstMaterial.id &&
+            matColor.getHex() === VisualConfig.defaultFaceColor;
+        return isUntouchedDefault ? undefined : matColor;
+    }
+
+    updateEdgeMaterials() {
+        if (this._faces !== undefined || this._edgeParts.length === 0) return;
+        const customColor = this.getCustomEdgeColor();
+        for (const part of this._edgeParts) {
+            if (customColor !== undefined) {
+                if (!part.ownsMaterial) {
+                    part.material = part.material.clone();
+                    part.ownsMaterial = true;
+                }
+                part.material.color.copy(customColor);
+            } else if (part.ownsMaterial && part.lineType !== "dash") {
+                part.material.dispose();
+                part.material = edgeMaterialOfWidth(part.material.linewidth);
+                part.ownsMaterial = false;
+            }
+            if (this.locked) {
+                part.line.userData["oldMaterial"] = part.material;
+            } else {
+                part.line.material = part.material;
+            }
+            if (this._renderOnTop) {
+                this.applyOnTopMaterial(part.line, part.material);
+            }
         }
     }
 
@@ -312,8 +365,15 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
             ThreeGeometryFactory.setColor(geometry, data, material);
             return { material, owned: true };
         }
-        if (!Array.isArray(data.color))
+        if (!Array.isArray(data.color)) {
+            const customColor = this.getCustomEdgeColor();
+            if (customColor !== undefined) {
+                const material = edgeMaterialOfWidth(data.lineWidth).clone();
+                material.color.copy(customColor);
+                return { material, owned: true };
+            }
             return { material: edgeMaterialOfWidth(data.lineWidth), owned: false };
+        }
         const material = edgeMaterialOfWidth(data.lineWidth).clone();
         // `setColor` puts the per-segment colours on the geometry and whitens the material —
         // the whitening is what matters here, since the clone inherited the shared material's

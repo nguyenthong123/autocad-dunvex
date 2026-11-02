@@ -71,7 +71,7 @@ export class MaterialProperty extends PropertyBase {
             this.objects.forEach((x) => {
                 if (this.property.name in x) {
                     x.materialId =
-                        this.materials.length > 1
+                        this.materials.length > 1 && Array.isArray(x.materialId)
                             ? x.materialId.toSpliced(index, 1, material.id)
                             : material.id;
                 }

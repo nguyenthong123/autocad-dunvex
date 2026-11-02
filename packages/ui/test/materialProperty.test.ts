@@ -184,5 +184,21 @@ describe("MaterialProperty", () => {
             expect(obj1.materialId).toBe("mat-3");
             expect(obj2.materialId).toBe("mat-3");
         });
+
+        test("should safely update objects with string materialId when materials.length > 1", () => {
+            const doc = createMockDocument();
+            const obj1 = { materialId: ["mat-1", "mat-2"] };
+            const obj2 = { materialId: "mat-1" as string | string[] };
+            const prop = new MaterialProperty(doc, [obj1, obj2], propConfig);
+
+            const newMaterial = { id: "mat-3", name: "Material 3", color: "#0000ff" } as unknown as Material;
+            const mockEvent = { target: document.createElement("button") } as unknown as MouseEvent;
+            expect(() => {
+                (prop as any).setMaterial(mockEvent, newMaterial, 0);
+            }).not.toThrow();
+
+            expect(obj1.materialId).toEqual(["mat-3", "mat-2"]);
+            expect(obj2.materialId).toBe("mat-3");
+        });
     });
 });

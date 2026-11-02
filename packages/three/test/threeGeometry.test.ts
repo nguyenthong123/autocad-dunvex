@@ -187,11 +187,16 @@ describe("ThreeGeometry", () => {
             expect(geo.faces()?.material).toBe(newMat);
         });
 
-        test("changeFaceMaterial is a no-op when no faces present", () => {
+        test("changeFaceMaterial leaves faces undefined when no faces present and updates edge color", () => {
             const node = createTestGeometryNode({ hasFaces: false });
             const geo = new ThreeGeometry(node, context);
-            geo.changeFaceMaterial(new MeshBasicMaterial());
+            const customMat = new MeshBasicMaterial({ color: 0xff0000 });
+            geo.changeFaceMaterial(customMat);
             expect(geo.faces()).toBeUndefined();
+            const edgeLine = geo.edges();
+            expect(edgeLine).toBeDefined();
+            const mat = edgeLine!.material as any;
+            expect(mat.color.getHex()).toBe(0xff0000);
         });
     });
 

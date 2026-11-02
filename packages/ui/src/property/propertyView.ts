@@ -4,6 +4,7 @@
 import {
     Binding,
     FolderNode,
+    GeometryNode,
     GroupNode,
     type IDocument,
     type IFeatureListNode,
@@ -81,7 +82,7 @@ export class PropertyView extends HTMLElement {
 
     private addGeometry(nodes: INode[], document: IDocument) {
         const geometries = nodes.filter((x) => x instanceof VisualNode || x instanceof GroupNode);
-        if (geometries.length === 0 || !this.isAllElementsOfTypeFirstElement(geometries)) return;
+        if (geometries.length === 0) return;
         this.addTransform(document, geometries);
         this.addParameters(geometries, document);
     }
@@ -104,16 +105,29 @@ export class PropertyView extends HTMLElement {
 
     private addParameters(geometries: (VisualNode | GroupNode)[], document: IDocument) {
         const entities = geometries.filter((x) => x instanceof VisualNode);
-        if (entities.length === 0 || !this.isAllElementsOfTypeFirstElement(entities)) return;
-        const parameters = new Expander(entities[0].display());
-        // The source belongs to the instance's own group, next to material/shape type —
-        // the same place a feature shows the sketch it references.
-        const source = this.instanceSourceRow(document, entities);
+        if (entities.length === 0) return;
+        if (this.isAllElementsOfTypeFirstElement(entities)) {
+            const parameters = new Expander(entities[0].display());
+            // The source belongs to the instance's own group, next to material/shape type —
+            // the same place a feature shows the sketch it references.
+            const source = this.instanceSourceRow(document, entities);
+            parameters.contenxtPanel.append(
+                ...(source === undefined ? [] : [source]),
+                ...PropertyUtils.getProperties(Object.getPrototypeOf(entities[0]), Node.prototype).map((x) =>
+                    propertyControl(document, entities, x),
+                ),
+            );
+            this.panel.append(parameters);
+            return;
+        }
+
+        const geometryNodes = entities.filter((x) => x instanceof GeometryNode);
+        if (geometryNodes.length === 0) return;
+        const sharedProps = PropertyUtils.getProperties(GeometryNode.prototype, Node.prototype);
+        if (sharedProps.length === 0) return;
+        const parameters = new Expander("common.material");
         parameters.contenxtPanel.append(
-            ...(source === undefined ? [] : [source]),
-            ...PropertyUtils.getProperties(Object.getPrototypeOf(entities[0]), Node.prototype).map((x) =>
-                propertyControl(document, entities, x),
-            ),
+            ...sharedProps.map((x) => propertyControl(document, geometryNodes, x)),
         );
         this.panel.append(parameters);
     }
