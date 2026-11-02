@@ -102,12 +102,30 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
         }
         const box = this.box();
         if (!box) return false;
-        const dx = Math.abs(box.max.x - box.min.x);
-        const dy = Math.abs(box.max.y - box.min.y);
-        const dz = Math.abs(box.max.z - box.min.z);
-        const minDim = Math.min(dx, dy, dz);
-        const maxDim = Math.max(dx, dy, dz);
-        return minDim <= 50.0 && maxDim >= 100.0 && minDim / maxDim <= 0.2;
+        const dims = [
+            Math.abs(box.max.x - box.min.x),
+            Math.abs(box.max.y - box.min.y),
+            Math.abs(box.max.z - box.min.z),
+        ].sort((a, b) => a - b);
+        const [minDim, midDim, maxDim] = dims;
+
+        // Bức tường hoặc sàn lớn: có 2 chiều lớn >= 200mm và độ dày minDim > 8mm -> KHÔNG PHẢI tấm mỏng ốp
+        const isBroadWallOrFloor = minDim > 8.0 && midDim >= 200.0 && maxDim >= 200.0;
+        if (isBroadWallOrFloor) {
+            return false;
+        }
+
+        // Tấm ốp siêu mỏng (<= 8mm, ví dụ tấm nano 5-8mm, alu 3-4mm, lam composite 5mm):
+        if (minDim <= 8.0 && maxDim >= 50.0) {
+            return true;
+        }
+
+        // Thanh lam / nẹp chỉ / phào (dạng thanh hẹp: chiều dày <= 50mm, bề rộng thanh <= 100mm, và chiều dài >= 100mm):
+        if (minDim <= 50.0 && midDim <= 100.0 && maxDim >= 100.0) {
+            return true;
+        }
+
+        return false;
     }
 
     private getPolygonOffsetTier(): number {
@@ -120,9 +138,10 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
             return 2;
         }
 
-        // Tier 1: Khối 3D solid dạng tấm mỏng ốp tường (minDim <= 50mm) hoặc khối có vật liệu riêng
+        // Tier 1: Khối 3D solid dạng tấm mỏng / thanh lam ốp tường
+        // Khối solid phải có vật liệu riêng biệt (khác vật liệu mặc định LightGray) VÀ là tấm mỏng/thanh lam
         if (this.geometryNode.shape.value.shapeType === ShapeTypes.solid) {
-            if (this.isThinOverlaySolid() || this.hasCustomFaceMaterial()) {
+            if (this.hasCustomFaceMaterial() && this.isThinOverlaySolid()) {
                 return 1;
             }
         }
@@ -149,6 +168,9 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
         } else {
             this._effectiveFaceMaterial = this._faceMaterial;
             this._ownsFaceMaterial = false;
+        }
+        if (this._faces && !this.locked) {
+            this._faces.material = this._effectiveFaceMaterial!;
         }
     }
 

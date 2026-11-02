@@ -2,7 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 import { type EdgeMeshData, ShapeNode, ShapeTypes, XYZ } from "@chili3d/core";
-import { Box3, Mesh, MeshBasicMaterial, Points } from "three";
+import { Box3, Mesh, MeshBasicMaterial, Points, Vector3 } from "three";
 import type { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import {
@@ -78,6 +78,80 @@ describe("ThreeGeometry", () => {
             const geo = new ThreeGeometry(node, context);
             const mat = geo.faces()?.material as MeshBasicMaterial;
             expect(mat.polygonOffset).toBeFalsy();
+        });
+
+        test("assigns tier 0 (no polygonOffset) to default-material wall (530x10x370) and floor (510x1060x20)", () => {
+            const wallNode = createTestGeometryNode();
+            Object.setPrototypeOf(wallNode, ShapeNode.prototype);
+            (wallNode as any)._shape = {
+                isOk: true,
+                value: { shapeType: ShapeTypes.solid },
+            };
+            const geoWall = new ThreeGeometry(wallNode, context);
+            geoWall.box = () => new Box3(new Vector3(0, 0, 0), new Vector3(530, 10, 370));
+            (geoWall as any).updateEffectiveFaceMaterial();
+            const matWall = geoWall.faces()?.material as MeshBasicMaterial;
+            expect(matWall.polygonOffset).toBeFalsy();
+
+            const floorNode = createTestGeometryNode();
+            Object.setPrototypeOf(floorNode, ShapeNode.prototype);
+            (floorNode as any)._shape = {
+                isOk: true,
+                value: { shapeType: ShapeTypes.solid },
+            };
+            const geoFloor = new ThreeGeometry(floorNode, context);
+            geoFloor.box = () => new Box3(new Vector3(0, 0, 0), new Vector3(510, 1060, 20));
+            (geoFloor as any).updateEffectiveFaceMaterial();
+            const matFloor = geoFloor.faces()?.material as MeshBasicMaterial;
+            expect(matFloor.polygonOffset).toBeFalsy();
+        });
+
+        test("assigns tier 1 (factor -0.5, units -2.0) to thin slat (5x21x100) with custom material", () => {
+            const slatNode = createTestGeometryNode();
+            Object.setPrototypeOf(slatNode, ShapeNode.prototype);
+            (slatNode as any)._shape = {
+                isOk: true,
+                value: { shapeType: ShapeTypes.solid },
+            };
+            (slatNode as any).materialId = "custom-mat-slat";
+            (slatNode as any).document = {
+                modelManager: {
+                    materials: [
+                        { id: "default-mat", name: "LightGray", color: 0xd3d3d3 },
+                        { id: "custom-mat-slat", name: "lam 3 sóng", color: 0xb60707 },
+                    ],
+                },
+            };
+            const geoSlat = new ThreeGeometry(slatNode, context);
+            geoSlat.box = () => new Box3(new Vector3(0, 0, 0), new Vector3(5, 21, 100));
+            (geoSlat as any).updateEffectiveFaceMaterial();
+            const matSlat = geoSlat.faces()?.material as MeshBasicMaterial;
+            expect(matSlat.polygonOffset).toBe(true);
+            expect(matSlat.polygonOffsetFactor).toBe(-0.5);
+            expect(matSlat.polygonOffsetUnits).toBe(-2.0);
+        });
+
+        test("assigns tier 0 to broad wall (530x10x370) even when painted with custom material", () => {
+            const paintedWallNode = createTestGeometryNode();
+            Object.setPrototypeOf(paintedWallNode, ShapeNode.prototype);
+            (paintedWallNode as any)._shape = {
+                isOk: true,
+                value: { shapeType: ShapeTypes.solid },
+            };
+            (paintedWallNode as any).materialId = "custom-paint";
+            (paintedWallNode as any).document = {
+                modelManager: {
+                    materials: [
+                        { id: "default-mat", name: "LightGray", color: 0xd3d3d3 },
+                        { id: "custom-paint", name: "Sơn tường", color: 0x888888 },
+                    ],
+                },
+            };
+            const geoWall = new ThreeGeometry(paintedWallNode, context);
+            geoWall.box = () => new Box3(new Vector3(0, 0, 0), new Vector3(530, 10, 370));
+            (geoWall as any).updateEffectiveFaceMaterial();
+            const matWall = geoWall.faces()?.material as MeshBasicMaterial;
+            expect(matWall.polygonOffset).toBeFalsy();
         });
     });
 

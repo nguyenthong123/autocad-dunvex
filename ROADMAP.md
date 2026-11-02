@@ -62,6 +62,7 @@ packages/web ──> packages/builder ──> packages/app ───────
 | **TASK-16** | Khắc phục Lỗi Văng Camera 6.000.000mm do Đường đo kích thước lạc tọa độ (`AnnotationBatch` Outlier) khiến Toàn bộ 90 Khối `Prism` bị Thu Nhỏ thành 1 Chấm Li Ti dưới đáy màn hình | `[x] DONE` | [docs/tasks/TASK-16-fix-outlier-annotation-camera-fit.md](./docs/tasks/TASK-16-fix-outlier-annotation-camera-fit.md) |
 | **TASK-17** | **[Ưu tiên 1]** Sửa lỗi Home nhảy nhầm Dự án + **[Ưu tiên 2]** Cây đối tượng Phân cấp Thông minh (`Cha -> Con -> Cháu`), Ẩn/Hiện Hàng loạt 1 Click & Tự gom nhóm `Array` + **[Ưu tiên 3]** Bảng Thống kê Vật tư (`BOM` / `TK` / `LI`) | `[?] WAITING_REVIEW` | [docs/tasks/TASK-17-material-bom-takeoff-and-terminal-command.md](./docs/tasks/TASK-17-material-bom-takeoff-and-terminal-command.md) |
 | **TASK-18** | Khắc phục Lỗi Không Chọn Được Chi Tiết Nhỏ Nằm Trên Mặt Tường (`Prism12` Đỏ trên `Prism3` Xám), Xử lý Sọc Caro Đỏ-Xám (Z-Fighting), Chống Nhảy Loạn Xạ Cây Thư Mục & Tối Ưu Chống Lag Khi Rê Chuột | `[?] WAITING_REVIEW` | [docs/tasks/TASK-18-fix-coplanar-selection-zfighting-and-tree-jump-lag.md](./docs/tasks/TASK-18-fix-coplanar-selection-zfighting-and-tree-jump-lag.md) |
+| **TASK-19** | Khắc phục Triệt để Hiện tượng Sọc Caro Đỏ-Xám (Z-Fighting) giữa Bức Tường (`Prism3`) và Các Thanh Lam / Tấm Ốp (`Prism10`, `Prism11`, `Prism12`) | `[?] WAITING_REVIEW` | [docs/tasks/TASK-19-fix-wall-slat-zfighting.md](./docs/tasks/TASK-19-fix-wall-slat-zfighting.md) |
 
 ---
 
