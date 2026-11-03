@@ -94,6 +94,7 @@ ssh $SSH_OPTS "${VPS_USER}@${VPS_HOST}" "bash -s" <<EOF
 set -euo pipefail
 cd "${VPS_DEPLOY_DIR}"
 sudo docker compose restart storage-api
+sleep 2
 sudo docker compose ps
 
 echo "Kiểm tra endpoint proxy LLM:"
