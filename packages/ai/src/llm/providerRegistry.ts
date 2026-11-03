@@ -16,7 +16,7 @@ export interface KnownVendor {
     authHeaderType: "x-api-key" | "bearer";
 }
 
-export type KnownVendorId = "anthropic" | "openai" | "deepseek" | "google" | "groq" | "openrouter";
+export type KnownVendorId = "anthropic" | "openai" | "deepseek" | "google" | "groq" | "openrouter" | "nvidia";
 
 export const KNOWN_VENDORS: Record<KnownVendorId, KnownVendor> = {
     anthropic: {
@@ -103,6 +103,20 @@ export const KNOWN_VENDORS: Record<KnownVendorId, KnownVendor> = {
         keyPrefixes: ["sk-or-v1-"],
         authHeaderType: "bearer",
     },
+    nvidia: {
+        id: "nvidia",
+        name: "NVIDIA NIM",
+        protocol: "completions",
+        proxyBaseURL: "/api/llm-proxy/nvidia/v1",
+        directBaseURL: "https://integrate.api.nvidia.com/v1",
+        modelsPath: "/models",
+        corsDirect: false,
+        docsUrl: "https://build.nvidia.com/",
+        verifiedDate: "2026-11-03",
+        defaultModel: "meta/llama-3.3-70b-instruct",
+        keyPrefixes: ["nvapi-"],
+        authHeaderType: "bearer",
+    },
 };
 
 export function getProviderById(id: string): KnownVendor | undefined {
@@ -134,6 +148,9 @@ export function guessVendorCandidates(apiKey: string): KnownVendor[] {
 
     if (key.startsWith("sk-ant-")) {
         return [KNOWN_VENDORS.anthropic];
+    }
+    if (key.startsWith("nvapi-")) {
+        return [KNOWN_VENDORS.nvidia];
     }
     if (key.startsWith("sk-or-v1-")) {
         return [KNOWN_VENDORS.openrouter];

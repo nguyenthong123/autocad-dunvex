@@ -1717,7 +1717,7 @@ describe("ChatPanel", () => {
         const anyPanel = panel as any;
         // Nothing saved: the fields start as the anthropic preset's.
         (anyPanel.settingsButtonEl as HTMLButtonElement).click();
-        expect(anyPanel.modelInput.value).toBe("claude-opus-5");
+        expect(anyPanel.modelPicker.getValue()).toBe("claude-opus-5");
 
         const switchTo = (id: string) => {
             anyPanel.providerSelect.value = id;
@@ -1726,13 +1726,13 @@ describe("ChatPanel", () => {
 
         switchTo("openai");
         expect(anyPanel.baseURLInput.value).toBe("https://api.openai.com/v1");
-        expect(anyPanel.modelInput.value).toBe("gpt-5.5");
+        expect(anyPanel.modelPicker.getValue()).toBe("gpt-5.5");
 
         // And back: the field now holds openai's URL, which is still the preset's to change —
         // the switch has to know where the value came from, not just that it is non-empty.
         switchTo("anthropic");
         expect(anyPanel.baseURLInput.value).toBe("https://api.anthropic.com");
-        expect(anyPanel.modelInput.value).toBe("claude-opus-5");
+        expect(anyPanel.modelPicker.getValue()).toBe("claude-opus-5");
     });
 
     test("keeps the base URL and model the user has made their own", () => {
@@ -1740,7 +1740,7 @@ describe("ChatPanel", () => {
         const anyPanel = panel as any;
         (anyPanel.settingsButtonEl as HTMLButtonElement).click();
         anyPanel.baseURLInput.value = "https://my-proxy.example/v1";
-        anyPanel.modelInput.value = "gpt-5.5-codex";
+        anyPanel.modelPicker.setValue("gpt-5.5-codex");
 
         anyPanel.providerSelect.value = "responses";
         anyPanel.providerSelect.onchange?.(new Event("change"));
@@ -1748,7 +1748,7 @@ describe("ChatPanel", () => {
         // A switch is a routing choice, not a reset: what the user typed survives it, field by
         // field — the base URL is theirs, while the model still only carries an edited value here.
         expect(anyPanel.baseURLInput.value).toBe("https://my-proxy.example/v1");
-        expect(anyPanel.modelInput.value).toBe("gpt-5.5-codex");
+        expect(anyPanel.modelPicker.getValue()).toBe("gpt-5.5-codex");
 
         // The window is a setting of the user's too, and a provider switch has no business
         // resetting it to the default behind their back.
@@ -1762,7 +1762,7 @@ describe("ChatPanel", () => {
         const panel = new ChatPanel();
         const anyPanel = panel as any;
         (anyPanel.settingsButtonEl as HTMLButtonElement).click();
-        anyPanel.modelInput.value = "my-model";
+        anyPanel.modelPicker.setValue("my-model");
 
         anyPanel.providerSelect.value = "responses";
         anyPanel.providerSelect.onchange?.(new Event("change"));
@@ -1770,21 +1770,21 @@ describe("ChatPanel", () => {
         // Per field, not per form: the base URL still holds anthropic's, so the preset re-points
         // it; the model is the user's and stays.
         expect(anyPanel.baseURLInput.value).toBe("https://api.openai.com/v1");
-        expect(anyPanel.modelInput.value).toBe("my-model");
+        expect(anyPanel.modelPicker.getValue()).toBe("my-model");
     });
 
     test("fills a field the user has emptied when the provider changes", () => {
         const panel = new ChatPanel();
         const anyPanel = panel as any;
         (anyPanel.settingsButtonEl as HTMLButtonElement).click();
-        anyPanel.modelInput.value = "";
+        anyPanel.modelPicker.setValue("");
 
         anyPanel.providerSelect.value = "responses";
         anyPanel.providerSelect.onchange?.(new Event("change"));
 
         // Empty says nothing worth keeping, so the preset has it — unlike a value that was typed
         // and then changed to another, which stays the user's.
-        expect(anyPanel.modelInput.value).toBe("gpt-5.5");
+        expect(anyPanel.modelPicker.getValue()).toBe("gpt-5.5");
     });
 
     test("offers the api key to the password manager when saving settings", async () => {
@@ -1799,7 +1799,7 @@ describe("ChatPanel", () => {
             const panel = new ChatPanel();
             const anyPanel = panel as any;
             anyPanel.apiKeyInput.value = "sk-live";
-            anyPanel.modelInput.value = "m";
+            anyPanel.modelPicker.setValue("m");
             await anyPanel.saveSettings();
 
             expect(store.mock.calls.length).toBe(1);
@@ -1819,7 +1819,7 @@ describe("ChatPanel", () => {
         const panel = new ChatPanel();
         const anyPanel = panel as any;
         anyPanel.apiKeyInput.value = "sk-session";
-        anyPanel.modelInput.value = "m";
+        anyPanel.modelPicker.setValue("m");
         await anyPanel.saveSettings();
 
         expect(loadConfig()?.apiKey).toBe("sk-session");
@@ -1853,20 +1853,17 @@ describe("ChatPanel", () => {
             await anyPanel.runDiscovery();
 
             expect(anyPanel.baseURLInput.value).toBe("/api/llm-proxy/anthropic");
-            expect(anyPanel.statusBanner.textContent).toBe("ai.discoverySuccess");
-            expect(anyPanel.modelSelect.options.length).toBe(3); // 2 models + __custom__
-            expect(anyPanel.modelSelect.value).toBe("claude-3-7-sonnet-20250219");
-            expect(anyPanel.modelInput.value).toBe("claude-3-7-sonnet-20250219");
+            expect(anyPanel.statusBanner.textContent).toBe("ai.discoveryCatalogSuccess");
+            expect(anyPanel.modelPicker.getModels().length).toBe(2);
+            expect(anyPanel.modelPicker.getValue()).toBe("claude-3-7-sonnet-20250219");
 
-            // Changing model in select updates modelInput
-            anyPanel.modelSelect.value = "claude-3-5-haiku-20241022";
-            anyPanel.modelSelect.onchange?.(new Event("change"));
-            expect(anyPanel.modelInput.value).toBe("claude-3-5-haiku-20241022");
+            // Changing model in picker updates value
+            anyPanel.modelPicker.setValue("claude-3-5-haiku-20241022");
+            expect(anyPanel.modelPicker.getValue()).toBe("claude-3-5-haiku-20241022");
 
-            // Choosing custom reveals modelInput
-            anyPanel.modelSelect.value = "__custom__";
-            anyPanel.modelSelect.onchange?.(new Event("change"));
-            expect(anyPanel.modelInput.style.display).toBe("block");
+            // Setting custom model updates value
+            anyPanel.modelPicker.setValue("custom-user-model");
+            expect(anyPanel.modelPicker.getValue()).toBe("custom-user-model");
 
             // Updating base URL to external triggers CORS warning
             anyPanel.baseURLInput.value = "https://custom-external.example.com";

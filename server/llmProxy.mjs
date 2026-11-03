@@ -41,6 +41,11 @@ export const ALLOWED_VENDORS = {
         baseURL: "https://openrouter.ai/api",
         allowedPaths: ["/v1/models", "/v1/chat/completions"],
     },
+    nvidia: {
+        id: "nvidia",
+        baseURL: "https://integrate.api.nvidia.com",
+        allowedPaths: ["/v1/models", "/models", "/v1/chat/completions", "/chat/completions"],
+    },
 };
 
 /** Forwarded headers whitelist (all other headers including Cookie are stripped). */
@@ -193,6 +198,10 @@ export async function handleLlmProxy(req, res, pathname, options = {}) {
     let upstreamSubpath = subpath;
     if (vendorId === "google" && upstreamSubpath.startsWith("/v1/")) {
         upstreamSubpath = upstreamSubpath.slice(3);
+    }
+    // NVIDIA NIM inference endpoints require /v1/chat/completions and /v1/models
+    if (vendorId === "nvidia" && !upstreamSubpath.startsWith("/v1/")) {
+        upstreamSubpath = `/v1${upstreamSubpath.startsWith("/") ? "" : "/"}${upstreamSubpath}`;
     }
 
     // 4. Timeouts: 15s for GET (models), 300s for POST/chat

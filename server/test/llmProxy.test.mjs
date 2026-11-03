@@ -82,6 +82,11 @@ describe("LLM Proxy Server Unit Tests", () => {
                     baseURL: `http://127.0.0.1:${mockUpstreamPort}`,
                     allowedPaths: ["/v1/models", "/v1/chat/completions"],
                 },
+                nvidia: {
+                    id: "nvidia",
+                    baseURL: `http://127.0.0.1:${mockUpstreamPort}`,
+                    allowedPaths: ["/v1/models", "/models", "/v1/chat/completions", "/chat/completions"],
+                },
             };
 
             // 2. Local test server running handleLlmProxy
@@ -346,5 +351,72 @@ describe("LLM Proxy Server Unit Tests", () => {
         assert.strictEqual(lastUpstreamRequest.headers.authorization, "Bearer mock-token-sk-test");
         const bodyText = await res.text();
         assert.ok(bodyText.includes("Xin chào"));
+    });
+
+    it("verifies NVIDIA NIM in ALLOWED_VENDORS has fixed upstream and strict allowed paths", () => {
+        assert.ok(ALLOWED_VENDORS.nvidia, "Expected nvidia in ALLOWED_VENDORS");
+        assert.strictEqual(
+            ALLOWED_VENDORS.nvidia.baseURL,
+            "https://integrate.api.nvidia.com",
+            "NVIDIA upstream must be integrate.api.nvidia.com",
+        );
+        assert.ok(
+            ALLOWED_VENDORS.nvidia.allowedPaths.includes("/v1/chat/completions"),
+            "Must allow /v1/chat/completions",
+        );
+        assert.ok(ALLOWED_VENDORS.nvidia.allowedPaths.includes("/v1/models"), "Must allow /v1/models");
+    });
+
+    it("routes NVIDIA NIM chat completions /api/llm-proxy/nvidia/v1/chat/completions to upstream with streaming and bearer auth", async () => {
+        const res = await fetch(`http://127.0.0.1:${proxyPort}/api/llm-proxy/nvidia/v1/chat/completions`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer nvapi-mock-test-key-999",
+            },
+            body: JSON.stringify({
+                model: "meta/llama-3.3-70b-instruct",
+                messages: [{ role: "user", content: "Test ping" }],
+                stream: true,
+            }),
+        });
+
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(lastUpstreamRequest.method, "POST");
+        assert.strictEqual(lastUpstreamRequest.url, "/v1/chat/completions");
+        assert.strictEqual(lastUpstreamRequest.headers.authorization, "Bearer nvapi-mock-test-key-999");
+        const parsedBody = JSON.parse(lastUpstreamRequest.body);
+        assert.strictEqual(parsedBody.model, "meta/llama-3.3-70b-instruct");
+        const text = await res.text();
+        assert.ok(text.includes("Xin chào"));
+    });
+
+    it("normalizes NVIDIA NIM subpaths without /v1 prefix: /api/llm-proxy/nvidia/chat/completions maps to /v1/chat/completions", async () => {
+        const res = await fetch(`http://127.0.0.1:${proxyPort}/api/llm-proxy/nvidia/chat/completions`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer nvapi-mock-test-key-999",
+            },
+            body: JSON.stringify({
+                model: "meta/llama-3.3-70b-instruct",
+                messages: [{ role: "user", content: "Test ping" }],
+            }),
+        });
+
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(lastUpstreamRequest.url, "/v1/chat/completions");
+    });
+
+    it("rejects unauthorized NVIDIA path with 404", async () => {
+        const res = await fetch(`http://127.0.0.1:${proxyPort}/api/llm-proxy/nvidia/v1/admin`, {
+            method: "GET",
+            headers: {
+                Authorization: "Bearer nvapi-mock-test-key-999",
+            },
+        });
+        assert.strictEqual(res.status, 404);
+        const body = await res.json();
+        assert.strictEqual(body.error, "Path not allowed by proxy allowlist");
     });
 });

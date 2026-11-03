@@ -833,6 +833,42 @@
     border: 1px solid rgba(239, 68, 68, 0.25);
 }
 
+.testModelRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.testModelBtn {
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 3px 8px;
+    font-size: 11px;
+    color: var(--foreground-muted-color);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.testModelBtn:hover:not(:disabled) {
+    background: var(--hover-background-color);
+    color: var(--foreground-color);
+}
+
+.testModelBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.testModelStatus {
+    font-size: 11px;
+    line-height: 1.3;
+    padding: 3px 6px;
+    border-radius: 4px;
+}
+
 .advancedDetails {
     margin-top: 8px;
     border-top: 1px solid var(--border-color);

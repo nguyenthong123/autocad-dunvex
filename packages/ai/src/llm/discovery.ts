@@ -4,10 +4,16 @@
 import { getProviderById, guessVendorCandidates, type KnownVendor } from "./providerRegistry";
 import { resolveBaseURL, sanitizeErrorMessage } from "./urlUtils";
 
+export type ToolCallingCapability = "supported" | "unsupported" | "unverified";
+
 export interface DiscoveredModel {
     id: string;
     name?: string;
     isDefault?: boolean;
+    toolCapability: ToolCallingCapability;
+    hasVision?: boolean;
+    contextLength?: number;
+    description?: string;
 }
 
 export interface DiscoveryResult {
@@ -51,6 +57,60 @@ function isChatModel(id: string): boolean {
     return true;
 }
 
+export function detectToolCapability(item: any): ToolCallingCapability {
+    if (!item || typeof item !== "object") return "unverified";
+
+    // 1. Array of supported_parameters (e.g. OpenRouter)
+    if (Array.isArray(item.supported_parameters)) {
+        const params = item.supported_parameters.map((p: any) => String(p).toLowerCase());
+        const hasTools = params.some(
+            (p: string) => p === "tools" || p === "tool_choice" || p === "functions",
+        );
+        return hasTools ? "supported" : "unsupported";
+    }
+
+    // 2. Capabilities object (e.g. 9router, unified proxy gateways)
+    if (item.capabilities && typeof item.capabilities === "object") {
+        if (typeof item.capabilities.tools === "boolean") {
+            return item.capabilities.tools ? "supported" : "unsupported";
+        }
+        if (typeof item.capabilities.tool_choice === "boolean") {
+            return item.capabilities.tool_choice ? "supported" : "unsupported";
+        }
+    }
+
+    // Default: missing or ambiguous metadata -> unverified (Do NOT guess!)
+    return "unverified";
+}
+
+export function detectVisionCapability(item: any): boolean {
+    if (!item || typeof item !== "object") return false;
+    if (typeof item.architecture?.modality === "string") {
+        return item.architecture.modality.toLowerCase().includes("image");
+    }
+    if (Array.isArray(item.modalities)) {
+        return item.modalities.some((m: any) => String(m).toLowerCase().includes("image"));
+    }
+    if (item.capabilities && typeof item.capabilities === "object") {
+        if (item.capabilities.vision === true) return true;
+    }
+    if (
+        typeof item.id === "string" &&
+        (item.id.toLowerCase().includes("-vision") || item.id.toLowerCase().includes("vl"))
+    ) {
+        return true;
+    }
+    return false;
+}
+
+export function detectContextLength(item: any): number | undefined {
+    if (!item || typeof item !== "object") return undefined;
+    const len =
+        item.context_length ?? item.context_window ?? item.max_context_length ?? item.max_context_tokens;
+    if (typeof len === "number" && len > 0) return len;
+    return undefined;
+}
+
 export function filterAndSortModels(rawModels: any[], vendor: KnownVendor): DiscoveredModel[] {
     const chatModels: DiscoveredModel[] = [];
 
@@ -59,18 +119,36 @@ export function filterAndSortModels(rawModels: any[], vendor: KnownVendor): Disc
         const id = item.id;
         if (!isChatModel(id)) continue;
 
-        const displayName = typeof item.display_name === "string" ? item.display_name : undefined;
+        const displayName =
+            typeof item.name === "string"
+                ? item.name
+                : typeof item.display_name === "string"
+                  ? item.display_name
+                  : typeof item.displayName === "string"
+                    ? item.displayName
+                    : undefined;
+
+        const toolCapability = detectToolCapability(item);
+        const hasVision = detectVisionCapability(item);
+        const contextLength = detectContextLength(item);
+
         chatModels.push({
             id,
             name: displayName,
             isDefault: id === vendor.defaultModel,
+            toolCapability,
+            hasVision,
+            contextLength,
+            description: typeof item.description === "string" ? item.description : undefined,
         });
     }
 
-    // Sort: default model first, then alphabetically
+    // Sort: default model first, then tool-supported models, then alphabetically by ID
     chatModels.sort((a, b) => {
         if (a.isDefault) return -1;
         if (b.isDefault) return 1;
+        if (a.toolCapability === "supported" && b.toolCapability !== "supported") return -1;
+        if (b.toolCapability === "supported" && a.toolCapability !== "supported") return 1;
         return a.id.localeCompare(b.id);
     });
 
@@ -79,6 +157,7 @@ export function filterAndSortModels(rawModels: any[], vendor: KnownVendor): Disc
         chatModels.unshift({
             id: vendor.defaultModel,
             isDefault: true,
+            toolCapability: "supported",
         });
     }
 
@@ -182,4 +261,114 @@ export async function discoverProvider(
         models: [],
         error: lastError ?? "Could not connect to provider",
     };
+}
+
+export interface TestModelOptions {
+    provider?: string;
+    protocol?: string;
+    baseURL?: string;
+    apiKey: string;
+    model?: string;
+    modelId?: string;
+    customFetch?: typeof fetch;
+    signal?: AbortSignal;
+}
+
+export interface TestModelResult {
+    success: boolean;
+    latencyMs?: number;
+    error?: string;
+}
+
+/**
+ * Tests a single user-chosen model on demand with a minimal prompt.
+ * Never runs automatically; warns user of potential token consumption.
+ * Zero logging of API keys.
+ */
+export async function testSingleModel(options: TestModelOptions): Promise<TestModelResult> {
+    const cleanKey = options.apiKey.trim();
+    if (!cleanKey) {
+        return { success: false, error: "API key is required" };
+    }
+    const cleanModel = (options.model ?? options.modelId ?? "").trim();
+    if (!cleanModel) {
+        return { success: false, error: "Model ID is required" };
+    }
+
+    const fetchFn = options.customFetch ?? globalThis.fetch;
+    if (!fetchFn) {
+        return { success: false, error: "fetch is not available" };
+    }
+
+    const start = Date.now();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    if (options.signal) {
+        options.signal.addEventListener("abort", () => controller.abort(), { once: true });
+    }
+
+    const provider = options.provider ?? options.protocol ?? "openai";
+
+    try {
+        if (provider === "anthropic") {
+            const rawBase = resolveBaseURL(options.baseURL, "https://api.anthropic.com");
+            const url = `${rawBase}/v1/messages`;
+            const res = await fetchFn(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": cleanKey,
+                    "anthropic-version": "2023-06-01",
+                },
+                body: JSON.stringify({
+                    model: cleanModel,
+                    max_tokens: 5,
+                    messages: [{ role: "user", content: "Ping" }],
+                }),
+                signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+
+            if (res.ok) {
+                return { success: true, latencyMs: Date.now() - start };
+            }
+            const errData = await res.json().catch(() => ({}));
+            const msg = errData?.error?.message || `HTTP ${res.status}`;
+            return { success: false, error: sanitizeErrorMessage(msg, cleanKey) };
+        }
+
+        // completions / responses (OpenAI-compatible)
+        const defaultBase = "https://api.openai.com/v1";
+        const rawBase = resolveBaseURL(options.baseURL, defaultBase);
+        const url = `${rawBase}/chat/completions`;
+        const res = await fetchFn(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${cleanKey}`,
+            },
+            body: JSON.stringify({
+                model: cleanModel,
+                max_tokens: 5,
+                messages: [{ role: "user", content: "Ping" }],
+            }),
+            signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+            return { success: true, latencyMs: Date.now() - start };
+        }
+        const errData = await res.json().catch(() => ({}));
+        const msg =
+            errData?.error?.message ||
+            (typeof errData?.detail === "string" ? errData.detail : undefined) ||
+            errData?.message ||
+            `HTTP ${res.status}`;
+        return { success: false, error: sanitizeErrorMessage(msg, cleanKey) };
+    } catch (err: any) {
+        clearTimeout(timeoutId);
+        const rawMsg = err?.name === "AbortError" ? "Request timed out" : err?.message || String(err);
+        return { success: false, error: sanitizeErrorMessage(rawMsg, cleanKey) };
+    }
 }

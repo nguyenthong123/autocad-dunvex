@@ -9,8 +9,8 @@ import {
 } from "../src/llm/providerRegistry";
 
 describe("providerRegistry", () => {
-    test("has 6 verified vendors with complete metadata", () => {
-        const expectedVendors = ["anthropic", "openai", "deepseek", "google", "groq", "openrouter"];
+    test("has 7 verified vendors with complete metadata", () => {
+        const expectedVendors = ["anthropic", "openai", "deepseek", "google", "groq", "openrouter", "nvidia"];
         for (const id of expectedVendors) {
             const v = getProviderById(id);
             expect(v).toBeDefined();
@@ -29,6 +29,13 @@ describe("providerRegistry", () => {
         const ant = guessVendorCandidates("sk-ant-api03-abcdef12345");
         expect(ant).toHaveLength(1);
         expect(ant[0].id).toBe("anthropic");
+
+        // NVIDIA NIM
+        const nva = guessVendorCandidates("nvapi-1234567890abcdef");
+        expect(nva).toHaveLength(1);
+        expect(nva[0].id).toBe("nvidia");
+        expect(nva[0].protocol).toBe("completions");
+        expect(nva[0].proxyBaseURL).toBe("/api/llm-proxy/nvidia/v1");
 
         // OpenAI project key
         const oai = guessVendorCandidates("sk-proj-1234567890abcdef");

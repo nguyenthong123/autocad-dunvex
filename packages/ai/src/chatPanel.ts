@@ -41,7 +41,7 @@ import {
     writeConversations,
 } from "./history";
 import { runAgent } from "./llm/agent";
-import { discoverProvider } from "./llm/discovery";
+import { discoverProvider, testSingleModel } from "./llm/discovery";
 import { splitDataUrl } from "./llm/imageData";
 import { journalEntriesFromMessages, journalFromStored, mergeJournal } from "./llm/journal";
 import { dropSupersededImages, dropSupersededThinking, dropTrailingSynthetic } from "./llm/messages";
@@ -50,6 +50,7 @@ import { KNOWN_VENDORS } from "./llm/providerRegistry";
 import { readReference } from "./llm/referenceReader";
 import type { ChatMessage, ImagePart, TokenUsage, Tool } from "./llm/types";
 import { sanitizeErrorMessage } from "./llm/urlUtils";
+import { ModelPicker } from "./modelPicker";
 import {
     CONTEXT_WINDOW_OPTIONS,
     currentConfig,
@@ -540,8 +541,9 @@ export class ChatPanel extends HTMLElement {
     private turnConversation?: StoredConversation;
     private providerSelect!: HTMLSelectElement;
     private baseURLInput!: HTMLInputElement;
-    private modelInput!: HTMLInputElement;
-    private modelSelect!: HTMLSelectElement;
+    private modelPicker!: ModelPicker;
+    private testModelButton!: HTMLButtonElement;
+    private testModelStatusEl!: HTMLElement;
     private checkKeyButton!: HTMLButtonElement;
     private statusBanner!: HTMLElement;
     private corsWarning!: HTMLElement;
@@ -825,8 +827,21 @@ export class ChatPanel extends HTMLElement {
             ...PROVIDER_PRESETS.map((p) => option({ value: p.id, textContent: p.label })),
         );
         this.baseURLInput = input({ className: style.field, placeholder: "base URL (OpenAI-compatible)" });
-        this.modelSelect = select({ className: style.field });
-        this.modelInput = input({ className: style.field, placeholder: "model" });
+        this.modelPicker = new ModelPicker({
+            onChange: () => {
+                if (this.testModelStatusEl) {
+                    this.testModelStatusEl.textContent = "";
+                    this.testModelStatusEl.className = style.testModelStatus;
+                }
+            },
+        });
+        this.testModelButton = button({
+            className: style.testModelBtn,
+            type: "button",
+            textContent: new Localize("ai.testModel"),
+            onclick: () => void this.runTestModel(),
+        });
+        this.testModelStatusEl = span({ className: style.testModelStatus });
         this.effortSelect = select(
             { className: style.field },
             // The empty value is the endpoint's own default, not a level: sending nothing is what
@@ -882,19 +897,6 @@ export class ChatPanel extends HTMLElement {
             this.updateCorsWarning();
         };
 
-        this.modelSelect.onchange = () => {
-            if (this.modelSelect && this.modelInput) {
-                if (this.modelSelect.value === "__custom__") {
-                    this.modelInput.style.display = "block";
-                    this.modelInput.value = "";
-                    this.modelInput.focus();
-                } else {
-                    this.modelInput.value = this.modelSelect.value;
-                    this.modelInput.style.display = "none";
-                }
-            }
-        };
-
         this.providerSelect.onchange = () => this.onProviderChanged();
     }
 
@@ -942,8 +944,12 @@ export class ChatPanel extends HTMLElement {
                     new Localize("ai.model"),
                     div(
                         { style: "display: flex; flex-direction: column; gap: 4px;" },
-                        this.modelSelect,
-                        this.modelInput,
+                        this.modelPicker.element,
+                        div({ className: style.testModelRow }, this.testModelButton, this.testModelStatusEl),
+                        div({
+                            className: style.settingsHint,
+                            textContent: new Localize("ai.testModelCostWarning"),
+                        }),
                     ),
                 ),
                 details(
@@ -996,17 +1002,58 @@ export class ChatPanel extends HTMLElement {
     }
 
     private syncModelSelect(modelName: string) {
-        if (!this.modelSelect) return;
-        this.modelSelect.innerHTML = "";
-        if (modelName) {
-            this.modelSelect.append(option({ value: modelName, textContent: modelName }));
+        if (!this.modelPicker) return;
+        this.modelPicker.setValue(modelName);
+    }
+
+    private async runTestModel() {
+        const key = this.apiKeyInput?.value.trim() ?? "";
+        const model = this.modelPicker?.getValue().trim() ?? "";
+        if (!key || !model) {
+            if (this.testModelStatusEl) {
+                this.testModelStatusEl.className = `${style.testModelStatus} ${style.testModelError}`;
+                this.testModelStatusEl.textContent = I18n.translate("ai.testModelError", "No key or model");
+            }
+            return;
         }
-        this.modelSelect.append(
-            option({ value: "__custom__", textContent: I18n.translate("ai.customModel") }),
-        );
-        this.modelSelect.value = modelName;
-        this.modelSelect.style.display = "block";
-        if (this.modelInput) this.modelInput.style.display = "none";
+
+        const preset = PROVIDER_PRESETS.find((p) => p.id === this.providerSelect?.value);
+        const protocol = preset?.provider ?? "anthropic";
+        const baseURL = this.baseURLInput?.value.trim() || preset?.baseURL || "";
+
+        this.testModelButton.disabled = true;
+        this.testModelStatusEl.className = style.testModelStatus;
+        this.testModelStatusEl.textContent = I18n.translate("ai.testingModel");
+
+        try {
+            const result = await testSingleModel({
+                apiKey: key,
+                modelId: model,
+                protocol,
+                baseURL,
+            });
+            if (result.success) {
+                this.testModelStatusEl.className = `${style.testModelStatus} ${style.testModelSuccess}`;
+                this.testModelStatusEl.textContent = I18n.translate(
+                    "ai.testModelSuccess",
+                    String(result.latencyMs ?? 0),
+                );
+            } else {
+                this.testModelStatusEl.className = `${style.testModelStatus} ${style.testModelError}`;
+                this.testModelStatusEl.textContent = I18n.translate(
+                    "ai.testModelError",
+                    result.error ?? "Failed",
+                );
+            }
+        } catch (err: any) {
+            this.testModelStatusEl.className = `${style.testModelStatus} ${style.testModelError}`;
+            this.testModelStatusEl.textContent = I18n.translate(
+                "ai.testModelError",
+                err?.message || String(err),
+            );
+        } finally {
+            this.testModelButton.disabled = false;
+        }
     }
 
     private async runDiscovery() {
@@ -1022,7 +1069,10 @@ export class ChatPanel extends HTMLElement {
             const result = await discoverProvider(key);
             if (result.success && result.vendor) {
                 this.statusBanner.className = `${style.statusBanner} ${style.statusSuccess}`;
-                this.statusBanner.textContent = I18n.translate("ai.discoverySuccess", result.vendor.name);
+                this.statusBanner.textContent = I18n.translate(
+                    "ai.discoveryCatalogSuccess",
+                    result.vendor.name,
+                );
 
                 if (this.baseURLInput) {
                     this.baseURLInput.value = result.vendor.proxyBaseURL;
@@ -1041,27 +1091,20 @@ export class ChatPanel extends HTMLElement {
                     this.usernameInput.value = result.vendor.id;
                 }
 
-                if (this.modelSelect && this.modelInput) {
-                    this.modelSelect.innerHTML = "";
-                    for (const m of result.models) {
-                        this.modelSelect.append(
-                            option({
-                                value: m.id,
-                                textContent: m.name ? `${m.name} (${m.id})` : m.id,
-                            }),
-                        );
+                if (this.modelPicker) {
+                    this.modelPicker.setModels(result.models, result.vendor);
+                    const savedModel = loadConfig()?.model?.trim();
+                    if (savedModel) {
+                        // TASK-30: Giữ model hiện tại đã lưu dù nó không xuất hiện trong kết quả discovery
+                        this.modelPicker.setValue(savedModel);
+                    } else {
+                        const current = this.modelPicker.getValue();
+                        const presetDefault = this.appliedPreset?.defaultModel;
+                        if (!current || current === presetDefault) {
+                            const chosen = result.selectedModel ?? result.models[0]?.id ?? "";
+                            this.modelPicker.setValue(chosen);
+                        }
                     }
-                    this.modelSelect.append(
-                        option({
-                            value: "__custom__",
-                            textContent: I18n.translate("ai.customModel"),
-                        }),
-                    );
-                    const chosen = result.selectedModel ?? result.models[0]?.id ?? "";
-                    this.modelSelect.value = chosen;
-                    this.modelInput.value = chosen;
-                    this.modelSelect.style.display = "block";
-                    this.modelInput.style.display = "none";
                 }
             } else {
                 this.statusBanner.className = `${style.statusBanner} ${style.statusError}`;
@@ -1096,8 +1139,7 @@ export class ChatPanel extends HTMLElement {
         if (unclaimed(this.baseURLInput.value, previous?.baseURL)) {
             this.baseURLInput.value = preset.baseURL ?? "";
         }
-        if (unclaimed(this.modelInput.value, previous?.defaultModel)) {
-            this.modelInput.value = preset.defaultModel;
+        if (unclaimed(this.modelPicker?.getValue() ?? "", previous?.defaultModel)) {
             this.syncModelSelect(preset.defaultModel);
         }
         this.appliedPreset = preset;
@@ -1110,7 +1152,6 @@ export class ChatPanel extends HTMLElement {
         const preset = PROVIDER_PRESETS.find((p) => p.id === this.providerSelect?.value);
         if (!preset) return;
         this.baseURLInput.value = preset.baseURL ?? "";
-        this.modelInput.value = preset.defaultModel;
         this.syncModelSelect(preset.defaultModel);
         this.syncContextWindowValue(DEFAULT_CONTEXT_WINDOW);
         this.effortSelect.value = "";
@@ -1143,14 +1184,13 @@ export class ChatPanel extends HTMLElement {
         if (!this.settingsOverlay) return;
         if (this.statusBanner) this.statusBanner.style.display = "none";
         const saved = loadConfig();
-        if (saved && this.providerSelect && this.baseURLInput && this.modelInput && this.apiKeyInput) {
+        if (saved && this.providerSelect && this.baseURLInput && this.modelPicker && this.apiKeyInput) {
             const preset = PROVIDER_PRESETS.find((p) => p.provider === saved.provider);
             if (preset) this.providerSelect.value = preset.id;
             // Which preset the shown values came from, so a switch can still tell an untouched
             // field from one the user has made their own since.
             this.appliedPreset = preset;
             this.baseURLInput.value = saved.baseURL ?? "";
-            this.modelInput.value = saved.model;
             this.syncModelSelect(saved.model);
             this.syncContextWindowValue(saved.contextWindow ?? DEFAULT_CONTEXT_WINDOW);
             this.effortSelect.value = saved.reasoningEffort ?? "";
@@ -1169,10 +1209,7 @@ export class ChatPanel extends HTMLElement {
 
     private async saveSettings() {
         const preset = PROVIDER_PRESETS.find((p) => p.id === this.providerSelect?.value);
-        const chosenModel =
-            this.modelSelect?.value === "__custom__"
-                ? (this.modelInput?.value.trim() ?? "")
-                : this.modelInput?.value || this.modelSelect?.value || "";
+        const chosenModel = this.modelPicker?.getValue().trim() ?? "";
 
         const config: LLMConfig = {
             provider: preset?.provider ?? "anthropic",
