@@ -17,6 +17,7 @@ export class ApiCloudStorage implements IStorage {
     private readonly _getAuthToken?: () => string | undefined;
     private readonly _fallback?: IndexedDBStorage;
     private readonly _outbox: OutboxManager;
+    private readonly _versionCache = new Map<string, number>();
 
     constructor(options: CloudStorageOptions = {}) {
         this._baseUrl = (options.baseUrl ?? "/api/storage").replace(/\/+$/, "");
@@ -100,23 +101,79 @@ export class ApiCloudStorage implements IStorage {
         }
     }
 
+    async getVersion(database: string, scopedId: string): Promise<number | undefined> {
+        if (this._versionCache.has(scopedId)) {
+            return this._versionCache.get(scopedId);
+        }
+        if (this._fallback) {
+            try {
+                const rec = await this._fallback.get(database, "_versions", scopedId);
+                if (rec && typeof rec.version === "number") {
+                    this._versionCache.set(scopedId, rec.version);
+                    return rec.version;
+                }
+            } catch {
+                // Ignore fallback error
+            }
+        }
+        return undefined;
+    }
+
+    async setVersion(database: string, scopedId: string, version: number): Promise<void> {
+        this._versionCache.set(scopedId, version);
+        if (this._fallback) {
+            try {
+                await this._fallback.put(database, "_versions", scopedId, {
+                    id: scopedId,
+                    version,
+                    updatedAt: Date.now(),
+                });
+            } catch {
+                // Ignore fallback error
+            }
+        }
+    }
+
+    async removeVersion(database: string, scopedId: string): Promise<void> {
+        this._versionCache.delete(scopedId);
+        if (this._fallback) {
+            try {
+                await this._fallback.delete(database, "_versions", scopedId);
+            } catch {
+                // Ignore fallback error
+            }
+        }
+    }
+
     private async sendToServer(
         item: OutboxItem,
-    ): Promise<{ ok: boolean; status?: number; error?: string; version?: number }> {
+    ): Promise<{ ok: boolean; status?: number; error?: string; version?: number; currentVersion?: number }> {
         const url = `${this._baseUrl}/${encodeURIComponent(item.database)}/${encodeURIComponent(item.table)}/${encodeURIComponent(item.recordId)}`;
         try {
+            const payload = {
+                ...item.value,
+                ...(item.baseVersion !== undefined ? { baseVersion: item.baseVersion } : {}),
+            };
             const response = await fetch(url, {
                 method: "PUT",
                 headers: this.headers(),
-                body: JSON.stringify(item.value),
+                body: JSON.stringify(payload),
             });
             if (response.ok) {
                 const resData = await response.json().catch(() => ({}));
+                if (typeof resData?.version === "number") {
+                    await this.setVersion(item.database, item.scopedId, resData.version);
+                }
                 return { ok: true, status: response.status, version: resData?.version };
             }
             if (response.status === 409) {
                 const errData = await response.json().catch(() => ({}));
-                return { ok: false, status: 409, error: errData?.error || "VERSION_CONFLICT" };
+                return {
+                    ok: false,
+                    status: 409,
+                    error: errData?.error || "VERSION_CONFLICT",
+                    currentVersion: errData?.currentVersion ?? errData?.version,
+                };
             }
             return {
                 ok: false,
@@ -130,7 +187,7 @@ export class ApiCloudStorage implements IStorage {
 
     async createDBIfNeeded(database: string, tables: string[]): Promise<void> {
         if (this._fallback) {
-            const allTables = Array.from(new Set([...tables, "_outbox"]));
+            const allTables = Array.from(new Set([...tables, "_outbox", "_versions"]));
             await this._fallback.createDBIfNeeded(database, allTables);
             await this._outbox.init(database);
         }
@@ -159,6 +216,15 @@ export class ApiCloudStorage implements IStorage {
             });
             if (response.ok) {
                 const data = await response.json();
+                if (typeof data?.serverVersion === "number") {
+                    await this.setVersion(database, localId, data.serverVersion);
+                }
+                // Loại bỏ serverVersion và serverUpdatedAt khỏi data trước khi cache và trả về
+                if (data && typeof data === "object") {
+                    delete data.serverVersion;
+                    delete data.serverUpdatedAt;
+                }
+
                 const stillDirty = await this._outbox.isDirty(database, table, localId);
                 if (!stillDirty) {
                     try {
@@ -180,11 +246,15 @@ export class ApiCloudStorage implements IStorage {
     }
 
     async put(database: string, table: string, id: string, value: any): Promise<boolean> {
-        let fallbackOk = false;
         const localId = this.scopedId(id);
+        const cleanValue = { ...value };
+        delete cleanValue.serverVersion;
+        delete cleanValue.serverUpdatedAt;
+
+        let fallbackOk = false;
         if (this._fallback) {
             try {
-                await this._fallback.put(database, table, localId, value);
+                await this._fallback.put(database, table, localId, cleanValue);
                 fallbackOk = true;
             } catch {
                 fallbackOk = false;
@@ -192,15 +262,19 @@ export class ApiCloudStorage implements IStorage {
         }
 
         const key = this._outbox.makeKey(database, table, localId);
+        // Bỏ mặc định ?? 1 và docVersion - 1
         const baseVersion =
-            typeof value?.docVersion === "number" ? value.docVersion - 1 : (value?.baseVersion ?? 1);
+            typeof value?.baseVersion === "number"
+                ? value.baseVersion
+                : await this.getVersion(database, localId);
+
         await this._outbox.enqueue({
             id: key,
             database,
             table,
             recordId: id,
             scopedId: localId,
-            value,
+            value: cleanValue,
             baseVersion,
             updatedAt: Date.now(),
             attempts: 0,
@@ -209,9 +283,27 @@ export class ApiCloudStorage implements IStorage {
         return fallbackOk || this._fallback !== undefined;
     }
 
+    async resolveConflictSaveCopy(key: string, newName?: string): Promise<string | undefined> {
+        const item = this._outbox.getItem(key);
+        if (!item) return undefined;
+        const oldId = item.recordId;
+        const newId = `${oldId}_copy_${Date.now()}`;
+        const docName = item.value?.name || "Bản vẽ";
+        const copyName = newName ?? `${docName} (Bản sao xung đột)`;
+        const copyData = {
+            ...item.value,
+            id: newId,
+            name: copyName,
+        };
+        await this.put(item.database, item.table, newId, copyData);
+        await this._outbox.resolveConflictDiscard(key);
+        return newId;
+    }
+
     async delete(database: string, table: string, id: string): Promise<boolean> {
         const localId = this.scopedId(id);
         await this._outbox.dequeue(database, table, localId);
+        await this.removeVersion(database, localId);
 
         if (this._fallback) {
             try {

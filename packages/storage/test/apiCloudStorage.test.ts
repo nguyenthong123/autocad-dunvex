@@ -333,5 +333,111 @@ describe("ApiCloudStorage", () => {
             const inLocalDb = await fallback.get(DB, TABLE, ID);
             expect(inLocalDb.name).toBe("Bản vẽ cập nhật từ máy khác");
         });
+
+        test("TASK-27: should track version in _versions store and strip serverVersion from document", async () => {
+            const storage = new ApiCloudStorage({ baseUrl: "/api/storage" });
+            await storage.createDBIfNeeded(DB, [TABLE]);
+
+            // Server returns document with serverVersion and serverUpdatedAt
+            const serverDoc = {
+                id: ID,
+                name: "Tài liệu mẫu",
+                serverVersion: 3,
+                serverUpdatedAt: "2026-11-03T00:00:00Z",
+            };
+            rs.stubGlobal(
+                "fetch",
+                rs.fn(async () => new Response(JSON.stringify(serverDoc), { status: 200 })),
+            );
+
+            const doc = await storage.get(DB, TABLE, ID);
+            // serverVersion and serverUpdatedAt must be removed from returned doc
+            expect(doc.serverVersion).toBeUndefined();
+            expect(doc.serverUpdatedAt).toBeUndefined();
+            expect(doc.name).toBe("Tài liệu mẫu");
+
+            // Version must be stored in _versions table
+            const version = await storage.getVersion(DB, ID);
+            expect(version).toBe(3);
+
+            // Local cache must NOT contain serverVersion
+            const fallback = (storage as any)._fallback;
+            const cached = await fallback.get(DB, TABLE, ID);
+            expect(cached.serverVersion).toBeUndefined();
+            expect(cached.serverUpdatedAt).toBeUndefined();
+
+            // Next PUT must include baseVersion: 3 in outgoing payload
+            let sentPayload: any = null;
+            rs.stubGlobal(
+                "fetch",
+                rs.fn(async (_url: string, opts: any) => {
+                    sentPayload = JSON.parse(opts.body);
+                    return new Response(JSON.stringify({ ok: true, version: 4 }), { status: 200 });
+                }),
+            );
+
+            await storage.put(DB, TABLE, ID, { ...doc, name: "Tài liệu sửa đổi" });
+            await storage.flushOutbox();
+
+            expect(sentPayload).not.toBeNull();
+            expect(sentPayload.baseVersion).toBe(3);
+            expect(sentPayload.name).toBe("Tài liệu sửa đổi");
+
+            // Version must be updated to 4
+            const updatedVersion = await storage.getVersion(DB, ID);
+            expect(updatedVersion).toBe(4);
+        });
+
+        test("TASK-27: should handle 409 conflict and support overwrite, discard, and save-as-copy", async () => {
+            const storage = new ApiCloudStorage({ baseUrl: "/api/storage" });
+            await storage.createDBIfNeeded(DB, [TABLE]);
+
+            // Set initial version to 2
+            await storage.setVersion(DB, ID, 2);
+
+            // PUT triggers 409
+            rs.stubGlobal(
+                "fetch",
+                rs.fn(async () => {
+                    return new Response(
+                        JSON.stringify({
+                            error: "VERSION_CONFLICT",
+                            currentVersion: 5,
+                            baseVersion: 2,
+                        }),
+                        { status: 409 },
+                    );
+                }),
+            );
+
+            await storage.put(DB, TABLE, ID, { id: ID, name: "Bản sửa bị xung đột" });
+            await storage.flushOutbox();
+
+            const pending = storage.outbox.getPendingItems();
+            expect(pending.length).toBe(1);
+            expect(pending[0].conflict).toBe(true);
+            expect(pending[0].currentServerVersion).toBe(5);
+
+            // Test resolveConflictSaveCopy
+            let copyPutPayload: any = null;
+            rs.stubGlobal(
+                "fetch",
+                rs.fn(async (_url: string, opts: any) => {
+                    copyPutPayload = JSON.parse(opts.body);
+                    return new Response(JSON.stringify({ ok: true, version: 1 }), { status: 200 });
+                }),
+            );
+
+            const copyId = await storage.resolveConflictSaveCopy(pending[0].id);
+            expect(copyId).toBeDefined();
+            expect(copyId).toContain("_copy_");
+
+            await storage.flushOutbox();
+
+            // Verify original conflict item was dequeued and copy was sent
+            expect(copyPutPayload.id).toBe(copyId);
+            expect(copyPutPayload.name).toContain("(Bản sao xung đột)");
+            expect(storage.getPendingSyncCount()).toBe(0);
+        });
     });
 });

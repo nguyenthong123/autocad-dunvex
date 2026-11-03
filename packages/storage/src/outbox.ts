@@ -12,6 +12,7 @@ export interface OutboxItem {
     scopedId: string;
     value: any;
     baseVersion?: number;
+    currentServerVersion?: number;
     updatedAt: number;
     attempts: number;
     lastAttemptAt?: number;
@@ -25,7 +26,7 @@ export interface OutboxOptions {
     fallback?: IndexedDBStorage;
     sendFn?: (
         item: OutboxItem,
-    ) => Promise<{ ok: boolean; status?: number; error?: string; version?: number }>;
+    ) => Promise<{ ok: boolean; status?: number; error?: string; version?: number; currentVersion?: number }>;
     onStatusChange?: (status: SyncStatus, pendingCount: number) => void;
 }
 
@@ -38,7 +39,7 @@ export class OutboxManager {
     private _retryTimer?: any;
     private _sendFn?: (
         item: OutboxItem,
-    ) => Promise<{ ok: boolean; status?: number; error?: string; version?: number }>;
+    ) => Promise<{ ok: boolean; status?: number; error?: string; version?: number; currentVersion?: number }>;
     private _onStatusChange?: (status: SyncStatus, pendingCount: number) => void;
 
     constructor(options: OutboxOptions = {}) {
@@ -63,9 +64,13 @@ export class OutboxManager {
     };
 
     setSendFn(
-        sendFn: (
-            item: OutboxItem,
-        ) => Promise<{ ok: boolean; status?: number; error?: string; version?: number }>,
+        sendFn: (item: OutboxItem) => Promise<{
+            ok: boolean;
+            status?: number;
+            error?: string;
+            version?: number;
+            currentVersion?: number;
+        }>,
     ) {
         this._sendFn = sendFn;
     }
@@ -131,6 +136,33 @@ export class OutboxManager {
 
     getPendingItems(): OutboxItem[] {
         return Array.from(this._pendingItems.values());
+    }
+
+    getItem(id: string): OutboxItem | undefined {
+        return this._pendingItems.get(id);
+    }
+
+    /** Ghi đè lên máy chủ: cập nhật baseVersion bằng currentServerVersion rồi gửi lại */
+    async resolveConflictOverwrite(key: string): Promise<void> {
+        const item = this._pendingItems.get(key);
+        if (!item) return;
+        if (typeof item.currentServerVersion === "number") {
+            item.baseVersion = item.currentServerVersion;
+        }
+        item.conflict = false;
+        item.attempts = 0;
+        item.lastError = undefined;
+        if (this._fallback) {
+            await this._fallback.put(item.database, "_outbox", item.id, item).catch(() => {});
+        }
+        await this.processQueue(true);
+    }
+
+    /** Bỏ bản local xung đột khỏi outbox để nạp lại bản máy chủ */
+    async resolveConflictDiscard(key: string): Promise<void> {
+        const item = this._pendingItems.get(key);
+        if (!item) return;
+        await this.dequeue(item.database, item.table, item.scopedId);
     }
 
     async enqueue(item: OutboxItem): Promise<void> {
@@ -238,6 +270,7 @@ export class OutboxManager {
                 } else if (res.status === 409) {
                     item.conflict = true;
                     item.lastError = res.error || "Conflict";
+                    item.currentServerVersion = res.currentVersion ?? res.version;
                     hasConflict = true;
                     if (this._fallback) {
                         await this._fallback.put(item.database, "_outbox", item.id, item).catch(() => {});
