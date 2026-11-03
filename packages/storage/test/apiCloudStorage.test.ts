@@ -265,4 +265,73 @@ describe("ApiCloudStorage", () => {
             expect(result[0]).toEqual(localItems[0]);
         });
     });
+
+    describe("safe local read & write (anti-overwrite)", () => {
+        test("should not overwrite local dirty data when server returns older data", async () => {
+            const storage = new ApiCloudStorage({ baseUrl: "/api/storage" });
+            await storage.createDBIfNeeded(DB, [TABLE]);
+
+            // Simulate offline PUT: server fails, local is saved and marked dirty in outbox
+            const fetchFailSpy = rs.fn(async () => {
+                throw new Error("Network unreachable");
+            });
+            rs.stubGlobal("fetch", fetchFailSpy);
+
+            const localNewData = { id: ID, name: "Bản vẽ mới cục bộ", updatedAt: 5000, docVersion: 2 };
+            await storage.put(DB, TABLE, ID, localNewData);
+
+            expect(await storage.isDirty(DB, TABLE, ID)).toBe(true);
+            expect(storage.getPendingSyncCount()).toBe(1);
+
+            // Now simulate server coming back online, but server only has older version 1
+            const serverOldData = { id: ID, name: "Bản vẽ cũ máy chủ", updatedAt: 1000, docVersion: 1 };
+            const fetchServerOldSpy = rs.fn(
+                async () => new Response(JSON.stringify(serverOldData), { status: 200 }),
+            );
+            rs.stubGlobal("fetch", fetchServerOldSpy);
+
+            // User opens document: get() must return the local newer copy and NOT overwrite it!
+            const retrieved = await storage.get(DB, TABLE, ID);
+            expect(retrieved.name).toBe("Bản vẽ mới cục bộ");
+            expect(retrieved.docVersion).toBe(2);
+
+            // Verify local IndexedDB was NOT overwritten
+            const fallback = (storage as any)._fallback;
+            const inLocalDb = await fallback.get(DB, TABLE, ID);
+            expect(inLocalDb.name).toBe("Bản vẽ mới cục bộ");
+        });
+
+        test("should allow server data to update local cache when local is clean (not dirty)", async () => {
+            const storage = new ApiCloudStorage({ baseUrl: "/api/storage" });
+            await storage.createDBIfNeeded(DB, [TABLE]);
+
+            // Normal successful PUT: both local and server updated, outbox emptied
+            const fetchPutOkSpy = rs.fn(
+                async () => new Response(JSON.stringify({ ok: true, version: 1 }), { status: 200 }),
+            );
+            rs.stubGlobal("fetch", fetchPutOkSpy);
+
+            const initialData = { id: ID, name: "Bản vẽ ban đầu", docVersion: 1 };
+            await storage.put(DB, TABLE, ID, initialData);
+
+            // Wait a tick for outbox queue to process
+            await storage.flushOutbox();
+            expect(await storage.isDirty(DB, TABLE, ID)).toBe(false);
+
+            // Server has update from another machine
+            const serverUpdatedData = { id: ID, name: "Bản vẽ cập nhật từ máy khác", docVersion: 2 };
+            const fetchGetSpy = rs.fn(
+                async () => new Response(JSON.stringify(serverUpdatedData), { status: 200 }),
+            );
+            rs.stubGlobal("fetch", fetchGetSpy);
+
+            const retrieved = await storage.get(DB, TABLE, ID);
+            expect(retrieved.name).toBe("Bản vẽ cập nhật từ máy khác");
+
+            // Local cache is updated with server copy because local wasn't dirty
+            const fallback = (storage as any)._fallback;
+            const inLocalDb = await fallback.get(DB, TABLE, ID);
+            expect(inLocalDb.name).toBe("Bản vẽ cập nhật từ máy khác");
+        });
+    });
 });

@@ -3,3 +3,4 @@
 
 export * from "./apiCloudStorage";
 export * from "./indexedDBStorage";
+export * from "./outbox";
