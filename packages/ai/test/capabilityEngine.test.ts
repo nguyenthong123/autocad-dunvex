@@ -3,6 +3,7 @@
 
 import {
     BoundingBox,
+    EditableShapeNode,
     FontCatalog,
     type FontOutline,
     type IShape,
@@ -1736,6 +1737,836 @@ describe("capabilityEngine", () => {
                 expect(made.length).toBe(3);
                 expect(made[0].dispose).toHaveBeenCalledTimes(1);
                 expect(made[2].dispose).not.toHaveBeenCalled();
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+    });
+
+    describe("boolean operations", () => {
+        function setupBooleanEnv(overrides?: { booleanCut?: any; booleanFuse?: any; booleanCommon?: any }) {
+            const removed: string[] = [];
+            const nodes: any[] = [];
+            const doc = createMockDocument();
+            const addNode = rs.fn((node: any) => {
+                nodes.push(node);
+                node.parent = {
+                    remove: () => {
+                        const idx = nodes.indexOf(node);
+                        if (idx >= 0) nodes.splice(idx, 1);
+                        removed.push(node.id);
+                    },
+                };
+            });
+            (doc.modelManager as any).addNode = addNode;
+            (doc.modelManager as any).findNodes = rs.fn((pred: (n: any) => boolean) => nodes.filter(pred));
+            (doc.visual as any).update = rs.fn(() => {});
+
+            const factory: any = {
+                booleanCut:
+                    overrides?.booleanCut ??
+                    rs.fn((_shapes: IShape[], _tools: IShape[]) => Result.ok({} as IShape)),
+                booleanFuse:
+                    overrides?.booleanFuse ??
+                    rs.fn((_shapes: IShape[], _tools: IShape[], _simplify?: boolean) =>
+                        Result.ok({} as IShape),
+                    ),
+                booleanCommon:
+                    overrides?.booleanCommon ??
+                    rs.fn((_shapes: IShape[], _tools: IShape[]) => Result.ok({} as IShape)),
+            };
+            const app = createMockApplication({ shapeProvider: { factory } });
+            (app as any).activeView = { document: doc };
+            rs.stubGlobal("app", app);
+
+            return { doc, nodes, removed, factory };
+        }
+
+        test("booleanCut with intersecting solid cutter removes volume and consumes inputs", async () => {
+            const wallShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 100,
+                checkShape: () => true,
+                setTolerance: rs.fn(),
+            };
+            const cutterShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 20,
+                checkShape: () => true,
+                setTolerance: rs.fn(),
+            };
+            const cutResultShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 80,
+                checkShape: () => true,
+            };
+
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) =>
+                Result.ok(cutResultShape as unknown as IShape),
+            );
+            const { doc, removed } = setupBooleanEnv({ booleanCut });
+
+            try {
+                const wallNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Wall",
+                    shape: Result.ok(wallShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(wallNode);
+
+                const cutterNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Cutter",
+                    shape: Result.ok(cutterShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode);
+
+                const tool = buildCapabilityTools()[0];
+                const res = JSON.parse(
+                    (await tool.handler({
+                        ops: [
+                            {
+                                id: "cut1",
+                                method: "booleanCut",
+                                args: { shape1: [wallNode.id], shape2: [cutterNode.id] },
+                            },
+                        ],
+                    })) as string,
+                );
+
+                expect(booleanCut).toHaveBeenCalledTimes(1);
+                expect(res.created.length).toBe(1);
+                expect(res.created[0].id).toBe("cut1");
+                expect(res.removed.length).toBe(2);
+                expect(removed).toContain(wallNode.id);
+                expect(removed).toContain(cutterNode.id);
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
+        test("booleanCut with non-intersecting solid cutter throws error and preserves inputs", async () => {
+            const wallShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 100,
+                checkShape: () => true,
+                setTolerance: rs.fn(),
+            };
+            const cutterShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 20,
+                checkShape: () => true,
+                setTolerance: rs.fn(),
+            };
+            const cutResultShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 100,
+                checkShape: () => true,
+            };
+
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) =>
+                Result.ok(cutResultShape as unknown as IShape),
+            );
+            const { doc, nodes, removed } = setupBooleanEnv({ booleanCut });
+
+            try {
+                const wallNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Wall",
+                    shape: Result.ok(wallShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(wallNode);
+
+                const cutterNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Cutter",
+                    shape: Result.ok(cutterShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode);
+
+                const tool = buildCapabilityTools()[0];
+                await expect(
+                    tool.handler({
+                        ops: [
+                            {
+                                id: "cut1",
+                                method: "booleanCut",
+                                args: { shape1: [wallNode.id], shape2: [cutterNode.id] },
+                            },
+                        ],
+                    }),
+                ).rejects.toThrow(/booleanCut did not remove any volume from target "Wall"/);
+
+                expect(nodes).toContain(wallNode);
+                expect(nodes).toContain(cutterNode);
+                expect(removed.length).toBe(0);
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
+        test("booleanCut with Shell tool throws error before calling kernel and preserves inputs", async () => {
+            const wallShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 100,
+                checkShape: () => true,
+            };
+            const shellToolShape = {
+                shapeType: ShapeTypes.shell,
+                checkShape: () => true,
+            };
+
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) => Result.ok({} as IShape));
+            const { doc, nodes, removed } = setupBooleanEnv({ booleanCut });
+
+            try {
+                const wallNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Wall",
+                    shape: Result.ok(wallShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(wallNode);
+
+                const cutterNode = new EditableShapeNode({
+                    document: doc,
+                    name: "ShellCutter",
+                    shape: Result.ok(shellToolShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode);
+
+                const tool = buildCapabilityTools()[0];
+                await expect(
+                    tool.handler({
+                        ops: [
+                            {
+                                id: "cut1",
+                                method: "booleanCut",
+                                args: { shape1: [wallNode.id], shape2: [cutterNode.id] },
+                            },
+                        ],
+                    }),
+                ).rejects.toThrow(/Tool "ShellCutter" is a Shell, not a solid body/);
+
+                expect(booleanCut).not.toHaveBeenCalled();
+                expect(nodes).toContain(wallNode);
+                expect(nodes).toContain(cutterNode);
+                expect(removed.length).toBe(0);
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
+        test("booleanCut with Target as Shell throws error before calling kernel", async () => {
+            const shellTarget = {
+                shapeType: ShapeTypes.shell,
+                checkShape: () => true,
+            };
+            const solidCutter = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 20,
+                checkShape: () => true,
+            };
+
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) => Result.ok({} as IShape));
+            const { doc } = setupBooleanEnv({ booleanCut });
+
+            try {
+                const wallNode = new EditableShapeNode({
+                    document: doc,
+                    name: "WallShell",
+                    shape: Result.ok(shellTarget as unknown as IShape),
+                });
+                doc.modelManager.addNode(wallNode);
+
+                const cutterNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Cutter",
+                    shape: Result.ok(solidCutter as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode);
+
+                const tool = buildCapabilityTools()[0];
+                await expect(
+                    tool.handler({
+                        ops: [
+                            {
+                                id: "cut1",
+                                method: "booleanCut",
+                                args: { shape1: [wallNode.id], shape2: [cutterNode.id] },
+                            },
+                        ],
+                    }),
+                ).rejects.toThrow(/Target "WallShell" is a Shell, not a solid body/);
+
+                expect(booleanCut).not.toHaveBeenCalled();
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
+        test("booleanCut transforms node with non-identity worldTransform into world space", async () => {
+            const transformedShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 100,
+                checkShape: () => true,
+                setTolerance: rs.fn(),
+            };
+            const transformedMul = rs.fn((m: Matrix4) => transformedShape);
+            const wallShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 100,
+                checkShape: () => true,
+                transformedMul,
+                setTolerance: rs.fn(),
+            };
+            const cutterShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 20,
+                checkShape: () => true,
+                setTolerance: rs.fn(),
+            };
+            const cutResultShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 80,
+                checkShape: () => true,
+            };
+
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) =>
+                Result.ok(cutResultShape as unknown as IShape),
+            );
+            const { doc } = setupBooleanEnv({ booleanCut });
+
+            try {
+                const wallNode = new EditableShapeNode({
+                    document: doc,
+                    name: "MovedWall",
+                    shape: Result.ok(wallShape as unknown as IShape),
+                });
+                wallNode.transform = Matrix4.fromTranslation(100, 0, 0);
+                doc.modelManager.addNode(wallNode);
+
+                const cutterNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Cutter",
+                    shape: Result.ok(cutterShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode);
+
+                const tool = buildCapabilityTools()[0];
+                await tool.handler({
+                    ops: [
+                        {
+                            id: "cut1",
+                            method: "booleanCut",
+                            args: { shape1: [wallNode.id], shape2: [cutterNode.id] },
+                        },
+                    ],
+                });
+
+                expect(transformedMul).toHaveBeenCalledTimes(1);
+                expect(transformedMul.mock.calls[0][0].toArray().slice(12, 15)).toEqual([100, 0, 0]);
+
+                expect(booleanCut.mock.calls[0][0]).toEqual([transformedShape]);
+                expect(booleanCut.mock.calls[0][1]).toEqual([cutterShape]);
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
+        test("disposes temporary transformed shapes on success, never disposes document input shapes", async () => {
+            const transformedDispose = rs.fn();
+            const transformedShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 100,
+                checkShape: () => true,
+                setTolerance: rs.fn(),
+                dispose: transformedDispose,
+            };
+            const wallDispose = rs.fn();
+            const wallShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 100,
+                checkShape: () => true,
+                transformedMul: rs.fn(() => transformedShape),
+                setTolerance: rs.fn(),
+                dispose: wallDispose,
+            };
+            const cutterDispose = rs.fn();
+            const cutterShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 20,
+                checkShape: () => true,
+                setTolerance: rs.fn(),
+                dispose: cutterDispose,
+            };
+            const resultDispose = rs.fn();
+            const cutResultShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 80,
+                checkShape: () => true,
+                dispose: resultDispose,
+            };
+
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) =>
+                Result.ok(cutResultShape as unknown as IShape),
+            );
+            const { doc } = setupBooleanEnv({ booleanCut });
+
+            try {
+                const wallNode = new EditableShapeNode({
+                    document: doc,
+                    name: "MovedWall",
+                    shape: Result.ok(wallShape as unknown as IShape),
+                });
+                wallNode.transform = Matrix4.fromTranslation(50, 0, 0);
+                doc.modelManager.addNode(wallNode);
+
+                const cutterNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Cutter",
+                    shape: Result.ok(cutterShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode);
+
+                const tool = buildCapabilityTools()[0];
+                await tool.handler({
+                    ops: [
+                        {
+                            id: "cut1",
+                            method: "booleanCut",
+                            args: { shape1: [wallNode.id], shape2: [cutterNode.id] },
+                        },
+                    ],
+                });
+
+                // Temporary shape produced by transformedMul must be disposed
+                expect(transformedDispose).toHaveBeenCalledTimes(1);
+                // Original document shapes must NOT be disposed
+                expect(wallDispose).not.toHaveBeenCalled();
+                expect(cutterDispose).not.toHaveBeenCalled();
+                // Result shape is committed to document, so not disposed in finally
+                expect(resultDispose).not.toHaveBeenCalled();
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
+        test("disposes temporary shapes and uncommitted result on volume check failure", async () => {
+            const transformedDispose = rs.fn();
+            const transformedShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 100,
+                checkShape: () => true,
+                setTolerance: rs.fn(),
+                dispose: transformedDispose,
+            };
+            const wallDispose = rs.fn();
+            const wallShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 100,
+                checkShape: () => true,
+                transformedMul: rs.fn(() => transformedShape),
+                setTolerance: rs.fn(),
+                dispose: wallDispose,
+            };
+            const cutterShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 20,
+                checkShape: () => true,
+                setTolerance: rs.fn(),
+            };
+            const resultDispose = rs.fn();
+            const cutResultShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 100, // No volume removed!
+                checkShape: () => true,
+                dispose: resultDispose,
+            };
+
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) =>
+                Result.ok(cutResultShape as unknown as IShape),
+            );
+            const { doc } = setupBooleanEnv({ booleanCut });
+
+            try {
+                const wallNode = new EditableShapeNode({
+                    document: doc,
+                    name: "MovedWall",
+                    shape: Result.ok(wallShape as unknown as IShape),
+                });
+                wallNode.transform = Matrix4.fromTranslation(50, 0, 0);
+                doc.modelManager.addNode(wallNode);
+
+                const cutterNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Cutter",
+                    shape: Result.ok(cutterShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode);
+
+                const tool = buildCapabilityTools()[0];
+                await expect(
+                    tool.handler({
+                        ops: [
+                            {
+                                id: "cut1",
+                                method: "booleanCut",
+                                args: { shape1: [wallNode.id], shape2: [cutterNode.id] },
+                            },
+                        ],
+                    }),
+                ).rejects.toThrow(/booleanCut did not remove any volume/);
+
+                // Both transformed temp shape and uncommitted result shape must be disposed
+                expect(transformedDispose).toHaveBeenCalledTimes(1);
+                expect(resultDispose).toHaveBeenCalledTimes(1);
+                // Input document shape preserved untouched
+                expect(wallDispose).not.toHaveBeenCalled();
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
+        test("rejects generic ShapeTypes.shape as non-solid body", async () => {
+            const genericShape = {
+                shapeType: ShapeTypes.shape,
+                checkShape: () => true,
+            };
+            const solidCutter = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 20,
+                checkShape: () => true,
+            };
+
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) => Result.ok({} as IShape));
+            const { doc } = setupBooleanEnv({ booleanCut });
+
+            try {
+                const node = new EditableShapeNode({
+                    document: doc,
+                    name: "GenericNode",
+                    shape: Result.ok(genericShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(node);
+                const cutter = new EditableShapeNode({
+                    document: doc,
+                    name: "Cutter",
+                    shape: Result.ok(solidCutter as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutter);
+
+                const tool = buildCapabilityTools()[0];
+                await expect(
+                    tool.handler({
+                        ops: [
+                            {
+                                id: "cut1",
+                                method: "booleanCut",
+                                args: { shape1: [node.id], shape2: [cutter.id] },
+                            },
+                        ],
+                    }),
+                ).rejects.toThrow(/Target "GenericNode" is a Shape, not a solid body/);
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
+        test("rejects compound mixing Solid with Shell, but accepts compound of pure Solids", async () => {
+            const solidSub1 = { shapeType: ShapeTypes.solid };
+            const solidSub2 = { shapeType: ShapeTypes.solid };
+            const shellSub = { shapeType: ShapeTypes.shell };
+
+            const mixedCompound = {
+                shapeType: ShapeTypes.compound,
+                checkShape: () => true,
+                directSubShapes: () => [solidSub1, shellSub],
+                volume: () => 100,
+            };
+            const pureCompound = {
+                shapeType: ShapeTypes.compound,
+                checkShape: () => true,
+                directSubShapes: () => [solidSub1, solidSub2],
+                volume: () => 100,
+            };
+            const solidCutter = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 20,
+                checkShape: () => true,
+            };
+            const cutResult = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 80,
+                checkShape: () => true,
+            };
+
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) =>
+                Result.ok(cutResult as unknown as IShape),
+            );
+            const { doc } = setupBooleanEnv({ booleanCut });
+
+            try {
+                const mixedNode = new EditableShapeNode({
+                    document: doc,
+                    name: "MixedComp",
+                    shape: Result.ok(mixedCompound as unknown as IShape),
+                });
+                doc.modelManager.addNode(mixedNode);
+
+                const cutterNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Cutter",
+                    shape: Result.ok(solidCutter as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode);
+
+                const tool = buildCapabilityTools()[0];
+                // Mixed compound must be rejected
+                await expect(
+                    tool.handler({
+                        ops: [
+                            {
+                                id: "cut1",
+                                method: "booleanCut",
+                                args: { shape1: [mixedNode.id], shape2: [cutterNode.id] },
+                            },
+                        ],
+                    }),
+                ).rejects.toThrow(/Target "MixedComp" is a Compound, not a solid body/);
+
+                // Pure solid compound must succeed
+                const pureNode = new EditableShapeNode({
+                    document: doc,
+                    name: "PureComp",
+                    shape: Result.ok(pureCompound as unknown as IShape),
+                });
+                doc.modelManager.addNode(pureNode);
+
+                await tool.handler({
+                    ops: [
+                        {
+                            id: "cut2",
+                            method: "booleanCut",
+                            args: { shape1: [pureNode.id], shape2: [cutterNode.id] },
+                        },
+                    ],
+                });
+                expect(booleanCut).toHaveBeenCalledTimes(1);
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
+        test("adaptive volume tolerance: small target with volume 1e-6 succeeds when cutting 5e-7, fails on no-op", async () => {
+            const smallTarget = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 1e-6,
+                checkShape: () => true,
+            };
+            const cutter = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 5e-7,
+                checkShape: () => true,
+            };
+            const cutSuccessResult = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 5e-7, // 5e-7 removed out of 1e-6
+                checkShape: () => true,
+            };
+            const cutNoOpResult = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 1e-6, // 0 removed
+                checkShape: () => true,
+            };
+
+            let returnedResult = cutSuccessResult;
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) =>
+                Result.ok(returnedResult as unknown as IShape),
+            );
+            const { doc } = setupBooleanEnv({ booleanCut });
+
+            try {
+                const targetNode = new EditableShapeNode({
+                    document: doc,
+                    name: "MicroTarget",
+                    shape: Result.ok(smallTarget as unknown as IShape),
+                });
+                doc.modelManager.addNode(targetNode);
+
+                const cutterNode = new EditableShapeNode({
+                    document: doc,
+                    name: "MicroCutter",
+                    shape: Result.ok(cutter as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode);
+
+                const tool = buildCapabilityTools()[0];
+                // Cutting 5e-7 from 1e-6 succeeds with adaptive tolerance
+                await tool.handler({
+                    ops: [
+                        {
+                            id: "cutSmallSuccess",
+                            method: "booleanCut",
+                            args: { shape1: [targetNode.id], shape2: [cutterNode.id] },
+                        },
+                    ],
+                });
+
+                // No-op cut on micro-target must fail
+                returnedResult = cutNoOpResult;
+                const targetNode2 = new EditableShapeNode({
+                    document: doc,
+                    name: "MicroTarget2",
+                    shape: Result.ok(smallTarget as unknown as IShape),
+                });
+                doc.modelManager.addNode(targetNode2);
+                const cutterNode2 = new EditableShapeNode({
+                    document: doc,
+                    name: "MicroCutter2",
+                    shape: Result.ok(cutter as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode2);
+
+                await expect(
+                    tool.handler({
+                        ops: [
+                            {
+                                id: "cutSmallNoOp",
+                                method: "booleanCut",
+                                args: { shape1: [targetNode2.id], shape2: [cutterNode2.id] },
+                            },
+                        ],
+                    }),
+                ).rejects.toThrow(/booleanCut did not remove any volume from target "MicroTarget2"/);
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
+        test("throughCut verification: fails when cutter is a blind pocket not spanning wall thickness", async () => {
+            // Wall spans X: [0, 100], Y: [0, 20] (thickness), Z: [0, 100]
+            const wallShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 200000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 0, y: 0, z: 0 }, { x: 100, y: 20, z: 100 }),
+            };
+            // Blind cutter only goes Y: [0, 10] (halfway through wall thickness)
+            const blindCutter = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 10000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 20, y: 0, z: 20 }, { x: 40, y: 10, z: 40 }),
+            };
+            const cutResult = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 190000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 0, y: 0, z: 0 }, { x: 100, y: 20, z: 100 }),
+            };
+
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) =>
+                Result.ok(cutResult as unknown as IShape),
+            );
+            const { doc } = setupBooleanEnv({ booleanCut });
+
+            try {
+                const wallNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Wall",
+                    shape: Result.ok(wallShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(wallNode);
+
+                const cutterNode = new EditableShapeNode({
+                    document: doc,
+                    name: "PocketCutter",
+                    shape: Result.ok(blindCutter as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode);
+
+                const tool = buildCapabilityTools()[0];
+                await expect(
+                    tool.handler({
+                        ops: [
+                            {
+                                id: "cutBlind",
+                                method: "booleanCut",
+                                args: {
+                                    shape1: [wallNode.id],
+                                    shape2: [cutterNode.id],
+                                    throughCut: true,
+                                },
+                            },
+                        ],
+                    }),
+                ).rejects.toThrow(/booleanCut failed through-cut verification for "Wall"/);
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
+        test("throughCut verification: succeeds when cutter spans completely across wall thickness", async () => {
+            // Wall spans X: [0, 100], Y: [0, 20] (thickness), Z: [0, 100]
+            const wallShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 200000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 0, y: 0, z: 0 }, { x: 100, y: 20, z: 100 }),
+            };
+            // Through cutter extends past both Y faces: Y: [-5, 25]
+            const throughCutter = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 30000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 20, y: -5, z: 20 }, { x: 40, y: 25, z: 40 }),
+            };
+            const cutResult = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 170000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 0, y: 0, z: 0 }, { x: 100, y: 20, z: 100 }),
+            };
+
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) =>
+                Result.ok(cutResult as unknown as IShape),
+            );
+            const { doc } = setupBooleanEnv({ booleanCut });
+
+            try {
+                const wallNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Wall",
+                    shape: Result.ok(wallShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(wallNode);
+
+                const cutterNode = new EditableShapeNode({
+                    document: doc,
+                    name: "ThroughDoorCutter",
+                    shape: Result.ok(throughCutter as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode);
+
+                const tool = buildCapabilityTools()[0];
+                const res = JSON.parse(
+                    (await tool.handler({
+                        ops: [
+                            {
+                                id: "cutDoor",
+                                method: "booleanCut",
+                                args: {
+                                    shape1: [wallNode.id],
+                                    shape2: [cutterNode.id],
+                                    throughCut: true,
+                                },
+                            },
+                        ],
+                    })) as string,
+                );
+
+                expect(res.created.length).toBe(1);
+                expect(res.created[0].id).toBe("cutDoor");
             } finally {
                 rs.unstubAllGlobals();
             }

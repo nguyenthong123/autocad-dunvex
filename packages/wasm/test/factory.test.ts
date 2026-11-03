@@ -1027,6 +1027,166 @@ describe("ShapeFactory — boolean operations", () => {
         const result = factory.booleanCut([box1], [box2]);
         expect(result.isOk).toBe(true);
     });
+
+    describe("booleanCut verification (TASK-32)", () => {
+        test("booleanCut intersecting: volume strictly decreases", () => {
+            const wall = factory.box(plane, 100, 20, 50).value;
+            const doorPlane = new Plane({
+                origin: new XYZ({ x: 40, y: -5, z: 0 }),
+                normal: XYZ.unitZ,
+                xvec: XYZ.unitX,
+            });
+            const doorCutter = factory.box(doorPlane, 20, 30, 30).value;
+            const initialVolume = wall.volume();
+            expect(initialVolume).toBeCloseTo(100000, 1);
+
+            const result = factory.booleanCut([wall], [doorCutter]);
+            expect(result.isOk).toBe(true);
+            const cutVolume = result.value.volume();
+            expect(cutVolume).toBeCloseTo(88000, 1);
+            expect(initialVolume - cutVolume).toBeGreaterThan(1e-5);
+        });
+
+        test("booleanCut non-intersecting: kernel returns ok but volume is identical", () => {
+            const wall = factory.box(plane, 100, 20, 50).value;
+            const distantPlane = new Plane({
+                origin: new XYZ({ x: 300, y: 0, z: 0 }),
+                normal: XYZ.unitZ,
+                xvec: XYZ.unitX,
+            });
+            const distantCutter = factory.box(distantPlane, 20, 20, 30).value;
+            const initialVolume = wall.volume();
+
+            const result = factory.booleanCut([wall], [distantCutter]);
+            expect(result.isOk).toBe(true);
+            const cutVolume = result.value.volume();
+            // Kernel returns ok, but volume does NOT change
+            expect(cutVolume).toBeCloseTo(initialVolume, 1);
+            expect(Math.abs(initialVolume - cutVolume)).toBeLessThanOrEqual(1e-5);
+        });
+
+        test("booleanCut partial intersection: volume decreases proportionally", () => {
+            const wall = factory.box(plane, 100, 20, 50).value;
+            const notchPlane = new Plane({
+                origin: new XYZ({ x: 0, y: 0, z: 30 }),
+                normal: XYZ.unitZ,
+                xvec: XYZ.unitX,
+            });
+            const notchCutter = factory.box(notchPlane, 20, 10, 20).value;
+            const initialVolume = wall.volume();
+
+            const result = factory.booleanCut([wall], [notchCutter]);
+            expect(result.isOk).toBe(true);
+            const cutVolume = result.value.volume();
+            expect(cutVolume).toBeCloseTo(100000 - 4000, 1);
+            expect(initialVolume - cutVolume).toBeGreaterThan(1e-5);
+        });
+
+        test("booleanCut with world transform: cutter placed at world position misses target unless target transform is applied", () => {
+            const wall = factory.box(plane, 100, 20, 50).value;
+            const transform = Matrix4.fromTranslation(500, 0, 0);
+            const transformedWall = wall.transformedMul(transform);
+
+            const doorPlane = new Plane({
+                origin: new XYZ({ x: 540, y: -5, z: 0 }),
+                normal: XYZ.unitZ,
+                xvec: XYZ.unitX,
+            });
+            const cutter = factory.box(doorPlane, 20, 30, 30).value;
+
+            // Cutting against untransformed local wall at (0, 0, 0): cutter at 540 misses wall at 0
+            const missResult = factory.booleanCut([wall], [cutter]);
+            expect(missResult.isOk).toBe(true);
+            expect(missResult.value.volume()).toBeCloseTo(100000, 1);
+            expect(wall.volume() - missResult.value.volume()).toBeLessThanOrEqual(1e-5);
+
+            // Cutting against transformed wall at (500, 0, 0): cutter penetrates wall
+            const hitResult = factory.booleanCut([transformedWall], [cutter]);
+            expect(hitResult.isOk).toBe(true);
+            expect(hitResult.value.volume()).toBeCloseTo(88000, 1);
+            expect(transformedWall.volume() - hitResult.value.volume()).toBeGreaterThan(1e-5);
+        });
+
+        test("prism on unclosed profile produces Shell, not Solid", () => {
+            const l1 = factory.line(new XYZ({ x: 0, y: 0, z: 0 }), new XYZ({ x: 20, y: 0, z: 0 })).value;
+            const l2 = factory.line(new XYZ({ x: 20, y: 0, z: 0 }), new XYZ({ x: 20, y: 30, z: 0 })).value;
+            const openWire = factory.wire([l1, l2] as any).value;
+            const prismResult = factory.prism(openWire, new XYZ({ x: 0, y: 0, z: 10 }));
+            expect(prismResult.isOk).toBe(true);
+            expect(prismResult.value.shapeType).toBe(ShapeTypes.shell);
+            expect(prismResult.value.shapeType).not.toBe(ShapeTypes.solid);
+        });
+
+        test("micro target (< 1e-5 mm³) cut: volume decreases and is measurable", () => {
+            // Box 0.01 x 0.01 x 0.01 mm = 1e-6 mm³ volume
+            const microBox = factory.box(plane, 0.01, 0.01, 0.01).value;
+            const initVol = microBox.volume();
+            expect(initVol).toBeGreaterThan(0.9e-6);
+            expect(initVol).toBeLessThan(1.1e-6);
+
+            // Cutter cuts half of the micro box (0.01 x 0.01 x 0.005)
+            const cutterPlane = new Plane({
+                origin: new XYZ({ x: 0, y: 0, z: 0.005 }),
+                normal: XYZ.unitZ,
+                xvec: XYZ.unitX,
+            });
+            const cutter = factory.box(cutterPlane, 0.01, 0.01, 0.005).value;
+            const res = factory.booleanCut([microBox], [cutter]);
+            expect(res.isOk).toBe(true);
+            const cutVol = res.value.volume();
+            expect(cutVol).toBeLessThan(initVol);
+            expect(initVol - cutVol).toBeGreaterThan(1e-12);
+        });
+
+        test("through-cut vs blind pocket: bounding box spans opposite faces only for through cut", () => {
+            // Wall: 100 x 20 x 100 (thickness = 20 along Y)
+            const wall = factory.box(plane, 100, 20, 100).value;
+            const wallBBox = wall.boundingBox();
+
+            // Blind pocket cutter: Y from 0 to 10 (halfway through wall)
+            const blindPlane = new Plane({
+                origin: new XYZ({ x: 20, y: 0, z: 20 }),
+                normal: XYZ.unitZ,
+                xvec: XYZ.unitX,
+            });
+            const blindCutter = factory.box(blindPlane, 20, 10, 40).value;
+            const blindBBox = blindCutter.boundingBox();
+            // Blind cutter does NOT reach wallBBox.max.y (20)
+            expect(blindBBox.max.y).toBeLessThan(wallBBox.max.y);
+
+            // Through cutter: Y from -5 to 25 (extends past both Y=0 and Y=20)
+            const throughPlane = new Plane({
+                origin: new XYZ({ x: 20, y: -5, z: 20 }),
+                normal: XYZ.unitZ,
+                xvec: XYZ.unitX,
+            });
+            const throughCutter = factory.box(throughPlane, 20, 30, 40).value;
+            const throughBBox = throughCutter.boundingBox();
+            expect(throughBBox.min.y).toBeLessThanOrEqual(wallBBox.min.y);
+            expect(throughBBox.max.y).toBeGreaterThanOrEqual(wallBBox.max.y);
+
+            const throughRes = factory.booleanCut([wall], [throughCutter]);
+            expect(throughRes.isOk).toBe(true);
+            expect(wall.volume() - throughRes.value.volume()).toBeGreaterThan(1e-4);
+        });
+
+        test("compound of mixed Solid and Face: directSubShapes reports both", () => {
+            const box = factory.box(plane, 10, 10, 10).value;
+            const face = factory.rect(Plane.XY, 10, 10).value;
+            const compRes = factory.combine([box, face]);
+            expect(compRes.isOk).toBe(true);
+            const comp = compRes.value;
+            expect(comp.shapeType).toBe(ShapeTypes.compound);
+            const direct = comp.directSubShapes();
+            expect(direct.length).toBe(2);
+            const types = direct.map((s) => s.shapeType);
+            expect(types).toContain(ShapeTypes.solid);
+            expect(types).toContain(ShapeTypes.face);
+            // Confirm direct.every(isSolid) is false for mixed compound
+            const allSolid = direct.every((s) => s.shapeType === ShapeTypes.solid);
+            expect(allSolid).toBe(false);
+        });
+    });
 });
 
 // ============================================================================

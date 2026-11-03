@@ -38,5 +38,10 @@ Placement reminders (details in the modeling-api skill):
 Compounds:
 - combine([...]) groups shapes into one compound node without fusing them; shape.volume and shape.boundingBox work on compounds (volume sums the solids inside). Fusing disjoint solids is not a recipe — it yields a compound of loose solids anyway.
 
+Holes, openings and cuts (booleanCut):
+- The target and cutter MUST both be solid bodies (a shell, face, wire, or mixed compound cannot cut or be cut).
+- For through-cuts (doors, windows, through-holes), the cutter MUST extend completely past BOTH opposite faces in the wall thickness dimension (e.g. wall Y in [0, 200] -> cutter Y in [-5, 205]); pass args { shape1: [...], shape2: [...], throughCut: true } to enforce through-penetration verification.
+- booleanCut automatically verifies volume reduction and through-penetration (when throughCut: true); if it fails, adjust cutter dimensions and position. Never report a through-opening as completed if it only formed a blind pocket/recess. Never blame camera or zoom when a cut does not appear.
+
 Verify: after the build, clear the selection (select_nodes []), capture_screenshot, and check proportions and that no scaffolding node is left behind (hide or delete those) — a highlighted face is an opaque fill, so the shading and edges under it are not in the picture. select_nodes the result afterwards when the user should see what was built. The parts the user asked for stay in the scene as nodes of their own.`,
 };

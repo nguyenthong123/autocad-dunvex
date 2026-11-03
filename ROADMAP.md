@@ -75,6 +75,7 @@ packages/web ──> packages/builder ──> packages/app ───────
 | **TASK-29** | Sửa lỗi chat AI `Invalid URL` khi dùng Base URL proxy cùng origin dạng đường dẫn tương đối (`/api/llm-proxy/...`) dù kiểm tra API key thành công | `[?] WAITING_REVIEW` | [docs/tasks/TASK-29-ai-chat-relative-proxy-url.md](./docs/tasks/TASK-29-ai-chat-relative-proxy-url.md) |
 | **TASK-30** | Làm gọn và tìm kiếm danh sách model AI; chỉ ưu tiên model phù hợp với provider và agent, phân biệt catalog công khai với model đã xác minh dùng được bằng API key | `[?] WAITING_REVIEW` | [docs/tasks/TASK-30-ai-model-picker-and-key-compatibility.md](./docs/tasks/TASK-30-ai-model-picker-and-key-compatibility.md) |
 | **TASK-31** | Bổ sung/tích hợp NVIDIA NIM làm provider AI: nhận diện `nvapi-`, discovery model, proxy allowlist an toàn và chat Completions đúng endpoint | `[?] WAITING_REVIEW` | [docs/tasks/TASK-31-nvidia-nim-provider.md](./docs/tasks/TASK-31-nvidia-nim-provider.md) |
+| **TASK-32** | Điều tra AI báo hoàn thành Boolean Cut nhưng tường không đổi: kiểm tra giao nhau thực tế, transform world-space và xác minh thể tích sau thao tác | `[?] WAITING_REVIEW` | [docs/tasks/TASK-32-ai-boolean-cut-noop-and-verification.md](./docs/tasks/TASK-32-ai-boolean-cut-noop-and-verification.md) |
 
 ---
 

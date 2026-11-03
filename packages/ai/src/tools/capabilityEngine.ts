@@ -2,6 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 import {
+    BoundingBox,
     cachedOutline,
     DefaultFont,
     EditableShapeNode,
@@ -22,9 +23,12 @@ import {
     ShapeNode,
     type ShapeType,
     ShapeTypes,
+    ShapeTypeUtils,
     Transaction,
     textSolid,
+    VisualNode,
     XYZ,
+    type XYZLike,
 } from "@chili3d/core";
 import type { JsonSchema, Tool } from "../llm/types";
 import {
@@ -1061,6 +1065,10 @@ function runOp(
         runQueryOp(op, doc, localRefs, results);
         return;
     }
+    if (BOOLEAN_OPS[op.method]) {
+        runBooleanOp(cap, op, doc, factory, localRefs, created, removed);
+        return;
+    }
     runShapeOp(cap, op, doc, factory, localRefs, created, removed, results);
 }
 
@@ -1117,6 +1125,223 @@ function closeProfileParam(cap: ShapeCapability, op: Op, params: unknown[], fact
     }
     const face = f.face([wire]);
     if (face.isOk) params[index] = face.value;
+}
+
+const BOOLEAN_OPS: Record<string, "cut" | "fuse" | "common"> = {
+    booleanCut: "cut",
+    booleanFuse: "fuse",
+    booleanCommon: "common",
+};
+
+function isSolidVolume(shape: IShape): boolean {
+    if (shape.shapeType === ShapeTypes.solid || shape.shapeType === ShapeTypes.compoundSolid) {
+        return true;
+    }
+    if (shape.shapeType === ShapeTypes.compound) {
+        const directSubs = typeof shape.directSubShapes === "function" ? shape.directSubShapes() : [];
+        if (directSubs.length > 0) {
+            // Every direct subshape must be a solid volume; reject if any subshape is shell, face, wire, etc.
+            return directSubs.every((sub) => isSolidVolume(sub));
+        }
+        return false;
+    }
+    return false;
+}
+
+function combineBoundingBoxes(boxes: BoundingBox[]): BoundingBox {
+    const points: XYZLike[] = [];
+    for (const b of boxes) {
+        points.push(b.min, b.max);
+    }
+    return BoundingBox.fromPoints(points);
+}
+
+function verifyThroughCut(
+    targetShapes: IShape[],
+    toolShapes: IShape[],
+    _resultShape: IShape,
+    targetName: string,
+): void {
+    const targetBoxes = targetShapes
+        .map((s) => (typeof s.boundingBox === "function" ? s.boundingBox() : undefined))
+        .filter((b): b is BoundingBox => !!b);
+    const toolBoxes = toolShapes
+        .map((s) => (typeof s.boundingBox === "function" ? s.boundingBox() : undefined))
+        .filter((b): b is BoundingBox => !!b);
+
+    if (targetBoxes.length === 0 || toolBoxes.length === 0) return;
+
+    const targetBox = targetBoxes.length === 1 ? targetBoxes[0] : combineBoundingBoxes(targetBoxes);
+    const toolBox = toolBoxes.length === 1 ? toolBoxes[0] : combineBoundingBoxes(toolBoxes);
+
+    const tol = 1e-3;
+    const axes = ["x", "y", "z"] as const;
+    const penetratesAxis = axes.filter((axis) => {
+        const targetMin = targetBox.min[axis];
+        const targetMax = targetBox.max[axis];
+        const toolMin = toolBox.min[axis];
+        const toolMax = toolBox.max[axis];
+        if (targetMax - targetMin < 1e-4) return false;
+        return toolMin <= targetMin + tol && toolMax >= targetMax - tol;
+    });
+
+    if (penetratesAxis.length === 0) {
+        throw new Error(
+            `booleanCut failed through-cut verification for "${targetName}": cutter does not span across both opposite faces in any thickness direction. ` +
+                `Target bounds: X[${targetBox.min.x.toFixed(2)}, ${targetBox.max.x.toFixed(2)}], Y[${targetBox.min.y.toFixed(2)}, ${targetBox.max.y.toFixed(2)}], Z[${targetBox.min.z.toFixed(2)}, ${targetBox.max.z.toFixed(2)}]. ` +
+                `Cutter bounds: X[${toolBox.min.x.toFixed(2)}, ${toolBox.max.x.toFixed(2)}], Y[${toolBox.min.y.toFixed(2)}, ${toolBox.max.y.toFixed(2)}], Z[${toolBox.min.z.toFixed(2)}, ${toolBox.max.z.toFixed(2)}]. ` +
+                `The cut produces a blind pocket/recess instead of cutting through both sides.`,
+        );
+    }
+}
+
+interface ResolvedBooleanOperand {
+    shape: IShape;
+    name: string;
+    originalVolume: number;
+}
+
+function resolveBooleanOperand(
+    refVal: unknown,
+    role: "Target" | "Tool",
+    booleanType: string,
+    doc: IDocument,
+    localRefs: Map<string, LocalRef>,
+    consumed: Set<string>,
+    tempShapesToDispose: IShape[],
+): ResolvedBooleanOperand {
+    const entry = resolveRefEntry(refVal, doc, localRefs, consumed);
+    if (entry.kind !== "shape") {
+        throw new Error(`ref "${String(refVal)}" is a ${entry.kind}, but a shape is required`);
+    }
+    const node = entry.nodeId ? findNode(doc, entry.nodeId) : undefined;
+    const name = node?.name ?? (typeof refVal === "string" ? refVal : role);
+
+    let shape = entry.value as IShape;
+    if (node instanceof VisualNode) {
+        const worldTransform = node.worldTransform();
+        if (worldTransform && !worldTransform.equals(Matrix4.identity())) {
+            shape = shape.transformedMul(worldTransform);
+            tempShapesToDispose.push(shape);
+        }
+    }
+    if (typeof shape.setTolerance === "function") {
+        shape.setTolerance(1e-6);
+    }
+
+    if (typeof shape.checkShape === "function" && shape.checkShape() === false) {
+        throw new Error(`${role} "${name}" has invalid geometry (checkShape failed).`);
+    }
+    if (!isSolidVolume(shape)) {
+        const typeStr = ShapeTypeUtils.stringValue(shape.shapeType);
+        throw new Error(
+            `${role} "${name}" is a ${typeStr}, not a solid body. Boolean ${booleanType} requires solid bodies.`,
+        );
+    }
+
+    const originalVolume = typeof shape.volume === "function" ? shape.volume() : 0;
+    return { shape, name, originalVolume };
+}
+
+function runBooleanOp(
+    cap: ShapeCapability,
+    op: Op,
+    doc: IDocument,
+    factory: unknown,
+    localRefs: Map<string, LocalRef>,
+    created: CreatedNode[],
+    removed: RemovedNode[],
+): void {
+    const booleanType = BOOLEAN_OPS[op.method] ?? "cut";
+    const consumed = new Set<string>();
+    const tempShapesToDispose: IShape[] = [];
+    let resultShape: IShape | undefined;
+    let resultCommitted = false;
+
+    try {
+        const rawTargets = op.args?.["shape1"];
+        const rawTools = op.args?.["shape2"];
+        const targetRefs = Array.isArray(rawTargets)
+            ? rawTargets
+            : rawTargets !== undefined
+              ? [rawTargets]
+              : [];
+        const toolRefs = Array.isArray(rawTools) ? rawTools : rawTools !== undefined ? [rawTools] : [];
+
+        if (targetRefs.length === 0) {
+            throw new Error(`${op.method} requires args.shape1 (target shape ref or array of refs)`);
+        }
+        if (toolRefs.length === 0) {
+            throw new Error(`${op.method} requires args.shape2 (tool shape ref or array of refs)`);
+        }
+
+        const resolvedTargets = targetRefs.map((r) =>
+            resolveBooleanOperand(r, "Target", booleanType, doc, localRefs, consumed, tempShapesToDispose),
+        );
+        const resolvedTools = toolRefs.map((r) =>
+            resolveBooleanOperand(r, "Tool", booleanType, doc, localRefs, consumed, tempShapesToDispose),
+        );
+
+        const targetShapes = resolvedTargets.map((t) => t.shape);
+        const toolShapes = resolvedTools.map((t) => t.shape);
+
+        let raw: unknown;
+        if (op.method === "booleanFuse") {
+            const simplifyShape =
+                typeof op.args?.["simplifyShape"] === "boolean" ? op.args["simplifyShape"] : true;
+            raw = (factory as Record<string, (...args: unknown[]) => unknown>)[op.method](
+                targetShapes,
+                toolShapes,
+                simplifyShape,
+            );
+        } else {
+            raw = (factory as Record<string, (...args: unknown[]) => unknown>)[op.method](
+                targetShapes,
+                toolShapes,
+            );
+        }
+
+        const result = raw instanceof Result ? raw : Result.ok(raw);
+        if (!result.isOk) throw new Error(result.error);
+        resultShape = result.value as IShape;
+
+        if (booleanType === "cut") {
+            const totalTargetVolume = resolvedTargets.reduce((acc, t) => acc + t.originalVolume, 0);
+            const resultVolume = typeof resultShape.volume === "function" ? resultShape.volume() : 0;
+            const volumeRemoved = totalTargetVolume - resultVolume;
+            const volTol =
+                totalTargetVolume > 0 ? Math.min(1e-5, Math.max(1e-12, totalTargetVolume * 1e-6)) : 1e-5;
+            if (volumeRemoved <= volTol) {
+                const primaryTargetName = resolvedTargets[0]?.name ?? "Target";
+                throw new Error(
+                    `booleanCut did not remove any volume from target "${primaryTargetName}" (volume before: ${totalTargetVolume.toFixed(6)}, volume after: ${resultVolume.toFixed(6)}). Cutter does not intersect the target or creates no geometric change.`,
+                );
+            }
+
+            if (op.args?.["throughCut"] === true || op.args?.["verifyThrough"] === true) {
+                verifyThroughCut(targetShapes, toolShapes, resultShape, resolvedTargets[0]?.name ?? "Target");
+            }
+        }
+
+        consumeEditInputs(op.method, doc, localRefs, consumed, removed);
+        addCreatedNode(op, doc, localRefs, created, op.name ?? cap.method, Result.ok(resultShape));
+        resultCommitted = true;
+    } finally {
+        if (!resultCommitted && resultShape) {
+            try {
+                resultShape.dispose?.();
+            } catch {
+                // ignore
+            }
+        }
+        for (const temp of tempShapesToDispose) {
+            try {
+                temp.dispose?.();
+            } catch {
+                // ignore
+            }
+        }
+    }
 }
 
 function runShapeOp(

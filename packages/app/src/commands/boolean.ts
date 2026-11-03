@@ -147,13 +147,16 @@ export abstract class BooleanOperate extends MultistepCommand {
     }, 20);
 
     private isSolidVolume(shape: IShape): boolean {
-        if (shape.shapeType === ShapeTypes.solid) return true;
-        if (shape.shapeType === ShapeTypes.compound) {
-            const solids = shape.findSubShapes?.(ShapeTypes.solid) as IShape[] | undefined;
-            return !!solids && solids.length > 0;
+        if (shape.shapeType === ShapeTypes.solid || shape.shapeType === ShapeTypes.compoundSolid) {
+            return true;
         }
-        // In mock unit tests shapeType might be 0 (ShapeTypes.shape)
-        if (shape.shapeType === ShapeTypes.shape) return true;
+        if (shape.shapeType === ShapeTypes.compound) {
+            const subShapes = shape.directSubShapes?.() ?? [];
+            if (subShapes.length > 0) {
+                return subShapes.every((s) => this.isSolidVolume(s));
+            }
+            return false;
+        }
         return false;
     }
 

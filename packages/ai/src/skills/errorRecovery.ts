@@ -39,6 +39,12 @@ export const errorRecovery: Skill = {
 
 "BooleanCut Error" / "BooleanFuse Error" / "BooleanCommon Error" (or a raw OCCT diagnostic) — the kernel could not complete the operation. Do not assume the cause: a disjoint fuse SUCCEEDS (it returns a compound of loose solids, not one solid — that is why booleanFuse is only for touching solids). Compare the operands with shape.boundingBox / shape.extremaDistance, check that both are solids of the expected size, fix placement (corner vs base-center vs true-center rules) or the operand choice, and retry.
 
+"booleanCut did not remove any volume from target" / "Cutter does not intersect the target or creates no geometric change" — the cutter did not penetrate the target solid. Do not claim the cut succeeded or blame camera angle/zoom. Check target placement and bounding box (shape.boundingBox). Extend or reposition the cutter solid so it clearly penetrates through the target volume.
+
+"booleanCut failed through-cut verification" — the cutter only created a blind pocket or recess and did not penetrate both opposite faces in the wall thickness dimension. Check the thickness direction of the wall, enlarge the cutter's span along that axis so it extends beyond both target boundaries, and retry. Never declare a door or window complete if it did not cut all the way through.
+
+"Target/Tool "x" is a Shell/Face/Wire, not a solid body. Boolean cut requires solid bodies." — boolean operations require solid bodies. If the cutter was extruded from a wire or profile, ensure the profile was closed into a face before extrusion, or create a solid primitive (box, cylinder). A compound mixing solids with open shells/faces is also rejected.
+
 "To face failed" (wire.toFace) or "Failed to create prism" / "Prism Error: …" (prism) — the wire is not usable as a profile: polygon points must ALL lie on one plane and number at least 3 (fewer points or scattered 3D points produce an open/non-planar wire). Re-issue the corners on a single plane in perimeter order, repeating the first point as the last so the wire is closed.
 
 prism/revolve on a polygon wire returns a shell or breaks downstream booleans — the wire was not CLOSED (a closed one is turned into a face and sweeps a solid). Re-run polygon with the first point repeated as the last point, then extrude again.
