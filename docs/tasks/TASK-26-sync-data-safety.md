@@ -1,7 +1,7 @@
 # TASK-26: Chống Mất Dữ Liệu Bản Vẽ Khi Mất Mạng, Đóng Tab, Server Lỗi (Sync Data Safety)
 
 - **Trạng thái:** `[?] WAITING_REVIEW` (Đã hoàn thiện đầy đủ kiểm thử unit, outbox retry, conflict 409, snapshot thưa; chưa deploy lên VPS, chưa kiểm chứng trên trình duyệt thật)
-- **Mã Commit:** Sẽ cập nhật theo commit của tài liệu này
+- **Mã Commit:** `1a620742` (HEAD chuỗi commit TASK-26)
 - **Ưu tiên:** Rất cao (Bảo vệ dữ liệu thiết kế và trải nghiệm người dùng)
 - **Phụ trách:** AI Thực thi (Worker AI)
 
@@ -155,4 +155,4 @@ Theo quy định `docs/WORKFLOW.md`, hệ thống **dừng lại tại đây** �
   3. [`4c1cb1a6`](file:///Volumes/DATA_SSD/Projects/autocad-dunvex/server/storageServer.mjs): `✨ feat(server): implement project versioning and HTTP 409 conflict detection`
   4. [`5341e37f`](file:///Volumes/DATA_SSD/Projects/autocad-dunvex/server/storageServer.mjs): `✨ feat(server): implement duplicate write avoidance via hash and sparse snapshots`
   5. [`19b89ffb`](file:///Volumes/DATA_SSD/Projects/autocad-dunvex/packages/ui/src/statusbar/statusbar.ts): `✨ feat(ui): add sync status indicators, i18n translations, and save on tab hide`
-  6. Sẽ cập nhật commit tài liệu này.
+  6. [`1a620742`](file:///Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-26-sync-data-safety.md): `📝 docs(tasks): establish TASK-26 sync data safety technical documentation and roadmap`
