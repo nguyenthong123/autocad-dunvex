@@ -86,6 +86,7 @@ Cấu hình:
 
 - **Thời gian:** 03/11/2026
 - **Nhánh:** `dev`
+- **Commit SHA:** `640210b0`
 - **Các file thay đổi:**
   - `packages/ai/src/llm/urlUtils.ts`: Tạo mới helper `resolveBaseURL` và `sanitizeErrorMessage`.
   - `packages/ai/src/llm/completions.ts`: Tích hợp `resolveBaseURL`.

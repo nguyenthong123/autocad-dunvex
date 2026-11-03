@@ -129,6 +129,7 @@ Toàn bộ 26/26 tests trong `boolean.test.ts` **PASS 100%**.
 
 - **Thời gian:** 03/11/2026
 - **Nhánh:** `dev`
+- **Commit SHA:** `63045f75` (Boolean Cut pre-flight check & chẩn đoán an toàn); `019aaece` (Auto-scroll fix)
 - **Các file thay đổi:**
   - `packages/ui/src/project/tree/tree.ts` & `packages/ui/test/tree.test.ts` (Auto-scroll fix, 27/27 tests pass).
   - `packages/app/src/commands/boolean.ts`: Thêm `isSolidVolume()`, pre-flight validation cho target/tools, chẩn đoán an toàn, và báo lỗi tường minh.
