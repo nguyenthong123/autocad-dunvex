@@ -1,6 +1,6 @@
 # TASK-34: Tăng tốc thao tác nhiều chi tiết và Array an toàn trong trợ lý AI
 
-> **Trạng thái:** `[?] WAITING_REVIEW` (đã triển khai đầy đủ và kiểm thử; chờ người dùng nghiệm thu)
+> **Trạng thái:** `[~] IN_PROGRESS` (đã triển khai đầy đủ và kiểm thử; chờ deploy VPS và người dùng nghiệm thu)
 > **Ưu tiên:** P1
 > **Phạm vi:** Trợ lý AI trong app; không phụ thuộc MCP ngoài.
 
@@ -34,8 +34,8 @@
 ## 4. Nhật ký Thực thi & Báo cáo Thay đổi (Execution Log)
 
 - **Ngày giờ thực hiện:** 03/11/2026.
-- **Trạng thái:** `[?] WAITING_REVIEW` (chờ người dùng nghiệm thu, không tự đánh `[x] DONE`).
-- **Trạng thái Deploy:** Không deploy VPS (theo đúng quy định dự án).
+- **Trạng thái:** `[~] IN_PROGRESS` (đã hoàn thiện mã nguồn và kiểm thử; chờ deploy VPS để chuyển `[?] WAITING_REVIEW`).
+- **Trạng thái Deploy:** Không deploy VPS trong lượt này (theo quy định dự án).
 
 ### Chi tiết triển khai:
 1. **Bộ công cụ Native Mảng (`packages/ai/src/tools/arrayTools.ts`):**
@@ -45,19 +45,33 @@
      + Chế độ khe hở cố định (`gap`): Tính tổng chiều dài bao ngoài và độ dôi thừa `leftoverMm`.
      + Chế độ bước dịch cố định (`pitch`).
      + **Bắt lỗi tràn biên (Overflow Check):** Tái hiện chính xác ca $50 \times 100\text{ mm}$ trên khoang $1.080\text{ mm}$ -> Tổng kích thước tối thiểu $5.000\text{ mm} > 1.080\text{ mm}$. Tool trả về ngay `feasible: false`, `overflowMm: 3920`, `maxFittingCount: 10`, `reason: "Total item thickness (5000 mm) exceeds compartment span (1080 mm)..."` và khuyến nghị `suggestedAction: "Reduce count to at most 10 or decrease item thickness."`. **Không có bất kỳ node nào được tạo ra trong scene graph khi kế hoạch không khả thi.**
+     + **Cấp phát `planId` và lưu snapshot:** Khi kế hoạch khả thi (`feasible: true`), `plan_array` sinh mã `planId` duy nhất và lưu snapshot vào `activePlans` (bao gồm `nodeId`, `sourceFingerprint` về vị trí/kích thước, `axis`, `count`, `pitch`, `gap`, `availableSpan`, `createdAt`, TTL 10 phút).
    - `apply_array`: Thực thi sao chép hàng loạt theo kế hoạch an toàn:
-     + Chặn cứng giới hạn an toàn: $2 \le \text{count} \le 200$. Nếu vượt quá 200 bản sao, từ chối ngay lập tức để tránh làm nghẽn heap/trình duyệt.
+     + **Bắt buộc `planId`:** `apply_array` đòi hỏi tham số `planId` hợp lệ. Mọi lời gọi trực tiếp không qua lập kế hoạch đều bị chặn ngay với thông báo lỗi rõ ràng.
+     + **Kiểm tra tính hợp lệ & hết hạn:** Nếu `planId` không tồn tại hoặc đã hết hạn (> 10 phút), từ chối ngay.
+     + **Khớp tham số nghiêm ngặt:** Nếu `nodeId`, `axis`, `count` hoặc `pitch` không khớp với kế hoạch đã phê duyệt, từ chối ngay.
+     + **Phát hiện node nguồn bị thay đổi:** Đo lại node nguồn trong document; nếu bounding box hoặc kích thước bị dịch chuyển hay thay đổi so với lúc lập kế hoạch, hủy kế hoạch và yêu cầu lập lại kế hoạch mới.
+     + **Kiểm tra tràn vùng trước khi ghi:** Tính tổng chiều dải mảng trước khi ghi `(count - 1) * pitch + itemDim`; nếu vượt quá `availableSpan`, từ chối ngay.
+     + **Tiêu thụ kế hoạch (Plan Consumption):** Kế hoạch được xóa khỏi `activePlans` ngay khi bắt đầu thực thi để chống việc tái sử dụng sai lệch.
+     + **Chặn cứng giới hạn an toàn:** $2 \le \text{count} \le 200$. Nếu vượt quá 200 bản sao, từ chối ngay lập tức để tránh làm nghẽn heap/trình duyệt.
      + Sử dụng `cloneForCopyNode(sourceNode, matrix)` từ `@chili3d/core`: sao chép ma trận / thể hiện (instance) không cần dựng lại B-rep kernel 50 hoặc 200 lần.
      + Đóng gói toàn bộ quá trình clone và tạo thư mục phân nhóm `FolderNode` (`Mảng <nodeName> (<count>)`) trong **duy nhất 1 Transaction** (`Transaction.execute(doc, "AI Array", ...)`).
      + Chỉ phát sinh đúng 1 bước Undo và 1 lần cập nhật giao diện trực quan (visual update).
 2. **Đăng ký Tool & Tối ưu Prompt / Recipe:**
    - File: `packages/ai/src/tools/index.ts`: Bổ sung `...buildArrayTools()` vào cuối danh sách `buildTools()` để bảo toàn tool prefix cache cho LLM API.
-   - File: `packages/ai/src/skills/modelingRecipes.ts`: Bổ sung hướng dẫn tạo hệ nan gỗ, thanh lam lặp lại với quy trình chuẩn 3 bước: `measure_nodes` -> `plan_array` (kiểm tra `feasible`) -> `apply_array`. Cấm tuyệt đối việc gọi `run_program` 50 lần liên tiếp.
-3. **Kết quả Benchmark Hiệu năng (Đo lường tự động trên môi trường thật):**
+   - File: `packages/ai/src/skills/modelingRecipes.ts`: Bổ sung hướng dẫn tạo hệ nan gỗ, thanh lam lặp lại với quy trình chuẩn 3 bước: `measure_nodes` -> `plan_array` (nhận `planId`) -> `apply_array({ planId, ... })`. Cấm tuyệt đối việc gọi `run_program` 50 lần liên tiếp.
+3. **Kết quả Benchmark Đơn vị (Unit Handler Execution):**
+   *(Lưu ý: Đo lường tốc độ thực thi hàm sao chép ma trận trên bộ nhớ trong unit test, không đại diện cho toàn bộ chu kỳ render Three.js viewport trên trình duyệt thật)*
    - **Ca 50 bản sao (49 node clone):**
      + Thời gian lập kế hoạch (`plan_array`): **< 1 ms**.
-     + Thời gian áp dụng (`apply_array`): **2 ms** (rất nhanh, đạt chuẩn < 50 ms).
+     + Thời gian thực thi handler (`apply_array`): **~2 ms** (đạt chuẩn < 50 ms).
      + Số transaction: **1 transaction duy nhất**.
+   - **Ca 200 bản sao (199 node clone):**
+     + Thời gian lập kế hoạch (`plan_array`): **< 1 ms**.
+     + Thời gian thực thi handler (`apply_array`): **~3 ms** (đạt chuẩn < 100 ms).
+     + Số transaction: **1 transaction duy nhất**.
+4. **Kiểm thử tự động (`packages/ai/test/arrayTools.test.ts`):**
+   - 14/14 tests passed: kiểm tra toán học và bắt tràn vùng, đo lường node, từ chối gọi trực tiếp không có `planId` (tạo 0 node), từ chối `planId` sai/hết hạn (tạo 0 node), từ chối tham số không khớp (tạo 0 node), từ chối khi node nguồn bị di chuyển sau khi lập kế hoạch (tạo 0 node), từ chối count > 200, và 2 ca benchmark 50/200 items.
    - **Ca 200 bản sao (199 node clone):**
      + Thời gian lập kế hoạch (`plan_array`): **< 1 ms**.
      + Thời gian áp dụng (`apply_array`): **2 ms** (rất nhanh, đạt chuẩn < 100 ms).

@@ -110,7 +110,9 @@ function sendJson(res, statusCode, data, extraHeaders = {}) {
 }
 
 function _sanitizeLogMessage(msg) {
-    return String(msg).replace(/(Bearer\s+|x-api-key:\s*)[a-zA-Z0-9_\-.]+/gi, "$1[REDACTED]");
+    return String(msg)
+        .replace(/(Bearer\s+|x-api-key:\s*)[a-zA-Z0-9_\-.]+/gi, "$1[REDACTED]")
+        .replace(/ey[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "[REDACTED_JWT]");
 }
 
 /**
@@ -226,61 +228,98 @@ export async function handleLlmProxy(req, res, pathname, options = {}) {
     const isPlaceholder = (k) =>
         !k || k === "vault" || k === "stored-vault" || k === "Bearer vault" || k === "Bearer stored-vault";
 
+    const clientLlmApiKey = upstreamHeaders["x-api-key"];
+    const clientLlmAuth = upstreamHeaders.authorization;
+
+    const wantsVault =
+        Boolean(isClientJwt) ||
+        Boolean(req.headers["x-user-token"]) ||
+        Boolean(clientLlmApiKey && isPlaceholder(clientLlmApiKey)) ||
+        Boolean(clientLlmAuth && isPlaceholder(clientLlmAuth));
+
     let hasClientLlmKey = false;
-    if (
-        upstreamHeaders["x-api-key"] &&
-        typeof upstreamHeaders["x-api-key"] === "string" &&
-        !isPlaceholder(upstreamHeaders["x-api-key"])
-    ) {
+    if (clientLlmApiKey && typeof clientLlmApiKey === "string" && !isPlaceholder(clientLlmApiKey)) {
         hasClientLlmKey = true;
     } else if (
-        upstreamHeaders.authorization &&
-        typeof upstreamHeaders.authorization === "string" &&
+        clientLlmAuth &&
+        typeof clientLlmAuth === "string" &&
         !isClientJwt &&
-        !isPlaceholder(upstreamHeaders.authorization)
+        !isPlaceholder(clientLlmAuth)
     ) {
         hasClientLlmKey = true;
     }
 
-    if (!hasClientLlmKey && userJwt) {
+    if (wantsVault && !hasClientLlmKey) {
+        if (!userJwt) {
+            sendJson(res, 401, { error: "Authentication required to access stored credential" });
+            return;
+        }
+
         const verifyJwtFn = options.verifyJwt;
         const getUserDbFn = options.getUserDb;
         const getMasterKeyFn = options.getMasterEncryptionKey;
         const decryptFn = options.decryptApiKey;
 
-        if (verifyJwtFn && getUserDbFn && getMasterKeyFn && decryptFn) {
-            const payload = verifyJwtFn(userJwt);
-            if (payload?.sub) {
-                const userDb = getUserDbFn(payload.sub);
-                const credRow = userDb
-                    .prepare("SELECT ciphertext, iv, tag FROM ai_credentials WHERE vendor_id = ?")
-                    .get(vendorId);
-                const masterKey = getMasterKeyFn();
-                if (credRow && masterKey) {
-                    try {
-                        const decryptedKey = decryptFn(
-                            credRow.ciphertext,
-                            credRow.iv,
-                            credRow.tag,
-                            masterKey,
-                        );
-                        if (vendorId === "anthropic") {
-                            upstreamHeaders["x-api-key"] = decryptedKey;
-                            upstreamHeaders["anthropic-version"] =
-                                upstreamHeaders["anthropic-version"] || "2023-06-01";
-                            delete upstreamHeaders.authorization;
-                        } else {
-                            upstreamHeaders.authorization = `Bearer ${decryptedKey}`;
-                        }
-                    } catch (decErr) {
-                        console.error("[llmProxy] Decryption error:", decErr.message);
-                    }
-                }
-            }
+        if (!verifyJwtFn || !getUserDbFn || !getMasterKeyFn || !decryptFn) {
+            sendJson(res, 500, { error: "Credential vault services not configured on server" });
+            return;
         }
-    } else if (isClientJwt) {
-        // Do not forward user JWT to LLM providers
-        delete upstreamHeaders.authorization;
+
+        const payload = verifyJwtFn(userJwt);
+        if (!payload?.sub) {
+            sendJson(res, 401, { error: "Invalid or expired user session for stored credential" });
+            return;
+        }
+
+        const masterKey = getMasterKeyFn();
+        if (!masterKey) {
+            sendJson(res, 500, { error: "Server credential vault encryption key is not configured" });
+            return;
+        }
+
+        const userDb = getUserDbFn(payload.sub);
+        const credRow = userDb
+            .prepare("SELECT ciphertext, iv, tag FROM ai_credentials WHERE vendor_id = ?")
+            .get(vendorId);
+
+        if (!credRow) {
+            sendJson(res, 401, { error: `No stored API credential found for vendor '${vendorId}'` });
+            return;
+        }
+
+        let decryptedKey;
+        try {
+            decryptedKey = decryptFn(credRow.ciphertext, credRow.iv, credRow.tag, masterKey);
+        } catch (decErr) {
+            console.error("[llmProxy] Decryption error:", decErr.message);
+            sendJson(res, 500, { error: "Failed to decrypt stored credential" });
+            return;
+        }
+
+        if (!decryptedKey) {
+            sendJson(res, 500, { error: "Decrypted credential is empty" });
+            return;
+        }
+
+        if (vendorId === "anthropic") {
+            upstreamHeaders["x-api-key"] = decryptedKey;
+            upstreamHeaders["anthropic-version"] = upstreamHeaders["anthropic-version"] || "2023-06-01";
+            delete upstreamHeaders.authorization;
+        } else {
+            upstreamHeaders.authorization = `Bearer ${decryptedKey}`;
+            delete upstreamHeaders["x-api-key"];
+        }
+    } else {
+        if (isClientJwt) {
+            // Do not forward user JWT to LLM providers
+            delete upstreamHeaders.authorization;
+        }
+        if (upstreamHeaders["x-api-key"] && isPlaceholder(upstreamHeaders["x-api-key"])) {
+            delete upstreamHeaders["x-api-key"];
+        }
+        if (upstreamHeaders.authorization && isPlaceholder(upstreamHeaders.authorization)) {
+            delete upstreamHeaders.authorization;
+        }
     }
 
     // Parse target URL

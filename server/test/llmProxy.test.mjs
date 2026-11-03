@@ -456,4 +456,63 @@ describe("LLM Proxy Server Unit Tests", () => {
         // Verify user JWT token was NOT forwarded upstream
         assert.strictEqual(lastUpstreamRequest.headers["x-user-token"], undefined);
     });
+
+    it("rejects stored vault request with 401 when user is not authenticated (guest)", async () => {
+        const res = await fetch(`http://127.0.0.1:${proxyPort}/api/llm-proxy/nvidia/v1/chat/completions`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer stored-vault",
+            },
+            body: JSON.stringify({
+                model: "meta/llama-3.3-70b-instruct",
+                messages: [{ role: "user", content: "Guest vault access" }],
+            }),
+        });
+
+        assert.strictEqual(res.status, 401);
+        const body = await res.json();
+        assert.match(body.error, /Authentication required to access stored credential/i);
+    });
+
+    it("rejects stored vault request with 401 when user JWT is invalid or expired", async () => {
+        const res = await fetch(`http://127.0.0.1:${proxyPort}/api/llm-proxy/nvidia/v1/chat/completions`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-user-token": "invalid.or.expired.jwt",
+                Authorization: "Bearer stored-vault",
+            },
+            body: JSON.stringify({
+                model: "meta/llama-3.3-70b-instruct",
+                messages: [{ role: "user", content: "Invalid JWT vault access" }],
+            }),
+        });
+
+        assert.strictEqual(res.status, 401);
+        const body = await res.json();
+        assert.match(body.error, /Invalid or expired user session/i);
+    });
+
+    it("rejects stored vault request with 401 on provider mismatch (saved nvidia, requesting openrouter)", async () => {
+        const res = await fetch(
+            `http://127.0.0.1:${proxyPort}/api/llm-proxy/openrouter/v1/chat/completions`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-user-token": "valid.mock.jwt",
+                    Authorization: "Bearer stored-vault",
+                },
+                body: JSON.stringify({
+                    model: "meta-llama/llama-3-8b",
+                    messages: [{ role: "user", content: "Provider mismatch test" }],
+                }),
+            },
+        );
+
+        assert.strictEqual(res.status, 401);
+        const body = await res.json();
+        assert.match(body.error, /No stored API credential found for vendor 'openrouter'/i);
+    });
 });

@@ -2506,7 +2506,7 @@ describe("capabilityEngine", () => {
             }
         });
 
-        test("throughCut verification: succeeds when cutter spans completely across wall thickness", async () => {
+        test("Ca 1: throughCut verification succeeds and proves physical hollow when cutter spans wall thickness", async () => {
             // Wall spans X: [0, 100], Y: [0, 20] (thickness), Z: [0, 100]
             const wallShape = {
                 shapeType: ShapeTypes.solid,
@@ -2514,7 +2514,7 @@ describe("capabilityEngine", () => {
                 checkShape: () => true,
                 boundingBox: () => new BoundingBox({ x: 0, y: 0, z: 0 }, { x: 100, y: 20, z: 100 }),
             };
-            // Through cutter extends past both Y faces: Y: [-5, 25]
+            // Through cutter extends past both Y faces: Y: [-5, 25] and stays interior to X [20, 40]
             const throughCutter = {
                 shapeType: ShapeTypes.solid,
                 volume: () => 30000,
@@ -2526,6 +2526,7 @@ describe("capabilityEngine", () => {
                 volume: () => 170000,
                 checkShape: () => true,
                 boundingBox: () => new BoundingBox({ x: 0, y: 0, z: 0 }, { x: 100, y: 20, z: 100 }),
+                containsPoint: () => false, // Geometric probe confirms points in opening are hollow!
             };
 
             const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) =>
@@ -2567,13 +2568,18 @@ describe("capabilityEngine", () => {
 
                 expect(res.created.length).toBe(1);
                 expect(res.created[0].id).toBe("cutDoor");
-                expect(res.results.cutDoor).toEqual({ throughVerified: true });
+                expect(res.results.cutDoor).toEqual({
+                    throughVerified: true,
+                    status: "verified",
+                    penetrationAxis: "y",
+                    probedPointsCount: 15,
+                });
             } finally {
                 rs.unstubAllGlobals();
             }
         });
 
-        test("throughCut verification: fails when solid material remains inside the opening", async () => {
+        test("Ca 3: throughCut verification fails when cutter is misaligned and solid material remains inside", async () => {
             const wallShape = {
                 shapeType: ShapeTypes.solid,
                 volume: () => 200000,
@@ -2586,7 +2592,7 @@ describe("capabilityEngine", () => {
                 checkShape: () => true,
                 boundingBox: () => new BoundingBox({ x: 20, y: -5, z: 20 }, { x: 40, y: 25, z: 40 }),
             };
-            // Result shape still contains the center point (cut did not open through)
+            // Result shape still contains solid material inside the opening
             const cutResultWithSolidCenter = {
                 shapeType: ShapeTypes.solid,
                 volume: () => 180000,
@@ -2630,8 +2636,254 @@ describe("capabilityEngine", () => {
                         ],
                     }),
                 ).rejects.toThrow(
-                    /geometric verification detected solid material remaining inside the opening/,
+                    /geometric probe detected solid material remaining inside the opening.*Status: unverified/,
                 );
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
+        test("Ca 4: throughCut verification returns unverified when cutter creates an edge notch", async () => {
+            const wallShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 200000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 0, y: 0, z: 0 }, { x: 100, y: 20, z: 100 }),
+            };
+            // Cutter cuts across the left edge of wall X: [-5, 30]
+            const edgeCutter = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 30000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: -5, y: -5, z: 20 }, { x: 30, y: 25, z: 40 }),
+            };
+            const cutResult = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 170000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 0, y: 0, z: 0 }, { x: 100, y: 20, z: 100 }),
+                containsPoint: () => false,
+            };
+
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) =>
+                Result.ok(cutResult as unknown as IShape),
+            );
+            const { doc } = setupBooleanEnv({ booleanCut });
+
+            try {
+                const wallNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Wall",
+                    shape: Result.ok(wallShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(wallNode);
+                const cutterNode = new EditableShapeNode({
+                    document: doc,
+                    name: "EdgeNotchCutter",
+                    shape: Result.ok(edgeCutter as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode);
+
+                const tool = buildCapabilityTools()[0];
+                const res = JSON.parse(
+                    (await tool.handler({
+                        ops: [
+                            {
+                                id: "cutNotch",
+                                method: "booleanCut",
+                                args: {
+                                    shape1: [wallNode.id],
+                                    shape2: [cutterNode.id],
+                                    throughCut: true,
+                                },
+                            },
+                        ],
+                    })) as string,
+                );
+
+                expect(res.results.cutNotch.throughVerified).toBe(false);
+                expect(res.results.cutNotch.status).toBe("unverified");
+                expect(res.results.cutNotch.reason).toMatch(/open edge notch/);
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
+        test("Ca 5: throughCut verification returns unverified when result shape lacks containsPoint", async () => {
+            const wallShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 200000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 0, y: 0, z: 0 }, { x: 100, y: 20, z: 100 }),
+            };
+            const throughCutter = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 30000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 20, y: -5, z: 20 }, { x: 40, y: 25, z: 40 }),
+            };
+            // Result shape has no containsPoint method
+            const cutResultWithoutContainsPoint = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 170000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 0, y: 0, z: 0 }, { x: 100, y: 20, z: 100 }),
+            };
+
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) =>
+                Result.ok(cutResultWithoutContainsPoint as unknown as IShape),
+            );
+            const { doc } = setupBooleanEnv({ booleanCut });
+
+            try {
+                const wallNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Wall",
+                    shape: Result.ok(wallShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(wallNode);
+                const cutterNode = new EditableShapeNode({
+                    document: doc,
+                    name: "ThroughDoorCutter",
+                    shape: Result.ok(throughCutter as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode);
+
+                const tool = buildCapabilityTools()[0];
+                const res = JSON.parse(
+                    (await tool.handler({
+                        ops: [
+                            {
+                                id: "cutDoor",
+                                method: "booleanCut",
+                                args: {
+                                    shape1: [wallNode.id],
+                                    shape2: [cutterNode.id],
+                                    throughCut: true,
+                                },
+                            },
+                        ],
+                    })) as string,
+                );
+
+                expect(res.results.cutDoor.throughVerified).toBe(false);
+                expect(res.results.cutDoor.status).toBe("unverified");
+                expect(res.results.cutDoor.reason).toMatch(/does not support geometric point containment/);
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
+        test("parameter aliasing: booleanCut accepts target/cutter instead of shape1/shape2", async () => {
+            const wallShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 200000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 0, y: 0, z: 0 }, { x: 100, y: 20, z: 100 }),
+            };
+            const cutterShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 30000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 20, y: -5, z: 20 }, { x: 40, y: 25, z: 40 }),
+            };
+            const cutResult = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 170000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 0, y: 0, z: 0 }, { x: 100, y: 20, z: 100 }),
+                containsPoint: () => false,
+            };
+
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) =>
+                Result.ok(cutResult as unknown as IShape),
+            );
+            const { doc } = setupBooleanEnv({ booleanCut });
+
+            try {
+                const wallNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Wall",
+                    shape: Result.ok(wallShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(wallNode);
+                const cutterNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Cutter",
+                    shape: Result.ok(cutterShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode);
+
+                const tool = buildCapabilityTools()[0];
+                const res = JSON.parse(
+                    (await tool.handler({
+                        ops: [
+                            {
+                                id: "cutAlias",
+                                method: "booleanCut",
+                                args: {
+                                    target: [wallNode.id],
+                                    cutter: [cutterNode.id],
+                                },
+                            },
+                        ],
+                    })) as string,
+                );
+
+                expect(booleanCut).toHaveBeenCalledTimes(1);
+                expect(res.created.length).toBe(1);
+                expect(res.created[0].id).toBe("cutAlias");
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
+        test("parameter aliasing: prism accepts profile/direction or dz instead of shape/vec", async () => {
+            const wireShape = {
+                shapeType: ShapeTypes.wire,
+                isClosed: () => true,
+                checkShape: () => true,
+            };
+            const solidResult = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 5000,
+                checkShape: () => true,
+            };
+            const prismMock = rs.fn((_shape: unknown, _vec: unknown) => Result.ok(solidResult as any));
+            const faceMock = rs.fn((_wires: unknown[]) => Result.ok(wireShape as any));
+
+            const { doc, factory } = setupBooleanEnv();
+            factory.prism = prismMock;
+            factory.face = faceMock;
+            factory.checkShape = () => true;
+
+            try {
+                const wireNode = new EditableShapeNode({
+                    document: doc,
+                    name: "ProfileWire",
+                    shape: Result.ok(wireShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(wireNode);
+
+                const tool = buildCapabilityTools()[0];
+                const res = JSON.parse(
+                    (await tool.handler({
+                        ops: [
+                            {
+                                id: "extrudeCutter",
+                                method: "prism",
+                                args: {
+                                    profile: wireNode.id,
+                                    direction: { x: 0, y: 50, z: 0 },
+                                },
+                            },
+                        ],
+                    })) as string,
+                );
+
+                expect(prismMock).toHaveBeenCalledTimes(1);
+                expect(prismMock.mock.calls[0][1]).toEqual({ x: 0, y: 50, z: 0 });
+                expect(res.created.length).toBe(1);
             } finally {
                 rs.unstubAllGlobals();
             }

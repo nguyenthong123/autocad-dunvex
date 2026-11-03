@@ -54,6 +54,29 @@ describe("openaiCompat toMessages", () => {
 
         expect(out[0]).toEqual({ role: "system", content: "STABLE\n\nSNAPSHOT" });
     });
+
+    test("strips images when includeImages is false (fallback for text-only / non-multimodal models)", () => {
+        const messages: ChatMessage[] = [
+            { role: "assistant", content: "", toolCalls: [{ id: "c1", name: "shot", arguments: "{}" }] },
+            { role: "tool", toolCallId: "c1", name: "shot", content: "captured", images: [IMAGE] },
+            { role: "user", content: "hello with image", images: [IMAGE] },
+        ];
+
+        const out = toMessages({ stable: "sys", volatile: "" }, messages, false);
+
+        // Verify no image_url exists in output messages
+        for (const msg of out) {
+            if (Array.isArray(msg["content"])) {
+                for (const part of msg["content"] as any[]) {
+                    expect(part.type).not.toBe("image_url");
+                }
+            } else if (typeof msg["content"] === "object" && msg["content"] !== null) {
+                expect((msg["content"] as any).type).not.toBe("image_url");
+            }
+        }
+        // User message should fall back to plain text string
+        expect(out.find((m) => m["role"] === "user" && m["content"] === "hello with image")).toBeDefined();
+    });
 });
 
 describe("openaiCompat convertChunk", () => {

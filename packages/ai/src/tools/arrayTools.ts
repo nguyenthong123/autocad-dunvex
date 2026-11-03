@@ -63,6 +63,7 @@ export function measureNode(node: INode): NodeMeasurement | undefined {
 
 export interface ArrayPlanResult {
     feasible: boolean;
+    planId?: string;
     reason?: string;
     suggestedAction?: string;
     count: number;
@@ -81,6 +82,40 @@ export interface ArrayPlanResult {
         end: number;
     };
     offsets?: number[];
+}
+
+export interface StoredArrayPlan {
+    planId: string;
+    nodeId: string;
+    sourceFingerprint: {
+        bounds: {
+            min: { x: number; y: number; z: number };
+            max: { x: number; y: number; z: number };
+        };
+        dimensions: { x: number; y: number; z: number };
+    };
+    axis: "x" | "y" | "z";
+    count: number;
+    pitch: number;
+    gap?: number;
+    itemDim: number;
+    availableSpan: number;
+    createdAt: number;
+}
+
+const activePlans = new Map<string, StoredArrayPlan>();
+const PLAN_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+export function _clearActivePlans(): void {
+    activePlans.clear();
+}
+
+export function _getActivePlansCount(): number {
+    return activePlans.size;
+}
+
+export function _getActivePlan(planId: string): StoredArrayPlan | undefined {
+    return activePlans.get(planId);
 }
 
 export function planArrayLogic(params: {
@@ -349,6 +384,29 @@ function planArrayTool(): Tool {
                 startCoord,
             });
 
+            if (plan.feasible) {
+                const planId = `plan_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+                plan.planId = planId;
+                activePlans.set(planId, {
+                    planId,
+                    nodeId,
+                    sourceFingerprint: {
+                        bounds: {
+                            min: { ...m!.bounds.min },
+                            max: { ...m!.bounds.max },
+                        },
+                        dimensions: { ...m!.dimensions },
+                    },
+                    axis,
+                    count,
+                    pitch: plan.pitch!,
+                    gap: plan.gap,
+                    itemDim,
+                    availableSpan,
+                    createdAt: Date.now(),
+                });
+            }
+
             return JSON.stringify(plan);
         },
     };
@@ -358,10 +416,15 @@ function applyArrayTool(): Tool {
     return {
         name: "apply_array",
         description:
-            "Execute a batch array operation cloning a source node along an axis with given pitch. Uses fast matrix copying in a single transaction. Safe limit: up to 200 items.",
+            "Execute a batch array operation cloning a source node along an axis with given pitch. Uses fast matrix copying in a single transaction. Requires an approved planId from plan_array. Safe limit: up to 200 items.",
         parameters: {
             type: "object",
             properties: {
+                planId: {
+                    type: "string",
+                    description:
+                        "Approved plan ID from plan_array. Direct execution without planning is prohibited.",
+                },
                 nodeId: { type: "string", description: "Source node ID to clone." },
                 axis: { type: "string", enum: ["x", "y", "z"], description: "Axis direction." },
                 count: { type: "number", description: "Total items in array (2 to 200)." },
@@ -372,16 +435,51 @@ function applyArrayTool(): Tool {
                         "Optional folder name to group array elements. Defaults to 'Mảng <nodeName> (<count>)'.",
                 },
             },
-            required: ["nodeId", "axis", "count", "pitch"],
+            required: ["planId", "nodeId", "axis", "count", "pitch"],
         },
         handler: async (args) => {
             const doc = requireDocument();
             if (typeof doc === "string") return doc;
+
+            const planId = args["planId"] as string | undefined;
+            if (!planId || typeof planId !== "string" || !planId.trim()) {
+                return JSON.stringify({
+                    error: "Preflight plan required: apply_array requires a valid planId returned by plan_array. Direct execution without planning is prohibited.",
+                });
+            }
+
+            const plan = activePlans.get(planId);
+            if (!plan) {
+                return JSON.stringify({
+                    error: `Array plan not found or expired for planId "${planId}". Call plan_array first to obtain an approved plan.`,
+                });
+            }
+
+            // Check TTL
+            if (Date.now() - plan.createdAt > PLAN_TTL_MS) {
+                activePlans.delete(planId);
+                return JSON.stringify({
+                    error: `Array plan "${planId}" has expired. Call plan_array again to obtain an active plan.`,
+                });
+            }
+
             const nodeId = args["nodeId"] as string;
             const axis = args["axis"] as "x" | "y" | "z";
             const count = Number(args["count"]);
             const pitch = Number(args["pitch"]);
             const customFolderName = args["folderName"] as string | undefined;
+
+            // Enforce parameter match against approved plan
+            if (
+                nodeId !== plan.nodeId ||
+                axis !== plan.axis ||
+                count !== plan.count ||
+                Math.abs(pitch - plan.pitch) > 1e-4
+            ) {
+                return JSON.stringify({
+                    error: `Parameters do not match approved planId "${planId}". Expected nodeId="${plan.nodeId}", axis="${plan.axis}", count=${plan.count}, pitch=${plan.pitch}; got nodeId="${nodeId}", axis="${axis}", count=${count}, pitch=${pitch}. Re-run plan_array with updated parameters.`,
+                });
+            }
 
             if (count < 2 || count > MAX_ARRAY_COUNT) {
                 return JSON.stringify({
@@ -393,10 +491,56 @@ function applyArrayTool(): Tool {
             }
 
             const sourceNode = findNode(doc, nodeId);
-            if (!sourceNode) return JSON.stringify({ error: `Node not found: ${nodeId}` });
+            if (!sourceNode) {
+                activePlans.delete(planId);
+                return JSON.stringify({ error: `Node not found: ${nodeId}` });
+            }
             if (!("transform" in sourceNode) && !("clone" in sourceNode)) {
+                activePlans.delete(planId);
                 return JSON.stringify({ error: `Node ${nodeId} cannot be cloned as a spatial visual node.` });
             }
+
+            // Re-measure source node in document to detect mutation/movement since plan creation
+            const currM = measureNode(sourceNode);
+            if (!currM) {
+                activePlans.delete(planId);
+                return JSON.stringify({
+                    error: `Cannot measure source node ${nodeId} for pre-flight verification.`,
+                });
+            }
+
+            const tol = 1e-3;
+            const posDiff =
+                Math.abs(currM.bounds.min.x - plan.sourceFingerprint.bounds.min.x) +
+                Math.abs(currM.bounds.min.y - plan.sourceFingerprint.bounds.min.y) +
+                Math.abs(currM.bounds.min.z - plan.sourceFingerprint.bounds.min.z) +
+                Math.abs(currM.bounds.max.x - plan.sourceFingerprint.bounds.max.x) +
+                Math.abs(currM.bounds.max.y - plan.sourceFingerprint.bounds.max.y) +
+                Math.abs(currM.bounds.max.z - plan.sourceFingerprint.bounds.max.z);
+
+            const dimDiff =
+                Math.abs(currM.dimensions.x - plan.sourceFingerprint.dimensions.x) +
+                Math.abs(currM.dimensions.y - plan.sourceFingerprint.dimensions.y) +
+                Math.abs(currM.dimensions.z - plan.sourceFingerprint.dimensions.z);
+
+            if (posDiff > tol || dimDiff > tol) {
+                activePlans.delete(planId);
+                return JSON.stringify({
+                    error: `Source node "${sourceNode.name}" has been moved or resized since plan was created. Re-run plan_array.`,
+                });
+            }
+
+            // Pre-flight bounds check immediately before creating nodes
+            const totalSpan = (count - 1) * pitch + plan.itemDim;
+            if (totalSpan > plan.availableSpan + 1e-3) {
+                activePlans.delete(planId);
+                return JSON.stringify({
+                    error: `Total array span (${totalSpan} mm) exceeds compartment available span (${plan.availableSpan} mm). Execution aborted.`,
+                });
+            }
+
+            // Consume plan
+            activePlans.delete(planId);
 
             const dir =
                 axis === "x"
@@ -434,6 +578,7 @@ function applyArrayTool(): Tool {
             });
 
             return JSON.stringify({
+                planId,
                 folderName,
                 createdCount: createdNodes.length,
                 totalCount: count,

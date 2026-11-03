@@ -1,6 +1,6 @@
 # TASK-33: Lưu cấu hình trợ lý AI và API key an toàn qua lần tải lại
 
-> **Trạng thái:** `[?] WAITING_REVIEW` (đã triển khai đầy đủ và kiểm thử; chờ người dùng nghiệm thu)
+> **Trạng thái:** `[~] IN_PROGRESS` (đã triển khai đầy đủ và kiểm thử; chờ deploy VPS và người dùng nghiệm thu)
 > **Ưu tiên:** P1
 > **Phụ trách:** AI Thực thi (Worker)
 > **Phạm vi:** Lưu cấu hình/model vào SQLite theo tài khoản; cho phép người dùng chủ động ghi nhớ API key đã mã hóa theo tài khoản. Không lưu secret dạng rõ trong browser storage hoặc SQLite.
@@ -37,8 +37,8 @@
 ## 4. Nhật ký Thực thi & Báo cáo Thay đổi (Execution Log)
 
 - **Ngày giờ thực hiện:** 03/11/2026.
-- **Trạng thái:** `[?] WAITING_REVIEW` (chờ người dùng nghiệm thu, không tự đánh `[x] DONE`).
-- **Trạng thái Deploy:** Không deploy VPS (theo đúng quy định dự án).
+- **Trạng thái:** `[~] IN_PROGRESS` (đã hoàn thiện mã nguồn và kiểm thử; chờ deploy VPS để chuyển `[?] WAITING_REVIEW`).
+- **Trạng thái Deploy:** Không deploy VPS trong lượt này (theo quy định dự án).
 
 ### Chi tiết triển khai:
 1. **Lưu trữ phía Server (Backend & SQLite Vault):**
@@ -47,17 +47,29 @@
      + `ai_settings`: Lưu `provider`, `model`, `base_url`, `reasoning_effort`, `context_window`, `updated_at`.
      + `ai_credentials`: Lưu `vendor_id`, `ciphertext`, `iv`, `tag`, `key_version`, `updated_at`.
    - Thuật toán mã hóa: AES-256-GCM với random IV 12 bytes và Auth Tag 16 bytes. Khóa master được dẫn xuất bằng `scryptSync(process.env.LLM_CREDENTIALS_ENCRYPTION_KEY, "dunvex-ai-vault-salt", 32)`.
-   - Bảo vệ khi thiếu khóa master: Nếu biến môi trường `LLM_CREDENTIALS_ENCRYPTION_KEY` chưa được thiết lập, server từ chối ngay với HTTP 400 `{ error: "ENCRYPTION_KEY_NOT_CONFIGURED", code: "ENCRYPTION_KEY_NOT_CONFIGURED" }`. Tuyệt đối không fallback lưu plaintext.
+   - **Bảo vệ khóa Master:** Nếu `LLM_CREDENTIALS_ENCRYPTION_KEY` chưa được cấu hình trên môi trường chạy thực tế (live VPS), tính năng kho khóa vault sẽ bị vô hiệu hóa an toàn (disabled) tại đó; server từ chối ngay với HTTP 400 `{ error: "ENCRYPTION_KEY_NOT_CONFIGURED", code: "ENCRYPTION_KEY_NOT_CONFIGURED" }`. Tuyệt đối không fallback lưu plaintext.
    - Endpoints:
      + `GET /api/ai/settings`: Yêu cầu JWT xác thực; trả về settings và danh sách vendor đã nhớ (`rememberedVendors: string[]`), không bao giờ trả API key hoặc ciphertext. Khách vãng lai (`guest`) bị từ chối với 401 Unauthorized.
      + `PUT /api/ai/settings`: Lưu cấu hình và mã hóa lưu trữ API key nếu `rememberKey: true`.
      + `DELETE /api/ai/credentials`: Xóa credential đã nhớ của vendor cụ thể hoặc toàn bộ credential của user.
-2. **Giải mã trong bộ nhớ tại Proxy (`server/llmProxy.mjs`):**
-   - Khi request proxy từ browser mang `x-user-token` (hoặc User JWT) mà không truyền API key hoặc truyền placeholder (`stored-vault` / `vault`), proxy truy vấn `ai_credentials` từ SQLite của chính user đó, giải mã key trong RAM và gắn vào header upstream (`Authorization: Bearer <decrypted>` hoặc `x-api-key: <decrypted>`).
-   - Xóa bỏ `x-user-token` và `Authorization` của user khỏi headers gửi sang upstream LLM để chống rò rỉ token người dùng.
-   - Chặn tuyệt đối việc in key thô vào console/logs hoặc error message.
+2. **Xử lý an toàn và giải mã tại Proxy (`server/llmProxy.mjs`):**
+   - Khi request proxy từ browser mang `x-user-token` (hoặc User JWT) kết hợp placeholder (`stored-vault` / `vault`), proxy thực hiện chuỗi kiểm tra nghiêm ngặt:
+     + Khách vãng lai (không có JWT): từ chối với HTTP 401 `{ error: "Authentication required to access stored credential" }`.
+     + JWT không hợp lệ hoặc hết hạn: từ chối với HTTP 401 `{ error: "Invalid or expired user session for stored credential" }`.
+     + Lệch nhà cung cấp (Provider mismatch - e.g. key lưu cho nvidia nhưng request gửi tới openrouter): từ chối với HTTP 401 `{ error: "No stored API credential found for vendor '<vendorId>'" }`. Tuyệt đối không gửi nhầm key hoặc key rỗng lên upstream.
+     + Server thiếu master key: từ chối với HTTP 500 `{ error: "Server credential vault encryption key is not configured" }`.
+     + Lỗi giải mã: ghi log nội bộ (đã che giấu key/JWT) và trả HTTP 500 `{ error: "Failed to decrypt stored credential" }`.
+   - Khi giải mã thành công: key được gắn vào header upstream (`Authorization: Bearer <decryptedKey>` hoặc `x-api-key: <decryptedKey>`), đồng thời xóa bỏ triệt để `x-user-token` và `Authorization` token của user khỏi headers gửi sang upstream LLM để chống rò rỉ JWT.
+   - `_sanitizeLogMessage`: Che giấu tự động mọi pattern `Bearer ...`, `x-api-key: ...`, và user JWT `ey...`.
 3. **Giao diện Client & Tự động nạp/khôi phục:**
    - File: `packages/ai/src/settings.ts`, `packages/ai/src/chatPanel.ts`, `packages/ai/src/chatPanel.module.css`.
+   - Khi người dùng đăng nhập tài khoản, `fetchRemoteSettings()` tự động gọi `GET /api/ai/settings`, khôi phục model, provider, base URL và đánh dấu `sessionHasVaultKey = true`.
+   - UI hiển thị checkbox "Ghi nhớ API key trên tài khoản này" (được bản địa hóa đầy đủ qua `vi`, `en`, `zh-cn`, `pt-br`, `ru`). Khi checkbox được bật và bấm "Lưu", client gọi `PUT /api/ai/settings` với `rememberKey: true`.
+   - Key chỉ tồn tại trong bộ nhớ RAM tạm thời của phiên, không bao giờ được ghi vào `localStorage` hay `IndexedDB`.
+4. **Kiểm thử tự động:**
+   - `server/test/storageServer.test.mjs`: Kiểm thử mã hóa AES-256-GCM, phân quyền user A vs user B, từ chối guest, từ chối khi thiếu master key. Đạt 16/16 tests passed.
+   - `server/test/llmProxy.test.mjs`: Kiểm thử giải mã vault trong RAM, xóa header JWT khi gửi upstream, và kiểm thử 4 ca biên an toàn (guest 401, JWT hết hạn 401, provider mismatch 401, thiếu master key 500). Đạt 18/18 tests passed.
+   - `packages/ai/test/settings.test.ts`: Kiểm thử luồng khôi phục `fetchRemoteSettings()` của client, lưu cài đặt từ xa và xóa credential. Đạt 8/8 tests passed.
    - Thêm checkbox `Ghi nhớ API key trên tài khoản này` (`ai.rememberKey`) cùng mô tả `Mã hóa AES-256-GCM an toàn trên máy chủ. Tự động khôi phục sau khi tải lại.` (`ai.rememberKeyDesc`).
    - Khi người dùng chưa đăng nhập, checkbox bị disabled; khi đã đăng nhập và server có credential, checkbox tự động bật và UI nhận diện trạng thái đã cấu hình.
    - Các SDK clients (`anthropic.ts`, `completions.ts`, `responses.ts`) tự động truyền `x-user-token` và placeholder `stored-vault` để tránh lỗi client validation của SDK khi key đã được lưu trên vault.

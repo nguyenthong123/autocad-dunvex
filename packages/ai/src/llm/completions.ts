@@ -35,22 +35,49 @@ export class CompletionsProvider implements LLMProvider {
     }
 
     async *streamChat(opts: StreamChatOptions): AsyncIterable<StreamEvent> {
-        const stream = await this.client.chat.completions.create(
-            {
-                model: opts.model,
-                messages: toMessages(opts.system, opts.messages) as any,
-                tools: opts.tools.map(toTool) as any,
-                stream: true,
-                // Asked for only when the user chose a depth — see `LLMConfig.reasoningEffort`.
-                ...(opts.effort ? { reasoning_effort: openAIReasoningEffort(opts.effort) } : {}),
-                // Several calls may come back in one assistant message, as on the Anthropic side:
-                // the agent runs them in order, and one round trip is one step of the step budget.
-                parallel_tool_calls: true,
-                // Without this the endpoint never reports usage on a stream at all.
-                stream_options: { include_usage: true },
-            },
-            { signal: opts.signal },
-        );
+        let stream: any;
+        try {
+            stream = await this.client.chat.completions.create(
+                {
+                    model: opts.model,
+                    messages: toMessages(opts.system, opts.messages, true) as any,
+                    tools: opts.tools.map(toTool) as any,
+                    stream: true,
+                    // Asked for only when the user chose a depth — see `LLMConfig.reasoningEffort`.
+                    ...(opts.effort ? { reasoning_effort: openAIReasoningEffort(opts.effort) } : {}),
+                    // Several calls may come back in one assistant message, as on the Anthropic side:
+                    // the agent runs them in order, and one round trip is one step of the step budget.
+                    parallel_tool_calls: true,
+                    // Without this the endpoint never reports usage on a stream at all.
+                    stream_options: { include_usage: true },
+                },
+                { signal: opts.signal },
+            );
+        } catch (err: any) {
+            const errStr = String(err?.message || err?.error?.message || err);
+            if (
+                errStr.includes("multimodal") ||
+                errStr.includes("enable-multimodal") ||
+                errStr.includes("image_url") ||
+                errStr.includes("does not support image")
+            ) {
+                // Upstream model does not support multimodal/image input; fallback to text-only messages
+                stream = await this.client.chat.completions.create(
+                    {
+                        model: opts.model,
+                        messages: toMessages(opts.system, opts.messages, false) as any,
+                        tools: opts.tools.map(toTool) as any,
+                        stream: true,
+                        ...(opts.effort ? { reasoning_effort: openAIReasoningEffort(opts.effort) } : {}),
+                        parallel_tool_calls: true,
+                        stream_options: { include_usage: true },
+                    },
+                    { signal: opts.signal },
+                );
+            } else {
+                throw err;
+            }
+        }
 
         const toolBuf: ToolCallBuffer = new Map();
         for await (const chunk of stream) {
@@ -139,10 +166,13 @@ function toTool(t: Tool) {
 class PendingImages {
     private readonly images: ImagePart[] = [];
 
-    constructor(private readonly out: MessageParam[]) {}
+    constructor(
+        private readonly out: MessageParam[],
+        private readonly includeImages = true,
+    ) {}
 
     hold(images?: ImagePart[]): void {
-        if (images?.length) this.images.push(...images);
+        if (this.includeImages && images?.length) this.images.push(...images);
     }
 
     flush(): void {
@@ -155,21 +185,25 @@ class PendingImages {
     }
 }
 
-export function toMessages(system: SystemPrompt, messages: ChatMessage[]): MessageParam[] {
+export function toMessages(
+    system: SystemPrompt,
+    messages: ChatMessage[],
+    includeImages = true,
+): MessageParam[] {
     // OpenAI-compatible endpoints cache prompt prefixes automatically; the stable half first and
     // the per-run snapshot last is what keeps that prefix reusable (see `SystemPrompt`).
     const out: MessageParam[] = [{ role: "system", content: flattenSystem(system) }];
-    const images = new PendingImages(out);
+    const images = new PendingImages(out, includeImages);
 
     for (const m of messages) {
         if (m.role === "tool") {
             out.push(toToolMessage(m));
-            images.hold(m.images);
+            if (includeImages) images.hold(m.images);
             continue;
         }
         images.flush();
         if (m.role === "user") {
-            out.push(toUserMessage(m));
+            out.push(toUserMessage(m, includeImages));
             continue;
         }
         const message = toAssistantMessage(m);
@@ -181,8 +215,8 @@ export function toMessages(system: SystemPrompt, messages: ChatMessage[]): Messa
 
 type MessageParam = Record<string, unknown>;
 
-function toUserMessage(m: ChatMessage & { role: "user" }): MessageParam {
-    if (!m.images?.length) return { role: "user", content: m.content };
+function toUserMessage(m: ChatMessage & { role: "user" }, includeImages = true): MessageParam {
+    if (!includeImages || !m.images?.length) return { role: "user", content: m.content };
     return { role: "user", content: mixedContent(m.content, m.images) };
 }
 

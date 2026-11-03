@@ -1,10 +1,10 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
-import { BoundingBox, FolderNode, type Matrix4, VisualNode, XYZ } from "@chili3d/core";
+import { BoundingBox, FolderNode, Matrix4, VisualNode, XYZ } from "@chili3d/core";
 import { createMockApplication, TestDocument } from "@chili3d/core/test-utils";
 import { rs } from "@rstest/core";
-import { buildArrayTools, MAX_ARRAY_COUNT, planArrayLogic } from "../src/tools/arrayTools";
+import { _clearActivePlans, buildArrayTools, MAX_ARRAY_COUNT, planArrayLogic } from "../src/tools/arrayTools";
 
 class MockVisualBox extends VisualNode {
     override get transformMode() {
@@ -220,16 +220,131 @@ describe("arrayTools", () => {
         });
     });
 
-    describe("apply_array tool & performance benchmark", () => {
+    describe("apply_array tool & preflight enforcement", () => {
         let doc: TestDocument;
 
         beforeEach(() => {
+            _clearActivePlans();
             doc = new TestDocument();
             stubDocument(doc);
         });
 
         afterEach(() => {
+            _clearActivePlans();
             rs.unstubAllGlobals();
+        });
+
+        test("rejects direct call without planId and creates 0 nodes", async () => {
+            const slat = new MockVisualBox(doc, "Slat", "slat-noplan");
+            doc.modelManager.addNode(slat);
+
+            const initialNodesCount = (doc.modelManager.rootNode as any).children().length;
+            const tools = buildArrayTools();
+            const applyTool = tools.find((t) => t.name === "apply_array")!;
+
+            const resRaw = await applyTool.handler({
+                nodeId: slat.id,
+                axis: "x",
+                count: 5,
+                pitch: 50,
+            });
+            const result = JSON.parse(resRaw as string);
+
+            expect(result.error).toMatch(/Preflight plan required/i);
+            expect((doc.modelManager.rootNode as any).children().length).toBe(initialNodesCount);
+        });
+
+        test("rejects call with unknown or expired planId and creates 0 nodes", async () => {
+            const slat = new MockVisualBox(doc, "Slat", "slat-badplan");
+            doc.modelManager.addNode(slat);
+
+            const initialNodesCount = (doc.modelManager.rootNode as any).children().length;
+            const tools = buildArrayTools();
+            const applyTool = tools.find((t) => t.name === "apply_array")!;
+
+            const resRaw = await applyTool.handler({
+                planId: "plan_non_existent_12345",
+                nodeId: slat.id,
+                axis: "x",
+                count: 5,
+                pitch: 50,
+            });
+            const result = JSON.parse(resRaw as string);
+
+            expect(result.error).toMatch(/Array plan not found or expired/i);
+            expect((doc.modelManager.rootNode as any).children().length).toBe(initialNodesCount);
+        });
+
+        test("rejects call when parameters mismatch approved plan and creates 0 nodes", async () => {
+            const slat = new MockVisualBox(doc, "Slat", "slat-mismatch");
+            doc.modelManager.addNode(slat);
+
+            const initialNodesCount = (doc.modelManager.rootNode as any).children().length;
+            const tools = buildArrayTools();
+            const planTool = tools.find((t) => t.name === "plan_array")!;
+            const applyTool = tools.find((t) => t.name === "apply_array")!;
+
+            // Plan for count = 5, pitch = 150
+            const planRes = JSON.parse(
+                (await planTool.handler({
+                    nodeId: slat.id,
+                    axis: "x",
+                    count: 5,
+                    pitch: 150,
+                    availableSpan: 1000,
+                })) as string,
+            );
+            expect(planRes.feasible).toBe(true);
+            expect(planRes.planId).toBeDefined();
+
+            // Try applying with count = 8 (mismatch)
+            const resRaw = await applyTool.handler({
+                planId: planRes.planId,
+                nodeId: slat.id,
+                axis: "x",
+                count: 8,
+                pitch: 150,
+            });
+            const result = JSON.parse(resRaw as string);
+
+            expect(result.error).toMatch(/Parameters do not match approved planId/i);
+            expect((doc.modelManager.rootNode as any).children().length).toBe(initialNodesCount);
+        });
+
+        test("rejects call when source node was mutated or moved after plan creation and creates 0 nodes", async () => {
+            const slat = new MockVisualBox(doc, "Slat", "slat-mutated");
+            doc.modelManager.addNode(slat);
+
+            const initialNodesCount = (doc.modelManager.rootNode as any).children().length;
+            const tools = buildArrayTools();
+            const planTool = tools.find((t) => t.name === "plan_array")!;
+            const applyTool = tools.find((t) => t.name === "apply_array")!;
+
+            const planRes = JSON.parse(
+                (await planTool.handler({
+                    nodeId: slat.id,
+                    axis: "x",
+                    count: 5,
+                    pitch: 150,
+                    availableSpan: 1000,
+                })) as string,
+            );
+            expect(planRes.planId).toBeDefined();
+
+            // Mutate source node position after plan
+            slat.transform = Matrix4.fromTranslation(50, 0, 0).multiply(slat.transform);
+
+            const resRaw = await applyTool.handler({
+                planId: planRes.planId,
+                nodeId: slat.id,
+                axis: "x",
+                count: 5,
+                pitch: 150,
+            });
+            const result = JSON.parse(resRaw as string);
+
+            expect(result.error).toMatch(/has been moved or resized since plan was created/i);
+            expect((doc.modelManager.rootNode as any).children().length).toBe(initialNodesCount);
         });
 
         test("rejects count > 200 with clear safety error", async () => {
@@ -237,26 +352,43 @@ describe("arrayTools", () => {
             doc.modelManager.addNode(slat);
 
             const tools = buildArrayTools();
-            const applyTool = tools.find((t) => t.name === "apply_array")!;
-            const resRaw = await applyTool.handler({
-                nodeId: slat.id,
-                axis: "x",
-                count: 201,
-                pitch: 50,
-            });
-            const result = JSON.parse(resRaw as string);
-            expect(result.error).toContain("between 2 and 200");
+            const planTool = tools.find((t) => t.name === "plan_array")!;
+            const planRes = JSON.parse(
+                (await planTool.handler({
+                    nodeId: slat.id,
+                    axis: "x",
+                    count: 201,
+                    pitch: 50,
+                    availableSpan: 20000,
+                })) as string,
+            );
+            // Preflight plan rejects count > 200
+            expect(planRes.feasible).toBe(false);
+            expect(planRes.reason).toMatch(/exceeds maximum safe limit of 200/i);
         });
 
-        test("benchmark 50 items: clones 49 copies in a single transaction in under 50ms", async () => {
+        test("mock unit benchmark 50 items: clones 49 copies in memory in a single transaction in under 50ms", async () => {
             const slat = new MockVisualBox(doc, "Slat50", "slat-50");
             doc.modelManager.addNode(slat);
 
             const tools = buildArrayTools();
+            const planTool = tools.find((t) => t.name === "plan_array")!;
             const applyTool = tools.find((t) => t.name === "apply_array")!;
+
+            const planRes = JSON.parse(
+                (await planTool.handler({
+                    nodeId: slat.id,
+                    axis: "x",
+                    count: 50,
+                    pitch: 25,
+                    availableSpan: 2000,
+                })) as string,
+            );
+            expect(planRes.feasible).toBe(true);
 
             const start = performance.now();
             const resRaw = await applyTool.handler({
+                planId: planRes.planId,
                 nodeId: slat.id,
                 axis: "x",
                 count: 50,
@@ -269,19 +401,32 @@ describe("arrayTools", () => {
             expect(result.totalCount).toBe(50);
             expect(result.created.length).toBe(49);
 
-            // Single transaction verification & fast matrix execution
-            expect(durationMs).toBeLessThan(100); // typically < 5ms
+            // Mock unit benchmark: measures node cloning logic in-memory (not live 3D Three.js scene render)
+            expect(durationMs).toBeLessThan(100);
         });
 
-        test("benchmark 200 items: clones 199 copies in a single transaction in under 100ms", async () => {
+        test("mock unit benchmark 200 items: clones 199 copies in memory in a single transaction in under 100ms", async () => {
             const slat = new MockVisualBox(doc, "Slat200", "slat-200");
             doc.modelManager.addNode(slat);
 
             const tools = buildArrayTools();
+            const planTool = tools.find((t) => t.name === "plan_array")!;
             const applyTool = tools.find((t) => t.name === "apply_array")!;
+
+            const planRes = JSON.parse(
+                (await planTool.handler({
+                    nodeId: slat.id,
+                    axis: "x",
+                    count: 200,
+                    pitch: 10,
+                    availableSpan: 3000,
+                })) as string,
+            );
+            expect(planRes.feasible).toBe(true);
 
             const start = performance.now();
             const resRaw = await applyTool.handler({
+                planId: planRes.planId,
                 nodeId: slat.id,
                 axis: "x",
                 count: 200,
@@ -293,8 +438,8 @@ describe("arrayTools", () => {
             expect(result.createdCount).toBe(199);
             expect(result.totalCount).toBe(200);
 
-            // Fast execution limit
-            expect(durationMs).toBeLessThan(200); // typically < 15ms
+            // Mock unit benchmark: measures node cloning logic in-memory (not live 3D Three.js scene render)
+            expect(durationMs).toBeLessThan(200);
         });
     });
 });

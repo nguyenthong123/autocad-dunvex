@@ -1,6 +1,6 @@
 # TASK-32: Điều tra AI báo hoàn thành Boolean Cut nhưng hình học không đổi
 
-> **Trạng thái:** `[?] WAITING_REVIEW`
+> **Trạng thái:** `[~] IN_PROGRESS` (chờ triển khai VPS và nghiệm thu thực tế)
 > **Ưu tiên:** P0 theo phản ánh người dùng
 > **Phụ trách:** AI Thực thi (Worker)
 > **Phạm vi:** Điều tra và sửa luồng Boolean Cut do `run_program` thực thi; không suy diễn lỗi kernel khi chưa có ca tái hiện.
@@ -45,16 +45,19 @@ Các điểm trên xác nhận luồng AI thiếu một số bảo vệ/kiểm c
 ## 5. Nhật ký Thực thi & Báo cáo Thay đổi (Execution Log)
 
 - **Ngày giờ thực hiện:** 03/11/2026.
-- **Mã Commit:** `5289abeb` (nhánh `dev`).
-- **Trạng thái:** `[?] WAITING_REVIEW` (chờ người dùng nghiệm thu, không tự đánh `[x] DONE`).
-- **Trạng thái Deploy:** Không deploy VPS (theo đúng quy định dự án).
+- **Trạng thái:** `[~] IN_PROGRESS` (chờ triển khai VPS và nghiệm thu thực tế, tuân thủ quy tắc không tự chuyển `[?] WAITING_REVIEW` khi chưa deploy VPS).
+- **Trạng thái Deploy:** Không deploy VPS trong lượt này (theo yêu cầu người dùng).
 
-### Các nguyên nhân kỹ thuật đã tái hiện độc lập:
+### Các nguyên nhân kỹ thuật đã tái hiện và xử lý:
 1. **Kernel OCCT trả `Result.ok(target)` khi cutter không giao target:** Trong OpenCASCADE, khi dao cắt không giao với vật thể đích, `booleanCut([target], [tool])` trả về `Result.ok(target)` với thể tích target hoàn toàn không thay đổi. Luồng AI trước đây chỉ kiểm tra `Result.ok`, xóa target cũ và tạo node mới giống hệt, khiến tường trông như không đổi.
 2. **Bỏ sót world transform:** Các node trong scene graph có thể mang `worldTransform` khác identity (do di chuyển, xoay). Lệnh ribbon luôn gọi `transformedMul(node.worldTransform())`, trong khi luồng AI trước đây lấy thẳng `node.shape.value` (tọa độ local). Khi AI tạo dao cắt ở tọa độ world (theo mắt nhìn), dao cắt và tường local lệch vị trí hoàn toàn -> không giao nhau.
 3. **Profile hở đùn thành Shell:** Khi wire profile không khép kín, `prism` tạo ra `Shell` thay vì `Solid`. Đưa Shell vào boolean solid khiến kernel không thể trừ khối.
 4. **Compound chứa hỗn hợp Solid và Shell/Face:** Compound chứa cả Solid và Shell nếu đưa vào boolean sẽ làm sai hỏng hoặc không hợp lệ hình học.
-5. **Cắt không xuyên tường (chỉ tạo vết khoét / blind pocket):** Chỉ kiểm tra thể tích giảm là chưa đủ nếu cutter không đâm xuyên qua cả 2 mặt đối diện theo chiều dày tường.
+5. **Cắt không xuyên tường / Cắt lệch / Khuyết mép (blind cut, misaligned, edge notch):**
+   - Không coi việc chỉ có bounding box hoặc thể tích giảm là đủ để xác nhận cắt xuyên.
+   - Khi shape không có phương thức `containsPoint` để kiểm chứng điểm vật liệu, trả về `{ throughVerified: false, status: "unverified", reason: ... }`, tuyệt đối không gắn `throughVerified: true`.
+   - Khi dao cắt cắt phạm vào mép ngoài của tường (edge notch) thay vì tạo lỗ kín xuyên tâm, trả về trạng thái `unverified`.
+   - Khi dao cắt đục không xuyên qua hoặc bị lệch: lưới dò 15 điểm (3 độ sâu 25%, 50%, 75% $\times$ 5 vị trí ngang) phát hiện vật liệu còn sót lại, ném lỗi và báo `Status: unverified`.
 
 ### Danh sách các thay đổi chính:
 1. **`packages/core/src/shape/shapeFactory.ts` & `packages/wasm/src/factory.ts` & `packages/ai/src/tools/capabilities.generated.ts`:**
@@ -66,19 +69,25 @@ Các điểm trên xác nhận luồng AI thiếu một số bảo vệ/kiểm c
    - Áp dụng world transform: Nếu `node instanceof VisualNode` và `worldTransform` khác identity, chuyển shape về world space bằng `shape.transformedMul(worldTransform)`.
    - Quản lý vòng đời bộ nhớ (Memory Lifecycle): Toàn bộ shape tạm thời sinh ra bởi `transformedMul()` và uncommitted result shape được theo dõi trong `tempShapesToDispose` và giải phóng triệt để qua `try ... finally`. Document input shapes (`entry.value`) không bao giờ bị giải phóng, bảo đảm an toàn khi rollback.
    - Sai số thể tích thích ứng (Adaptive Volume Tolerance): `volTol = totalTargetVolume > 0 ? Math.min(1e-5, Math.max(1e-12, totalTargetVolume * 1e-6)) : 1e-5;`. Xử lý chính xác từ chi tiết siêu nhỏ ($< 10^{-5}$ mm³) tới mô hình lớn.
-   - Hậu kiểm đục xuyên tường nâng cao (`verifyThroughCut`):
-     + Xác nhận dao cắt bao trùm hoàn toàn chiều dày tường qua cả hai mặt đối diện.
-     + Kiểm tra kiểm chứng hình học bằng điểm bên trong khoảng rỗng (`resultShape.containsPoint(midPoint, false)`): xác nhận vị trí tâm lỗ không còn bị đặc vật liệu, loại trừ hoàn toàn trường hợp tạo vết khoét chìm (blind pocket) hoặc cắt lệch.
-     + Ghi nhận `{ throughVerified: true }` vào `results[op.id]` khi qua kiểm chứng.
+   - Hậu kiểm đục xuyên tường nghiêm ngặt (`verifyThroughCut`):
+     + Kiểm tra ranh giới dao cắt bao trùm 2 mặt đối diện theo chiều dày tường.
+     + Nhận diện cắt khuyết mép (edge notch): từ chối xác minh xuyên tường nếu dao cắt cắt vào biên cạnh bên của tường.
+     + Kiểm tra `resultShape.containsPoint`: nếu shape không hỗ trợ truy vấn điểm, trả về `throughVerified: false, status: "unverified"`.
+     + Lưới dò đa điểm (15 điểm thăm dò: 3 lát cắt độ sâu 25%, 50%, 75% kết hợp 5 vị trí ngang: tâm và 4 góc phần tư). Nếu phát hiện điểm đặc vật chất còn tồn tại, ném lỗi kèm tọa độ cụ thể và trạng thái `unverified`.
+     + Chỉ trả về `{ throughVerified: true, status: "verified", penetrationAxis, probedPointsCount: 15 }` khi toàn bộ 15 điểm rỗng hoàn toàn.
 3. **`packages/app/src/commands/boolean.ts`:**
    - Đồng bộ logic `isSolidVolume()`: loại bỏ fallback `ShapeTypes.shape` và kiểm tra chặt chẽ `directSubShapes()`.
 4. **`packages/ai/src/skills/modelingRecipes.ts`, `errorRecovery.ts`, `prompt.ts`:**
    - Hướng dẫn rõ ràng về quy chuẩn đục cửa/xuyên tường: cutter phải vượt quá cả 2 mặt đối diện theo chiều dày tường và dùng `throughCut: true`.
    - Cấm đổ lỗi cho camera/zoom khi chưa có bằng chứng hình học (phải bỏ chọn node, đo bounding box và kiểm tra volume).
 5. **Kiểm thử hồi quy:**
-   - `packages/ai/test/capabilityEngine.test.ts`: Thêm 12 unit tests cho boolean (disposal, reject generic shape, reject mixed compound, adaptive tolerance micro target, through-cut check). Đạt 71/71 tests passed.
-   - `packages/wasm/test/factory.test.ts`: Thêm 8 kernel tests cho geometry thật (giao nhau, không giao nhau, partial, world transform, open profile Shell, micro-target volume, through cut vs blind pocket, mixed compound). Đạt 172/172 tests passed.
-   - `packages/ai/test/capabilitiesFreshness.test.ts`: Xác nhận schema sinh tự động khớp với code factory.
+   - `packages/ai/test/capabilityEngine.test.ts`: Thêm 5 ca kiểm thử phân biệt rõ ràng:
+     + Ca 1: Cắt xuyên đúng vùng (thành công xác minh qua 15 điểm rỗng, `throughVerified: true`, `status: "verified"`).
+     + Ca 2: Blind cut (dao cắt không bao trùm chiều dày, báo lỗi `Status: unverified`).
+     + Ca 3: Cutter lệch còn sót vật liệu bên trong (phép dò điểm phát hiện vật liệu còn tồn tại, báo lỗi `Status: unverified`).
+     + Ca 4: Cắt khuyết mép (trả về `{ throughVerified: false, status: "unverified", reason: ... }`).
+     + Ca 5: Shape không có `containsPoint` (trả về `{ throughVerified: false, status: "unverified", reason: ... }`).
+   - `packages/wasm/test/factory.test.ts`: 8 kernel tests cho geometry thật (giao nhau, không giao nhau, partial, world transform, open profile Shell, micro-target volume, through cut vs blind pocket, mixed compound).
 
 ### Lưu ý nghiệm thu & Giới hạn hiện tại:
 - Do người dùng không đính kèm file vẽ CAD cụ thể (`.chili3d` hoặc file JSON lịch sử thao tác) lúc phát sinh lỗi ban đầu, việc xác minh trên bản vẽ cụ thể của khách hàng vẫn cần người dùng tự kiểm tra lại trong môi trường thực tế với mô hình cụ thể của mình.

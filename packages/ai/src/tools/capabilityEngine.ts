@@ -1043,8 +1043,80 @@ function addCreatedNode(
     created.push({ id: op.id, nodeId: node.id, name });
 }
 
+function normalizeOpArgs(op: Op): Record<string, unknown> {
+    const args: Record<string, unknown> = { ...(op.args ?? {}) };
+
+    // Boolean aliases: shape1 (targets), shape2 (tools/cutters)
+    if (op.method === "booleanCut" || op.method === "booleanFuse" || op.method === "booleanCommon") {
+        if (args["shape1"] === undefined) {
+            args["shape1"] =
+                args["target"] ??
+                args["targets"] ??
+                args["base"] ??
+                args["shapes"] ??
+                args["shape"] ??
+                args["input"] ??
+                args["inputs"];
+        }
+        if (args["shape2"] === undefined) {
+            args["shape2"] =
+                args["tool"] ??
+                args["tools"] ??
+                args["cutter"] ??
+                args["cutters"] ??
+                args["cuttingTool"] ??
+                args["toolShapes"];
+        }
+    }
+
+    // Prism aliases: shape (profile), vec (dir, direction, dz, height)
+    if (op.method === "prism") {
+        if (args["shape"] === undefined) {
+            args["shape"] = args["profile"] ?? args["wire"] ?? args["face"] ?? args["curve"];
+        }
+        if (args["vec"] === undefined) {
+            if (args["direction"] !== undefined) args["vec"] = args["direction"];
+            else if (args["dir"] !== undefined) args["vec"] = args["dir"];
+            else if (args["vector"] !== undefined) args["vec"] = args["vector"];
+            else if (isFiniteNumber(args["dz"])) args["vec"] = { x: 0, y: 0, z: args["dz"] };
+            else if (isFiniteNumber(args["height"])) args["vec"] = { x: 0, y: 0, z: args["height"] };
+            else if (isFiniteNumber(args["depth"])) args["vec"] = { x: 0, y: 0, z: args["depth"] };
+        }
+    }
+
+    // Revolve aliases: profile, axis, angle
+    if (op.method === "revolve") {
+        if (args["profile"] === undefined) {
+            args["profile"] = args["shape"] ?? args["wire"] ?? args["face"];
+        }
+        if (args["axis"] === undefined) {
+            args["axis"] = args["line"] ?? args["axisLine"];
+        }
+        if (args["angle"] === undefined) {
+            args["angle"] = args["deg"] ?? args["degrees"];
+        }
+    }
+
+    // Box aliases: dx, dy, dz
+    if (op.method === "box") {
+        if (args["dx"] === undefined && args["width"] !== undefined) args["dx"] = args["width"];
+        if (args["dy"] === undefined && args["depth"] !== undefined) args["dy"] = args["depth"];
+        if (args["dz"] === undefined && args["height"] !== undefined) args["dz"] = args["height"];
+    }
+
+    // Cylinder aliases: radius, dz
+    if (op.method === "cylinder") {
+        if (args["radius"] === undefined && args["r"] !== undefined) args["radius"] = args["r"];
+        if (args["dz"] === undefined) {
+            args["dz"] = args["height"] ?? args["h"] ?? args["length"];
+        }
+    }
+
+    return args;
+}
+
 function runOp(
-    op: Op,
+    rawOp: Op,
     doc: IDocument,
     factory: unknown,
     localRefs: Map<string, LocalRef>,
@@ -1052,6 +1124,10 @@ function runOp(
     removed: RemovedNode[],
     results: Record<string, unknown>,
 ): void {
+    const op: Op = {
+        ...rawOp,
+        args: normalizeOpArgs(rawOp),
+    };
     if (op.method === "transformedMul") {
         runTransformedMul(op, doc, localRefs, created);
         return;
@@ -1156,12 +1232,20 @@ function combineBoundingBoxes(boxes: BoundingBox[]): BoundingBox {
     return BoundingBox.fromPoints(points);
 }
 
+export interface ThroughCutVerification {
+    throughVerified: boolean;
+    status: "verified" | "unverified";
+    reason?: string;
+    penetrationAxis?: "x" | "y" | "z";
+    probedPointsCount?: number;
+}
+
 function verifyThroughCut(
     targetShapes: IShape[],
     toolShapes: IShape[],
     resultShape: IShape,
     targetName: string,
-): { throughVerified: boolean } {
+): ThroughCutVerification {
     const targetBoxes = targetShapes
         .map((s) => (typeof s.boundingBox === "function" ? s.boundingBox() : undefined))
         .filter((b): b is BoundingBox => !!b);
@@ -1170,7 +1254,11 @@ function verifyThroughCut(
         .filter((b): b is BoundingBox => !!b);
 
     if (targetBoxes.length === 0 || toolBoxes.length === 0) {
-        return { throughVerified: false };
+        return {
+            throughVerified: false,
+            status: "unverified",
+            reason: "Target or tool bounding box is unavailable",
+        };
     }
 
     const targetBox = targetBoxes.length === 1 ? targetBoxes[0] : combineBoundingBoxes(targetBoxes);
@@ -1203,25 +1291,88 @@ function verifyThroughCut(
         );
     }
 
-    // Physical geometric containment check: verify center of cutout is hollow in result
-    if (typeof resultShape.containsPoint === "function") {
-        const thruAxis = validThroughAxes[0];
-        const testPoint: Record<"x" | "y" | "z", number> = {
-            x: (Math.max(targetBox.min.x, toolBox.min.x) + Math.min(targetBox.max.x, toolBox.max.x)) / 2,
-            y: (Math.max(targetBox.min.y, toolBox.min.y) + Math.min(targetBox.max.y, toolBox.max.y)) / 2,
-            z: (Math.max(targetBox.min.z, toolBox.min.z) + Math.min(targetBox.max.z, toolBox.max.z)) / 2,
-        };
-        const midVal = (targetBox.min[thruAxis] + targetBox.max[thruAxis]) / 2;
-        testPoint[thruAxis] = midVal;
+    const thruAxis = validThroughAxes[0];
+    const transverseAxes = axes.filter((a) => a !== thruAxis);
+    const uAxis = transverseAxes[0];
+    const vAxis = transverseAxes[1];
 
-        if (resultShape.containsPoint(testPoint, false)) {
-            throw new Error(
-                `booleanCut failed through-cut verification for "${targetName}": geometric verification detected solid material remaining inside the opening (at ${thruAxis}=${midVal.toFixed(2)}). The opening was not cut through both faces. Status: unverified.`,
-            );
+    // Check for edge notch / severing: an interior through opening in a wall must not cut across either lateral edge of the target
+    const cutsLeftEdge = toolBox.min[uAxis] <= targetBox.min[uAxis] + tol;
+    const cutsRightEdge = toolBox.max[uAxis] >= targetBox.max[uAxis] - tol;
+    if (cutsLeftEdge || cutsRightEdge) {
+        return {
+            throughVerified: false,
+            status: "unverified",
+            reason:
+                cutsLeftEdge && cutsRightEdge
+                    ? "Cutter severs the entire lateral span of the target rather than forming an enclosed aperture."
+                    : "Cutter cuts across the boundary edge of the target, creating an open edge notch rather than an enclosed aperture.",
+        };
+    }
+
+    // Check if resultShape supports point containment query
+    if (typeof resultShape.containsPoint !== "function") {
+        return {
+            throughVerified: false,
+            status: "unverified",
+            reason: "Result shape does not support geometric point containment query; physical hollow verification cannot be proven.",
+        };
+    }
+
+    // Overlap region on the wall transverse footprint
+    const uMin = Math.max(targetBox.min[uAxis], toolBox.min[uAxis]);
+    const uMax = Math.min(targetBox.max[uAxis], toolBox.max[uAxis]);
+    const vMin = Math.max(targetBox.min[vAxis], toolBox.min[vAxis]);
+    const vMax = Math.min(targetBox.max[vAxis], toolBox.max[vAxis]);
+    const deltaU = uMax - uMin;
+    const deltaV = vMax - vMin;
+
+    if (deltaU < 1e-2 || deltaV < 1e-2) {
+        throw new Error(
+            `booleanCut failed through-cut verification for "${targetName}": overlap area is negligible (Status: unverified).`,
+        );
+    }
+
+    // Probe a multi-point grid across the intended opening at 25%, 50%, 75% of wall thickness
+    const tMin = targetBox.min[thruAxis];
+    const tMax = targetBox.max[thruAxis];
+    const depthFractions = [0.25, 0.5, 0.75];
+    const transverseRatios: [number, number][] = [
+        [0.5, 0.5], // Center
+        [0.3, 0.3], // Bottom-left quadrant
+        [0.7, 0.7], // Top-right quadrant
+        [0.3, 0.7], // Top-left quadrant
+        [0.7, 0.3], // Bottom-right quadrant
+    ];
+
+    let probedCount = 0;
+    for (const dRatio of depthFractions) {
+        const depthVal = tMin + dRatio * (tMax - tMin);
+        for (const [uRatio, vRatio] of transverseRatios) {
+            const pt: Record<"x" | "y" | "z", number> = {
+                x: 0,
+                y: 0,
+                z: 0,
+            };
+            pt[thruAxis] = depthVal;
+            pt[uAxis] = uMin + uRatio * deltaU;
+            pt[vAxis] = vMin + vRatio * deltaV;
+
+            probedCount++;
+            if (resultShape.containsPoint(pt, false)) {
+                throw new Error(
+                    `booleanCut failed through-cut verification for "${targetName}": geometric probe detected solid material remaining inside the opening (at ${thruAxis}=${depthVal.toFixed(2)}, ${uAxis}=${pt[uAxis].toFixed(2)}, ${vAxis}=${pt[vAxis].toFixed(2)}). The opening was not cut through both faces (blind cut or misaligned cutter). Status: unverified.`,
+                );
+            }
         }
     }
 
-    return { throughVerified: true };
+    return {
+        throughVerified: true,
+        status: "verified",
+        penetrationAxis: thruAxis,
+        probedPointsCount: probedCount,
+    };
 }
 
 interface ResolvedBooleanOperand {
