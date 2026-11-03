@@ -111,6 +111,15 @@ export default defineConfig({
             new rspack.LightningCssMinimizerRspackPlugin(),
         ],
     },
+    devServer: {
+        port: 8080,
+        proxy: [
+            {
+                context: ["/api"],
+                target: "http://127.0.0.1:3000",
+            },
+        ],
+    },
     output: {
         clean: true,
     },
