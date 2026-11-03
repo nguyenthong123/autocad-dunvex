@@ -73,6 +73,8 @@ packages/web ──> packages/builder ──> packages/app ───────
 | **TASK-27** | Sửa dứt điểm đồng bộ phiên bản & xung đột (sequel TASK-26): client giữ `version` server, gửi `baseVersion` đúng trong body, hộp thoại xử lý 409, bỏ ghi `cad_entities`, test tích hợp client↔server thật & kiểm chứng trình duyệt K1–K8 đạt 100% | `[?] WAITING_REVIEW` | [docs/tasks/TASK-27-version-sync-conflict-wiring.md](./docs/tasks/TASK-27-version-sync-conflict-wiring.md) |
 | **TASK-28** | Điều tra và khắc phục lỗi Boolean Cut với khối đùn và hồi quy đồng bộ chọn Viewport ↔ Cây đối tượng (chỉ sửa sau khi tái hiện/xác định nguyên nhân) | `[?] WAITING_REVIEW` | [docs/tasks/TASK-28-boolean-cut-and-selection-sync-investigation.md](./docs/tasks/TASK-28-boolean-cut-and-selection-sync-investigation.md) |
 | **TASK-29** | Sửa lỗi chat AI `Invalid URL` khi dùng Base URL proxy cùng origin dạng đường dẫn tương đối (`/api/llm-proxy/...`) dù kiểm tra API key thành công | `[?] WAITING_REVIEW` | [docs/tasks/TASK-29-ai-chat-relative-proxy-url.md](./docs/tasks/TASK-29-ai-chat-relative-proxy-url.md) |
+| **TASK-30** | Làm gọn và tìm kiếm danh sách model AI; chỉ ưu tiên model phù hợp với provider và agent, phân biệt catalog công khai với model đã xác minh dùng được bằng API key | `[?] WAITING_REVIEW` | [docs/tasks/TASK-30-ai-model-picker-and-key-compatibility.md](./docs/tasks/TASK-30-ai-model-picker-and-key-compatibility.md) |
+| **TASK-31** | Bổ sung/tích hợp NVIDIA NIM làm provider AI: nhận diện `nvapi-`, discovery model, proxy allowlist an toàn và chat Completions đúng endpoint | `[?] WAITING_REVIEW` | [docs/tasks/TASK-31-nvidia-nim-provider.md](./docs/tasks/TASK-31-nvidia-nim-provider.md) |
 
 ---
 
