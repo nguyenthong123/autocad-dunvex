@@ -1,6 +1,6 @@
 # TASK-33: Lưu cấu hình trợ lý AI và API key an toàn qua lần tải lại
 
-> **Trạng thái:** `[~] IN_PROGRESS` (đã triển khai đầy đủ và kiểm thử; chờ deploy VPS và người dùng nghiệm thu)
+> **Trạng thái:** `[?] WAITING_REVIEW` (đã triển khai lên VPS; chờ người dùng nghiệm thu)
 > **Ưu tiên:** P1
 > **Phụ trách:** AI Thực thi (Worker)
 > **Phạm vi:** Lưu cấu hình/model vào SQLite theo tài khoản; cho phép người dùng chủ động ghi nhớ API key đã mã hóa theo tài khoản. Không lưu secret dạng rõ trong browser storage hoặc SQLite.

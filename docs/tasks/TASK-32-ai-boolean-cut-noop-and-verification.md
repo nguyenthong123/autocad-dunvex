@@ -1,6 +1,6 @@
 # TASK-32: Điều tra AI báo hoàn thành Boolean Cut nhưng hình học không đổi
 
-> **Trạng thái:** `[~] IN_PROGRESS` (chờ triển khai VPS và nghiệm thu thực tế)
+> **Trạng thái:** `[?] WAITING_REVIEW` (đã triển khai lên VPS, chờ người dùng nghiệm thu thực tế)
 > **Ưu tiên:** P0 theo phản ánh người dùng
 > **Phụ trách:** AI Thực thi (Worker)
 > **Phạm vi:** Điều tra và sửa luồng Boolean Cut do `run_program` thực thi; không suy diễn lỗi kernel khi chưa có ca tái hiện.

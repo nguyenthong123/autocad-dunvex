@@ -1,6 +1,6 @@
 # TASK-34: Tăng tốc thao tác nhiều chi tiết và Array an toàn trong trợ lý AI
 
-> **Trạng thái:** `[~] IN_PROGRESS` (đã triển khai đầy đủ và kiểm thử; chờ deploy VPS và người dùng nghiệm thu)
+> **Trạng thái:** `[?] WAITING_REVIEW` (đã triển khai lên VPS; chờ người dùng nghiệm thu)
 > **Ưu tiên:** P1
 > **Phạm vi:** Trợ lý AI trong app; không phụ thuộc MCP ngoài.
 
