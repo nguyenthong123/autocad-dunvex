@@ -23,6 +23,7 @@ services:
     environment:
       - PORT=3000
       - DATA_DIR=/data/storage
+      - LLM_CREDENTIALS_ENCRYPTION_KEY=${LLM_CREDENTIALS_ENCRYPTION_KEY:-}
     command: ["node", "server/storageServer.mjs"]
     restart: unless-stopped
     deploy:
