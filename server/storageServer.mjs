@@ -460,6 +460,13 @@ export const server = createServer(async (req, res) => {
                     .get(id);
 
                 if (existing) {
+                    const incomingHash = createHash("sha256").update(bodyStr).digest("hex");
+                    const existingHash = createHash("sha256").update(existing.document_json).digest("hex");
+                    if (incomingHash === existingHash) {
+                        sendJson(res, 200, { ok: true, unchanged: true, version: existing.version });
+                        return;
+                    }
+
                     if (baseVersion !== null && baseVersion !== undefined) {
                         const baseNum = Number(baseVersion);
                         const curNum = Number(existing.version);
@@ -526,22 +533,36 @@ export const server = createServer(async (req, res) => {
                         );
                     }
 
-                    // 3. Snapshot (retain max 10)
-                    userDb
-                        .prepare(`
-                        INSERT INTO project_snapshots (project_id, created_at, document_json)
-                        VALUES (?, ?, ?)
-                    `)
-                        .run(id, now, bodyStr);
-
-                    userDb
-                        .prepare(`
-                        DELETE FROM project_snapshots
-                        WHERE project_id = ? AND id NOT IN (
-                            SELECT id FROM project_snapshots WHERE project_id = ? ORDER BY id DESC LIMIT 10
+                    // 3. Snapshot (retain max 10) - sparse throttle: 5 minutes or isSnapshot/isClosing
+                    const lastSnapshot = userDb
+                        .prepare(
+                            "SELECT created_at FROM project_snapshots WHERE project_id = ? ORDER BY id DESC LIMIT 1",
                         )
-                    `)
-                        .run(id, id);
+                        .get(id);
+                    const nowMs = Date.now();
+                    const shouldSnapshot =
+                        Boolean(data.isSnapshot) ||
+                        Boolean(data.isClosing) ||
+                        !lastSnapshot ||
+                        nowMs - new Date(lastSnapshot.created_at).getTime() >= 5 * 60 * 1000;
+
+                    if (shouldSnapshot) {
+                        userDb
+                            .prepare(`
+                            INSERT INTO project_snapshots (project_id, created_at, document_json)
+                            VALUES (?, ?, ?)
+                        `)
+                            .run(id, now, bodyStr);
+
+                        userDb
+                            .prepare(`
+                            DELETE FROM project_snapshots
+                            WHERE project_id = ? AND id NOT IN (
+                                SELECT id FROM project_snapshots WHERE project_id = ? ORDER BY id DESC LIMIT 10
+                            )
+                        `)
+                            .run(id, id);
+                    }
 
                     userDb.exec("COMMIT");
                     sendJson(res, 200, { ok: true, version: newVersion });

@@ -317,4 +317,85 @@ describe("StorageServer SQLite & Auth API", () => {
         assert.strictEqual(staleData.currentVersion, 2);
         assert.strictEqual(staleData.baseVersion, 1);
     });
+
+    it("skips duplicate write and snapshot when document content hash is identical", async () => {
+        const docId = "hash_dedup_doc";
+        const payload = { id: docId, name: "Dedup Test", models: { nodes: [] } };
+
+        // 1. First PUT
+        const res1 = await fetch(`${baseUrl}/api/storage/dunvex/documents/${docId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${tokenA}` },
+            body: JSON.stringify(payload),
+        });
+        assert.strictEqual(res1.status, 200);
+
+        const db = getUserDb(userA.id);
+        const snapCount1 = db
+            .prepare("SELECT count(*) as c FROM project_snapshots WHERE project_id = ?")
+            .get(docId).c;
+        assert.strictEqual(snapCount1, 1);
+
+        // 2. Identical PUT -> skipped
+        const res2 = await fetch(`${baseUrl}/api/storage/dunvex/documents/${docId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${tokenA}` },
+            body: JSON.stringify(payload),
+        });
+        assert.strictEqual(res2.status, 200);
+        const data2 = await res2.json();
+        assert.strictEqual(data2.unchanged, true);
+
+        // Verify snapshot count did not increase
+        const snapCount2 = db
+            .prepare("SELECT count(*) as c FROM project_snapshots WHERE project_id = ?")
+            .get(docId).c;
+        assert.strictEqual(snapCount2, 1);
+    });
+
+    it("throttles snapshots to 5-minute intervals unless isClosing is true", async () => {
+        const docId = "sparse_snap_doc";
+        const db = getUserDb(userA.id);
+
+        // 1. First PUT -> creates snapshot 1
+        const res1 = await fetch(`${baseUrl}/api/storage/dunvex/documents/${docId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${tokenA}` },
+            body: JSON.stringify({ id: docId, name: "Snap 1", models: { nodes: [] } }),
+        });
+        assert.strictEqual(res1.status, 200);
+        assert.strictEqual(
+            db.prepare("SELECT count(*) as c FROM project_snapshots WHERE project_id = ?").get(docId).c,
+            1,
+        );
+
+        // 2. Second PUT immediately after (different content, within 5 minutes) -> no new snapshot
+        const res2 = await fetch(`${baseUrl}/api/storage/dunvex/documents/${docId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${tokenA}` },
+            body: JSON.stringify({ id: docId, name: "Snap 2 (rapid edit)", models: { nodes: [] } }),
+        });
+        assert.strictEqual(res2.status, 200);
+        assert.strictEqual(
+            db.prepare("SELECT count(*) as c FROM project_snapshots WHERE project_id = ?").get(docId).c,
+            1,
+        );
+
+        // 3. Third PUT with isClosing: true -> forces snapshot creation
+        const res3 = await fetch(`${baseUrl}/api/storage/dunvex/documents/${docId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${tokenA}` },
+            body: JSON.stringify({
+                id: docId,
+                name: "Snap 3 (closing)",
+                isClosing: true,
+                models: { nodes: [] },
+            }),
+        });
+        assert.strictEqual(res3.status, 200);
+        assert.strictEqual(
+            db.prepare("SELECT count(*) as c FROM project_snapshots WHERE project_id = ?").get(docId).c,
+            2,
+        );
+    });
 });
