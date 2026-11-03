@@ -807,6 +807,20 @@
     cursor: not-allowed;
 }
 
+.checkboxRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 12px;
+    user-select: none;
+    cursor: pointer;
+}
+
+.checkboxRow input[type="checkbox"] {
+    cursor: pointer;
+}
+
 .statusBanner {
     font-size: 11px;
     line-height: 1.4;

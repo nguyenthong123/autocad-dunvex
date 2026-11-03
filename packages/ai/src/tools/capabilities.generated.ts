@@ -291,6 +291,7 @@ export const shapeCapabilities: ShapeCapability[] = [
         params: [
             { name: "shape1", kind: "refArray" },
             { name: "shape2", kind: "refArray" },
+            { name: "throughCut", kind: "boolean", required: false },
         ],
     },
     {
@@ -2018,7 +2019,7 @@ export const capabilitiesSource = `Available modeling capabilities (from IShapeF
   sweep(profile: refArray, path: ref, isRoundCorner: boolean) -> shape
   revolve(profile: ref, axis: line, angle: number) -> shape
   booleanCommon(shape1: refArray, shape2: refArray) -> shape
-  booleanCut(shape1: refArray, shape2: refArray) -> shape
+  booleanCut(shape1: refArray, shape2: refArray, throughCut: boolean?) -> shape
   booleanFuse(shape1: refArray, shape2: refArray, simplifyShape: boolean) -> shape
   sewing(shapes: refArray) -> shape
   combine(shapes: refArray) -> compound

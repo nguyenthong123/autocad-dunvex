@@ -908,7 +908,7 @@ export class ShapeFactory implements IShapeFactory {
             "BooleanCommon Error",
         );
     }
-    booleanCut(shape1: IShape[], shape2: IShape[]): Result<IShape> {
+    booleanCut(shape1: IShape[], shape2: IShape[], _throughCut?: boolean): Result<IShape> {
         return convertShapeResult(
             wasm.ShapeFactory.booleanCut,
             [ensureOccShape(shape1), ensureOccShape(shape2)],

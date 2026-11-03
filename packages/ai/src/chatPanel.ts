@@ -19,6 +19,7 @@ import {
     form,
     img,
     input,
+    label,
     option,
     select,
     setSVGIcon,
@@ -55,6 +56,10 @@ import {
     CONTEXT_WINDOW_OPTIONS,
     currentConfig,
     DEFAULT_CONTEXT_WINDOW,
+    deleteRemoteCredential,
+    fetchRemoteSettings,
+    getClientAuthToken,
+    hasRememberedVaultKey,
     type LLMConfig,
     loadConfig,
     offerKeyToPasswordManager,
@@ -63,6 +68,7 @@ import {
     REASONING_EFFORTS,
     type ReasoningEffort,
     saveConfig,
+    saveRemoteSettings,
 } from "./settings";
 import { buildTools } from "./tools";
 import { type AskRequest, setAskHandler } from "./tools/askUser";
@@ -558,6 +564,7 @@ export class ChatPanel extends HTMLElement {
     /** Holds a window size outside the common tiers, so an older custom value stays visible. */
     private customWindowOption?: HTMLOptionElement;
     private apiKeyInput!: HTMLInputElement;
+    private rememberKeyCheckbox!: HTMLInputElement;
     private usernameInput!: HTMLInputElement;
     private readonly imagePreview: HTMLElement;
     private readonly pendingImages: ImagePart[] = [];
@@ -796,8 +803,14 @@ export class ChatPanel extends HTMLElement {
     }
 
     private loadConfig() {
-        this.configured = !!loadConfig()?.apiKey;
+        this.configured = !!loadConfig()?.apiKey || hasRememberedVaultKey();
         this.renderState();
+        void fetchRemoteSettings().then((remote) => {
+            if (remote && (hasRememberedVaultKey() || !!loadConfig()?.apiKey)) {
+                this.configured = true;
+                this.renderState();
+            }
+        });
     }
 
     private renderState() {
@@ -872,6 +885,9 @@ export class ChatPanel extends HTMLElement {
             name: "password",
             autocomplete: "current-password",
         });
+        this.rememberKeyCheckbox = input({
+            type: "checkbox",
+        });
         this.checkKeyButton = button({
             className: style.checkKeyButton,
             type: "button",
@@ -936,8 +952,17 @@ export class ChatPanel extends HTMLElement {
                 this.usernameInput,
                 this.settingsField(
                     new Localize("ai.apiKey"),
-                    div({ className: style.apiKeyRow }, this.apiKeyInput, this.checkKeyButton),
+                    div(
+                        { style: "display: flex; flex-direction: column; gap: 4px;" },
+                        div({ className: style.apiKeyRow }, this.apiKeyInput, this.checkKeyButton),
+                        label(
+                            { className: style.checkboxRow },
+                            this.rememberKeyCheckbox,
+                            span({ textContent: new Localize("ai.rememberKey") }),
+                        ),
+                    ),
                 ),
+                div({ className: style.settingsHint, textContent: new Localize("ai.rememberKeyDesc") }),
                 div({ className: style.settingsHint, textContent: new Localize("ai.apiKeyHint") }),
                 this.statusBanner,
                 this.settingsField(
@@ -1183,6 +1208,21 @@ export class ChatPanel extends HTMLElement {
     private showSettings() {
         if (!this.settingsOverlay) return;
         if (this.statusBanner) this.statusBanner.style.display = "none";
+        const authToken = getClientAuthToken();
+        if (this.rememberKeyCheckbox) {
+            if (!authToken) {
+                this.rememberKeyCheckbox.checked = false;
+                this.rememberKeyCheckbox.disabled = true;
+            } else {
+                this.rememberKeyCheckbox.disabled = false;
+                this.rememberKeyCheckbox.checked = hasRememberedVaultKey();
+                void fetchRemoteSettings().then((remote) => {
+                    if (remote && this.rememberKeyCheckbox) {
+                        this.rememberKeyCheckbox.checked = hasRememberedVaultKey();
+                    }
+                });
+            }
+        }
         const saved = loadConfig();
         if (saved && this.providerSelect && this.baseURLInput && this.modelPicker && this.apiKeyInput) {
             const preset = PROVIDER_PRESETS.find((p) => p.provider === saved.provider);
@@ -1221,7 +1261,15 @@ export class ChatPanel extends HTMLElement {
         };
         saveConfig(config);
         await offerKeyToPasswordManager(preset?.id ?? config.provider, config.apiKey);
-        this.configured = config.apiKey.length > 0;
+
+        const remember = this.rememberKeyCheckbox?.checked ?? false;
+        const vendor = preset?.id ?? config.provider;
+        if (!remember && hasRememberedVaultKey()) {
+            await deleteRemoteCredential(vendor);
+        }
+        await saveRemoteSettings(config, remember, vendor);
+
+        this.configured = config.apiKey.length > 0 || hasRememberedVaultKey();
         this.renderState();
         this.hideSettings();
     }
@@ -1614,7 +1662,7 @@ export class ChatPanel extends HTMLElement {
     /** The config to run with, or undefined after sending the user to the settings overlay. */
     private configuredConfig(): LLMConfig | undefined {
         const config = currentConfig();
-        if (config.apiKey) return config;
+        if (config.apiKey || hasRememberedVaultKey()) return config;
         this.configured = false;
         this.renderState();
         this.showSettings();

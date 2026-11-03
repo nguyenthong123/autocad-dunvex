@@ -217,6 +217,72 @@ export async function handleLlmProxy(req, res, pathname, options = {}) {
         }
     }
 
+    // Resolve stored credential for authenticated user when client key is not provided
+    const authHeader = req.headers.authorization;
+    const isClientJwt =
+        authHeader?.startsWith("Bearer ") && authHeader.slice(7).trim().split(".").length === 3;
+    const userJwt = req.headers["x-user-token"] || (isClientJwt ? authHeader.slice(7).trim() : null);
+
+    const isPlaceholder = (k) =>
+        !k || k === "vault" || k === "stored-vault" || k === "Bearer vault" || k === "Bearer stored-vault";
+
+    let hasClientLlmKey = false;
+    if (
+        upstreamHeaders["x-api-key"] &&
+        typeof upstreamHeaders["x-api-key"] === "string" &&
+        !isPlaceholder(upstreamHeaders["x-api-key"])
+    ) {
+        hasClientLlmKey = true;
+    } else if (
+        upstreamHeaders.authorization &&
+        typeof upstreamHeaders.authorization === "string" &&
+        !isClientJwt &&
+        !isPlaceholder(upstreamHeaders.authorization)
+    ) {
+        hasClientLlmKey = true;
+    }
+
+    if (!hasClientLlmKey && userJwt) {
+        const verifyJwtFn = options.verifyJwt;
+        const getUserDbFn = options.getUserDb;
+        const getMasterKeyFn = options.getMasterEncryptionKey;
+        const decryptFn = options.decryptApiKey;
+
+        if (verifyJwtFn && getUserDbFn && getMasterKeyFn && decryptFn) {
+            const payload = verifyJwtFn(userJwt);
+            if (payload?.sub) {
+                const userDb = getUserDbFn(payload.sub);
+                const credRow = userDb
+                    .prepare("SELECT ciphertext, iv, tag FROM ai_credentials WHERE vendor_id = ?")
+                    .get(vendorId);
+                const masterKey = getMasterKeyFn();
+                if (credRow && masterKey) {
+                    try {
+                        const decryptedKey = decryptFn(
+                            credRow.ciphertext,
+                            credRow.iv,
+                            credRow.tag,
+                            masterKey,
+                        );
+                        if (vendorId === "anthropic") {
+                            upstreamHeaders["x-api-key"] = decryptedKey;
+                            upstreamHeaders["anthropic-version"] =
+                                upstreamHeaders["anthropic-version"] || "2023-06-01";
+                            delete upstreamHeaders.authorization;
+                        } else {
+                            upstreamHeaders.authorization = `Bearer ${decryptedKey}`;
+                        }
+                    } catch (decErr) {
+                        console.error("[llmProxy] Decryption error:", decErr.message);
+                    }
+                }
+            }
+        }
+    } else if (isClientJwt) {
+        // Do not forward user JWT to LLM providers
+        delete upstreamHeaders.authorization;
+    }
+
     // Parse target URL
     const targetUrl = new URL(vendor.baseURL + upstreamSubpath);
     upstreamHeaders.host = targetUrl.host;

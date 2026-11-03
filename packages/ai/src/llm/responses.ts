@@ -2,7 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 import OpenAI from "openai";
-import type { LLMConfig } from "../settings";
+import { getClientAuthToken, hasRememberedVaultKey, type LLMConfig } from "../settings";
 import {
     type ChatMessage,
     flattenSystem,
@@ -25,10 +25,13 @@ export class ResponsesProvider implements LLMProvider {
     private readonly client: OpenAI;
 
     constructor(config: LLMConfig) {
+        const token = getClientAuthToken();
+        const effectiveKey = config.apiKey || (hasRememberedVaultKey() || token ? "stored-vault" : "");
         this.client = new OpenAI({
-            apiKey: config.apiKey,
+            apiKey: effectiveKey,
             baseURL: resolveBaseURL(config.baseURL, "https://api.openai.com/v1"),
             dangerouslyAllowBrowser: true,
+            defaultHeaders: token ? { "x-user-token": token } : undefined,
         });
     }
 

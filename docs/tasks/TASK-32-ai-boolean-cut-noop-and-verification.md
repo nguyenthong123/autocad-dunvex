@@ -57,21 +57,32 @@ Các điểm trên xác nhận luồng AI thiếu một số bảo vệ/kiểm c
 5. **Cắt không xuyên tường (chỉ tạo vết khoét / blind pocket):** Chỉ kiểm tra thể tích giảm là chưa đủ nếu cutter không đâm xuyên qua cả 2 mặt đối diện theo chiều dày tường.
 
 ### Danh sách các thay đổi chính:
-1. **`packages/ai/src/tools/capabilityEngine.ts`:**
+1. **`packages/core/src/shape/shapeFactory.ts` & `packages/wasm/src/factory.ts` & `packages/ai/src/tools/capabilities.generated.ts`:**
+   - Bổ sung tham số tùy chọn `throughCut?: boolean` vào định nghĩa interface `booleanCut(...)`.
+   - Chạy codegen đồng bộ `shapeCapabilities` và `capabilitiesSource` trong `capabilities.generated.ts`. Giúp model và skill `modeling-api` nhận diện chính xác cú pháp gọi `throughCut: true`.
+2. **`packages/ai/src/tools/capabilityEngine.ts`:**
    - Điều hướng riêng các phép toán Boolean (`booleanCut`, `booleanFuse`, `booleanCommon`).
    - Hàm `isSolidVolume()`: Kiểm tra nghiêm ngặt `ShapeTypes.solid`, `ShapeTypes.compoundSolid`, và `ShapeTypes.compound` phải có mọi direct sub-shape là solid volume (`directSubShapes().every(isSolidVolume)`). Loại bỏ hoàn toàn fallback `ShapeTypes.shape`.
    - Áp dụng world transform: Nếu `node instanceof VisualNode` và `worldTransform` khác identity, chuyển shape về world space bằng `shape.transformedMul(worldTransform)`.
    - Quản lý vòng đời bộ nhớ (Memory Lifecycle): Toàn bộ shape tạm thời sinh ra bởi `transformedMul()` và uncommitted result shape được theo dõi trong `tempShapesToDispose` và giải phóng triệt để qua `try ... finally`. Document input shapes (`entry.value`) không bao giờ bị giải phóng, bảo đảm an toàn khi rollback.
    - Sai số thể tích thích ứng (Adaptive Volume Tolerance): `volTol = totalTargetVolume > 0 ? Math.min(1e-5, Math.max(1e-12, totalTargetVolume * 1e-6)) : 1e-5;`. Xử lý chính xác từ chi tiết siêu nhỏ ($< 10^{-5}$ mm³) tới mô hình lớn.
-   - Hậu kiểm đục xuyên tường (`throughCut` / `verifyThrough`): So sánh bounding box của cutter với target theo các trục độ dày; nếu cutter không bao trùm cả 2 mặt đối diện, ném lỗi rõ ràng và rollback transaction.
-2. **`packages/app/src/commands/boolean.ts`:**
+   - Hậu kiểm đục xuyên tường nâng cao (`verifyThroughCut`):
+     + Xác nhận dao cắt bao trùm hoàn toàn chiều dày tường qua cả hai mặt đối diện.
+     + Kiểm tra kiểm chứng hình học bằng điểm bên trong khoảng rỗng (`resultShape.containsPoint(midPoint, false)`): xác nhận vị trí tâm lỗ không còn bị đặc vật liệu, loại trừ hoàn toàn trường hợp tạo vết khoét chìm (blind pocket) hoặc cắt lệch.
+     + Ghi nhận `{ throughVerified: true }` vào `results[op.id]` khi qua kiểm chứng.
+3. **`packages/app/src/commands/boolean.ts`:**
    - Đồng bộ logic `isSolidVolume()`: loại bỏ fallback `ShapeTypes.shape` và kiểm tra chặt chẽ `directSubShapes()`.
-3. **`packages/ai/src/skills/modelingRecipes.ts`, `errorRecovery.ts`, `prompt.ts`:**
+4. **`packages/ai/src/skills/modelingRecipes.ts`, `errorRecovery.ts`, `prompt.ts`:**
    - Hướng dẫn rõ ràng về quy chuẩn đục cửa/xuyên tường: cutter phải vượt quá cả 2 mặt đối diện theo chiều dày tường và dùng `throughCut: true`.
    - Cấm đổ lỗi cho camera/zoom khi chưa có bằng chứng hình học (phải bỏ chọn node, đo bounding box và kiểm tra volume).
-4. **Kiểm thử hồi quy:**
-   - `packages/ai/test/capabilityEngine.test.ts`: Thêm 12 unit tests cho boolean (disposal, reject generic shape, reject mixed compound, adaptive tolerance micro target, through-cut check). Đạt 70/70 tests passed.
+5. **Kiểm thử hồi quy:**
+   - `packages/ai/test/capabilityEngine.test.ts`: Thêm 12 unit tests cho boolean (disposal, reject generic shape, reject mixed compound, adaptive tolerance micro target, through-cut check). Đạt 71/71 tests passed.
    - `packages/wasm/test/factory.test.ts`: Thêm 8 kernel tests cho geometry thật (giao nhau, không giao nhau, partial, world transform, open profile Shell, micro-target volume, through cut vs blind pocket, mixed compound). Đạt 172/172 tests passed.
+   - `packages/ai/test/capabilitiesFreshness.test.ts`: Xác nhận schema sinh tự động khớp với code factory.
+
+### Lưu ý nghiệm thu & Giới hạn hiện tại:
+- Do người dùng không đính kèm file vẽ CAD cụ thể (`.chili3d` hoặc file JSON lịch sử thao tác) lúc phát sinh lỗi ban đầu, việc xác minh trên bản vẽ cụ thể của khách hàng vẫn cần người dùng tự kiểm tra lại trong môi trường thực tế với mô hình cụ thể của mình.
+- Mọi trường hợp Boolean Cut thông thường không yêu cầu `throughCut` vẫn hoạt động nguyên vẹn, không bị ảnh hưởng.
 
 ### Kết quả kiểm tra chất lượng cuối cùng:
 - `npm run check`: **Mã thoát 0** (Biome lint & format 0 lỗi).

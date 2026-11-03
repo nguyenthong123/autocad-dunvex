@@ -67,6 +67,8 @@ Lý do thứ tự này: nếu không có bộ đánh giá, không biết thay đ
 
 **Số tình huống tối thiểu ban đầu:** 12, phủ các nhóm: đọc số liệu, đổi màu, vẽ một khối, vẽ nhiều bản sao (Array), tính BOM, xử lý khi thiếu thông tin (phải hỏi), và tình huống không thể làm (phải báo, không bịa).
 
+**Scenario bổ sung từ bản vẽ thực tế (in-app AI):** người dùng yêu cầu thêm 50 tấm vào vách; AI đo vách dài 1.080 mm nhưng tự giả định mỗi tấm dài 100 mm, tạo tổng chiều dài 5.000 mm rồi mới hỏi cách xử lý phần vượt. Kết quả này phải được xem là **FAIL**. Trước khi ghi, agent phải đọc kích thước thực, xác nhận kích thước/kiểu phân bố còn thiếu, tính `count × panelSize + gaps`, và chặn mọi phương án vượt vùng. Nếu thiếu kích thước tấm, phải gọi `ask_user`; nếu không vừa, phải trình phép tính và hỏi lựa chọn. Tuyệt đối không tạo trước rồi mới hỏi.
+
 ### 3.2. Công cụ kế hoạch (`plan`)
 
 - Công cụ `update_plan` (mới): nhận danh sách bước `{id, title, status: pending|doing|done|blocked, evidence?}`.
@@ -80,6 +82,7 @@ Lý do thứ tự này: nếu không có bộ đánh giá, không biết thay đ
 - Sau mỗi lần ghi (`run_program`, `apply_array`, `set_material`, `delete_node`...), agent phải gọi công cụ đo (`measure_nodes` của TASK-21) để xác nhận số liệu.
 - Với tác vụ có mục tiêu số liệu (số lượng, kích thước, phủ kín vùng), agent phải so với mục tiêu và ghi kết quả vào kế hoạch.
 - Nếu kiểm chứng không khớp: agent phải sửa, không được báo hoàn thành.
+- Với Array, xác nhận trước ghi: số lượng yêu cầu, kích thước nguồn, kích thước vùng, pitch/gap và quy tắc căn chỉnh; nếu dữ liệu cần thiết thiếu hoặc tổng bố trí vượt vùng thì không tạo node và phải hỏi người dùng.
 - Cơ chế thực thi: không chỉ dựa vào prompt. Nếu agent kết thúc mà chưa có kiểm chứng sau ghi, hệ thống tự nhắc (tương tự `MAX_IDLE_NUDGES`), giới hạn số lần nhắc.
 
 ### 3.4. Sub-agent và song song (chỉ sau khi có số liệu)
@@ -113,6 +116,7 @@ Lý do thứ tự này: nếu không có bộ đánh giá, không biết thay đ
 **Kiểm chứng:**
 - [ ] Sau mỗi ghi, agent gọi công cụ đo (test theo dõi lệnh gọi).
 - [ ] Tình huống có mục tiêu số liệu không được báo hoàn thành khi số liệu không khớp (test cụ thể).
+- [ ] Scenario “50 tấm × 100 mm trên vách 1.080 mm”: agent không được ghi bất kỳ node nào trước khi hỏi/chốt kích thước hoặc cách bố trí; kế hoạch vượt vùng bị từ chối.
 - [ ] Nhắc tự động có giới hạn số lần, không lặp vô hạn (test).
 
 **Chung:**

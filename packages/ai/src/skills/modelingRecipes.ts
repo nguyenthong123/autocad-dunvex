@@ -30,6 +30,11 @@ Flange (base plate + boss + bolt circle):
 
 Patterns / arrays:
 - Linear: transformedMul with translate = i * spacing per copy. Circular: transformedMul with rotate around the pattern axis. Create copies first, then one boolean op with all of them in shape2.
+- Large repetitive arrays (e.g. wooden slats / nan gỗ, louvers, ribs, shelf dividers):
+  1. Measure existing bounds with measure_nodes({ nodeIds: [compartmentId, slatId] }).
+  2. Preflight with plan_array({ nodeId, axis, count, availableSpan, gap?, pitch? }).
+     CRITICAL: If plan_array returns feasible: false (e.g. 50 slats of 100mm inside a 1,080mm bay -> overflow), DO NOT create nodes. Explain the overflow to the user, state the max fitting count, and ask for confirmation.
+  3. When feasible: execute apply_array({ nodeId, axis, count, pitch, folderName? }). This creates instances in a single fast transaction without re-evaluating B-rep geometry 50 times. Never call run_program 50 times in a loop.
 
 Placement reminders (details in the modeling-api skill):
 - box/rect/pyramid: plane.origin is a CORNER. Center a box at P: origin = P - (dx/2, dy/2, dz/2).

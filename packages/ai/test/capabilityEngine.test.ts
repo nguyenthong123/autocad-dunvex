@@ -2567,6 +2567,71 @@ describe("capabilityEngine", () => {
 
                 expect(res.created.length).toBe(1);
                 expect(res.created[0].id).toBe("cutDoor");
+                expect(res.results.cutDoor).toEqual({ throughVerified: true });
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
+        test("throughCut verification: fails when solid material remains inside the opening", async () => {
+            const wallShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 200000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 0, y: 0, z: 0 }, { x: 100, y: 20, z: 100 }),
+            };
+            const throughCutter = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 30000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 20, y: -5, z: 20 }, { x: 40, y: 25, z: 40 }),
+            };
+            // Result shape still contains the center point (cut did not open through)
+            const cutResultWithSolidCenter = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 180000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 0, y: 0, z: 0 }, { x: 100, y: 20, z: 100 }),
+                containsPoint: () => true, // Still solid!
+            };
+
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) =>
+                Result.ok(cutResultWithSolidCenter as unknown as IShape),
+            );
+            const { doc } = setupBooleanEnv({ booleanCut });
+
+            try {
+                const wallNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Wall",
+                    shape: Result.ok(wallShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(wallNode);
+                const cutterNode = new EditableShapeNode({
+                    document: doc,
+                    name: "ThroughDoorCutter",
+                    shape: Result.ok(throughCutter as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode);
+
+                const tool = buildCapabilityTools()[0];
+                await expect(
+                    tool.handler({
+                        ops: [
+                            {
+                                id: "cutDoor",
+                                method: "booleanCut",
+                                args: {
+                                    shape1: [wallNode.id],
+                                    shape2: [cutterNode.id],
+                                    throughCut: true,
+                                },
+                            },
+                        ],
+                    }),
+                ).rejects.toThrow(
+                    /geometric verification detected solid material remaining inside the opening/,
+                );
             } finally {
                 rs.unstubAllGlobals();
             }

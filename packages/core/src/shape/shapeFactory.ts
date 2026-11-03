@@ -172,7 +172,7 @@ export interface IShapeFactory {
     sweep(profile: IShape[], path: IWire, isRoundCorner: boolean): Result<IShape>;
     revolve(profile: IShape, axis: Line, angle: number): Result<IShape>;
     booleanCommon(shape1: IShape[], shape2: IShape[]): Result<IShape>;
-    booleanCut(shape1: IShape[], shape2: IShape[]): Result<IShape>;
+    booleanCut(shape1: IShape[], shape2: IShape[], throughCut?: boolean): Result<IShape>;
     booleanFuse(shape1: IShape[], shape2: IShape[], simplifyShape: boolean): Result<IShape>;
     sewing(shapes: IShape[]): Result<IShape>;
     /**

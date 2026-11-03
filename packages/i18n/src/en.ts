@@ -17,6 +17,8 @@ export default {
         "ai.baseURL": "Base URL",
         "ai.cancel": "Cancel",
         "ai.checkKey": "Check Key",
+        "ai.rememberKey": "Remember API key on this account",
+        "ai.rememberKeyDesc": "AES-256-GCM encrypted on server. Automatically restored after reload.",
         "ai.contextHint": "Context: {0} of {1} tokens",
         "ai.contextTrimmed": "Earlier messages are no longer sent to the model.",
         "ai.contextWindow": "Context window (tokens)",

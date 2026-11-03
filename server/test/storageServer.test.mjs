@@ -399,4 +399,82 @@ describe("StorageServer SQLite & Auth API", () => {
             2,
         );
     });
+
+    it("ai settings: rejects unauthenticated access with 401", async () => {
+        const res = await fetch(`${baseUrl}/api/ai/settings`);
+        assert.strictEqual(res.status, 401);
+    });
+
+    it("ai settings: persists model/provider and rejects rememberKey if master key missing", async () => {
+        delete process.env.LLM_CREDENTIALS_ENCRYPTION_KEY;
+        const res = await fetch(`${baseUrl}/api/ai/settings`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${tokenA}`,
+            },
+            body: JSON.stringify({
+                provider: "completions",
+                model: "meta/llama-3.3-70b-instruct",
+                baseURL: "/api/llm-proxy/nvidia/v1",
+                rememberKey: true,
+                apiKey: "nvapi-sample-secret-123456",
+            }),
+        });
+        assert.strictEqual(res.status, 400);
+        const data = await res.json();
+        assert.strictEqual(data.code, "ENCRYPTION_KEY_NOT_CONFIGURED");
+    });
+
+    it("ai settings: persists and encrypts credential with AES-256-GCM when master key configured", async () => {
+        process.env.LLM_CREDENTIALS_ENCRYPTION_KEY = "test-master-vault-encryption-secret-key-32b";
+        const secretKey = "nvapi-real-super-secret-key-xyz-987";
+        const putRes = await fetch(`${baseUrl}/api/ai/settings`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${tokenA}`,
+            },
+            body: JSON.stringify({
+                provider: "completions",
+                model: "meta/llama-3.3-70b-instruct",
+                baseURL: "/api/llm-proxy/nvidia/v1",
+                vendor: "nvidia",
+                rememberKey: true,
+                apiKey: secretKey,
+            }),
+        });
+        assert.strictEqual(putRes.status, 200);
+        const putData = await putRes.json();
+        assert.strictEqual(putData.hasRememberedKey, true);
+
+        // Verify database row is encrypted and DOES NOT contain plaintext key
+        const userDb = getUserDb(userA.id);
+        const cred = userDb.prepare("SELECT * FROM ai_credentials WHERE vendor_id = 'nvidia'").get();
+        assert.ok(cred);
+        assert.ok(cred.ciphertext);
+        assert.ok(cred.iv);
+        assert.ok(cred.tag);
+        assert.strictEqual(cred.ciphertext.includes(secretKey), false);
+
+        // Verify GET /api/ai/settings returns settings and list of vendors, but NEVER returns ciphertext or key
+        const getRes = await fetch(`${baseUrl}/api/ai/settings`, {
+            headers: { Authorization: `Bearer ${tokenA}` },
+        });
+        assert.strictEqual(getRes.status, 200);
+        const getData = await getRes.json();
+        assert.strictEqual(getData.settings.model, "meta/llama-3.3-70b-instruct");
+        assert.deepStrictEqual(getData.rememberedVendors, ["nvidia"]);
+        assert.strictEqual("apiKey" in getData, false);
+        assert.strictEqual("ciphertext" in getData, false);
+
+        // Verify DELETE /api/ai/credentials removes stored credentials
+        const delRes = await fetch(`${baseUrl}/api/ai/credentials?vendor=nvidia`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${tokenA}` },
+        });
+        assert.strictEqual(delRes.status, 200);
+        const credAfter = userDb.prepare("SELECT * FROM ai_credentials WHERE vendor_id = 'nvidia'").get();
+        assert.strictEqual(credAfter, undefined);
+    });
 });

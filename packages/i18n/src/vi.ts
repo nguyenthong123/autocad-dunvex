@@ -17,6 +17,8 @@ const vi: Locale = {
         "ai.advancedWarning":
             "Lưu ý: Gọi trực tiếp từ trình duyệt có thể bị chặn bởi chính sách CORS của nhà cung cấp.",
         "ai.checkKey": "Kiểm tra khóa",
+        "ai.rememberKey": "Ghi nhớ API key trên tài khoản này",
+        "ai.rememberKeyDesc": "Mã hóa AES-256-GCM an toàn trên máy chủ. Tự động khôi phục sau khi tải lại.",
         "ai.customModel": "Tùy chỉnh...",
         "ai.customModelPlaceholder": "Nhập tên mô hình",
         "ai.discovering": "Đang nhận diện nhà cung cấp và tải danh sách mô hình...",

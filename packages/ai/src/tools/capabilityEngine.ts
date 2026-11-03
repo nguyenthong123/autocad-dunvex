@@ -1066,7 +1066,7 @@ function runOp(
         return;
     }
     if (BOOLEAN_OPS[op.method]) {
-        runBooleanOp(cap, op, doc, factory, localRefs, created, removed);
+        runBooleanOp(cap, op, doc, factory, localRefs, created, removed, results);
         return;
     }
     runShapeOp(cap, op, doc, factory, localRefs, created, removed, results);
@@ -1159,9 +1159,9 @@ function combineBoundingBoxes(boxes: BoundingBox[]): BoundingBox {
 function verifyThroughCut(
     targetShapes: IShape[],
     toolShapes: IShape[],
-    _resultShape: IShape,
+    resultShape: IShape,
     targetName: string,
-): void {
+): { throughVerified: boolean } {
     const targetBoxes = targetShapes
         .map((s) => (typeof s.boundingBox === "function" ? s.boundingBox() : undefined))
         .filter((b): b is BoundingBox => !!b);
@@ -1169,7 +1169,9 @@ function verifyThroughCut(
         .map((s) => (typeof s.boundingBox === "function" ? s.boundingBox() : undefined))
         .filter((b): b is BoundingBox => !!b);
 
-    if (targetBoxes.length === 0 || toolBoxes.length === 0) return;
+    if (targetBoxes.length === 0 || toolBoxes.length === 0) {
+        return { throughVerified: false };
+    }
 
     const targetBox = targetBoxes.length === 1 ? targetBoxes[0] : combineBoundingBoxes(targetBoxes);
     const toolBox = toolBoxes.length === 1 ? toolBoxes[0] : combineBoundingBoxes(toolBoxes);
@@ -1185,14 +1187,41 @@ function verifyThroughCut(
         return toolMin <= targetMin + tol && toolMax >= targetMax - tol;
     });
 
-    if (penetratesAxis.length === 0) {
+    const validThroughAxes = penetratesAxis.filter((thruAxis) => {
+        const transverseAxes = axes.filter((a) => a !== thruAxis);
+        return transverseAxes.every((a) => {
+            return toolBox.max[a] > targetBox.min[a] + tol && toolBox.min[a] < targetBox.max[a] - tol;
+        });
+    });
+
+    if (validThroughAxes.length === 0) {
         throw new Error(
-            `booleanCut failed through-cut verification for "${targetName}": cutter does not span across both opposite faces in any thickness direction. ` +
+            `booleanCut failed through-cut verification for "${targetName}": cutter does not span across both opposite faces or does not overlap the target footprint (Status: unverified). ` +
                 `Target bounds: X[${targetBox.min.x.toFixed(2)}, ${targetBox.max.x.toFixed(2)}], Y[${targetBox.min.y.toFixed(2)}, ${targetBox.max.y.toFixed(2)}], Z[${targetBox.min.z.toFixed(2)}, ${targetBox.max.z.toFixed(2)}]. ` +
                 `Cutter bounds: X[${toolBox.min.x.toFixed(2)}, ${toolBox.max.x.toFixed(2)}], Y[${toolBox.min.y.toFixed(2)}, ${toolBox.max.y.toFixed(2)}], Z[${toolBox.min.z.toFixed(2)}, ${toolBox.max.z.toFixed(2)}]. ` +
-                `The cut produces a blind pocket/recess instead of cutting through both sides.`,
+                `The cut produces a blind pocket/recess or misses the target instead of cutting through both sides.`,
         );
     }
+
+    // Physical geometric containment check: verify center of cutout is hollow in result
+    if (typeof resultShape.containsPoint === "function") {
+        const thruAxis = validThroughAxes[0];
+        const testPoint: Record<"x" | "y" | "z", number> = {
+            x: (Math.max(targetBox.min.x, toolBox.min.x) + Math.min(targetBox.max.x, toolBox.max.x)) / 2,
+            y: (Math.max(targetBox.min.y, toolBox.min.y) + Math.min(targetBox.max.y, toolBox.max.y)) / 2,
+            z: (Math.max(targetBox.min.z, toolBox.min.z) + Math.min(targetBox.max.z, toolBox.max.z)) / 2,
+        };
+        const midVal = (targetBox.min[thruAxis] + targetBox.max[thruAxis]) / 2;
+        testPoint[thruAxis] = midVal;
+
+        if (resultShape.containsPoint(testPoint, false)) {
+            throw new Error(
+                `booleanCut failed through-cut verification for "${targetName}": geometric verification detected solid material remaining inside the opening (at ${thruAxis}=${midVal.toFixed(2)}). The opening was not cut through both faces. Status: unverified.`,
+            );
+        }
+    }
+
+    return { throughVerified: true };
 }
 
 interface ResolvedBooleanOperand {
@@ -1251,6 +1280,7 @@ function runBooleanOp(
     localRefs: Map<string, LocalRef>,
     created: CreatedNode[],
     removed: RemovedNode[],
+    results: Record<string, unknown>,
 ): void {
     const booleanType = BOOLEAN_OPS[op.method] ?? "cut";
     const consumed = new Set<string>();
@@ -1319,7 +1349,13 @@ function runBooleanOp(
             }
 
             if (op.args?.["throughCut"] === true || op.args?.["verifyThrough"] === true) {
-                verifyThroughCut(targetShapes, toolShapes, resultShape, resolvedTargets[0]?.name ?? "Target");
+                const check = verifyThroughCut(
+                    targetShapes,
+                    toolShapes,
+                    resultShape,
+                    resolvedTargets[0]?.name ?? "Target",
+                );
+                if (op.id) results[op.id] = check;
             }
         }
 

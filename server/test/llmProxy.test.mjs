@@ -95,6 +95,17 @@ describe("LLM Proxy Server Unit Tests", () => {
                 await handleLlmProxy(req, res, url.pathname, {
                     vendors: mockVendors,
                     silent: true,
+                    verifyJwt: (token) => (token === "valid.mock.jwt" ? { sub: "user-vault-123" } : null),
+                    getUserDb: (_userId) => ({
+                        prepare: () => ({
+                            get: (vendorId) =>
+                                vendorId === "nvidia"
+                                    ? { ciphertext: "mock-enc-hex", iv: "mock-iv", tag: "mock-tag" }
+                                    : null,
+                        }),
+                    }),
+                    getMasterEncryptionKey: () => Buffer.alloc(32, 1),
+                    decryptApiKey: () => "nvapi-decrypted-from-vault-999",
                 });
             });
 
@@ -418,5 +429,31 @@ describe("LLM Proxy Server Unit Tests", () => {
         assert.strictEqual(res.status, 404);
         const body = await res.json();
         assert.strictEqual(body.error, "Path not allowed by proxy allowlist");
+    });
+
+    it("resolves stored encrypted credential from user vault when client key is placeholder/vault", async () => {
+        const res = await fetch(`http://127.0.0.1:${proxyPort}/api/llm-proxy/nvidia/v1/chat/completions`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-user-token": "valid.mock.jwt",
+                Authorization: "Bearer stored-vault",
+            },
+            body: JSON.stringify({
+                model: "meta/llama-3.3-70b-instruct",
+                messages: [{ role: "user", content: "Test vault resolution" }],
+            }),
+        });
+
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(lastUpstreamRequest.method, "POST");
+        assert.strictEqual(lastUpstreamRequest.url, "/v1/chat/completions");
+        // Verify real decrypted key was attached
+        assert.strictEqual(
+            lastUpstreamRequest.headers.authorization,
+            "Bearer nvapi-decrypted-from-vault-999",
+        );
+        // Verify user JWT token was NOT forwarded upstream
+        assert.strictEqual(lastUpstreamRequest.headers["x-user-token"], undefined);
     });
 });

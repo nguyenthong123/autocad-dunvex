@@ -16,6 +16,8 @@ export default {
         "ai.baseURL": "Base URL",
         "ai.cancel": "取消",
         "ai.checkKey": "验证密钥",
+        "ai.rememberKey": "在此账户上记住 API 密钥",
+        "ai.rememberKeyDesc": "服务器端 AES-256-GCM 安全加密。页面刷新后自动复用。",
         "ai.contextHint": "上下文：{0} / {1} tokens",
         "ai.contextTrimmed": "以上更早的消息已不再发送给模型。",
         "ai.contextWindow": "上下文窗口（tokens）",

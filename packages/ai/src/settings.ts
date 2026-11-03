@@ -85,6 +85,118 @@ const STORAGE_KEY = "ai.config";
  * manager (the settings panel is a real login-style form).
  */
 let sessionApiKey = "";
+let sessionHasVaultKey = false;
+
+export function hasRememberedVaultKey(): boolean {
+    return sessionHasVaultKey;
+}
+
+export function setRememberedVaultKey(hasKey: boolean): void {
+    sessionHasVaultKey = hasKey;
+}
+
+export function getClientAuthToken(): string | null {
+    if (typeof window === "undefined" || !window.localStorage) return null;
+    return localStorage.getItem("dunvex_auth_token");
+}
+
+export interface RemoteSettingsResponse {
+    settings: {
+        provider?: string;
+        model?: string;
+        baseURL?: string;
+        reasoningEffort?: string;
+        contextWindow?: number;
+    } | null;
+    rememberedVendors: string[];
+    encryptionAvailable: boolean;
+}
+
+export async function fetchRemoteSettings(): Promise<RemoteSettingsResponse | null> {
+    const token = getClientAuthToken();
+    if (!token) return null;
+    try {
+        const res = await fetch("/api/ai/settings", {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return null;
+        const data = (await res.json()) as RemoteSettingsResponse;
+        if (data.settings) {
+            const existing = loadConfig() || currentConfig();
+            const merged: LLMConfig = {
+                ...existing,
+                provider: (data.settings.provider as any) || existing.provider,
+                model: data.settings.model || existing.model,
+                baseURL: data.settings.baseURL || existing.baseURL,
+                reasoningEffort: (data.settings.reasoningEffort as any) || existing.reasoningEffort,
+                contextWindow: data.settings.contextWindow || existing.contextWindow,
+                apiKey: sessionApiKey,
+            };
+            persist(merged);
+        }
+        sessionHasVaultKey = Boolean(data.rememberedVendors && data.rememberedVendors.length > 0);
+        return data;
+    } catch {
+        return null;
+    }
+}
+
+export async function saveRemoteSettings(
+    config: LLMConfig,
+    rememberKey: boolean,
+    vendor?: string,
+): Promise<{ ok: boolean; error?: string }> {
+    const token = getClientAuthToken();
+    if (!token) return { ok: false, error: "not_logged_in" };
+    try {
+        const res = await fetch("/api/ai/settings", {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                provider: config.provider,
+                model: config.model,
+                baseURL: config.baseURL,
+                reasoningEffort: config.reasoningEffort,
+                contextWindow: config.contextWindow,
+                apiKey: config.apiKey || undefined,
+                rememberKey,
+                vendor,
+            }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            return { ok: false, error: data?.message || data?.error || "save_failed" };
+        }
+        sessionHasVaultKey = Boolean(data.hasRememberedKey);
+        return { ok: true };
+    } catch (e: any) {
+        return { ok: false, error: e?.message || String(e) };
+    }
+}
+
+export async function deleteRemoteCredential(vendor?: string): Promise<boolean> {
+    const token = getClientAuthToken();
+    if (!token) return false;
+    try {
+        const url = vendor
+            ? `/api/ai/credentials?vendor=${encodeURIComponent(vendor)}`
+            : "/api/ai/credentials";
+        const res = await fetch(url, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+            sessionHasVaultKey = false;
+            return true;
+        }
+        return false;
+    } catch {
+        return false;
+    }
+}
 
 /** Older versions persisted the key in plain text; migrate it out on first read. */
 type StoredConfig = Omit<LLMConfig, "apiKey"> & { apiKey?: string };

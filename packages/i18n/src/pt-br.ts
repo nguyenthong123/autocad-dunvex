@@ -9,6 +9,9 @@ export default {
     language: "pt-BR",
     translation: {
         ...en.translation,
+        "ai.rememberKey": "Lembrar chave de API nesta conta",
+        "ai.rememberKeyDesc":
+            "Criptografia AES-256-GCM segura no servidor. Restaurada automaticamente após recarregar.",
         "ai.apiKey": "Chave de API",
         "ai.apiKeyHint":
             "A chave nunca é gravada no armazenamento do navegador. Salve-a com o gerenciador de senhas quando solicitado, ou digite-a uma vez por sessão.",

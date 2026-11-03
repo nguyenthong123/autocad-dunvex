@@ -2,7 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 import Anthropic from "@anthropic-ai/sdk";
-import type { LLMConfig } from "../settings";
+import { getClientAuthToken, hasRememberedVaultKey, type LLMConfig } from "../settings";
 import type {
     ChatMessage,
     ImagePart,
@@ -45,10 +45,13 @@ export class AnthropicProvider implements LLMProvider {
     private readonly client: Anthropic;
 
     constructor(config: LLMConfig) {
+        const token = getClientAuthToken();
+        const effectiveKey = config.apiKey || (hasRememberedVaultKey() || token ? "stored-vault" : "");
         this.client = new Anthropic({
-            apiKey: config.apiKey,
+            apiKey: effectiveKey,
             baseURL: resolveBaseURL(config.baseURL, "https://api.anthropic.com"),
             dangerouslyAllowBrowser: true,
+            defaultHeaders: token ? { "x-user-token": token } : undefined,
         });
     }
 

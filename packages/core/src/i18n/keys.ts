@@ -59,6 +59,8 @@ export const I18N_KEYS = [
     "ai.reference.unchecked",
     "ai.reasoningEffort",
     "ai.reasoningEffortHint",
+    "ai.rememberKey",
+    "ai.rememberKeyDesc",
     "ai.save",
     "ai.selectModel",
     "ai.send",

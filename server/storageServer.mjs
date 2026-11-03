@@ -1,7 +1,15 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
-import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import {
+    createCipheriv,
+    createDecipheriv,
+    createHash,
+    createHmac,
+    randomBytes,
+    scryptSync,
+    timingSafeEqual,
+} from "node:crypto";
 import fs from "node:fs";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
@@ -150,6 +158,25 @@ export function getUserDb(userId) {
             created_at DATETIME NOT NULL,
             document_json TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS ai_settings (
+            id TEXT PRIMARY KEY,
+            provider TEXT,
+            model TEXT,
+            base_url TEXT,
+            reasoning_effort TEXT,
+            context_window INTEGER,
+            updated_at DATETIME NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS ai_credentials (
+            vendor_id TEXT PRIMARY KEY,
+            ciphertext TEXT NOT NULL,
+            iv TEXT NOT NULL,
+            tag TEXT NOT NULL,
+            key_version INTEGER DEFAULT 1,
+            updated_at DATETIME NOT NULL
+        );
     `);
 
     try {
@@ -254,7 +281,36 @@ function sendJson(res, status, payload, onEnd = null) {
     });
 }
 
-function extractAuthUserId(req) {
+export function getMasterEncryptionKey() {
+    const raw = process.env.LLM_CREDENTIALS_ENCRYPTION_KEY?.trim();
+    if (raw && raw.length > 0) {
+        return scryptSync(raw, "dunvex-ai-vault-salt", 32);
+    }
+    return null;
+}
+
+export function encryptApiKey(apiKey, masterKey) {
+    const iv = randomBytes(12);
+    const cipher = createCipheriv("aes-256-gcm", masterKey, iv);
+    let ciphertext = cipher.update(apiKey, "utf8", "hex");
+    ciphertext += cipher.final("hex");
+    const tag = cipher.getAuthTag().toString("hex");
+    return {
+        ciphertext,
+        iv: iv.toString("hex"),
+        tag,
+    };
+}
+
+export function decryptApiKey(ciphertext, ivHex, tagHex, masterKey) {
+    const decipher = createDecipheriv("aes-256-gcm", masterKey, Buffer.from(ivHex, "hex"));
+    decipher.setAuthTag(Buffer.from(tagHex, "hex"));
+    let decrypted = decipher.update(ciphertext, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+    return decrypted;
+}
+
+export function extractStrictAuthUserId(req) {
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith("Bearer ")) {
         const token = authHeader.slice(7).trim();
@@ -263,7 +319,11 @@ function extractAuthUserId(req) {
             return payload.sub;
         }
     }
-    return "guest";
+    return null;
+}
+
+function extractAuthUserId(req) {
+    return extractStrictAuthUserId(req) || "guest";
 }
 
 export const server = createServer(async (req, res) => {
@@ -396,7 +456,140 @@ export const server = createServer(async (req, res) => {
 
         // ================= LLM PROXY ROUTES =================
         if (pathname.startsWith("/api/llm-proxy/")) {
-            await handleLlmProxy(req, res, pathname);
+            await handleLlmProxy(req, res, pathname, {
+                getUserDb,
+                verifyJwt,
+                getMasterEncryptionKey,
+                decryptApiKey,
+            });
+            return;
+        }
+
+        // ================= AI SETTINGS & CREDENTIALS VAULT =================
+        if (pathname === "/api/ai/settings") {
+            const userId = extractStrictAuthUserId(req);
+            if (!userId) {
+                sendJson(res, 401, {
+                    error: "UNAUTHORIZED",
+                    message: "Yêu cầu đăng nhập tài khoản để truy cập cài đặt AI",
+                });
+                return;
+            }
+            const userDb = getUserDb(userId);
+
+            if (req.method === "GET") {
+                const settingRow = userDb.prepare("SELECT * FROM ai_settings WHERE id = 'default'").get();
+                const credRows = userDb.prepare("SELECT vendor_id, updated_at FROM ai_credentials").all();
+                const masterKey = getMasterEncryptionKey();
+
+                sendJson(res, 200, {
+                    settings: settingRow
+                        ? {
+                              provider: settingRow.provider,
+                              model: settingRow.model,
+                              baseURL: settingRow.base_url,
+                              reasoningEffort: settingRow.reasoning_effort,
+                              contextWindow: settingRow.context_window,
+                          }
+                        : null,
+                    rememberedVendors: credRows.map((r) => r.vendor_id),
+                    encryptionAvailable: Boolean(masterKey),
+                });
+                return;
+            }
+
+            if (req.method === "PUT") {
+                const body = JSON.parse((await readBody(req)) || "{}");
+                const now = new Date().toISOString();
+
+                userDb
+                    .prepare(`
+                    INSERT INTO ai_settings (id, provider, model, base_url, reasoning_effort, context_window, updated_at)
+                    VALUES ('default', ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        provider = excluded.provider,
+                        model = excluded.model,
+                        base_url = excluded.base_url,
+                        reasoning_effort = excluded.reasoning_effort,
+                        context_window = excluded.context_window,
+                        updated_at = excluded.updated_at
+                `)
+                    .run(
+                        body.provider || null,
+                        body.model || null,
+                        body.baseURL || null,
+                        body.reasoningEffort || null,
+                        body.contextWindow || null,
+                        now,
+                    );
+
+                const vendorId = body.vendor || body.provider || "openai";
+                if (body.rememberKey === true) {
+                    if (!body.apiKey || typeof body.apiKey !== "string" || !body.apiKey.trim()) {
+                        sendJson(res, 400, {
+                            error: "MISSING_API_KEY",
+                            message: "API key không được để trống khi bật ghi nhớ",
+                        });
+                        return;
+                    }
+                    const masterKey = getMasterEncryptionKey();
+                    if (!masterKey) {
+                        sendJson(res, 400, {
+                            error: "ENCRYPTION_KEY_NOT_CONFIGURED",
+                            code: "ENCRYPTION_KEY_NOT_CONFIGURED",
+                            message:
+                                "Khóa mã hóa master (LLM_CREDENTIALS_ENCRYPTION_KEY) chưa được cấu hình trên server",
+                        });
+                        return;
+                    }
+                    const enc = encryptApiKey(body.apiKey.trim(), masterKey);
+                    userDb
+                        .prepare(`
+                        INSERT INTO ai_credentials (vendor_id, ciphertext, iv, tag, key_version, updated_at)
+                        VALUES (?, ?, ?, ?, 1, ?)
+                        ON CONFLICT(vendor_id) DO UPDATE SET
+                            ciphertext = excluded.ciphertext,
+                            iv = excluded.iv,
+                            tag = excluded.tag,
+                            key_version = excluded.key_version,
+                            updated_at = excluded.updated_at
+                    `)
+                        .run(vendorId, enc.ciphertext, enc.iv, enc.tag, now);
+                } else if (body.rememberKey === false) {
+                    userDb.prepare("DELETE FROM ai_credentials WHERE vendor_id = ?").run(vendorId);
+                }
+
+                sendJson(res, 200, { ok: true, hasRememberedKey: Boolean(body.rememberKey) });
+                return;
+            }
+
+            sendJson(res, 405, { error: "Method Not Allowed" });
+            return;
+        }
+
+        if (pathname === "/api/ai/credentials") {
+            const userId = extractStrictAuthUserId(req);
+            if (!userId) {
+                sendJson(res, 401, {
+                    error: "UNAUTHORIZED",
+                    message: "Yêu cầu đăng nhập tài khoản để thao tác kho khóa",
+                });
+                return;
+            }
+            const userDb = getUserDb(userId);
+
+            if (req.method === "DELETE") {
+                const vendorId = url.searchParams.get("vendor");
+                if (vendorId) {
+                    userDb.prepare("DELETE FROM ai_credentials WHERE vendor_id = ?").run(vendorId);
+                } else {
+                    userDb.prepare("DELETE FROM ai_credentials").run();
+                }
+                sendJson(res, 200, { ok: true });
+                return;
+            }
+
+            sendJson(res, 405, { error: "Method Not Allowed" });
             return;
         }
 

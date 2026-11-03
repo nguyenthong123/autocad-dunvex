@@ -30,8 +30,9 @@ describe("buildSystemPrompt", () => {
         // calls, which is what the run's step budget spends) raised it rather than being written
         // to fit under it. `new_document` is the second: a page opened from scratch has no
         // document, and an external agent has no one to click New for it.
+        // Array planning and measurement tools added to registry and index.
         const { stable, volatile } = buildSystemPrompt();
-        expect(stable.length + volatile.length).toBeLessThan(8400);
+        expect(stable.length + volatile.length).toBeLessThan(9000);
     });
 
     test("keeps the creation-method catalog out of the resident half", () => {

@@ -9,6 +9,9 @@ export default {
     language: "ru",
     translation: {
         ...en.translation,
+        "ai.rememberKey": "Запомнить API-ключ для этого аккаунта",
+        "ai.rememberKeyDesc":
+            "Шифрование AES-256-GCM на сервере. Автоматически восстанавливается после перезагрузки.",
         "ai.customModel": "Свой...",
         "ai.customModelPlaceholder": "Введите имя модели",
         "ai.discovering": "Проверка ключа и поиск моделей...",
