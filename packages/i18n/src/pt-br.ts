@@ -452,6 +452,13 @@ export default {
         "sync.pending{0}": "Pendente ({0})",
         "sync.saved": "Salvo",
         "sync.saving": "Salvando...",
+        "dialog.conflict.title": "Conflito de versão do desenho",
+        "dialog.conflict.message":
+            "Este desenho foi atualizado a partir de outro dispositivo ou sessão. Como deseja proceder?",
+        "dialog.conflict.overwrite": "Sobrescrever no servidor",
+        "dialog.conflict.pull": "Carregar versão do servidor",
+        "dialog.conflict.saveCopy": "Salvar como cópia",
+        "dialog.conflict.copySuffix": " (Cópia de conflito)",
         "prompt.syncConflict":
             "O documento no servidor foi modificado em outra sessão. Deseja sobrescrever com esta versão?",
     },

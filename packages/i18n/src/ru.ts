@@ -656,6 +656,13 @@ export default {
         "sync.pending{0}": "Не синхронизировано ({0})",
         "sync.saved": "Сохранено",
         "sync.saving": "Сохранение...",
+        "dialog.conflict.title": "Конфликт версий чертежа",
+        "dialog.conflict.message":
+            "Этот чертеж был обновлен на другом устройстве или в другой сессии. Что вы хотите сделать?",
+        "dialog.conflict.overwrite": "Перезаписать на сервере",
+        "dialog.conflict.pull": "Загрузить версию сервера",
+        "dialog.conflict.saveCopy": "Сохранить как копию",
+        "dialog.conflict.copySuffix": " (Конфликтная копия)",
         "prompt.syncConflict": "Документ на сервере был изменён в другом сеансе. Перезаписать этой версией?",
         "toast.command.{0}excuting": "Комманда {0} выполняется",
         "toast.converter.error": "Ошибка конвертирования",

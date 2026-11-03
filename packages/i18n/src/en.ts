@@ -825,6 +825,13 @@ export default {
         "sync.pending{0}": "Pending sync ({0})",
         "sync.saved": "Saved",
         "sync.saving": "Saving...",
+        "dialog.conflict.title": "Drawing Version Conflict",
+        "dialog.conflict.message":
+            "This drawing has been updated from another device or session. How would you like to proceed?",
+        "dialog.conflict.overwrite": "Overwrite Server",
+        "dialog.conflict.pull": "Load Server Version",
+        "dialog.conflict.saveCopy": "Save as Copy",
+        "dialog.conflict.copySuffix": " (Conflict Copy)",
         "prompt.syncConflict":
             "The document on server was modified in another session. Do you want to overwrite it with this version?",
         "toast.command.{0}excuting": "Command {0} is runing",

@@ -336,6 +336,13 @@ const vi: Locale = {
         "sync.pending{0}": "Chưa đồng bộ ({0})",
         "sync.saved": "Đã lưu",
         "sync.saving": "Đang lưu...",
+        "dialog.conflict.title": "Xung đột phiên bản bản vẽ",
+        "dialog.conflict.message":
+            "Bản vẽ này đã được cập nhật từ một thiết bị hoặc phiên làm việc khác. Bạn muốn xử lý thế nào?",
+        "dialog.conflict.overwrite": "Ghi đè lên máy chủ",
+        "dialog.conflict.pull": "Tải bản máy chủ về",
+        "dialog.conflict.saveCopy": "Lưu thành bản sao",
+        "dialog.conflict.copySuffix": " (Bản sao xung đột)",
         "prompt.syncConflict":
             "Bản vẽ trên máy chủ đã thay đổi bởi phiên khác. Bạn có muốn ghi đè bằng bản này không?",
         "snap.center": "Tâm (Center)",

@@ -3,6 +3,7 @@
 
 import { type BridgeStatus, Config, I18n, type I18nKeys, Navigation3D, PubSub } from "@chili3d/core";
 import { div, label } from "@chili3d/element";
+import { showConflictDialog } from "../dialog/conflictDialog";
 import { CommandBar } from "./commandBar";
 import { ErrorStatus } from "./errorStatus";
 import { SnapConfig } from "./snapConfig";
@@ -76,6 +77,11 @@ export class Statusbar extends HTMLElement {
     ) => {
         if (!this.syncLabel) {
             this.syncLabel = label({ className: style.sync });
+            this.syncLabel.onclick = () => {
+                if (this.syncLabel?.dataset["syncStatus"] === "conflict") {
+                    showConflictDialog();
+                }
+            };
             this.right.prepend(this.syncLabel);
         }
         if (status === "saved") {
@@ -88,6 +94,7 @@ export class Statusbar extends HTMLElement {
             I18n.set(this.syncLabel, "textContent", "sync.error");
         } else if (status === "conflict") {
             I18n.set(this.syncLabel, "textContent", "sync.conflict");
+            showConflictDialog();
         }
         this.syncLabel.dataset["syncStatus"] = status;
     };

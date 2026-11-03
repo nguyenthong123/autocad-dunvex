@@ -3,5 +3,6 @@
 
 export * from "./auth/authDialog";
 export * from "./dialog";
+export * from "./dialog/conflictDialog";
 export * from "./floatPanel";
 export * from "./mainWindow";
