@@ -22,7 +22,7 @@ describe("Real Client <-> Server Integration (Optimistic Locking & 409 Resolutio
         rs.spyOn(Logger, "error").mockImplementation(() => {});
 
         testDataDir = mkdtempSync(join(tmpdir(), "chili3d-sync-int-"));
-        process.env.DATA_DIR = testDataDir;
+        process.env["DATA_DIR"] = testDataDir;
 
         const serverModule = await import("../../../server/storageServer.mjs");
         server = serverModule.server;
