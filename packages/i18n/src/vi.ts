@@ -34,12 +34,14 @@ const vi: Locale = {
         "ai.modelTabCustom": "Tùy chỉnh",
         "ai.modelTabRecommended": "Gợi ý ({0})",
         "ai.noMatchingModels": "Không tìm thấy model nào phù hợp",
+        "ai.noRecommendedModels":
+            "Chưa có model nào được xác nhận hỗ trợ tool calling trong catalog này. Xem tab 'Tất cả' để chọn model.",
         "ai.selectModel": "Chọn mô hình",
         "ai.testModel": "Thử model này",
         "ai.testModelCostWarning":
-            "Thao tác này gửi 1 yêu cầu ngắn và có thể tiêu tốn quota/chi phí tài khoản.",
+            "Lưu ý: Thử nghiệm này chỉ gửi 1 prompt văn bản tối thiểu (có thể tiêu thụ quota/chi phí) để xác nhận model phản hồi được; không chứng minh agent tool calling hoạt động.",
         "ai.testModelError": "Lỗi kiểm tra model: {0}",
-        "ai.testModelSuccess": "Mô hình phản hồi tốt ({0}ms)",
+        "ai.testModelSuccess": "Phản hồi thành công ({0}ms - chỉ xác nhận chat text)",
         "ai.testingModel": "Đang kiểm tra...",
 
         // Common

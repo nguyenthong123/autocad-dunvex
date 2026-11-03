@@ -174,4 +174,34 @@ describe("ModelPicker", () => {
             picker.element.remove();
         }
     });
+
+    test("handles catalog with no tool-supported models without promoting arbitrary models", () => {
+        const picker = new ModelPicker();
+        const unverifiedModels: DiscoveredModel[] = [
+            {
+                id: "model-alpha",
+                name: "Model Alpha",
+                toolCapability: "unverified",
+                isDefault: true,
+            },
+            {
+                id: "model-beta",
+                name: "Model Beta",
+                toolCapability: "unsupported",
+            },
+        ];
+
+        picker.setModels(unverifiedModels, KNOWN_VENDORS.openai);
+
+        // Automatically switches to "all" tab so user can see and select models
+        const allOptions = picker.element.querySelectorAll("div[role='option']");
+        expect(allOptions.length).toBe(2);
+
+        // Switching explicitly to recommended tab displays ai.noRecommendedModels and 0 options
+        picker.setTab("recommended");
+        const recOptions = picker.element.querySelectorAll("div[role='option']");
+        expect(recOptions.length).toBe(0); // Arbitrary models are NOT placed into recommended
+        const listContainer = picker.element.querySelector(`.${style.list}`);
+        expect(listContainer?.textContent).toContain("ai.noRecommendedModels");
+    });
 });

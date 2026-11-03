@@ -59,6 +59,8 @@ export default {
         "ai.modelTabRecommended": "Recommended ({0})",
         "ai.newChat": "New chat",
         "ai.noMatchingModels": "No matching models found",
+        "ai.noRecommendedModels":
+            "No models confirmed with tool calling support in this catalog. Check the 'All' tab to select a model.",
         "ai.noReply": "(no text response)",
         "ai.provider": "Provider",
         "ai.reference.blocked": "Reference image read — asking the model to replan the build.",
@@ -78,9 +80,10 @@ export default {
             '(Step limit for this message reached — say "continue" and I will carry on from here.)',
         "ai.stop": "Stop",
         "ai.testModel": "Test Model",
-        "ai.testModelCostWarning": "This sends a short test request and may consume account quota/cost.",
+        "ai.testModelCostWarning":
+            "Note: This test only sends a minimal text prompt (may consume quota/costs) to verify the model responds; it does not prove that agent tool calling works.",
         "ai.testModelError": "Model test failed: {0}",
-        "ai.testModelSuccess": "Model responded successfully ({0}ms)",
+        "ai.testModelSuccess": "Model responded successfully ({0}ms - text only verified)",
         "ai.testingModel": "Testing model...",
         "ai.thinking": "Thinking…",
         "ai.thoughtFor": "Thought for {0}",

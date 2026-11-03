@@ -152,12 +152,12 @@ export function filterAndSortModels(rawModels: any[], vendor: KnownVendor): Disc
         return a.id.localeCompare(b.id);
     });
 
-    // If default model wasn't returned by upstream API (e.g. alias), prepend it
+    // If default model wasn't returned by upstream API (e.g. alias), prepend it with unverified capability
     if (!chatModels.some((m) => m.id === vendor.defaultModel)) {
         chatModels.unshift({
             id: vendor.defaultModel,
             isDefault: true,
-            toolCapability: "supported",
+            toolCapability: "unverified",
         });
     }
 

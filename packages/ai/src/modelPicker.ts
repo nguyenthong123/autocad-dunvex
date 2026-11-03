@@ -174,7 +174,12 @@ export class ModelPicker {
         this._models = [...models];
         this._vendor = vendor;
         this.updateTabCounts();
-        this.renderList();
+        const supportedCount = this._models.filter((m) => m.toolCapability === "supported").length;
+        if (supportedCount === 0 && this._activeTab === "recommended") {
+            this.setTab("all");
+        } else {
+            this.renderList();
+        }
         this.updateTriggerText();
     }
 
@@ -250,10 +255,7 @@ export class ModelPicker {
     }
 
     private updateTabCounts() {
-        const hasSupported = this._models.some((m) => m.toolCapability === "supported");
-        const recCount = hasSupported
-            ? this._models.filter((m) => m.toolCapability === "supported" || m.isDefault).length
-            : this._models.filter((m) => m.isDefault || this._models.indexOf(m) < 5).length;
+        const recCount = this._models.filter((m) => m.toolCapability === "supported").length;
         const allCount = this._models.length;
 
         this.tabRecommendedEl.textContent = I18n.translate("ai.modelTabRecommended", String(recCount));
@@ -264,12 +266,7 @@ export class ModelPicker {
         let list = this._models;
 
         if (this._activeTab === "recommended") {
-            const hasSupported = list.some((m) => m.toolCapability === "supported");
-            if (hasSupported) {
-                list = list.filter((m) => m.toolCapability === "supported" || m.isDefault);
-            } else {
-                list = list.filter((m) => m.isDefault || list.indexOf(m) < 5);
-            }
+            list = list.filter((m) => m.toolCapability === "supported");
         }
 
         if (this._searchQuery) {
@@ -290,8 +287,13 @@ export class ModelPicker {
         this.listContainerEl.innerHTML = "";
         let visible = this.getFilteredModels();
 
-        // If currently selected model is not in discovered models, prepend it with (Current) badge
-        if (this._selectedModel && !visible.some((m) => m.id === this._selectedModel) && !this._searchQuery) {
+        // If currently selected model is not in discovered models, prepend it with (Current) badge in "all" tab
+        if (
+            this._activeTab === "all" &&
+            this._selectedModel &&
+            !visible.some((m) => m.id === this._selectedModel) &&
+            !this._searchQuery
+        ) {
             const preservedModel: DiscoveredModel = {
                 id: this._selectedModel,
                 name: this._selectedModel,
@@ -304,9 +306,13 @@ export class ModelPicker {
         this._visibleModels = visible;
 
         if (visible.length === 0) {
+            const emptyText =
+                this._activeTab === "recommended"
+                    ? I18n.translate("ai.noRecommendedModels")
+                    : I18n.translate("ai.noMatchingModels");
             const emptyEl = div({
                 className: style.emptyState,
-                textContent: I18n.translate("ai.noMatchingModels"),
+                textContent: emptyText,
             });
             this.listContainerEl.append(emptyEl);
             return;

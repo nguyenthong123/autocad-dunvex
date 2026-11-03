@@ -50,6 +50,7 @@ export const I18N_KEYS = [
     "ai.modelTabRecommended",
     "ai.newChat",
     "ai.noMatchingModels",
+    "ai.noRecommendedModels",
     "ai.noReply",
     "ai.provider",
     "ai.reference.blocked",

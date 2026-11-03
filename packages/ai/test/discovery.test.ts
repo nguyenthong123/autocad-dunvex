@@ -28,14 +28,27 @@ describe("discovery", () => {
         expect(filtered[0].isDefault).toBe(true);
     });
 
-    test("filterAndSortModels adds defaultModel if missing from upstream list", () => {
+    test("filterAndSortModels adds defaultModel with toolCapability unverified if missing from upstream list", () => {
         const vendor = KNOWN_VENDORS.groq;
         const rawList = [{ id: "llama-3.1-8b-instant" }];
 
         const filtered = filterAndSortModels(rawList, vendor);
         expect(filtered[0].id).toBe("llama-3.3-70b-versatile");
         expect(filtered[0].isDefault).toBe(true);
+        expect(filtered[0].toolCapability).toBe("unverified");
         expect(filtered[1].id).toBe("llama-3.1-8b-instant");
+    });
+
+    test("filterAndSortModels assigns toolCapability unverified to defaultModel when metadata lacks tools", () => {
+        const vendor = KNOWN_VENDORS.openai;
+        const rawList = [
+            { id: "gpt-4o" }, // Missing capabilities / supported_parameters
+        ];
+
+        const filtered = filterAndSortModels(rawList, vendor);
+        expect(filtered[0].id).toBe("gpt-4o");
+        expect(filtered[0].isDefault).toBe(true);
+        expect(filtered[0].toolCapability).toBe("unverified");
     });
 
     test("discoverProvider handles empty API key without calling fetch", async () => {
