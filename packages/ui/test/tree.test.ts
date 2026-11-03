@@ -38,6 +38,13 @@ rs.mock("../src/project/tree/treeModel.module.css", () => ({
     panel: "tm-panel",
 }));
 
+rs.mock("../src/project/projectView.module.css", () => ({
+    root: "pv-root",
+    headerPanel: "pv-headerPanel",
+    itemsPanel: "pv-itemsPanel",
+    header: "pv-header",
+}));
+
 // Mock core: marker classes for instanceof checks, immediate Transaction, no-op Binding
 import "./_helpers/mockCoreTree";
 
@@ -47,6 +54,7 @@ import "./_helpers/mockElement";
 // Core value imports must come AFTER the mock helper — importing them earlier would
 // load the real "@chili3d/core" before the mock registers.
 import { NodeSelectionHandler, ShapeSelectionHandler, VisualNode } from "@chili3d/core";
+import projectViewStyle from "../src/project/projectView.module.css";
 import { Tree } from "../src/project/tree/tree";
 import { TreeGroup } from "../src/project/tree/treeItemGroup";
 import { TreeModel } from "../src/project/tree/treeModel";
@@ -532,6 +540,123 @@ describe("Tree", () => {
                 y: 0,
                 toJSON: () => {},
             });
+            mainEl.getBoundingClientRect = () => ({
+                top: 50,
+                bottom: 80,
+                height: 30,
+                left: 0,
+                right: 300,
+                width: 300,
+                x: 0,
+                y: 50,
+                toJSON: () => {},
+            });
+
+            const scrollIntoViewSpy = rs.spyOn(model1El, "scrollIntoView");
+            (fixture.tree as any).scrollToNode([fixture.model1]);
+
+            expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+        });
+
+        test("should call scrollIntoView when node row is outside itemsPanel scroll container (below)", () => {
+            fixture = createFixture();
+            const container = document.createElement("div");
+            container.className = projectViewStyle.itemsPanel;
+            document.body.appendChild(container);
+            container.appendChild(fixture.tree);
+
+            container.getBoundingClientRect = () => ({
+                top: 0,
+                bottom: 200,
+                height: 200,
+                left: 0,
+                right: 300,
+                width: 300,
+                x: 0,
+                y: 0,
+                toJSON: () => {},
+            });
+
+            const model1El = fixture.tree.treeItem(fixture.model1 as unknown as INode)!;
+            const mainEl = model1El.mainElement();
+            mainEl.getBoundingClientRect = () => ({
+                top: 350,
+                bottom: 380,
+                height: 30,
+                left: 0,
+                right: 300,
+                width: 300,
+                x: 0,
+                y: 350,
+                toJSON: () => {},
+            });
+
+            const scrollIntoViewSpy = rs.spyOn(model1El, "scrollIntoView");
+            (fixture.tree as any).scrollToNode([fixture.model1]);
+
+            expect(scrollIntoViewSpy).toHaveBeenCalledWith({ block: "nearest", behavior: "auto" });
+        });
+
+        test("should call scrollIntoView when node row is outside itemsPanel scroll container (above)", () => {
+            fixture = createFixture();
+            const container = document.createElement("div");
+            container.className = projectViewStyle.itemsPanel;
+            document.body.appendChild(container);
+            container.appendChild(fixture.tree);
+
+            container.getBoundingClientRect = () => ({
+                top: 100,
+                bottom: 300,
+                height: 200,
+                left: 0,
+                right: 300,
+                width: 300,
+                x: 0,
+                y: 100,
+                toJSON: () => {},
+            });
+
+            const model1El = fixture.tree.treeItem(fixture.model1 as unknown as INode)!;
+            const mainEl = model1El.mainElement();
+            mainEl.getBoundingClientRect = () => ({
+                top: 50,
+                bottom: 80,
+                height: 30,
+                left: 0,
+                right: 300,
+                width: 300,
+                x: 0,
+                y: 50,
+                toJSON: () => {},
+            });
+
+            const scrollIntoViewSpy = rs.spyOn(model1El, "scrollIntoView");
+            (fixture.tree as any).scrollToNode([fixture.model1]);
+
+            expect(scrollIntoViewSpy).toHaveBeenCalledWith({ block: "nearest", behavior: "auto" });
+        });
+
+        test("should skip scrollIntoView when node row is inside itemsPanel scroll container", () => {
+            fixture = createFixture();
+            const container = document.createElement("div");
+            container.className = projectViewStyle.itemsPanel;
+            document.body.appendChild(container);
+            container.appendChild(fixture.tree);
+
+            container.getBoundingClientRect = () => ({
+                top: 0,
+                bottom: 400,
+                height: 400,
+                left: 0,
+                right: 300,
+                width: 300,
+                x: 0,
+                y: 0,
+                toJSON: () => {},
+            });
+
+            const model1El = fixture.tree.treeItem(fixture.model1 as unknown as INode)!;
+            const mainEl = model1El.mainElement();
             mainEl.getBoundingClientRect = () => ({
                 top: 50,
                 bottom: 80,

@@ -19,6 +19,7 @@ import {
     Transaction,
     VisualNode,
 } from "@chili3d/core";
+import projectViewStyle from "../projectView.module.css";
 import style from "./tree.module.css";
 import { TreeItem } from "./treeItem";
 import { TreeGroup } from "./treeItemGroup";
@@ -153,6 +154,23 @@ export class Tree extends HTMLElement {
         });
     }
 
+    private getScrollContainer(): HTMLElement | null {
+        let parent: HTMLElement | null = this.parentElement;
+        while (parent && parent !== document.body && parent !== document.documentElement) {
+            if (parent.classList?.contains(projectViewStyle.itemsPanel)) {
+                return parent;
+            }
+            if (typeof window !== "undefined" && typeof window.getComputedStyle === "function") {
+                const overflowY = window.getComputedStyle(parent).overflowY;
+                if (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") {
+                    return parent;
+                }
+            }
+            parent = parent.parentElement;
+        }
+        return null;
+    }
+
     private scrollToNode(selected: INode[]) {
         const node = selected.at(0);
         if (node) {
@@ -160,14 +178,19 @@ export class Tree extends HTMLElement {
             const el = this.nodeMap.get(node);
             if (!el) return;
             const targetEl = (el as any).mainElement ? (el as any).mainElement() : el;
+            const scrollContainer = this.getScrollContainer();
+            const viewContainer = scrollContainer ?? this;
             if (
+                viewContainer &&
                 typeof targetEl.getBoundingClientRect === "function" &&
-                typeof this.getBoundingClientRect === "function"
+                typeof viewContainer.getBoundingClientRect === "function"
             ) {
                 const elRect = targetEl.getBoundingClientRect();
-                const treeRect = this.getBoundingClientRect();
-                if (elRect.top >= treeRect.top && elRect.bottom <= treeRect.bottom && treeRect.height > 0) {
-                    return;
+                const containerRect = viewContainer.getBoundingClientRect();
+                if (containerRect.height > 0) {
+                    if (elRect.top >= containerRect.top && elRect.bottom <= containerRect.bottom) {
+                        return;
+                    }
                 }
             }
             el.scrollIntoView({ block: "nearest", behavior: "auto" });
