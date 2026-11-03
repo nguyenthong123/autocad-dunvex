@@ -132,6 +132,7 @@ Chạy toàn bộ test `tree.test.ts`: **27/27 tests PASS**.
 
 - **Thời gian thực hiện:** 03/11/2026
 - **Nhánh làm việc:** `dev`
+- **Commit SHA:** `019aaecef58e5e96994737466feb1e4378a077ed`
 - **Các tệp thay đổi:**
   - `packages/ui/src/project/tree/tree.ts`: Thêm `getScrollContainer()`, sửa `scrollToNode()` để đo viewport của `.itemsPanel` thay vì `<ui-tree>`.
   - `packages/ui/test/tree.test.ts`: Bổ sung mock cho `projectView.module.css` và 3 ca kiểm thử hồi quy cho auto-scroll.
