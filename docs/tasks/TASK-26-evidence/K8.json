@@ -1,0 +1,9 @@
+{
+    "scenario": "K8",
+    "pass": true,
+    "totalMs": 4835,
+    "errorsCount": 0,
+    "finalServerVersion": 20,
+    "finalServerName": "K8 Edit #20",
+    "versionProgression": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+}

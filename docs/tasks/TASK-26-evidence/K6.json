@@ -1,0 +1,5 @@
+{
+    "scenario": "K6",
+    "pass": true,
+    "loadedName": "K6 Server Stored"
+}

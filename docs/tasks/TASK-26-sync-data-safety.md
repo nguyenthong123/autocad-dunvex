@@ -1,6 +1,6 @@
 # TASK-26: Chống Mất Dữ Liệu Bản Vẽ Khi Mất Mạng, Đóng Tab, Server Lỗi (Sync Data Safety)
 
-- **Trạng thái:** `[?] WAITING_REVIEW` (Đã hoàn thiện đầy đủ kiểm thử unit, outbox retry, conflict 409, snapshot thưa; chưa deploy lên VPS, chưa kiểm chứng trên trình duyệt thật)
+- **Trạng thái:** `[~] IN_PROGRESS` (Reviewer 03/11: PHẦN 409 CHƯA HOẠT ĐỘNG THẬT — xem mục 7 & TASK-27. Ghi chú cũ: Đã hoàn thiện đầy đủ kiểm thử unit, outbox retry, conflict 409, snapshot thưa; chưa deploy lên VPS, chưa kiểm chứng trên trình duyệt thật)
 - **Mã Commit:** `1a620742` (HEAD chuỗi commit TASK-26)
 - **Ưu tiên:** Rất cao (Bảo vệ dữ liệu thiết kế và trải nghiệm người dùng)
 - **Phụ trách:** AI Thực thi (Worker AI)
@@ -156,3 +156,22 @@ Theo quy định `docs/WORKFLOW.md`, hệ thống **dừng lại tại đây** �
   4. [`5341e37f`](file:///Volumes/DATA_SSD/Projects/autocad-dunvex/server/storageServer.mjs): `✨ feat(server): implement duplicate write avoidance via hash and sparse snapshots`
   5. [`19b89ffb`](file:///Volumes/DATA_SSD/Projects/autocad-dunvex/packages/ui/src/statusbar/statusbar.ts): `✨ feat(ui): add sync status indicators, i18n translations, and save on tab hide`
   6. [`1a620742`](file:///Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-26-sync-data-safety.md): `📝 docs(tasks): establish TASK-26 sync data safety technical documentation and roadmap`
+
+
+---
+
+## 7. Kết quả Review độc lập (Reviewer / Quản lý — 03/11/2026)
+
+**Đã tự chạy lại:** `npx rstest` (storage + app + statusbar): 0 fail; `node --test server/test/*.mjs`: 22/22 pass; working tree sạch, nhánh `dev`.
+
+**ĐẠT (xác nhận bằng đọc code):** chống ghi đè local khi dirty (`apiCloudStorage.ts` get), outbox + backoff + sự kiện `online`, hash dedup + snapshot thưa phía server, sync status trên Statusbar.
+
+**KHÔNG ĐẠT — lỗi chức năng (test pass nhưng tính năng chết trong app thật):**
+1. **409 không bao giờ bắn từ app thật.** `put()` tính `baseVersion` từ `value.docVersion` — `grep docVersion packages/*/src` chỉ thấy đúng dòng này, không nơi nào gán. `sendToServer` lại gửi `body: JSON.stringify(item.value)` nên `item.baseVersion` KHÔNG vào body; server đọc `data.baseVersion ?? data.docVersion` → `null` → bỏ qua kiểm tra. Test server pass vì tự nhét `baseVersion` vào body.
+2. **Nếu sửa nửa vời sẽ lỗi ngược:** mặc định `baseVersion = 1` → lần lưu thứ 2 trở đi sẽ bị 409 giả. Client chưa hề lưu `version` server trả về (PUT trả `version`, GET trả `serverVersion` — client không đọc).
+3. **Conflict là ngõ cụt:** item `conflict:true` nằm mãi trong outbox, Statusbar chỉ hiện chữ, không có hộp thoại/lệnh xử lý; local luôn thắng khi `get` → người dùng kẹt.
+4. Hash dedup so `bodyStr` với `document_json`: nếu client lưu lại dữ liệu có chứa `serverVersion/serverUpdatedAt` (GET chèn vào), hash sẽ không bao giờ khớp → dedup mất tác dụng.
+5. Tài liệu trỏ `docs/WORKFLOW.md` — file không tồn tại (mục 5).
+6. `npm run check` báo 132 warning/538 info trên phạm vi đã sửa (không có error) — Worker ghi "0 lỗi" đúng nhưng không nêu warning.
+
+**Quyết định cho 2 câu hỏi mục 5 (Reviewer đề xuất, chờ Chủ dự án xác nhận):** (1) Bỏ ghi `cad_entities`: ĐỒNG Ý đề xuất, đã tách thành TASK-27 phần C. (2) Xung đột: chọn Lựa chọn 1 (hộp thoại Ghi đè / Tải bản server), có nút phụ "Lưu thành bản sao". (3) Deploy VPS: CHƯA, chỉ sau khi TASK-27 đạt.

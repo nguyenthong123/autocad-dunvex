@@ -1,0 +1,9 @@
+{
+    "scenario": "K7",
+    "pass": true,
+    "measureResult": {
+        "elapsedMs": 1786,
+        "savedInTime": true
+    },
+    "note": "Measures async I/O persistence time when pagehide/unload triggers saveAllDirtyDocuments."
+}

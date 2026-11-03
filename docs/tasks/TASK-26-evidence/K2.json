@@ -1,0 +1,15 @@
+{
+    "scenario": "K2",
+    "pass": true,
+    "pendingBefore": 1,
+    "pendingAfter": 0,
+    "serverDoc": {
+        "id": "k2_1793675090826",
+        "name": "K2 Edited Offline",
+        "models": {
+            "nodes": []
+        },
+        "serverVersion": 2,
+        "serverUpdatedAt": "2026-11-03T03:04:51.799Z"
+    }
+}

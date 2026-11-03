@@ -1,0 +1,31 @@
+{
+    "scenario": "K5",
+    "pass": true,
+    "bResult": {
+        "conflict": true,
+        "currentServerVersion": 2,
+        "key": "chili3d-db:documents:k5_1793675158347"
+    },
+    "copyResult": {
+        "copyId": "k5_1793675158347_copy_1793675159659",
+        "pendingCount": 0
+    },
+    "docOrig": {
+        "id": "k5_1793675158347",
+        "name": "K5 Edit By Tab A",
+        "models": {
+            "nodes": []
+        },
+        "serverVersion": 2,
+        "serverUpdatedAt": "2026-11-03T03:05:59.360Z"
+    },
+    "docCopy": {
+        "id": "k5_1793675158347_copy_1793675159659",
+        "name": "K5 Edit By Tab B (Bản sao xung đột)",
+        "models": {
+            "nodes": []
+        },
+        "serverVersion": 1,
+        "serverUpdatedAt": "2026-11-03T03:05:59.686Z"
+    }
+}
