@@ -2838,6 +2838,73 @@ describe("capabilityEngine", () => {
             }
         });
 
+        test("resolves document node by display name (e.g. Prism7_with_Window) when AI uses name instead of UUID", async () => {
+            const wallShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 200000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 0, y: 0, z: 0 }, { x: 100, y: 20, z: 100 }),
+            };
+            const cutterShape = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 30000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 20, y: -5, z: 20 }, { x: 40, y: 25, z: 40 }),
+            };
+            const cutResult = {
+                shapeType: ShapeTypes.solid,
+                volume: () => 170000,
+                checkShape: () => true,
+                boundingBox: () => new BoundingBox({ x: 0, y: 0, z: 0 }, { x: 100, y: 20, z: 100 }),
+                containsPoint: () => false,
+            };
+
+            const booleanCut = rs.fn((_shapes: IShape[], _tools: IShape[]) =>
+                Result.ok(cutResult as unknown as IShape),
+            );
+            const { doc } = setupBooleanEnv({ booleanCut });
+
+            try {
+                // Node has a random UUID id, but name is "Prism7_with_Window"
+                const wallNode = new EditableShapeNode({
+                    document: doc,
+                    name: "Prism7_with_Window",
+                    id: "uuid-node-9999",
+                    shape: Result.ok(wallShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(wallNode);
+                const cutterNode = new EditableShapeNode({
+                    document: doc,
+                    name: "CutterBox",
+                    id: "uuid-cutter-8888",
+                    shape: Result.ok(cutterShape as unknown as IShape),
+                });
+                doc.modelManager.addNode(cutterNode);
+
+                const tool = buildCapabilityTools()[0];
+                const res = JSON.parse(
+                    (await tool.handler({
+                        ops: [
+                            {
+                                id: "cutByName",
+                                method: "booleanCut",
+                                args: {
+                                    shape1: ["Prism7_with_Window"], // AI passes node name instead of uuid!
+                                    shape2: ["CutterBox"],
+                                },
+                            },
+                        ],
+                    })) as string,
+                );
+
+                expect(booleanCut).toHaveBeenCalledTimes(1);
+                expect(res.created.length).toBe(1);
+                expect(res.created[0].id).toBe("cutByName");
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
+
         test("parameter aliasing: prism accepts profile/direction or dz instead of shape/vec", async () => {
             const wireShape = {
                 shapeType: ShapeTypes.wire,

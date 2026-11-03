@@ -37,7 +37,11 @@ export function getDocument(): IDocument | undefined {
 }
 
 export function findNode(doc: IDocument, id: string): INode | undefined {
-    return doc.modelManager.findNodes((n) => n.id === id)[0];
+    return (
+        doc.modelManager.findNodes((n) => n.id === id)[0] ??
+        doc.modelManager.findNodes((n) => n.name === id)[0] ??
+        doc.modelManager.findNodes((n) => n.name?.toLowerCase() === id.toLowerCase())[0]
+    );
 }
 
 /** Active document, or the serialized error response when no document is open. */
