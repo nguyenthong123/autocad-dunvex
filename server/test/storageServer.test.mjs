@@ -147,8 +147,9 @@ describe("StorageServer SQLite & Auth API", () => {
         assert.ok(projectRow);
         assert.strictEqual(projectRow.name, "Bàn trà gỗ sồi");
 
+        // TASK-27 Phần C: cad_entities vẫn tồn tại trong schema nhưng không còn bị ghi lặp trong PUT
         const entityRows = db.prepare("SELECT * FROM cad_entities WHERE project_id = ?").all("proj_abc_123");
-        assert.strictEqual(entityRows.length, 2);
+        assert.strictEqual(entityRows.length, 0);
 
         const snapshotRows = db
             .prepare("SELECT * FROM project_snapshots WHERE project_id = ?")

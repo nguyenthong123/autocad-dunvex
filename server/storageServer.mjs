@@ -451,7 +451,20 @@ export const server = createServer(async (req, res) => {
                 const data = JSON.parse(bodyStr || "{}");
                 const docName = data.name || "Dự án 1";
                 const now = new Date().toISOString();
-                const baseVersion = data.baseVersion ?? data.docVersion ?? null;
+                const baseVersion =
+                    data.baseVersion !== undefined
+                        ? data.baseVersion
+                        : data.docVersion !== undefined
+                          ? data.docVersion
+                          : null;
+
+                // TASK-27 Phần C: Chuẩn hoá document, loại bỏ các trường điều khiển để dedup hash chính xác
+                const cleanData = { ...data };
+                delete cleanData.baseVersion;
+                delete cleanData.docVersion;
+                delete cleanData.serverVersion;
+                delete cleanData.serverUpdatedAt;
+                const cleanDocStr = JSON.stringify(cleanData);
 
                 const existing = userDb
                     .prepare(
@@ -460,8 +473,18 @@ export const server = createServer(async (req, res) => {
                     .get(id);
 
                 if (existing) {
-                    const incomingHash = createHash("sha256").update(bodyStr).digest("hex");
-                    const existingHash = createHash("sha256").update(existing.document_json).digest("hex");
+                    let existingCleanStr = existing.document_json;
+                    try {
+                        const parsedEx = JSON.parse(existing.document_json);
+                        delete parsedEx.baseVersion;
+                        delete parsedEx.docVersion;
+                        delete parsedEx.serverVersion;
+                        delete parsedEx.serverUpdatedAt;
+                        existingCleanStr = JSON.stringify(parsedEx);
+                    } catch {}
+
+                    const incomingHash = createHash("sha256").update(cleanDocStr).digest("hex");
+                    const existingHash = createHash("sha256").update(existingCleanStr).digest("hex");
                     if (incomingHash === existingHash) {
                         sendJson(res, 200, { ok: true, unchanged: true, version: existing.version });
                         return;
@@ -486,7 +509,7 @@ export const server = createServer(async (req, res) => {
 
                 userDb.exec("BEGIN IMMEDIATE");
                 try {
-                    // 1. Upsert projects
+                    // 1. Upsert projects (lưu document đã chuẩn hoá)
                     userDb
                         .prepare(`
                         INSERT INTO projects (id, name, created_at, updated_at, metadata, document_json, version)
@@ -504,36 +527,11 @@ export const server = createServer(async (req, res) => {
                             existing?.created_at || now,
                             now,
                             JSON.stringify(data.userData || data.metadata || {}),
-                            bodyStr,
+                            cleanDocStr,
                             newVersion,
                         );
 
-                    // 2. Clear old entities and populate cad_entities
-                    userDb.prepare("DELETE FROM cad_entities WHERE project_id = ?").run(id);
-
-                    const nodes = extractAllNodes(data.models?.nodes || []);
-                    const stmtInsertEntity = userDb.prepare(`
-                        INSERT INTO cad_entities (id, project_id, parent_id, entity_type, name, geometry_data, transform_matrix, parameters, display_order, raw_json)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    `);
-
-                    for (let i = 0; i < nodes.length; i++) {
-                        const node = nodes[i];
-                        stmtInsertEntity.run(
-                            node.id || `${id}_entity_${i}`,
-                            id,
-                            node.parentId || null,
-                            node.__cla$$__ || "Node",
-                            node.name || "",
-                            JSON.stringify(node.section || node.shape || {}),
-                            JSON.stringify(node.transform || {}),
-                            JSON.stringify(extractParams(node)),
-                            i,
-                            JSON.stringify(node),
-                        );
-                    }
-
-                    // 3. Snapshot (retain max 10) - sparse throttle: 5 minutes or isSnapshot/isClosing
+                    // 2. Snapshot (retain max 10) - sparse throttle: 5 minutes or isSnapshot/isClosing
                     const lastSnapshot = userDb
                         .prepare(
                             "SELECT created_at FROM project_snapshots WHERE project_id = ? ORDER BY id DESC LIMIT 1",
@@ -552,7 +550,7 @@ export const server = createServer(async (req, res) => {
                             INSERT INTO project_snapshots (project_id, created_at, document_json)
                             VALUES (?, ?, ?)
                         `)
-                            .run(id, now, bodyStr);
+                            .run(id, now, cleanDocStr);
 
                         userDb
                             .prepare(`
