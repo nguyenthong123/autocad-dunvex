@@ -202,6 +202,105 @@ describe("BooleanOperate (via BooleanCommon)", () => {
                 restore();
             }
         });
+
+        test("should reject when target is not a solid volume (e.g. Shell)", () => {
+            const { restore } = installShapeFactory(Result.ok(shapeWithTolerance()));
+            try {
+                const cmd = new BooleanCut();
+                wireCommand(cmd);
+
+                const shellTarget = shapeWithTolerance({ shapeType: ShapeTypes.shell });
+                const solidTool = shapeWithTolerance();
+
+                seedStepDatas(cmd, [
+                    {
+                        ...VIEW_STUB,
+                        shapes: [visShape(shellTarget)],
+                        nodes: [{ name: "WallShell" } as any],
+                    },
+                ]);
+
+                const result = (cmd as any).booleanOperate([
+                    {
+                        shape: solidTool,
+                        transform: Matrix4.identity(),
+                        point: undefined,
+                        indexes: [],
+                        owner: { node: { name: "Prism14" }, getNode: () => ({ name: "Prism14" }) },
+                    },
+                ]);
+                expect(result.isOk).toBe(false);
+                expect(result.error).toContain('Target "WallShell" is a Shell, not a solid body');
+            } finally {
+                restore();
+            }
+        });
+
+        test("should reject when tool is not a solid volume (e.g. Shell profile)", () => {
+            const { restore } = installShapeFactory(Result.ok(shapeWithTolerance()));
+            try {
+                const cmd = new BooleanCut();
+                wireCommand(cmd);
+
+                const solidTarget = shapeWithTolerance();
+                const shellTool = shapeWithTolerance({ shapeType: ShapeTypes.shell });
+
+                seedStepDatas(cmd, [
+                    {
+                        ...VIEW_STUB,
+                        shapes: [visShape(solidTarget)],
+                        nodes: [{ name: "Wall" } as any],
+                    },
+                ]);
+
+                const result = (cmd as any).booleanOperate([
+                    {
+                        shape: shellTool,
+                        transform: Matrix4.identity(),
+                        point: undefined,
+                        indexes: [],
+                        owner: { node: { name: "Prism14" }, getNode: () => ({ name: "Prism14" }) },
+                    },
+                ]);
+                expect(result.isOk).toBe(false);
+                expect(result.error).toContain('Tool "Prism14" is a Shell, not a solid body');
+            } finally {
+                restore();
+            }
+        });
+
+        test("should reject when tool has invalid geometry (checkShape false)", () => {
+            const { restore } = installShapeFactory(Result.ok(shapeWithTolerance()));
+            try {
+                const cmd = new BooleanCut();
+                wireCommand(cmd);
+
+                const solidTarget = shapeWithTolerance();
+                const invalidTool = shapeWithTolerance({ checkShape: () => false });
+
+                seedStepDatas(cmd, [
+                    {
+                        ...VIEW_STUB,
+                        shapes: [visShape(solidTarget)],
+                        nodes: [{ name: "Wall" } as any],
+                    },
+                ]);
+
+                const result = (cmd as any).booleanOperate([
+                    {
+                        shape: invalidTool,
+                        transform: Matrix4.identity(),
+                        point: undefined,
+                        indexes: [],
+                        owner: { node: { name: "Prism14" }, getNode: () => ({ name: "Prism14" }) },
+                    },
+                ]);
+                expect(result.isOk).toBe(false);
+                expect(result.error).toContain('Tool "Prism14" has invalid geometry (checkShape failed)');
+            } finally {
+                restore();
+            }
+        });
     });
 
     describe("executeMainTask", () => {

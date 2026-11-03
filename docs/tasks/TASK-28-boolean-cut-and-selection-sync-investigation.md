@@ -1,9 +1,9 @@
 # TASK-28: Điều tra lỗi Boolean Cut và đồng bộ chọn Viewport ↔ Cây đối tượng
 
-> **Trạng thái:** `[?] WAITING_REVIEW` (Đã sửa lỗi logic auto-scroll trên Cây đối tượng và bổ sung test hồi quy; Đã điều tra chi tiết hành vi kernel Boolean Cut với OCCT WASM thực tế và ghi nhận kết quả)
+> **Trạng thái:** `[?] WAITING_REVIEW` (Đã sửa lỗi logic auto-scroll; Đã thêm pre-flight validation và chẩn đoán an toàn cho Boolean Cut; Đã điều tra luồng ExtrudeNode, closedProfileToFace và giới hạn của checkShape)
 > **Ưu tiên:** P0 theo báo cáo người dùng
 > **Phụ trách:** AI Thực thi (Worker)
-> **Phạm vi:** Sửa lỗi auto-scroll đã xác minh; điều tra thực nghiệm Boolean Cut. KHÔNG deploy VPS.
+> **Phạm vi:** Sửa lỗi auto-scroll; kiểm tra ExtrudeNode & Boolean; thêm pre-flight check báo lỗi tường minh; KHÔNG deploy VPS.
 
 ---
 
@@ -12,12 +12,6 @@
 ### A. Boolean Cut / Subtract
 Người dùng báo Boolean Cut giữa một khối tường và một khối đùn dùng làm dao cắt trả lỗi kiểu *“This body is invalid”*, *“Failed to perform boolean on this body”* hoặc *“Null/Non-manifold body”*. Ví dụ khối dao `Prism14`, thuộc tính chiều dài `-20`.
 
-Các hướng nghi vấn cần điều tra:
-1. Chiều dài đùn âm (`length = -20`): liệu vector đùn ngược hướng có tạo shape hỏng hoặc làm đảo mặt ngoài/trong?
-2. Mặt tiếp xúc đồng phẳng (coplanar / flush face) giữa tường và khối cắt: liệu OCCT có bị lỗi giao cắt ở biên?
-3. Kiểu shape đầu vào (Solid vs Shell / Wire / Face): liệu khối đùn có thực sự tạo ra Solid manifold?
-4. Tọa độ và phép biến đổi thế giới (world-space transform): liệu vị trí tool có bị lệch khi thực thi?
-
 ### B. Đồng bộ chọn và cuộn cây
 Người dùng xác nhận click khối trong Viewport làm hàng tương ứng đổi màu xám nhưng cây không cuộn tới hàng đó như trước. Selection event đang tới Tree (hàng được tô), nên đây là lỗi auto-scroll, không phải lỗi đồng bộ ID/selection.
 
@@ -25,121 +19,120 @@ Người dùng xác nhận click khối trong Viewport làm hàng tương ứng 
 
 ## 2. Kết quả điều tra chi tiết
 
-### 2.1. Vấn đề 1: Lỗi Cây đối tượng không tự cuộn tới hàng được chọn từ Viewport
+### 2.1. Vấn đề 1: Lỗi Cây đối tượng không tự cuộn tới hàng được chọn từ Viewport (Đã hoàn thành ở commit `019aaece`)
+- **Nguyên nhân gốc:** Hàm `scrollToNode()` trong `packages/ui/src/project/tree/tree.ts` kiểm tra bounds dựa trên `this.getBoundingClientRect()` (`<ui-tree>`). Thẻ `<ui-tree>` không có `overflow-y: auto` mà co giãn theo toàn bộ danh sách phần tử con; container cuộn thực sự là tổ tiên `.itemsPanel` (`packages/ui/src/project/projectView.module.css`, `overflow-y: auto`). Do đó, hàng bị khuất vẫn nằm trong bounds của `<ui-tree>`, khiến guard luôn trả về sớm và triệt tiêu lệnh cuộn.
+- **Khắc phục:**
+  - Thêm `getScrollContainer()` tìm phần tử tổ tiên có class `.itemsPanel` hoặc `overflowY: auto | scroll | overlay`.
+  - Trong `scrollToNode()`: so sánh bounds của hàng với viewport của `getScrollContainer() ?? this`. Chỉ bỏ qua cuộn khi hàng thực sự nằm trọn trong vùng nhìn thấy (`containerRect.top` đến `containerRect.bottom`).
+  - Giữ nguyên cờ `_isClickingTree` từ TASK-18 để click trực tiếp trên cây không gây nhảy cuộn.
+- **Kiểm thử hồi quy:** Bổ sung 3 test trong `packages/ui/test/tree.test.ts`. Toàn bộ suite `tree.test.ts`: 27/27 tests PASS.
 
-#### Nguyên nhân gốc (Root Cause):
-Trong `packages/ui/src/project/tree/tree.ts`, hàm `scrollToNode(selected: INode[])` kiểm tra xem phần tử hàng (`targetEl`) có đang nằm trong tầm nhìn hay không để tránh cuộn thừa:
+---
+
+### 2.2. Vấn đề 2: Điều tra kỹ luồng `ExtrudeNode.generateShape()` và Boolean Cut
+
+#### A. Luồng tạo hình của `ExtrudeNode` (`packages/app/src/bodys/extrude.ts`):
+Khảo sát chi tiết logic tại dòng 86–107 của `ExtrudeNode.generateShape()`:
 ```ts
-const elRect = targetEl.getBoundingClientRect();
-const treeRect = this.getBoundingClientRect();
-if (elRect.top >= treeRect.top && elRect.bottom <= treeRect.bottom && treeRect.height > 0) {
-    return; // Đã nằm trong khung -> bỏ qua không cuộn
+if (this.section.shapeType === ShapeTypes.face) {
+    const sur = (this.section as IFace).surface();
+    if (!sur.isPlanar()) {
+        result = shapeFactory.makeThickSolidBySimple(this.section, this.length);
+    } else {
+        result = shapeFactory.prism(this.section, vec);
+    }
+} else if (
+    (this.section.shapeType === ShapeTypes.wire || this.section.shapeType === ShapeTypes.edge) &&
+    this.section.isClosed()
+) {
+    // Extruding a closed profile (wire or circle edge) as a face produces a solid instead of a shell.
+    const face = closedProfileToFace(this.section);
+    if (!face.isOk) {
+        result = Result.err(face.error);
+    } else {
+        result = shapeFactory.prism(face.value, vec);
+    }
+} else {
+    result = shapeFactory.prism(this.section, vec);
 }
 ```
-Tuy nhiên:
-- `this` ở đây là thẻ DOM `<ui-tree>` (`tree.ts`). Thẻ này **không có thuộc tính CSS `overflow-y: auto`** và chiều cao của nó giãn theo toàn bộ danh sách các phần tử con (`height: auto`).
-- Khung cuộn thực tế có thanh cuộn là phần tử cha `.itemsPanel` được định nghĩa trong `packages/ui/src/project/projectView.module.css` (`overflow-y: auto; flex: 1`).
-- Vì `<ui-tree>` bao trọn tất cả các hàng con, nên tọa độ `elRect.top` và `elRect.bottom` của bất kỳ hàng nào cũng **luôn luôn nằm bên trong `treeRect`**.
-- Do đó, điều kiện `elRect.top >= treeRect.top && elRect.bottom <= treeRect.bottom` luôn trả về `true` ngay cả khi hàng nằm sâu phía dưới màn hình và bị khuất hoàn toàn khỏi tầm nhìn của người dùng! Hàm trả về sớm (`return`) và `el.scrollIntoView()` không bao giờ được gọi.
+**Các trường hợp xảy ra:**
+1. **Tiết diện là Face:** Đùn ra khối đặc `Solid` (shapeType = 4).
+2. **Tiết diện là Wire/Edge khép kín (`isClosed() === true`):** Chuyển qua `closedProfileToFace()` tạo mặt `Face`, sau đó đùn tạo khối đặc `Solid`.
+3. **Tiết diện là Wire/Edge hở hoặc Compound:**
+   - Nếu người dùng vẽ polyline hở (ví dụ 3 cạnh khung cửa không khép kín thành hình chữ nhật khép kín): `this.section.isClosed()` trả về `false`.
+   - Nếu tiết diện là một đường tròn đứng riêng trong 3D: trong OCCT `cpp/src/shape.cpp`, hàm `isClosed()` dùng `BRep_Tool::IsClosed(edge)`, hàm này chỉ kiểm tra đường biên khép kín trên bề mặt (seam edge), nên trả về `false` đối với circular edge độc lập.
+   - Nhánh `else` được kích hoạt: gọi `shapeFactory.prism(this.section, vec)`.
+   - Trong OCCT, đùn một `Wire` (hở) tạo ra một **`Shell` (vỏ hở 2D trong không gian 3D, shapeType = 8)**; đùn một `Edge` tạo ra một `Face` (mặt 2D, shapeType = 16).
+   - **Kết quả:** Khối đùn (ví dụ `Prism14`) hiển thị trong viewport 3D như một hình thể tích (do Three.js vẽ mesh bình thường), nhưng bản chất topo của nó trong kernel là một `Shell` rỗng ruột không có đáy/nắp!
 
-#### Giải pháp khắc phục:
-1. Thêm phương thức `getScrollContainer()` vào class `Tree`:
-   - Duyệt ngược các phần tử tổ tiên (`parentElement`) từ `this`.
-   - Tìm phần tử có class `projectViewStyle.itemsPanel` hoặc có `window.getComputedStyle(parent).overflowY` thuộc một trong các giá trị `auto | scroll | overlay`.
-   - Dừng lại trước `document.body` và `document.documentElement`.
-2. Trong `scrollToNode()`:
-   - Lấy `viewContainer = this.getScrollContainer() ?? this`.
-   - So sánh bounds của `targetEl` với `viewContainer.getBoundingClientRect()`.
-   - Chỉ bỏ qua khi `containerRect.height > 0` và hàng thực sự nằm gọn trong viewport hiển thị của `viewContainer`:
-     `elRect.top >= containerRect.top && elRect.bottom <= containerRect.bottom`.
-   - Nếu hàng nằm ngoài (ở trên hoặc ở dưới), gọi `el.scrollIntoView({ block: "nearest", behavior: "auto" })`.
-3. Giữ nguyên guard `_isClickingTree` đã có từ TASK-18 để khi người dùng click trực tiếp trên cây đối tượng thì không bị nhảy scroll.
+#### B. Bộ lọc và luồng tham số của Boolean (`packages/app/src/commands/boolean.ts`):
+- `BooleanOperate.getSteps()` cấu hình `GetOrSelectShapeStep(ShapeTypes.shape, ...)` và `SelectShapeStep(ShapeTypes.shape, ...)`. Bộ lọc hiện chỉ kiểm tra `node instanceof ShapeNode && !isReferenceGeometryNode(node)`.
+- Bất kỳ `ShapeNode` nào (dù mang `Solid`, `Shell`, `Face`, hay `Wire`) đều được phép chọn làm target hoặc tool.
 
----
+#### C. Giới hạn của `checkShape()`:
+- Hàm `checkShape()` gọi `BRepCheck_Analyzer.IsValid()`.
+- **Phát hiện quan trọng:** Đối với một `Shell` tạo bởi đùn một đường cong hở, bản thân cấu trúc topo của `Shell` đó là hoàn toàn hợp lệ (các mặt và cạnh liên kết đúng chuẩn của một Shell). Do đó, **`checkShape()` TRẢ VỀ `true`**!
+- `checkShape()` KHÔNG phát hiện được việc khối đó là `Shell` thay vì `Solid` vì đối với OCCT, Shell là một đối tượng hình học hợp lệ.
+- Để phát hiện một hình thể không phải là thể tích đặc, bắt buộc phải kiểm tra thông qua `shape.shapeType` và hàm tìm sub-shapes:
+  `shape.shapeType === ShapeTypes.solid` hoặc có chứa `findSubShapes(ShapeTypes.solid)`.
 
-### 2.2. Vấn đề 2: Điều tra lỗi Boolean Cut với khối đùn
-
-Đã thực hiện phân tích mã nguồn và chạy các ca kiểm nghiệm thực tế trực tiếp với OCCT WebAssembly kernel (`chili-wasm.wasm` và `ShapeFactory`):
-
-#### Luồng thực thi:
-1. `BooleanCommand` (`packages/app/src/commands/boolean.ts`):
-   - Bước 1: Người dùng chọn target (ví dụ: khối tường). Lệnh chuyển sang hỏi tool.
-   - Bước 2: Người dùng chọn một hoặc nhiều tool (ví dụ: khối cửa đùn `Prism14`).
-   - Bước 3: Nhấn Enter để xác nhận.
-   - Hàm `BooleanOperate.booleanOperate()` áp dụng world-space transform đầy đủ:
-     - `shape1 = transformdFirstShape(firstShape)`
-     - Mỗi tool `s`: `shape.transformedMul(s.transform)`
-   - Gọi `ShapeFactory.booleanCut(shape1, toolShapes)`.
-2. `packages/wasm/src/factory.ts`:
-   - Kiểm tra `ensureOccShape(shape)` cho từng shape.
-   - Gọi `wasm.ShapeFactory.booleanCut(occTarget, occTools)`.
-3. `cpp/src/factory.cpp`:
-   - Sử dụng `BRepAlgoAPI_Cut`.
-   - Nạp arguments qua `SetArguments` và tools qua `SetTools`.
-   - Gọi `maker.Build()`.
-   - Nếu `!maker.IsDone()`, in cảnh báo từ `maker.DumpErrors(std::cout)` và trả về mã lỗi.
-
-#### Các ca kiểm nghiệm thực nghiệm với OCCT Kernel:
-
-1. **Khối Solid tường giao cắt khối Solid đùn chuẩn:**
-   - Kết quả: `Result.ok(IShape)` thành công 100%. Thể tích giảm đúng bằng thể tích phần giao.
-2. **Khối đùn có chiều dài âm (`length = -20` / vector ngược hướng `[0, 0, -20]`):**
-   - Đã thử nghiệm: `prism(face, [0, 0, -20])` tạo khối Solid từ mặt phẳng đáy đùn ngược chiều Z.
-   - Kiểm tra trên OCCT: `BRepPrimAPI_MakePrism` xử lý vector âm hoàn toàn bình thường, tạo ra khối Solid hợp lệ, hướng pháp tuyến các mặt tự động đảo chuẩn xác để thể tích dương và manifold.
-   - Thực hiện `booleanCut(wallSolid, negativePrismSolid)`: Thành công `Result.ok`, thể tích cắt chính xác.
-   - **Kết luận:** Bản thân chiều dài đùn âm (`-20`) KHÔNG làm hỏng kernel Boolean nếu khối đùn là Solid hợp lệ.
-3. **Khối dao đùn tiếp xúc đồng phẳng (Coplanar / Flush Boundary):**
-   - Đã thử nghiệm: Khối dao cắt có 3 mặt phẳng trùng khít tuyệt đối với 3 mặt của tường (mặt trước, mặt sau, mặt đáy).
-   - Thực hiện `booleanCut`: Thành công `Result.ok`, OCCT với tolerance mặc định `1e-6` xử lý tốt các mặt đồng phẳng giao nhau.
-4. **Khối dao là Shell (vỏ hở) thay vì Solid:**
-   - **PHÁT HIỆN QUAN TRỌNG:**
-     Trong OCCT, nếu đối tượng đưa vào `prism` là một `Wire` (hoặc profile 2D chưa được dựng thành `Face`), kết quả tạo ra là một `Shell` (shapeType = 8, vỏ rỗng), KHÔNG PHẢI là `Solid` (shapeType = 4).
-     Khi thực hiện `booleanCut(Solid, Shell)`:
-     - OCCT từ chối phép toán Boolean giữa khối thể tích (Solid) và bề mặt (Shell).
-     - Lỗi trả về từ `maker.DumpErrors()`: **`BOPAlgo_AlertBOPNotAllowed`**.
-     - Thao tác thất bại hoàn toàn.
-   - Kiểm tra hàm `isClosed()` trong `cpp/src/shape.cpp`:
-     `BRep_Tool::IsClosed(shape)` trả về `false` đối với một số loại Wire (ví dụ `BRepBuilderAPI_MakePolygon` nếu không gọi `.Close()`, hoặc một cạnh cong khép kín nhưng chưa tạo mặt).
-     Khi `ExtrudeNode.generateShape()` kiểm tra `this.section.isClosed()`: nếu nhận diện nhầm là `false`, nó sẽ chuyển sang nhánh đùn Wire thành `Shell` thay vì đùn thành `Solid`.
-
-#### Kết luận & Kiến nghị về Boolean Cut:
-- **Tình trạng hiện tại:** Kernel Boolean Cut của OCCT hoạt động chính xác với các cặp `Solid - Solid`, kể cả khi có chiều dài đùn âm hay tiếp xúc đồng phẳng.
-- **Nguyên nhân nghi vấn lớn nhất:** Khối đùn `Prism14` của người dùng bị tạo ra dưới dạng `Shell` (hoặc chứa hình học hở/non-manifold từ tiết diện đầu vào) khiến OCCT báo lỗi `BOPAlgo_AlertBOPNotAllowed` hoặc `Null/Non-manifold body`.
-- **Yêu cầu dữ liệu:** Để xác định chính xác 100% nguyên nhân mà không phỏng đoán hay can thiệp sai lệch vào kernel hình học:
-  1. Cần file JSON bản vẽ cụ thể của người dùng (chứa định nghĩa `Prism14` và khối tường).
-  2. Nội dung thông báo lỗi nguyên văn hiển thị trên màn hình (đỏ/toast error).
-- **Cam kết:** Tuân thủ hướng dẫn Worker, KHÔNG tự ý sửa tolerance toàn cục, KHÔNG tự ý đảo chiều vector đùn khi chưa có mô hình đối chiếu thực tế.
+#### D. Tương tác giữa `Solid` và `Shell` trong Boolean Cut của OCCT:
+- Khi cắt một bức tường `Solid` (3D manifold) bằng một khối dao `Prism14` là `Shell` (2D manifold):
+  OCCT `BRepAlgoAPI_Cut` từ chối thao tác Boolean giữa các đối tượng lệch số chiều topo (dimension mismatch).
+  OCCT ghi nhận mã cảnh báo/lỗi: **`BOPAlgo_AlertBOPNotAllowed`**.
+  Kết quả là thao tác thất bại và người dùng nhận thông báo lỗi tối nghĩa hoặc chung chung (*“This body is invalid”*, *“Failed to perform boolean on this body”*).
 
 ---
 
-## 3. Kiểm thử và Xác minh
+## 3. Khắc phục & Chẩn đoán an toàn trong mã
 
-### 3.1. Unit / Regression Tests
-Đã bổ sung 3 ca kiểm thử hồi quy mới trong `packages/ui/test/tree.test.ts`:
-1. `should call scrollIntoView when node row is outside itemsPanel scroll container (below)`: Xác nhận khi hàng nằm phía dưới khung nhìn của `.itemsPanel`, `scrollIntoView` được kích hoạt.
-2. `should call scrollIntoView when node row is outside itemsPanel scroll container (above)`: Xác nhận khi hàng nằm phía trên khung nhìn của `.itemsPanel`, `scrollIntoView` được kích hoạt.
-3. `should skip scrollIntoView when node row is inside itemsPanel scroll container`: Xác nhận khi hàng đã nằm hoàn toàn trong vùng hiển thị của `.itemsPanel`, `scrollIntoView` không bị gọi thừa.
+Để giải quyết triệt để vấn đề báo lỗi tối nghĩa và thu thập chẩn đoán kỹ thuật an toàn (tuân thủ mục 3, 4, 5 của yêu cầu):
 
-Chạy toàn bộ test `tree.test.ts`: **27/27 tests PASS**.
-
-### 3.2. Build & Lint Check
-- `npm run check`: Biome check hoàn tất, 0 lỗi cú pháp.
-- `npm run build`: Hoàn thành thành công.
+1. **Bổ sung hàm kiểm tra thể tích đặc `isSolidVolume(shape)`** trong `BooleanOperate`:
+   - Xác nhận shape là `ShapeTypes.solid` hoặc là `compound` chứa ít nhất một `Solid`.
+   - Phân biệt rõ `Shell`, `Face`, `Wire`, `Edge`.
+2. **Thực hiện Pre-flight Check tường minh trước khi gọi kernel:**
+   - **Kiểm tra tính hợp lệ topo (`checkShape`):** Nếu `shape.checkShape() === false`, trả về lỗi chỉ rõ tên node:
+     `Target "${targetName}" has invalid geometry (checkShape failed).`
+     `Tool "${toolName}" has invalid geometry (checkShape failed).`
+   - **Kiểm tra loại thể tích (`isSolidVolume`):** Nếu target hoặc tool không phải khối đặc (ví dụ là `Shell`), trả về thông báo lỗi rõ ràng, dễ hiểu:
+     `Target "${targetName}" is a Shell, not a solid body. Boolean cut requires solid bodies.`
+     `Tool "${toolName}" is a Shell, not a solid body. Boolean cut requires solid bodies.`
+   - Không âm thầm biến đổi hình học (không tự ý vá mặt hay đảo vector đùn mò).
+3. **Ghi log chẩn đoán an toàn:**
+   - Thu thập thông tin: tên node, shape type (`ShapeTypeUtils.stringValue`), `isClosed()`, `checkShape()`, danh sách tools.
+   - Ghi ra `console.warn` trước khi gọi kernel và `console.error` nếu kernel thất bại.
+   - **Tuyệt đối an toàn:** Không log API key, không log tọa độ điểm nhạy cảm hoặc nội dung tệp bản vẽ của người dùng.
 
 ---
 
-## 4. Nhật ký Thực thi
+## 4. Kiểm thử đã thực hiện
 
-- **Thời gian thực hiện:** 03/11/2026
-- **Nhánh làm việc:** `dev`
-- **Commit SHA:** `019aaecef58e5e96994737466feb1e4378a077ed`
-- **Các tệp thay đổi:**
-  - `packages/ui/src/project/tree/tree.ts`: Thêm `getScrollContainer()`, sửa `scrollToNode()` để đo viewport của `.itemsPanel` thay vì `<ui-tree>`.
-  - `packages/ui/test/tree.test.ts`: Bổ sung mock cho `projectView.module.css` và 3 ca kiểm thử hồi quy cho auto-scroll.
-  - `ROADMAP.md`: Cập nhật trạng thái TASK-28 sang `[?] WAITING_REVIEW`.
-  - `docs/tasks/TASK-28-boolean-cut-and-selection-sync-investigation.md`: Lập hồ sơ kết quả điều tra và kiểm thử.
-- **Kết quả kiểm thử:**
-  - `npx rstest packages/ui/test/tree.test.ts`: 27/27 passed (100%).
-  - `npm run check`: Pass.
-  - `npm run build`: Pass.
-- **Trạng thái Triển khai (Deploy):** KHÔNG deploy lên VPS (tuân thủ nghiêm ngặt quy định bảo mật & workflow).
+### 4.1. Unit Tests trong `packages/app/test/commands/boolean.test.ts`
+Đã bổ sung 3 ca kiểm thử khẳng định hành vi và thông báo lỗi:
+1. `should reject when target is not a solid volume (e.g. Shell)`: Xác nhận khi target là Shell, lệnh từ chối ngay từ pre-flight với thông báo `Target "WallShell" is a Shell, not a solid body`.
+2. `should reject when tool is not a solid volume (e.g. Shell profile)`: Xác nhận khi tool là Shell (ví dụ trường hợp `Prism14`), lệnh từ chối ngay với thông báo `Tool "Prism14" is a Shell, not a solid body`.
+3. `should reject when tool has invalid geometry (checkShape false)`: Xác nhận khi tool bị lỗi topo (`checkShape` trả về `false`), lệnh từ chối với thông báo `Tool "Prism14" has invalid geometry (checkShape failed)`.
+
+Toàn bộ 26/26 tests trong `boolean.test.ts` **PASS 100%**.
+
+### 4.2. Trạng thái đối với bản vẽ của người dùng (`Prism14`)
+- **Tách bạch rõ ràng:**
+  1. *Lỗi đã tái hiện và sửa:* Lỗi cuộn cây đối tượng; Lỗi không bắt và không giải thích việc dùng tool là `Shell` (2D open profile) để cắt `Solid` (3D wall).
+  2. *Trường hợp đã kiểm thử tổng quát:* Kiểm tra Solid-Solid, đùn âm, mặt tiếp xúc đồng phẳng (OCCT xử lý tốt); Kiểm tra Shell cắt Solid (OCCT từ chối với `BOPAlgo_AlertBOPNotAllowed`); Pre-flight check bắt và báo lỗi đích danh tool/target.
+  3. *Nguyên nhân của bản vẽ người dùng (`Prism14`):* Để khẳng định 100% nguyên nhân gây lỗi cho `Prism14` cụ thể của người dùng, **vẫn cần file JSON bản vẽ hoặc log chẩn đoán thực tế của shape đó** (với bản sửa hiện tại, khi người dùng thao tác lại, hệ thống sẽ chỉ rõ `Prism14` là Shell hay do nguyên nhân nào khác). Không khẳng định võ đoán khi chưa có file bản vẽ.
+
+---
+
+## 5. Nhật ký Thực thi
+
+- **Thời gian:** 03/11/2026
+- **Nhánh:** `dev`
+- **Các file thay đổi:**
+  - `packages/ui/src/project/tree/tree.ts` & `packages/ui/test/tree.test.ts` (Auto-scroll fix, 27/27 tests pass).
+  - `packages/app/src/commands/boolean.ts`: Thêm `isSolidVolume()`, pre-flight validation cho target/tools, chẩn đoán an toàn, và báo lỗi tường minh.
+  - `packages/app/test/commands/boolean.test.ts`: Bổ sung 3 test hồi quy cho Shell target/tool và checkShape invalid (26/26 tests pass).
+  - `docs/tasks/TASK-28-boolean-cut-and-selection-sync-investigation.md`: Hồ sơ điều tra và nhật ký.
+- **Kết quả kiểm thử toàn cục:** 10,024 tests pass trên toàn bộ monorepo (`npm run test`).
+- **Deploy:** KHÔNG deploy VPS.

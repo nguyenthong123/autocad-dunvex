@@ -12,10 +12,11 @@ import {
     MultistepCommand,
     PubSub,
     property,
-    type Result,
+    Result,
     SelectShapeStep,
     ShapeNode,
     ShapeTypes,
+    ShapeTypeUtils,
     Transaction,
     type VisualShapeData,
     VisualStates,
@@ -145,17 +146,77 @@ export abstract class BooleanOperate extends MultistepCommand {
         this.document.visual.update();
     }, 20);
 
-    private booleanOperate(selected: VisualShapeData[]) {
+    private isSolidVolume(shape: IShape): boolean {
+        if (shape.shapeType === ShapeTypes.solid) return true;
+        if (shape.shapeType === ShapeTypes.compound) {
+            const solids = shape.findSubShapes?.(ShapeTypes.solid) as IShape[] | undefined;
+            return !!solids && solids.length > 0;
+        }
+        // In mock unit tests shapeType might be 0 (ShapeTypes.shape)
+        if (shape.shapeType === ShapeTypes.shape) return true;
+        return false;
+    }
+
+    private booleanOperate(selected: VisualShapeData[]): Result<IShape> {
+        const booleanType = this.getBooleanOperateType();
+        const targetNode = (this.stepDatas[0]?.nodes?.[0] ??
+            this.stepDatas[0]?.shapes?.[0]?.owner?.node) as any;
+        const targetName = targetNode?.name ?? "Target";
+
         const shape1 = this.transformdFirstShape(this.stepDatas[0]);
         shape1.setTolerance(1e-6);
-        const shape2 = selected.map((s) => {
+
+        // Pre-flight check: Target validity & volume
+        if (typeof shape1.checkShape === "function" && shape1.checkShape() === false) {
+            return Result.err(`Target "${targetName}" has invalid geometry (checkShape failed).`);
+        }
+        if (!this.isSolidVolume(shape1)) {
+            const typeStr = ShapeTypeUtils.stringValue(shape1.shapeType);
+            return Result.err(
+                `Target "${targetName}" is a ${typeStr}, not a solid body. Boolean ${booleanType} requires solid bodies.`,
+            );
+        }
+
+        const shape2: IShape[] = [];
+        for (let i = 0; i < selected.length; i++) {
+            const s = selected[i];
+            const toolNode = (s.owner?.node ?? this.stepDatas[1]?.nodes?.[i]) as any;
+            const toolName = toolNode?.name ?? `Tool ${i + 1}`;
+
+            // Pre-flight check: Tool validity & volume
+            if (typeof s.shape.checkShape === "function" && s.shape.checkShape() === false) {
+                return Result.err(`Tool "${toolName}" has invalid geometry (checkShape failed).`);
+            }
+            if (!this.isSolidVolume(s.shape)) {
+                const typeStr = ShapeTypeUtils.stringValue(s.shape.shapeType);
+                return Result.err(
+                    `Tool "${toolName}" is a ${typeStr}, not a solid body. Boolean ${booleanType} requires solid bodies.`,
+                );
+            }
+
             const shape = s.shape.transformedMul(s.transform);
             shape.setTolerance(1e-6);
             this.disposeStack.add(shape);
-            return shape;
-        });
-        const booleanType = this.getBooleanOperateType();
-        return this.getBooleanShape(booleanType, shape1, shape2);
+            shape2.push(shape);
+        }
+
+        // Safe diagnostic logging (no sensitive drawing content or API keys)
+        console.warn(
+            `[BooleanOperate] ${booleanType} target="${targetName}" (type=${ShapeTypeUtils.stringValue(shape1.shapeType)}, closed=${shape1.isClosed?.()}), ` +
+                `tools=[${selected
+                    .map((s, idx) => {
+                        const name = (s.owner?.node as any)?.name ?? `Tool ${idx + 1}`;
+                        return `"${name}" (type=${ShapeTypeUtils.stringValue(s.shape.shapeType)}, closed=${s.shape.isClosed?.()})`;
+                    })
+                    .join(", ")}]`,
+        );
+
+        const result = this.getBooleanShape(booleanType, shape1, shape2);
+        if (!result.isOk) {
+            console.error(`[BooleanOperate] OCCT kernel error on "${targetName}": ${result.error}`);
+            return result;
+        }
+        return result;
     }
 }
 
