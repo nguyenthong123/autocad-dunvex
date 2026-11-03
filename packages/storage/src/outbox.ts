@@ -34,7 +34,7 @@ export class OutboxManager {
     private readonly _fallback?: IndexedDBStorage;
     private readonly _dirtyKeys = new Set<string>();
     private readonly _pendingItems = new Map<string, OutboxItem>();
-    private _isInitialized = false;
+    private readonly _initializedDbs = new Set<string>();
     private _currentProcessPromise?: Promise<void>;
     private _retryTimer?: any;
     private _sendFn?: (
@@ -89,9 +89,9 @@ export class OutboxManager {
     }
 
     async init(database: string): Promise<void> {
-        if (this._isInitialized) return;
+        if (this._initializedDbs.has(database)) return;
+        this._initializedDbs.add(database);
         if (!this._fallback) {
-            this._isInitialized = true;
             return;
         }
 
@@ -113,7 +113,6 @@ export class OutboxManager {
             Logger.warn(`OutboxManager failed to read _outbox store for ${database}:`, e);
         }
 
-        this._isInitialized = true;
         if (this._pendingItems.size > 0) {
             this.emitStatus("pending");
             this.scheduleNextProcess();
@@ -123,7 +122,7 @@ export class OutboxManager {
     }
 
     async isDirty(database: string, table: string, scopedId: string): Promise<boolean> {
-        if (!this._isInitialized) {
+        if (!this._initializedDbs.has(database)) {
             await this.init(database);
         }
         const key = this.makeKey(database, table, scopedId);
@@ -166,7 +165,7 @@ export class OutboxManager {
     }
 
     async enqueue(item: OutboxItem): Promise<void> {
-        if (!this._isInitialized) {
+        if (!this._initializedDbs.has(item.database)) {
             await this.init(item.database);
         }
 
