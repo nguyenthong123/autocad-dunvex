@@ -278,4 +278,43 @@ describe("StorageServer SQLite & Auth API", () => {
         const res = await resPromise;
         assert.strictEqual(res.status, 413);
     });
+
+    it("increments version on valid PUT and returns 409 Conflict when baseVersion is stale", async () => {
+        const docId = "version_test_doc";
+        const payloadV1 = { id: docId, name: "Version 1", models: { nodes: [] }, baseVersion: 1 };
+
+        // 1. Initial PUT
+        const res1 = await fetch(`${baseUrl}/api/storage/dunvex/documents/${docId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${tokenA}` },
+            body: JSON.stringify(payloadV1),
+        });
+        assert.strictEqual(res1.status, 200);
+        const data1 = await res1.json();
+        assert.strictEqual(data1.version, 1);
+
+        // 2. Second PUT with baseVersion: 1 -> increments to 2
+        const payloadV2 = { id: docId, name: "Version 2", models: { nodes: [] }, baseVersion: 1 };
+        const res2 = await fetch(`${baseUrl}/api/storage/dunvex/documents/${docId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${tokenA}` },
+            body: JSON.stringify(payloadV2),
+        });
+        assert.strictEqual(res2.status, 200);
+        const data2 = await res2.json();
+        assert.strictEqual(data2.version, 2);
+
+        // 3. Stale PUT with old baseVersion: 1 -> HTTP 409 Conflict
+        const stalePayload = { id: docId, name: "Stale update", models: { nodes: [] }, baseVersion: 1 };
+        const resStale = await fetch(`${baseUrl}/api/storage/dunvex/documents/${docId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${tokenA}` },
+            body: JSON.stringify(stalePayload),
+        });
+        assert.strictEqual(resStale.status, 409);
+        const staleData = await resStale.json();
+        assert.strictEqual(staleData.error, "VERSION_CONFLICT");
+        assert.strictEqual(staleData.currentVersion, 2);
+        assert.strictEqual(staleData.baseVersion, 1);
+    });
 });

@@ -1,7 +1,7 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
-import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import fs from "node:fs";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
@@ -126,7 +126,8 @@ export function getUserDb(userId) {
             updated_at DATETIME NOT NULL,
             thumbnail TEXT,
             metadata TEXT,
-            document_json TEXT NOT NULL
+            document_json TEXT NOT NULL,
+            version INTEGER DEFAULT 1
         );
 
         CREATE TABLE IF NOT EXISTS cad_entities (
@@ -150,6 +151,10 @@ export function getUserDb(userId) {
             document_json TEXT NOT NULL
         );
     `);
+
+    try {
+        db.exec("ALTER TABLE projects ADD COLUMN version INTEGER DEFAULT 1;");
+    } catch {}
 
     userDbs.set(safeId, db);
     return db;
@@ -427,12 +432,17 @@ export const server = createServer(async (req, res) => {
         // --- DOCUMENTS TABLE ---
         if (table === "documents") {
             if (req.method === "GET" && id) {
-                const row = userDb.prepare("SELECT document_json FROM projects WHERE id = ?").get(id);
+                const row = userDb
+                    .prepare("SELECT document_json, version, updated_at FROM projects WHERE id = ?")
+                    .get(id);
                 if (!row) {
                     sendJson(res, 404, { error: "Record not found" });
                     return;
                 }
-                sendJson(res, 200, JSON.parse(row.document_json));
+                const parsed = JSON.parse(row.document_json);
+                parsed.serverVersion = row.version;
+                parsed.serverUpdatedAt = row.updated_at;
+                sendJson(res, 200, parsed);
                 return;
             }
 
@@ -441,27 +451,54 @@ export const server = createServer(async (req, res) => {
                 const data = JSON.parse(bodyStr || "{}");
                 const docName = data.name || "Dự án 1";
                 const now = new Date().toISOString();
+                const baseVersion = data.baseVersion ?? data.docVersion ?? null;
+
+                const existing = userDb
+                    .prepare(
+                        "SELECT version, updated_at, created_at, document_json FROM projects WHERE id = ?",
+                    )
+                    .get(id);
+
+                if (existing) {
+                    if (baseVersion !== null && baseVersion !== undefined) {
+                        const baseNum = Number(baseVersion);
+                        const curNum = Number(existing.version);
+                        if (!Number.isNaN(baseNum) && !Number.isNaN(curNum) && baseNum !== curNum) {
+                            sendJson(res, 409, {
+                                error: "VERSION_CONFLICT",
+                                currentVersion: curNum,
+                                baseVersion: baseNum,
+                                updatedAt: existing.updated_at,
+                            });
+                            return;
+                        }
+                    }
+                }
+
+                const newVersion = existing ? (Number(existing.version) || 1) + 1 : 1;
 
                 userDb.exec("BEGIN IMMEDIATE");
                 try {
                     // 1. Upsert projects
                     userDb
                         .prepare(`
-                        INSERT INTO projects (id, name, created_at, updated_at, metadata, document_json)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        INSERT INTO projects (id, name, created_at, updated_at, metadata, document_json, version)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT(id) DO UPDATE SET
                             name = excluded.name,
                             updated_at = excluded.updated_at,
                             metadata = excluded.metadata,
-                            document_json = excluded.document_json
+                            document_json = excluded.document_json,
+                            version = excluded.version
                     `)
                         .run(
                             id,
                             docName,
-                            now,
+                            existing?.created_at || now,
                             now,
                             JSON.stringify(data.userData || data.metadata || {}),
                             bodyStr,
+                            newVersion,
                         );
 
                     // 2. Clear old entities and populate cad_entities
@@ -507,7 +544,7 @@ export const server = createServer(async (req, res) => {
                         .run(id, id);
 
                     userDb.exec("COMMIT");
-                    sendJson(res, 200, { ok: true });
+                    sendJson(res, 200, { ok: true, version: newVersion });
                 } catch (err) {
                     userDb.exec("ROLLBACK");
                     throw err;
