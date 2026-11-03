@@ -18,6 +18,22 @@ import {
 } from "./types";
 import { resolveBaseURL } from "./urlUtils";
 
+export function isMultimodalError(err: unknown): boolean {
+    if (!err) return false;
+    const str = String(
+        (err as any)?.message || (err as any)?.error?.message || (err as any)?.error || err,
+    ).toLowerCase();
+    return (
+        str.includes("multimodal") ||
+        str.includes("enable-multimodal") ||
+        str.includes("image_url") ||
+        str.includes("does not support image") ||
+        str.includes("unsupported image") ||
+        str.includes("images are not supported") ||
+        str.includes("vision is not supported")
+    );
+}
+
 /** OpenAI-compatible Chat Completions provider (GPT / DeepSeek / Kimi / any endpoint). */
 export class CompletionsProvider implements LLMProvider {
     readonly id = "completions";
@@ -35,49 +51,37 @@ export class CompletionsProvider implements LLMProvider {
     }
 
     async *streamChat(opts: StreamChatOptions): AsyncIterable<StreamEvent> {
-        let stream: any;
         try {
-            stream = await this.client.chat.completions.create(
-                {
-                    model: opts.model,
-                    messages: toMessages(opts.system, opts.messages, true) as any,
-                    tools: opts.tools.map(toTool) as any,
-                    stream: true,
-                    // Asked for only when the user chose a depth — see `LLMConfig.reasoningEffort`.
-                    ...(opts.effort ? { reasoning_effort: openAIReasoningEffort(opts.effort) } : {}),
-                    // Several calls may come back in one assistant message, as on the Anthropic side:
-                    // the agent runs them in order, and one round trip is one step of the step budget.
-                    parallel_tool_calls: true,
-                    // Without this the endpoint never reports usage on a stream at all.
-                    stream_options: { include_usage: true },
-                },
-                { signal: opts.signal },
-            );
+            yield* this.streamInternal(opts, true);
         } catch (err: any) {
-            const errStr = String(err?.message || err?.error?.message || err);
-            if (
-                errStr.includes("multimodal") ||
-                errStr.includes("enable-multimodal") ||
-                errStr.includes("image_url") ||
-                errStr.includes("does not support image")
-            ) {
-                // Upstream model does not support multimodal/image input; fallback to text-only messages
-                stream = await this.client.chat.completions.create(
-                    {
-                        model: opts.model,
-                        messages: toMessages(opts.system, opts.messages, false) as any,
-                        tools: opts.tools.map(toTool) as any,
-                        stream: true,
-                        ...(opts.effort ? { reasoning_effort: openAIReasoningEffort(opts.effort) } : {}),
-                        parallel_tool_calls: true,
-                        stream_options: { include_usage: true },
-                    },
-                    { signal: opts.signal },
-                );
+            if (isMultimodalError(err)) {
+                yield* this.streamInternal(opts, false);
             } else {
                 throw err;
             }
         }
+    }
+
+    private async *streamInternal(
+        opts: StreamChatOptions,
+        includeImages: boolean,
+    ): AsyncIterable<StreamEvent> {
+        const stream = await this.client.chat.completions.create(
+            {
+                model: opts.model,
+                messages: toMessages(opts.system, opts.messages, includeImages) as any,
+                tools: opts.tools.map(toTool) as any,
+                stream: true,
+                // Asked for only when the user chose a depth — see `LLMConfig.reasoningEffort`.
+                ...(opts.effort ? { reasoning_effort: openAIReasoningEffort(opts.effort) } : {}),
+                // Several calls may come back in one assistant message, as on the Anthropic side:
+                // the agent runs them in order, and one round trip is one step of the step budget.
+                parallel_tool_calls: true,
+                // Without this the endpoint never reports usage on a stream at all.
+                stream_options: { include_usage: true },
+            },
+            { signal: opts.signal },
+        );
 
         const toolBuf: ToolCallBuffer = new Map();
         for await (const chunk of stream) {

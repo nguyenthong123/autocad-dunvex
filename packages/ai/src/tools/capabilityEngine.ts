@@ -975,11 +975,35 @@ function runTransformedMul(
     addCreatedNode(op, doc, localRefs, created, op.name ?? op.method, Result.ok(transformed));
 }
 
+const FONT_ALIASES: Record<string, string> = {
+    arial: "Roboto",
+    "arial black": "Roboto",
+    helvetica: "Roboto",
+    "sans-serif": "Roboto",
+    sans: "Roboto",
+    calibri: "Roboto",
+    verdana: "Roboto",
+    tahoma: "Roboto",
+    courier: "Fira Mono",
+    "courier new": "Fira Mono",
+    monospace: "Fira Mono",
+    mono: "Fira Mono",
+    times: "Noto Sans SC",
+    "times new roman": "Noto Sans SC",
+    serif: "Noto Sans SC",
+};
+
 /** The catalogue font an op names, or the default one; a name the catalogue does not have is an error. */
 function textFontOf(op: Op): { family: string; url: string } {
     const named = op.args?.["font"];
-    const family = typeof named === "string" && named !== "" ? named : DefaultFont.family;
-    const font = FontCatalog.find((each) => each.family.toLowerCase() === family.toLowerCase());
+    const family = typeof named === "string" && named.trim() !== "" ? named.trim() : DefaultFont.family;
+    let font = FontCatalog.find((each) => each.family.toLowerCase() === family.toLowerCase());
+    if (font === undefined) {
+        const aliasTarget = FONT_ALIASES[family.toLowerCase()];
+        if (aliasTarget) {
+            font = FontCatalog.find((each) => each.family.toLowerCase() === aliasTarget.toLowerCase());
+        }
+    }
     if (font === undefined) {
         const families = FontCatalog.map((each) => each.family).join(", ");
         throw new Error(`text: no font named "${family}" — the catalogue has: ${families}`);
@@ -1109,6 +1133,19 @@ function normalizeOpArgs(op: Op): Record<string, unknown> {
         if (args["radius"] === undefined && args["r"] !== undefined) args["radius"] = args["r"];
         if (args["dz"] === undefined) {
             args["dz"] = args["height"] ?? args["h"] ?? args["length"];
+        }
+    }
+
+    // Text aliases: text, size, depth
+    if (op.method === "text") {
+        if (args["text"] === undefined) {
+            args["text"] = args["content"] ?? args["label"] ?? args["message"] ?? args["value"];
+        }
+        if (args["size"] === undefined && args["fontSize"] !== undefined) {
+            args["size"] = args["fontSize"];
+        }
+        if (args["depth"] === undefined && (args["thickness"] !== undefined || args["dz"] !== undefined)) {
+            args["depth"] = args["thickness"] ?? args["dz"];
         }
     }
 

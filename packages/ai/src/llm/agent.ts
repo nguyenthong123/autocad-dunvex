@@ -3,7 +3,8 @@
 
 import { I18n, type I18nKeys } from "@chili3d/core";
 import type { LLMConfig } from "../settings";
-import { dropSupersededImages, dropSupersededThinking } from "./messages";
+import { isMultimodalError } from "./completions";
+import { dropAllImages, dropSupersededImages, dropSupersededThinking } from "./messages";
 import { createProvider } from "./provider";
 import { redactDataUrls } from "./redact";
 import type {
@@ -151,6 +152,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
         },
     };
     const runOpts: RunAgentOptions = { ...opts, callbacks };
+    let multimodalDisabled = false;
 
     try {
         for (let iteration = 0; ; iteration++) {
@@ -168,15 +170,21 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                 turn = await streamTurn(provider, runOpts);
             } catch (err) {
                 if (opts.signal?.aborted) return;
-                if (!overflowRetried && !emittedText && isContextOverflowError(err) && opts.compact) {
+                if (isMultimodalError(err)) {
+                    dropAllImages(runOpts.messages);
+                    multimodalDisabled = true;
+                    turn = await streamTurn(provider, runOpts);
+                } else if (!overflowRetried && !emittedText && isContextOverflowError(err) && opts.compact) {
                     overflowRetried = true;
                     if (opts.compact("context-overflow", contextLimitFromError(err))) {
                         const refreshed = opts.refreshSystem?.();
                         if (refreshed) runOpts.system = refreshed;
                         continue;
                     }
+                    throw err;
+                } else {
+                    throw err;
                 }
-                throw err;
             }
 
             runOpts.messages.push(assistantMessage(turn.text, turn.toolCalls, turn.thinking));
@@ -204,7 +212,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
             // The user may have switched conversations while a tool was running. Appending now
             // would put a tool_result into whatever history the panel installed in the meantime.
             if (opts.signal?.aborted) break;
-            appendToolResults(runOpts, results);
+            appendToolResults(runOpts, results, multimodalDisabled);
         }
     } catch (err) {
         // The SDKs surface user cancellation as an AbortError mid-stream; treat it as a clean stop.
@@ -397,14 +405,14 @@ function assistantMessage(text: string, toolCalls: ToolCall[], thinking: Thinkin
     };
 }
 
-function appendToolResults(opts: RunAgentOptions, results: ToolOutput[]): void {
+function appendToolResults(opts: RunAgentOptions, results: ToolOutput[], multimodalDisabled = false): void {
     opts.messages.push(
         ...results.map((r) => ({
             role: "tool" as const,
             toolCallId: r.toolCallId,
             name: r.name,
             content: r.content,
-            images: r.images,
+            images: multimodalDisabled ? undefined : r.images,
         })),
     );
     dropSupersededImages(opts.messages);

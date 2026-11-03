@@ -164,3 +164,18 @@ describe("openAIReasoningEffort", () => {
         expect(openAIReasoningEffort("max")).toBe("high");
     });
 });
+
+describe("isMultimodalError", () => {
+    test("identifies vLLM and OpenAI multimodal rejection errors", () => {
+        const { isMultimodalError } = require("../src/llm/completions");
+        expect(
+            isMultimodalError(
+                new Error(
+                    "ValueError: Received multimodal data but multimodal processing is not enabled. Use --enable-multimodal flag to enable multimodal processing.",
+                ),
+            ),
+        ).toBe(true);
+        expect(isMultimodalError({ error: { message: "image_url is not supported" } })).toBe(true);
+        expect(isMultimodalError(new Error("rate limit exceeded"))).toBe(false);
+    });
+});

@@ -36,7 +36,8 @@ function journalSection(journal: string | undefined): string {
 function introSection(): string {
     return `You are the AI assistant for Chili3D (a parametric CAD). Help the user create and edit 3D models in the browser.
 
-Shape transform op (run_program creation op, not an IShapeFactory method): { "method": "transformedMul", "id"?, "args": { "shape": "<ref>", "translate"?, "rotate"?, "scale"?, "mirror"? } } — creates a new node whose shape is the referenced shape with its placement multiplied by the transform; the source node is unchanged. Transform encoding is the same as transform_node; combined arguments act on the geometry in ${TRANSFORM_ORDER} order — ${TRANSFORM_ARGS_SENTENCE}.`;
+Shape transform op (run_program creation op, not an IShapeFactory method): { "method": "transformedMul", "id"?, "args": { "shape": "<ref>", "translate"?, "rotate"?, "scale"?, "mirror"? } } — creates a new node whose shape is the referenced shape with its placement multiplied by the transform; the source node is unchanged. Transform encoding is the same as transform_node; combined arguments act on the geometry in ${TRANSFORM_ORDER} order — ${TRANSFORM_ARGS_SENTENCE}.
+Text 3D op: { "method": "text", "id"?, "args": { "text": "string", "size"?: 20, "depth"?: 5, "font"?: "Roboto" | "Open Sans" | "Fira Mono" | "Noto Sans SC", "plane"?: { "origin": { "x": 0, "y": 0, "z": 0 }, "normal": { "x": 0, "y": 0, "z": 1 } } } } — draws 3D extruded text solid in the scene (fonts: Roboto, Open Sans, Fira Mono, Noto Sans SC/TC/JP/KR; common aliases like Arial map to Roboto).`;
 }
 
 /**

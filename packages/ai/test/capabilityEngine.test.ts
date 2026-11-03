@@ -1624,6 +1624,34 @@ describe("capabilityEngine", () => {
                 rs.unstubAllGlobals();
             }
         });
+
+        test("resolves font aliases like Arial to Roboto and normalizes text op parameters", async () => {
+            const { factory } = stubFactory();
+            const nodes = stubScene(factory as any);
+            const roboto = FontCatalog.find((font) => font.family === "Roboto");
+            expect(roboto).toBeDefined();
+            rememberOutline(roboto!.family, roboto!.url, squareFont());
+
+            try {
+                const result = JSON.parse(
+                    (await buildCapabilityTools()[0].handler({
+                        ops: [
+                            {
+                                id: "t_arial",
+                                method: "text",
+                                args: { content: "A", font: "Arial", fontSize: 24, thickness: 3 },
+                            },
+                        ],
+                    })) as string,
+                );
+
+                expect(result.created.length).toBe(1);
+                expect(nodes.length).toBe(1);
+                expect(nodes[0].name).toBe("A");
+            } finally {
+                rs.unstubAllGlobals();
+            }
+        });
     });
 
     describe("ref disposal", () => {

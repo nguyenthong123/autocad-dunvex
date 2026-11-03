@@ -24,6 +24,15 @@ export function dropSupersededImages(messages: ChatMessage[]): void {
     }
 }
 
+/** Drop all images from message history (e.g. when upstream endpoint does not support multimodal). */
+export function dropAllImages(messages: ChatMessage[]): void {
+    for (const message of messages) {
+        if (message.role === "tool" || message.role === "user") {
+            if (message.images?.length) message.images = undefined;
+        }
+    }
+}
+
 /**
  * Remove recovery nudges at the end of the history that the model never answered. They are host
  * instructions, not the user's words: left in place, the next turn's real user message merges with

@@ -785,6 +785,57 @@ describe("runAgent", () => {
         expect(compacted).toBe(false);
     });
 
+    test("recovers from multimodal error by dropping images and retrying text-only", async () => {
+        let attempts = 0;
+        const provider: LLMProvider = {
+            id: "fake",
+            streamChat: async function* (opts) {
+                attempts++;
+                const hasImages = opts.messages.some(
+                    (m) => (m.role === "tool" || m.role === "user") && (m.images?.length ?? 0) > 0,
+                );
+                if (hasImages) {
+                    throw new Error(
+                        "ValueError: Received multimodal data but multimodal processing is not enabled. Use --enable-multimodal flag to enable multimodal processing.",
+                    );
+                }
+                yield { type: "text", text: "recovered text-only" };
+                yield { type: "done", stopReason: "end_turn" };
+            },
+        };
+
+        const messages: ChatMessage[] = [
+            {
+                role: "tool",
+                toolCallId: "call1",
+                name: "capture_screenshot",
+                content: "{}",
+                images: [{ mediaType: "image/png", data: "ABC" }],
+            },
+        ];
+        const deltas: string[] = [];
+
+        await runAgent({
+            config: { provider: "completions", apiKey: "k", model: "text-model" },
+            system: SYSTEM,
+            messages,
+            tools: [],
+            callbacks: {
+                onTextDelta: (t) => deltas.push(t),
+                onToolCall: () => {},
+                onThinkingDelta: () => {},
+                onUsage: () => {},
+            },
+            provider,
+        });
+
+        expect(attempts).toBe(2);
+        expect(deltas.join("")).toBe("recovered text-only");
+        expect(
+            messages.some((m) => (m.role === "tool" || m.role === "user") && (m.images?.length ?? 0) > 0),
+        ).toBe(false);
+    });
+
     test.each([
         [{ status: 400, message: "prompt is too long: 210000 tokens > 200000 maximum" }, true],
         [{ code: "context_length_exceeded", message: "nope" }, true],
