@@ -1,6 +1,6 @@
 # TASK-25: Gia cố Năng lực Phục vụ Server & Chống Sập VPS (Server Capacity Hardening)
 
-- **Trạng thái:** `[?] WAITING_REVIEW` (Chưa deploy lên VPS, chưa đo trên VPS thật)
+- **Trạng thái:** `[~] IN_PROGRESS` (Đang phân tích tải, tính ngân sách RAM và tối ưu SQLite)
 - **Mã Commit:** Sẽ cập nhật theo commit của tài liệu này
 - **Ưu tiên:** Rất cao (Bảo vệ tính sẵn sàng của hệ thống)
 - **Phụ trách:** AI Thực thi (Worker AI)
@@ -61,30 +61,63 @@ Ngoài ra, hồ sơ vận hành còn phát hiện 2 điểm bất cập:
 
 ## 3. Bảng Đối chiếu Số liệu Đo Tải Trước và Sau Sửa Đổi (Load Test Metrics)
 
-Toàn bộ số liệu dưới đây được đo bằng công cụ thuần Node.js độc lập ([scripts/loadTestLocal.mjs](file:///Volumes/DATA_SSD/Projects/autocad-dunvex/scripts/loadTestLocal.mjs)), tiến trình server chạy trong Child Process riêng biệt để tách biệt 100% bộ nhớ của Server và Client.
+> [!WARNING]
+> **ĐIỀU KIỆN ĐO BẮT BUỘC PHẢI MINH BẠCH:**
+> - Toàn bộ số liệu dưới đây được đo bằng công cụ thuần Node.js độc lập ([scripts/loadTestLocal.mjs](file:///Volumes/DATA_SSD/Projects/autocad-dunvex/scripts/loadTestLocal.mjs)), tiến trình server chạy trong Child Process riêng biệt trên **máy cục bộ macOS (Apple Silicon, NVMe SSD)**.
+> - **CHƯA đo trong môi trường Docker container bị áp trần cgroups (memory limit).**
+> - **CHƯA đo trực tiếp trên VPS production `136.66.95.155`.**
 
-| Kịch bản Kiểm thử | Mức Concurrency (c) | Baseline p95 (ms) | After p95 (ms) | Baseline Peak RSS | After Peak RSS | Mức cải thiện RSS | Tỉ lệ lỗi |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **GET /** (Trang web tĩnh) | c=10 | 8 ms | 8 ms | 53.97 MB | 53.80 MB | Ổn định | 0.00% |
-| **GET /** (Trang web tĩnh) | c=50 | 6 ms | 12 ms | 62.06 MB | 60.72 MB | Ổn định | 0.00% |
-| **GET /** (Trang web tĩnh) | c=100 | 13 ms | 12 ms | 62.67 MB | 61.41 MB | Ổn định | 0.00% |
-| **PUT Storage 100KB** | c=10 | 501 ms | 1,129 ms | 75.14 MB | 74.63 MB | Ổn định | 0.00% |
-| **PUT Storage 100KB** | c=50 | 1,729 ms | 2,082 ms | 89.31 MB | 88.98 MB | Ổn định | 0.00% |
-| **PUT Storage 100KB** | c=100 | 9,045 ms | 10,812 ms | 107.67 MB | 102.03 MB | Giảm ~5 MB | 0.00% |
-| **PUT Storage 1MB** | c=10 | 6,317 ms | 7,752 ms | 113.34 MB | 123.64 MB | Ổn định | 0.00% |
-| **PUT Storage 1MB** | c=50 | 18,899 ms | 17,882 ms | 102.39 MB | 94.73 MB | Giảm ~8 MB | 0.00% |
-| **PUT Storage 1MB** | c=100 | 57,616 ms | 40,318 ms | 101.95 MB | 77.13 MB | **Giảm ~25 MB** | 0.00% |
-| **Proxy SSE 50KB** | c=10 | 33 ms | 47 ms | 89.63 MB | 69.73 MB | **Giảm 20 MB** | 0.00% |
-| **Proxy SSE 50KB** | c=50 | 27 ms | 20 ms | 107.13 MB | 71.53 MB | **Giảm 35 MB** | 0.00% |
-| **Proxy SSE 50KB** | c=100 | 36 ms | 46 ms | 116.39 MB | 83.05 MB | **Giảm 33 MB** | 0.00% |
-| **Proxy SSE 2MB** | c=10 | 31 ms | 44 ms | 148.14 MB | 98.02 MB | **Giảm 50 MB (-34%)** | 0.00% |
-| **Proxy SSE 2MB** | c=50 | 126 ms | 71 ms | 352.73 MB | 94.53 MB | **Giảm 258 MB (-73%)** | 0.00% |
-| **Proxy SSE 2MB** | c=100 | 378 ms | 260 ms | 496.70 MB | 95.11 MB | **Giảm 401 MB (-81%)** | 0.00% |
+| Kịch bản Kiểm thử | Concurrency (c) | Baseline p95 (ms) | After p95 (ms) | Đánh giá Độ trễ | Baseline Peak RSS | After Peak RSS | Đánh giá Bộ nhớ (RSS) | Tỉ lệ lỗi |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **GET /** (Trang web tĩnh) | c=10 | 8 ms | 8 ms | Không đổi | 53.97 MB | 53.80 MB | Không đổi | 0.00% |
+| **GET /** (Trang web tĩnh) | c=50 | 6 ms | 12 ms | Xấu đi (+6 ms) | 62.06 MB | 60.72 MB | Không đổi | 0.00% |
+| **GET /** (Trang web tĩnh) | c=100 | 13 ms | 12 ms | Cải thiện (-1 ms) | 62.67 MB | 61.41 MB | Không đổi | 0.00% |
+| **PUT Storage 100KB** | c=10 | 501 ms | 1,129 ms | **Xấu đi (+628 ms / +125%)** | 75.14 MB | 74.63 MB | Không đổi | 0.00% |
+| **PUT Storage 100KB** | c=50 | 1,729 ms | 2,082 ms | **Xấu đi (+353 ms, VƯỢT NGƯỠNG)** | 89.31 MB | 88.98 MB | Không đổi | 0.00% |
+| **PUT Storage 100KB** | c=100 | 9,045 ms | 10,812 ms | **Xấu đi (+1,767 ms / +19%)** | 107.67 MB | 102.03 MB | Giảm nhẹ (-5 MB) | 0.00% |
+| **PUT Storage 1MB** | c=10 | 6,317 ms | 7,752 ms | **Xấu đi (+1,435 ms / +23%)** | 113.34 MB | 123.64 MB | **Tăng (+10.3 MB)** | 0.00% |
+| **PUT Storage 1MB** | c=50 | 18,899 ms | 17,882 ms | Cải thiện nhẹ (-1,017 ms / -5%) | 102.39 MB | 94.73 MB | Giảm nhẹ (-8 MB) | 0.00% |
+| **PUT Storage 1MB** | c=100 | 57,616 ms | 40,318 ms | Cải thiện (-17,298 ms / -30%) | 101.95 MB | 77.13 MB | **Giảm 25 MB** | 0.00% |
+| **Proxy SSE 50KB** | c=10 | 33 ms | 47 ms | **Xấu đi (+14 ms / +42%)** | 89.63 MB | 69.73 MB | **Giảm 20 MB** | 0.00% |
+| **Proxy SSE 50KB** | c=50 | 27 ms | 20 ms | Cải thiện (-7 ms / -26%) | 107.13 MB | 71.53 MB | **Giảm 35 MB** | 0.00% |
+| **Proxy SSE 50KB** | c=100 | 36 ms | 46 ms | **Xấu đi (+10 ms / +28%)** | 116.39 MB | 83.05 MB | **Giảm 33 MB** | 0.00% |
+| **Proxy SSE 2MB** | c=10 | 31 ms | 44 ms | **Xấu đi (+13 ms / +42%)** | 148.14 MB | 98.02 MB | **Giảm 50 MB (-34%)** | 0.00% |
+| **Proxy SSE 2MB** | c=50 | 126 ms | 71 ms | Cải thiện (-55 ms / -44%) | 352.73 MB | 94.53 MB | **Giảm 258 MB (-73%)** | 0.00% |
+| **Proxy SSE 2MB** | c=100 | 378 ms | 260 ms | Cải thiện (-118 ms / -31%) | 496.70 MB | 95.11 MB | **Giảm 401 MB (-81%)** | 0.00% |
 
-> [!IMPORTANT]
-> **Nhận xét quan trọng về Hiện tượng Tràn Bộ nhớ (OOM):**
-> - **Trước khi sửa:** Ở mức tải 100 kết nối đồng thời với payload 2MB qua Proxy, Node.js ngốn tới **496.7 MB RAM** do tích lũy buffer. Với giới hạn container 64 MB trên VPS, container chắc chắn sẽ sập ngay khi có nhiều request đồng thời.
-> - **Sau khi sửa:** Nhờ cơ chế streaming unbuffered pipe, mức Peak RSS ở c=50 và c=100 được chặn đứng ở mức **~95 MB** (hoàn toàn không tăng theo số lượng request hay kích thước body). Độ trễ p95 ở c=100 cũng giảm từ 378 ms xuống còn 260 ms.
+> [!CAUTION]
+> **1. Nguy cơ OOM Thực tế & Giới hạn Container 64MB Không Đủ:**
+> - Node.js cơ bản (baseline `GET /`) đã sử dụng **53.8 MB – 62 MB RSS**.
+> - Dưới các kịch bản ghi file và proxy tải nặng, Peak RSS thực tế dao động từ **70 MB đến 123.6 MB** (Proxy SSE 2MB đạt ~95 MB ở c=50 và c=100; PUT 1MB c=10 đạt 123.6 MB).
+> - Hiện tại trong `compose.yml`, container `storage-api` đang bị giới hạn cứng `memory: 64M`.
+> - **KẾT LUẬN THẲNG THẮN:** Nếu chạy trên môi trường Docker bị áp giới hạn 64MB này, container sẽ bị kernel Linux gửi tín hiệu `SIGKILL` (OOMKilled) và khởi động lại liên tục. Khẳng định trong báo cáo sơ khởi trước đây rằng *"an toàn trong 64 MB"* là **HOÀN TOÀN SAI LẦM VÀ THIẾU CƠ SỞ KỸ THUẬT**. Giới hạn 64MB bắt buộc phải được điều chỉnh tăng lên.
+
+> [!WARNING]
+> **2. Dừng lại khi Vi phạm Ngưỡng Tự Đặt (Stopping Condition):**
+> - Ngưỡng tự đặt ban đầu: Độ trễ `p95 < 500 ms` ở mức 50 kết nối đồng thời cho thao tác ghi file `PUT Storage 100KB`.
+> - Thực tế đo được: Baseline đạt **1,729 ms**, After đạt **2,082 ms** (tăng thêm 353 ms, **vượt gấp 4.16 lần ngưỡng cho phép**).
+> - Nguyên nhân: Thao tác ghi của `node:sqlite` là đồng bộ và tuần tự trên Single Thread của Node.js. Khi có 50 kết nối ghi đồng thời, các truy vấn ghi đĩa (`fsync`) bị xếp hàng nối đuôi nhau.
+> - Tuân thủ quy định WORKFLOW (Mục 3): Khi chỉ số vượt ngưỡng tự đặt, hệ thống **BẮT BUỘC PHẢI DỪNG LẠI VÀ BÁO CÁO**, không được che đậy hoặc dùng từ ngữ nói giảm nói tránh.
+
+### 3.1. Phân tích Ngân sách RAM Thực tế của VPS (RAM Budget Analysis)
+
+Số liệu truy vấn thực tế trên VPS `136.66.95.155` (qua SSH `free -m` và `docker stats --no-stream`):
+- **Tổng RAM vật lý:** 953 MB.
+- **Swap:** 2047 MB (đang dùng 135 MB).
+- **RAM đang dùng bởi Hệ điều hành & Daemon nền:** ~422 MB.
+- **RAM khả dụng (Free + Buff/Cache):** 498 MB.
+- **Tiêu thụ RAM hiện tại của các Container:**
+  - Container `chili3d` (Nginx static): **6.62 MiB** (giới hạn cấu hình hiện tại: 128 MB).
+  - Container `storage-api` (Node): **25.62 MiB** (giới hạn cấu hình hiện tại: 64 MB).
+  - Tổng RAM containers đang thực dùng: ~32.2 MB.
+
+**Tính toán Ngân sách An toàn (Quy tắc không quá 80% RAM vật lý):**
+- Ngưỡng trần tối đa cho toàn bộ Docker containers: `953 MB × 80% = 762.4 MB`.
+- Ngân sách RAM đề xuất cho `compose.yml`:
+  - `chili3d`: Giữ nguyên **128 MB** (chỉ dùng ~7 MB, trần 128M là an toàn).
+  - `storage-api`: Đề xuất tăng từ 64 MB lên **192 MB** (hoặc **256 MB**).
+  - Tổng trần đăng ký: `128 MB + 192 MB = 320 MB` (chiếm **33.6%** tổng RAM vật lý).
+  - Mức 320 MB này nằm sâu dưới ngưỡng trần 80% (762 MB), đảm bảo an toàn tuyệt đối cho OS mà vẫn cung cấp đủ không gian cho tiến trình Node.js (đỉnh tải 123.6 MB) hoạt động mà không bị OOM.
 
 ---
 
