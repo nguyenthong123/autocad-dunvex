@@ -104,11 +104,45 @@ export class Application extends Observable implements IApplication {
 
     private initEvents() {
         window.onbeforeunload = this.handleWindowUnload;
+        if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+            document.addEventListener("visibilitychange", this.handleVisibilityChange);
+        }
+        if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+            window.addEventListener("pagehide", this.handlePageHide);
+        }
         this.mainWindow?.addEventListener("dragstart", this.handleDragStart);
         this.mainWindow?.addEventListener("dragover", this.handleDragOver);
         this.mainWindow?.addEventListener("drop", this.handleDrop);
         VisualConfig.onPropertyChanged(this.onVisualConfigChanged);
     }
+
+    public async saveAllDirtyDocuments(): Promise<void> {
+        for (const doc of this.documents) {
+            const document = doc as any;
+            if (typeof document?.save === "function") {
+                const lastSavedUndo = document._lastSavedUndoCount ?? 0;
+                const undoCount = document.history?.undoCount?.() ?? 0;
+                if (!document.isDisposed && !document.history?.disabled && undoCount !== lastSavedUndo) {
+                    try {
+                        await document.save();
+                        Logger.info(`Auto-saved document on visibility change / pagehide: ${document.name}`);
+                    } catch (e) {
+                        Logger.warn(`Failed to auto-save document on visibility change: ${document.name}`, e);
+                    }
+                }
+            }
+        }
+    }
+
+    private readonly handleVisibilityChange = async () => {
+        if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+            await this.saveAllDirtyDocuments();
+        }
+    };
+
+    private readonly handlePageHide = async () => {
+        await this.saveAllDirtyDocuments();
+    };
 
     private readonly onVisualConfigChanged = (property: keyof VisualItemConfig) => {
         if (property === "defaultEdgeColor") {

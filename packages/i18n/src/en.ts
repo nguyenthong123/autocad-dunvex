@@ -820,6 +820,13 @@ export default {
         "statusBar.snap": "Snap",
         "statusBar.tracking": "Tracking",
         "statusBar.viewErrors": "View errors",
+        "sync.conflict": "Version conflict",
+        "sync.error": "Save error",
+        "sync.pending{0}": "Pending sync ({0})",
+        "sync.saved": "Saved",
+        "sync.saving": "Saving...",
+        "prompt.syncConflict":
+            "The document on server was modified in another session. Do you want to overwrite it with this version?",
         "toast.command.{0}excuting": "Command {0} is runing",
         "toast.converter.error": "Converter error",
         "toast.converter.invalidColor": "The color is invalid",

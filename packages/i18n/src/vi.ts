@@ -331,6 +331,13 @@ const vi: Locale = {
         "statusBar.snap": "Bắt điểm (OSNAP)",
         "statusBar.tracking": "Dóng trục (OTRACK)",
         "statusBar.viewErrors": "Xem chi tiết lỗi",
+        "sync.conflict": "Xung đột phiên bản",
+        "sync.error": "Lỗi lưu",
+        "sync.pending{0}": "Chưa đồng bộ ({0})",
+        "sync.saved": "Đã lưu",
+        "sync.saving": "Đang lưu...",
+        "prompt.syncConflict":
+            "Bản vẽ trên máy chủ đã thay đổi bởi phiên khác. Bạn có muốn ghi đè bằng bản này không?",
         "snap.center": "Tâm (Center)",
         "snap.end": "Điểm cuối (Endpoint)",
         "snap.intersection": "Giao điểm (Intersection)",

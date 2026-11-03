@@ -21,6 +21,7 @@ const BridgeLabels: Record<BridgeStatus, string> = {
 export class Statusbar extends HTMLElement {
     private _isDefaultTip = true;
     private bridge?: HTMLElement;
+    private syncLabel?: HTMLElement;
     private readonly right = div({ className: style.right }, new SnapConfig(), new ErrorStatus());
 
     readonly commandBar = new CommandBar();
@@ -40,6 +41,7 @@ export class Statusbar extends HTMLElement {
         PubSub.default.sub("statusBarTip", this.statusBarTip);
         PubSub.default.sub("clearStatusBarTip", this.setDefaultTip);
         PubSub.default.sub("bridgeStatusChanged", this.bridgeStatusChanged);
+        PubSub.default.sub("syncStatusChanged", this.syncStatusChanged);
         Config.instance.onPropertyChanged(this.handleConfigChanged);
     }
 
@@ -66,6 +68,28 @@ export class Statusbar extends HTMLElement {
         this.bridge.textContent = BridgeLabels[status];
         this.bridge.title = title ?? "";
         this.bridge.dataset["status"] = status;
+    };
+
+    private readonly syncStatusChanged = (
+        status: "saved" | "saving" | "pending" | "error" | "conflict",
+        count?: number,
+    ) => {
+        if (!this.syncLabel) {
+            this.syncLabel = label({ className: style.sync });
+            this.right.prepend(this.syncLabel);
+        }
+        if (status === "saved") {
+            I18n.set(this.syncLabel, "textContent", "sync.saved");
+        } else if (status === "saving") {
+            I18n.set(this.syncLabel, "textContent", "sync.saving");
+        } else if (status === "pending") {
+            I18n.set(this.syncLabel, "textContent", "sync.pending{0}", count ?? 1);
+        } else if (status === "error") {
+            I18n.set(this.syncLabel, "textContent", "sync.error");
+        } else if (status === "conflict") {
+            I18n.set(this.syncLabel, "textContent", "sync.conflict");
+        }
+        this.syncLabel.dataset["syncStatus"] = status;
     };
 
     private readonly statusBarTip = (tip: I18nKeys, ...args: any[]) => {

@@ -447,5 +447,12 @@ export default {
         "statusBar.errorLog": "Registro de erros",
         "statusBar.errors{0}": "Erros: {0}",
         "statusBar.viewErrors": "Ver erros",
+        "sync.conflict": "Conflito de versões",
+        "sync.error": "Erro ao salvar",
+        "sync.pending{0}": "Pendente ({0})",
+        "sync.saved": "Salvo",
+        "sync.saving": "Salvando...",
+        "prompt.syncConflict":
+            "O documento no servidor foi modificado em outra sessão. Deseja sobrescrever com esta versão?",
     },
 } satisfies Locale;

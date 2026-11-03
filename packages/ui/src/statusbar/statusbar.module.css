@@ -30,6 +30,31 @@
     gap: 12px;
 }
 
+.sync {
+    font-size: 12px;
+    white-space: nowrap;
+    user-select: none;
+    color: var(--statusbar-foreground-color);
+    padding: 0 4px;
+
+    &[data-sync-status="saved"] {
+        color: #10b981;
+    }
+
+    &[data-sync-status="saving"] {
+        color: #3b82f6;
+    }
+
+    &[data-sync-status="pending"] {
+        color: #f59e0b;
+    }
+
+    &[data-sync-status="error"],
+    &[data-sync-status="conflict"] {
+        color: #ef4444;
+    }
+}
+
 .bridge {
     font-size: 12px;
     white-space: nowrap;

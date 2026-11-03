@@ -27,6 +27,20 @@ import {
 import { Picker } from "./picker";
 import { SelectionManager } from "./selectionManager";
 
+let persistenceRequested = false;
+async function requestStoragePersistence(): Promise<void> {
+    if (persistenceRequested) return;
+    persistenceRequested = true;
+    try {
+        if (typeof navigator !== "undefined" && navigator.storage?.persist) {
+            const isPersisted = await navigator.storage.persist();
+            Logger.info(`Storage persistence granted: ${isPersisted}`);
+        }
+    } catch (e) {
+        Logger.info(`Storage persistence request ignored: ${e}`);
+    }
+}
+
 export class Document extends Observable implements IDocument {
     readonly visual: IVisual;
     readonly history: History;
@@ -142,8 +156,12 @@ export class Document extends Observable implements IDocument {
         this.acts.clear();
     }
 
-    async save() {
+    async save(isClosing = false) {
+        await requestStoragePersistence();
         const data = this.serialize();
+        if (isClosing) {
+            (data as any).isClosing = true;
+        }
         await this.application.storage.put(Constants.DBName, Constants.DocumentTable, this.id, data);
         this._lastSavedUndoCount = this.history.undoCount();
 
@@ -172,7 +190,7 @@ export class Document extends Observable implements IDocument {
 
     async close() {
         if (window.confirm(I18n.translate("prompt.saveDocument{0}", this.name))) {
-            await this.save();
+            await this.save(true);
         }
 
         const views = this.application.views.filter((x) => x.document === this);

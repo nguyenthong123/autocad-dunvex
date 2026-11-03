@@ -92,6 +92,10 @@ export interface PubSubEventMap {
     showToast: (message: I18nKeys, ...args: any[]) => void;
     startRenameNode: (node: INode) => void;
     statusBarTip: (tip: I18nKeys, ...args: any[]) => void;
+    syncStatusChanged: (
+        status: "saved" | "saving" | "pending" | "error" | "conflict",
+        pendingCount?: number,
+    ) => void;
     toggleChatPanel: () => void;
     /**
      * Replaces what the floating input holds, for a drag that keeps it up as a readout. A box
