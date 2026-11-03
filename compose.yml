@@ -28,7 +28,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 64M
+          memory: 192M
 
 volumes:
   chili3d-data:

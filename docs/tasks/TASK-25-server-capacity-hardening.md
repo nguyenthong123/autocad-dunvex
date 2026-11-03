@@ -170,6 +170,8 @@ bash scripts/deploy-vps.sh
   2. [`01e69179`](file:///Volumes/DATA_SSD/Projects/autocad-dunvex/server/llmProxy.mjs): `✨ feat(proxy): implement unbuffered pipe streaming, concurrency limiter, and configurable rate limit`
   3. [`e38319b9`](file:///Volumes/DATA_SSD/Projects/autocad-dunvex/server/storageServer.mjs): `✨ feat(storage): enforce STORAGE_MAX_BODY_BYTES and connection teardown on 413`
   4. [`afed69db`](file:///Volumes/DATA_SSD/Projects/autocad-dunvex/scripts/deploy-vps.sh): `🔧 chore(deploy): add --dry-run, auto restart storage-api, and correct VPS hardware specs in MAINTENANCE.md`
+  5. [`727d2a3e`](file:///Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-25-server-capacity-hardening.md): `📝 docs(tasks): establish TASK-25 server capacity hardening documentation and after-metrics`
+  6. [`8c47d521`](file:///Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-25-server-capacity-hardening.md): `📝 docs(tasks): accurately reflect load test metrics, memory limits, and set TASK-25 to IN_PROGRESS`
 - **Các file đã thêm mới:**
   - `scripts/loadTestLocal.mjs`: Script đo tải Node thuần (đo p50, p95, p99, peak RSS, error rate ở concurrency 10, 50, 100).
   - `scripts/loadTestServer.mjs`: Server test chạy trên child process tách biệt với mock upstream LLM và endpoint `/api/storage/`.
@@ -177,10 +179,11 @@ bash scripts/deploy-vps.sh
   - `scripts/loadtest-reports/2026-11-03-after.json`: Báo cáo tải chi tiết sau khi tối ưu.
   - `docs/tasks/TASK-25-server-capacity-hardening.md`: Hồ sơ kỹ thuật và nhật ký thực thi cho TASK-25.
 - **Các file đã cập nhật:**
+  - `compose.yml`: Nâng trần bộ nhớ cho container `storage-api` từ `64M` lên `192M` dựa trên ngân sách RAM vật lý thực tế.
   - `server/llmProxy.mjs`: Chuyển pipe streaming, đếm byte trực tiếp, thêm `LLM_PROXY_MAX_CONCURRENT` và `LLM_PROXY_RATE_PER_MIN`.
   - `server/test/llmProxy.test.mjs`: Thêm test case cho stream 19MB, từ chối 21MB (413), và giới hạn 11 request đồng thời (503).
   - `server/storageServer.mjs`: Thêm giới hạn `STORAGE_MAX_BODY_BYTES` (10MB) và ngắt socket an toàn sau khi gửi 413.
   - `server/test/storageServer.test.mjs`: Thêm test case cho payload vượt quá 10MB trả về HTTP 413.
   - `scripts/deploy-vps.sh`: Thêm cờ `--dry-run`, bổ sung bước `docker compose restart storage-api` và kiểm tra phản hồi proxy.
   - `docs/MAINTENANCE.md`: Sửa thông số VPS thành 2 vCPU / 953 MB RAM kèm câu lệnh kiểm tra.
-  - `ROADMAP.md`: Cập nhật bảng theo dõi Master Task với TASK-25 ở trạng thái `[?] WAITING_REVIEW`.
+  - `ROADMAP.md`: Cập nhật bảng theo dõi Master Task với TASK-25 ở trạng thái `[~] IN_PROGRESS`.
