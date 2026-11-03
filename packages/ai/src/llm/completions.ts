@@ -16,6 +16,7 @@ import {
     type Tool,
     type ToolCallBuffer,
 } from "./types";
+import { resolveBaseURL } from "./urlUtils";
 
 /** OpenAI-compatible Chat Completions provider (GPT / DeepSeek / Kimi / any endpoint). */
 export class CompletionsProvider implements LLMProvider {
@@ -25,7 +26,7 @@ export class CompletionsProvider implements LLMProvider {
     constructor(config: LLMConfig) {
         this.client = new OpenAI({
             apiKey: config.apiKey,
-            baseURL: (config.baseURL ?? "https://api.openai.com/v1").replace(/\/+$/, ""),
+            baseURL: resolveBaseURL(config.baseURL, "https://api.openai.com/v1"),
             dangerouslyAllowBrowser: true,
         });
     }

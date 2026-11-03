@@ -2,6 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 import { getProviderById, guessVendorCandidates, type KnownVendor } from "./providerRegistry";
+import { resolveBaseURL, sanitizeErrorMessage } from "./urlUtils";
 
 export interface DiscoveredModel {
     id: string;
@@ -82,11 +83,6 @@ export function filterAndSortModels(rawModels: any[], vendor: KnownVendor): Disc
     }
 
     return chatModels;
-}
-
-function sanitizeErrorMessage(msg: string, keyToRedact: string): string {
-    if (!keyToRedact || keyToRedact.length < 5) return msg;
-    return msg.replaceAll(keyToRedact, "[REDACTED]");
 }
 
 /**

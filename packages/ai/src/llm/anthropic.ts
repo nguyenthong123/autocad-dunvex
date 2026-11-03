@@ -14,6 +14,7 @@ import type {
     Tool,
     ToolCallBuffer,
 } from "./types";
+import { resolveBaseURL } from "./urlUtils";
 
 type RawUsage = {
     input_tokens?: number;
@@ -46,7 +47,7 @@ export class AnthropicProvider implements LLMProvider {
     constructor(config: LLMConfig) {
         this.client = new Anthropic({
             apiKey: config.apiKey,
-            baseURL: (config.baseURL ?? "https://api.anthropic.com").replace(/\/+$/, ""),
+            baseURL: resolveBaseURL(config.baseURL, "https://api.anthropic.com"),
             dangerouslyAllowBrowser: true,
         });
     }

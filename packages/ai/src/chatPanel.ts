@@ -49,6 +49,7 @@ import { buildSystemPrompt } from "./llm/prompt";
 import { KNOWN_VENDORS } from "./llm/providerRegistry";
 import { readReference } from "./llm/referenceReader";
 import type { ChatMessage, ImagePart, TokenUsage, Tool } from "./llm/types";
+import { sanitizeErrorMessage } from "./llm/urlUtils";
 import {
     CONTEXT_WINDOW_OPTIONS,
     currentConfig,
@@ -1998,7 +1999,9 @@ export class ChatPanel extends HTMLElement {
             return !!this.stream?.raw;
         }
         this.discardParagraph();
-        this.appendError((err as Error).message);
+        const rawMessage = (err as Error)?.message || String(err);
+        const config = currentConfig();
+        this.appendError(sanitizeErrorMessage(rawMessage, config.apiKey));
         return false;
     }
 

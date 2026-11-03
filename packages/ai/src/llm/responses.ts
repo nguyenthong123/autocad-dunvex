@@ -14,6 +14,7 @@ import {
     type TokenUsage,
     type Tool,
 } from "./types";
+import { resolveBaseURL } from "./urlUtils";
 
 type ResponseStreamEvent = OpenAI.Responses.ResponseStreamEvent;
 type ToolArgsBuffer = Map<string, string>;
@@ -26,7 +27,7 @@ export class ResponsesProvider implements LLMProvider {
     constructor(config: LLMConfig) {
         this.client = new OpenAI({
             apiKey: config.apiKey,
-            baseURL: (config.baseURL ?? "https://api.openai.com/v1").replace(/\/+$/, ""),
+            baseURL: resolveBaseURL(config.baseURL, "https://api.openai.com/v1"),
             dangerouslyAllowBrowser: true,
         });
     }

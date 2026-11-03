@@ -72,6 +72,7 @@ packages/web ──> packages/builder ──> packages/app ───────
 | **TASK-26** | Chống mất dữ liệu bản vẽ (Sync Data Safety): Đọc/ghi Local an toàn không ghi đè, Outbox hàng đợi thử lại, Lưu tức thì khi ẩn tab/đóng tab, Versioning & 409 Conflict trên Server, Snapshot thưa & Bỏ ghi trùng (Chưa deploy, chưa kiểm chứng trên trình duyệt thật) | `[~] IN_PROGRESS` (Reviewer 03/11: 409 chưa chạy thật → xem TASK-27) | [docs/tasks/TASK-26-sync-data-safety.md](./docs/tasks/TASK-26-sync-data-safety.md) |
 | **TASK-27** | Sửa dứt điểm đồng bộ phiên bản & xung đột (sequel TASK-26): client giữ `version` server, gửi `baseVersion` đúng trong body, hộp thoại xử lý 409, bỏ ghi `cad_entities`, test tích hợp client↔server thật & kiểm chứng trình duyệt K1–K8 đạt 100% | `[?] WAITING_REVIEW` | [docs/tasks/TASK-27-version-sync-conflict-wiring.md](./docs/tasks/TASK-27-version-sync-conflict-wiring.md) |
 | **TASK-28** | Điều tra và khắc phục lỗi Boolean Cut với khối đùn và hồi quy đồng bộ chọn Viewport ↔ Cây đối tượng (chỉ sửa sau khi tái hiện/xác định nguyên nhân) | `[?] WAITING_REVIEW` | [docs/tasks/TASK-28-boolean-cut-and-selection-sync-investigation.md](./docs/tasks/TASK-28-boolean-cut-and-selection-sync-investigation.md) |
+| **TASK-29** | Sửa lỗi chat AI `Invalid URL` khi dùng Base URL proxy cùng origin dạng đường dẫn tương đối (`/api/llm-proxy/...`) dù kiểm tra API key thành công | `[?] WAITING_REVIEW` | [docs/tasks/TASK-29-ai-chat-relative-proxy-url.md](./docs/tasks/TASK-29-ai-chat-relative-proxy-url.md) |
 
 ---
 

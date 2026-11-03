@@ -77,6 +77,11 @@ describe("LLM Proxy Server Unit Tests", () => {
                     baseURL: `http://127.0.0.1:${mockUpstreamPort}`,
                     allowedPaths: ["/v1/models", "/v1/chat/completions", "/slow"],
                 },
+                openrouter: {
+                    id: "openrouter",
+                    baseURL: `http://127.0.0.1:${mockUpstreamPort}`,
+                    allowedPaths: ["/v1/models", "/v1/chat/completions"],
+                },
             };
 
             // 2. Local test server running handleLlmProxy
@@ -316,5 +321,30 @@ describe("LLM Proxy Server Unit Tests", () => {
         assert.strictEqual(status503.length, 1, "Expected exactly 1 request to get 503");
         assert.strictEqual(status200.length, 10, "Expected exactly 10 requests to get 200");
         assert.strictEqual(status503[0].retryAfter, "5", "Expected Retry-After header to be 5");
+    });
+
+    it("routes openrouter chat completions /api/llm-proxy/openrouter/v1/chat/completions to upstream correctly", async () => {
+        const res = await fetch(
+            `http://127.0.0.1:${proxyPort}/api/llm-proxy/openrouter/v1/chat/completions`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: "Bearer mock-token-sk-test",
+                },
+                body: JSON.stringify({
+                    model: "anthropic/claude-3.7-sonnet",
+                    messages: [{ role: "user", content: "hello" }],
+                    stream: true,
+                }),
+            },
+        );
+
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(lastUpstreamRequest.method, "POST");
+        assert.strictEqual(lastUpstreamRequest.url, "/v1/chat/completions");
+        assert.strictEqual(lastUpstreamRequest.headers.authorization, "Bearer mock-token-sk-test");
+        const bodyText = await res.text();
+        assert.ok(bodyText.includes("Xin chào"));
     });
 });
