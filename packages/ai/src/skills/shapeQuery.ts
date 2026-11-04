@@ -9,9 +9,15 @@ import type { Skill } from "./types";
  * curve-query / surface-query for the geometry behind edges and faces. Kept to one family because
  * the combined document is ~19k characters, most of which a given turn does not need.
  */
+const subshapeNote = `\n\n## shape.findSubShapes Parameter Requirement
+- Always explicitly specify "subshapeType" in args:
+  {"method": "shape.findSubShapes", "target": "<ref>", "args": { "subshapeType": "face" }}
+  Valid kinds: "face", "edge", "wire", "vertex", "solid", "shell".
+  Do not omit subshapeType or rely on op id naming — omitting subshapeType returns an explicit error asking for the parameter.`;
+
 export const shapeQuery: Skill = {
     name: "shape-query",
     description:
         "Solids, faces, edges, wires and topology: volume/area/bounding box, distances, findSubShapes, containsPoint, sub-shape refs — start here for measurements on a body",
-    content: queryApiDoc,
+    content: `${queryApiDoc}${subshapeNote}`,
 };

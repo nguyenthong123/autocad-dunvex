@@ -772,27 +772,29 @@ describe("capabilityEngine", () => {
             }
         });
 
-        test("findSubShapes defaults the sub-shape kind to edge, and takes the plural", async () => {
+        test("findSubShapes requires subshapeType explicitly and takes plural form", async () => {
             const edge = { shapeType: ShapeTypes.edge, index: 0 };
             const findSubShapes = rs.fn((_type: number) => [edge]);
             const solid = { shapeType: ShapeTypes.solid, findSubShapes };
             const box = rs.fn(() => Result.ok(solid as unknown as IShape));
             setup({ box });
             try {
-                // The kind is left out: the model is asking for the edges fillet/chamfer take.
-                await run([
-                    { id: "b", method: "box", args: { dx: 1, dy: 1, dz: 1 } },
-                    { id: "e", method: "shape.findSubShapes", target: "b" },
-                ]);
-                expect(findSubShapes.mock.calls[0][0]).toBe(ShapeTypes.edge);
-                expect(findSubShapes.mock.calls[1]).toBeUndefined();
+                // When subshapeType is omitted, it fails with explicit guidance instead of picking a default
+                await expect(
+                    run([
+                        { id: "b", method: "box", args: { dx: 1, dy: 1, dz: 1 } },
+                        { id: "e", method: "shape.findSubShapes", target: "b" },
+                    ]),
+                ).rejects.toThrow(
+                    /Missing required parameter "subshapeType".*args: { subshapeType: "face" }/,
+                );
 
-                // …and the UI's plural spelling resolves to the same thing.
+                // …and the UI's plural spelling resolves to the proper shape type.
                 await run([
                     { id: "b", method: "box", args: { dx: 1, dy: 1, dz: 1 } },
                     { id: "f", method: "shape.findSubShapes", target: "b", args: { subshapeType: "faces" } },
                 ]);
-                expect(findSubShapes.mock.calls[1][0]).toBe(ShapeTypes.face);
+                expect(findSubShapes.mock.calls[0][0]).toBe(ShapeTypes.face);
             } finally {
                 rs.unstubAllGlobals();
             }

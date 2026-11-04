@@ -25,7 +25,7 @@ export const errorRecovery: Skill = {
 
 'parameter "wire" / "shells" requires an array of refs, got string' — face and solid require an array of refs. Use array syntax, e.g. "wire": ["wireId"] or "shells": ["shellId"].
 
-"wire.toFace requires a wire target, got edge" / "face.area requires a face target, got edge" — shape.findSubShapes defaults to subshapeType: "edge" if omitted. Always specify subshapeType explicitly: args: { subshapeType: "wire" } for wires or args: { subshapeType: "face" } for faces.
+"wire.toFace requires a wire target, got edge" / "face.area requires a face target, got edge" — shape.findSubShapes requires an explicit subshapeType parameter: args: { subshapeType: "face" } for faces, { subshapeType: "wire" } for wires, or { subshapeType: "edge" } for edges. Never omit subshapeType or rely on op id naming; when subshapeType is omitted, the tool returns a required-parameter error with syntax examples instead of guessing.
 
 'Cannot delete node "x": it is a consumed boolean tool owned by parametric body' — the object was consumed by a boolean feature on a ParametricBodyNode. It belongs to the body's feature history and cannot be deleted directly with delete_node. Do NOT retry delete_node. To modify or remove the cut, use run_parametric (features or editFeature op) on the parent body.
 

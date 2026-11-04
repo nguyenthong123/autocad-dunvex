@@ -472,11 +472,6 @@ function parseShapeType(v: unknown): ShapeType | undefined {
 
 /** Defaults for geometric params that are safe to omit. */
 function defaultValue(p: ShapeCapabilityParam): unknown | undefined {
-    // findSubShapes is nearly always "give me the edges" (the indices fillet/chamfer take), and a
-    // model that leaves the kind out otherwise loses the whole round trip to a required-parameter
-    // error — so the one method whose kind has an obvious answer gets that answer. Every other
-    // shapeType parameter must still be given.
-    if (p.kind === "shapeType" && p.name === "subshapeType") return ShapeTypes.edge;
     if (p.kind === "plane") return Plane.XY;
     if (p.kind === "xyz") {
         if (p.name === "center" || p.name === "origin") return XYZ.zero;
@@ -522,6 +517,11 @@ function coerceMissing(p: ShapeCapabilityParam): unknown {
     if (d !== undefined) return d;
     // Optional params fall through as undefined so the factory's own default applies.
     if (p.required === false) return undefined;
+    if (p.name === "subshapeType") {
+        throw new Error(
+            `Missing required parameter "subshapeType". Specify which topological subshape kind to query, e.g. args: { subshapeType: "face" } (or "edge", "wire", "vertex", "solid", "shell"). Do not omit subshapeType.`,
+        );
+    }
     if (p.name === "u" || p.name === "v") {
         throw new Error(
             `Missing required parameter "${p.name}". Both "u" and "v" surface parametric coordinates are required for face.normal. Query surface bounds with face.surface -> surface.uvBounds, or use u=0, v=0 / midpoint for planar faces.`,
@@ -1240,24 +1240,19 @@ function normalizeOpArgs(op: Op): Record<string, unknown> {
         }
     }
 
-    // findSubShapes aliases: subshapeType (type, shapeType, subShapeType, subshape, kind)
+    // findSubShapes aliases: subshapeType (type, shapeType, subShapeType, subshape, kind) with explicit type check
     if (op.method === "findSubShapes" || op.method === "shape.findSubShapes") {
         if (args["subshapeType"] === undefined) {
-            args["subshapeType"] =
+            const candidate =
                 args["type"] ??
                 args["shapeType"] ??
                 args["subShapeType"] ??
                 args["subshape"] ??
                 args["subShape"] ??
                 args["kind"];
-        }
-        if (args["subshapeType"] === undefined && op.id) {
-            if (/face/i.test(op.id)) args["subshapeType"] = "face";
-            else if (/wire/i.test(op.id)) args["subshapeType"] = "wire";
-            else if (/edge/i.test(op.id)) args["subshapeType"] = "edge";
-            else if (/vertex|vertices/i.test(op.id)) args["subshapeType"] = "vertex";
-            else if (/solid/i.test(op.id)) args["subshapeType"] = "solid";
-            else if (/shell/i.test(op.id)) args["subshapeType"] = "shell";
+            if (candidate !== undefined && parseShapeType(candidate) !== undefined) {
+                args["subshapeType"] = candidate;
+            }
         }
     }
 

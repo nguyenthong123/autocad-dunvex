@@ -9,6 +9,7 @@ import {
     type INode,
     Matrix4,
     NodeUtils,
+    ShapeNode,
     Transaction,
     type VisualNode,
     XYZ,
@@ -35,19 +36,14 @@ export function measureNode(node: INode): NodeMeasurement | undefined {
     if ("boundingBox" in node && typeof (node as any).boundingBox === "function") {
         box = (node as any).boundingBox() as BoundingBox | undefined;
     }
-    // Fallback: If node mesh is not tessellated or empty, try B-rep shape bounding box
-    if (!box && "shape" in node) {
-        const shapeRes = (node as any).shape;
-        if (shapeRes && (shapeRes.isOk ?? true)) {
-            const sh = shapeRes.value ?? shapeRes;
+    // Fallback: If 3D solid ShapeNode mesh is not tessellated or empty, try B-rep shape bounding box
+    if (!box && node instanceof ShapeNode) {
+        if (node.shape.isOk) {
+            const sh = node.shape.value;
             if (typeof sh?.boundingBox === "function") {
                 const bRepBox = sh.boundingBox() as BoundingBox | undefined;
                 if (bRepBox) {
-                    const nodeTransform =
-                        "transform" in node && (node as any).transform instanceof Matrix4
-                            ? ((node as any).transform as Matrix4)
-                            : Matrix4.identity();
-                    box = BoundingBox.transformed(bRepBox, nodeTransform);
+                    box = BoundingBox.transformed(bRepBox, node.transform);
                 }
             }
         }
