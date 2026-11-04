@@ -51,7 +51,7 @@ function setupTestEnvironment() {
     (app as any).activeView = { document: doc };
     rs.stubGlobal("app", app);
 
-    return { doc, nodes, app };
+    return { doc, nodes, app, solid };
 }
 
 describe("TASK-38: Offline Agent Loop & Verification Gate Harness", () => {
@@ -483,11 +483,9 @@ describe("TASK-38: Offline Agent Loop & Verification Gate Harness", () => {
         (doc.modelManager as any).addNode = (n: any) => {
             origAdd(n);
             if (n.name === "nodeA" || (n as any).id === "nodeA") {
-                // Remove nodeA from active nodes so collectLeafNodes will only find nodeB
-                setTimeout(() => {
-                    const idx = nodes.indexOf(n);
-                    if (idx >= 0) nodes.splice(idx, 1);
-                }, 0);
+                // Remove nodeA immediately so collectLeafNodes in BOM will only find nodeB
+                const idx = nodes.indexOf(n);
+                if (idx >= 0) nodes.splice(idx, 1);
             }
         };
 
@@ -515,10 +513,13 @@ describe("TASK-38: Offline Agent Loop & Verification Gate Harness", () => {
     });
 
     test("Regression Case 4: unknown write target followed by inspecting arbitrary object -> status must remain unverified", async () => {
-        const { doc, nodes } = setupTestEnvironment();
-        const arbitraryBox = new EditableShapeNode({ document: doc });
+        const { doc, nodes, solid } = setupTestEnvironment();
+        const arbitraryBox = new EditableShapeNode({
+            document: doc,
+            shape: solid as any,
+            name: "arbitrary-box",
+        });
         (arbitraryBox as any).id = "arbitrary-box";
-        arbitraryBox.name = "arbitrary-box";
         arbitraryBox.boundingBox = () =>
             new BoundingBox(new XYZ({ x: 0, y: 0, z: 0 }), new XYZ({ x: 80, y: 80, z: 80 }));
         nodes.push(arbitraryBox);
@@ -593,5 +594,96 @@ describe("TASK-38: Offline Agent Loop & Verification Gate Harness", () => {
         const mem = getSessionMemory();
         expect(mem.lastVerification?.verified).toBe(false);
         expect(mem.lastVerification?.summary).toBe("UNVERIFIED");
+    });
+
+    test("Regression Case 5: two objects with identical display names -> measuring B keeps A waiting, measuring exact ID of A confirms A", async () => {
+        const { doc, nodes, solid } = setupTestEnvironment();
+
+        // Node B already exists in doc, named "ChiTietHop" with ID "box-B-id"
+        const nodeB = new EditableShapeNode({
+            document: doc,
+            shape: solid as any,
+            name: "ChiTietHop",
+            id: "box-B-id",
+        });
+        nodeB.boundingBox = () =>
+            new BoundingBox(new XYZ({ x: 0, y: 0, z: 0 }), new XYZ({ x: 100, y: 100, z: 100 }));
+        nodes.push(nodeB);
+
+        const provider = new ScriptedLLMProvider([
+            // Turn 1: Model creates nodeA with ID "box-A-id" and the SAME name "ChiTietHop"
+            {
+                type: "tool_calls",
+                calls: [
+                    {
+                        name: "run_program",
+                        args: {
+                            ops: [
+                                {
+                                    id: "box-A-id",
+                                    name: "ChiTietHop",
+                                    method: "box",
+                                    args: { dx: 100, dy: 100, dz: 100 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+            // Turn 2: Model measures nodeB ("box-B-id") which shares the name "ChiTietHop"
+            {
+                type: "tool_calls",
+                calls: [
+                    {
+                        name: "measure_nodes",
+                        args: { nodeIds: ["box-B-id"] },
+                    },
+                ],
+            },
+            // Turn 3: Model attempts to stop claiming "ChiTietHop" was measured
+            {
+                type: "text",
+                text: "I measured ChiTietHop (via box-B-id) so I am done.",
+                stopReason: "end_turn",
+            },
+            // Turn 4: Agent nudges (1/2) because nodeA (box-A-id) is still waiting for verification!
+            // In response, model measures the correct ID of nodeA ("box-A-id")
+            {
+                type: "tool_calls",
+                calls: [
+                    {
+                        name: "measure_nodes",
+                        args: { nodeIds: ["box-A-id"] },
+                    },
+                ],
+            },
+            // Turn 5: Model concludes after measuring exact ID of nodeA
+            {
+                type: "text",
+                text: "Now measured box-A-id specifically. Done!",
+                stopReason: "end_turn",
+            },
+        ]);
+
+        const messages: ChatMessage[] = [{ role: "user", content: "Create ChiTietHop (box-A) and verify" }];
+        await runAgent({
+            provider,
+            config: { model: "scripted" } as any,
+            system: { stable: "system-test", volatile: "" },
+            messages,
+            tools: buildTools(),
+            callbacks: nullCallbacks,
+        });
+
+        // Exactly 1 nudge occurred after measuring box-B-id: measuring B kept A waiting!
+        const nudges = messages.filter(
+            (m) => m.role === "user" && m.content === NUDGE_AFTER_UNVERIFIED_WRITE,
+        );
+        expect(nudges.length).toBe(1);
+
+        // After measuring box-A-id, verification succeeded
+        const mem = getSessionMemory();
+        expect(mem.lastVerification?.verified).toBe(true);
+        expect(mem.lastVerification?.toolName).toBe("measure_nodes");
     });
 });

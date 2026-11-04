@@ -143,7 +143,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
 
     const state: RecoveryState = { continues: 0, lostCalls: 0, idleNudges: 0, verifyNudges: 0 };
     let needsVerification = false;
-    const pendingVerificationTargets = new Set<string>();
+    let pendingVerificationTargets: VerificationTarget[] = [];
     // Whether the attempt in flight has already put text on screen. A retry after a context
     // overflow would replay that text, so the retry is only allowed before the first delta.
     let emittedText = false;
@@ -222,6 +222,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                         continue;
                     }
                     needsVerification = false;
+                    pendingVerificationTargets = [];
                     updateSessionMemory({
                         lastVerification: {
                             timestamp: Date.now(),
@@ -272,42 +273,56 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                         needsVerification = true;
                         const targets = extractWriteTargets(res.name, rawArgs, parsedContent);
                         if (targets.length > 0) {
-                            for (const t of targets) pendingVerificationTargets.add(t);
+                            for (const t of targets) {
+                                if (
+                                    !pendingVerificationTargets.some(
+                                        (p) => (p.id && p.id === t.id) || (!p.id && p.name === t.name),
+                                    )
+                                ) {
+                                    pendingVerificationTargets.push(t);
+                                }
+                            }
                         } else {
-                            pendingVerificationTargets.add("*");
+                            pendingVerificationTargets.push({});
                         }
                     } else if (parsedContent?.results) {
                         // Query-only run_program can serve as verification
-                        const verified = extractVerifiedTargets(res.name, rawArgs, parsedContent);
-                        for (const t of Array.from(pendingVerificationTargets)) {
-                            if (matchesTarget(t, verified)) {
-                                pendingVerificationTargets.delete(t);
+                        const evidence = extractVerifiedEvidence(res.name, rawArgs, parsedContent);
+                        if (evidence.ids.size > 0 || evidence.names.size > 0) {
+                            pendingVerificationTargets = pendingVerificationTargets.filter(
+                                (t) => !isTargetVerified(t, evidence),
+                            );
+                            if (pendingVerificationTargets.length === 0) {
+                                needsVerification = false;
+                                onVerificationCompleted(res.name, "verified via query ops");
                             }
-                        }
-                        if (pendingVerificationTargets.size === 0) {
-                            needsVerification = false;
-                            onVerificationCompleted(res.name, "verified via query ops");
                         }
                     }
                 } else if (WRITE_TOOLS.has(res.name)) {
                     needsVerification = true;
                     const targets = extractWriteTargets(res.name, rawArgs, parsedContent);
                     if (targets.length > 0) {
-                        for (const t of targets) pendingVerificationTargets.add(t);
+                        for (const t of targets) {
+                            if (
+                                !pendingVerificationTargets.some(
+                                    (p) => (p.id && p.id === t.id) || (!p.id && p.name === t.name),
+                                )
+                            ) {
+                                pendingVerificationTargets.push(t);
+                            }
+                        }
                     } else {
-                        pendingVerificationTargets.add("*");
+                        pendingVerificationTargets.push({});
                     }
                 }
 
                 if (VERIFY_TOOLS.has(res.name)) {
-                    const verified = extractVerifiedTargets(res.name, rawArgs, parsedContent);
-                    if (verified.length > 0) {
-                        for (const t of Array.from(pendingVerificationTargets)) {
-                            if (matchesTarget(t, verified)) {
-                                pendingVerificationTargets.delete(t);
-                            }
-                        }
-                        if (pendingVerificationTargets.size === 0) {
+                    const evidence = extractVerifiedEvidence(res.name, rawArgs, parsedContent);
+                    if (evidence.ids.size > 0 || evidence.names.size > 0) {
+                        pendingVerificationTargets = pendingVerificationTargets.filter(
+                            (t) => !isTargetVerified(t, evidence),
+                        );
+                        if (pendingVerificationTargets.length === 0) {
                             needsVerification = false;
                             onVerificationCompleted(res.name, "verified post-write state");
                         }
@@ -381,12 +396,23 @@ interface ToolOutputShape {
     createdNodeIds?: string[];
 }
 
+interface VerificationTarget {
+    id?: string;
+    opId?: string;
+    name?: string;
+}
+
+interface VerifiedEvidence {
+    ids: Set<string>;
+    names: Set<string>;
+}
+
 function extractWriteTargets(
     toolName: string,
     rawArgs: string,
     parsedContent: ToolOutputShape | undefined,
-): string[] {
-    const targets: string[] = [];
+): VerificationTarget[] {
+    const targets: VerificationTarget[] = [];
     let args: WriteToolArgs | undefined;
     try {
         args = JSON.parse(rawArgs) as WriteToolArgs;
@@ -394,66 +420,81 @@ function extractWriteTargets(
         // raw argument
     }
 
-    if (parsedContent) {
-        if (Array.isArray(parsedContent.created)) {
+    const hasReportedCreated = Array.isArray(parsedContent?.created) && parsedContent.created.length > 0;
+    const hasReportedRemoved = Array.isArray(parsedContent?.removed) && parsedContent.removed.length > 0;
+    const hasReportedIds =
+        Array.isArray(parsedContent?.createdNodeIds) && parsedContent.createdNodeIds.length > 0;
+
+    if (hasReportedCreated || hasReportedRemoved || hasReportedIds) {
+        if (Array.isArray(parsedContent?.created)) {
             for (const item of parsedContent.created) {
-                if (typeof item === "string") targets.push(item);
-                else if (item && typeof item === "object") {
-                    if (typeof item.nodeId === "string") targets.push(item.nodeId);
-                    if (typeof item.id === "string") targets.push(item.id);
-                    if (typeof item.name === "string") targets.push(item.name);
+                if (typeof item === "string" && item.trim()) {
+                    targets.push({ id: item.trim() });
+                } else if (item && typeof item === "object") {
+                    const id = (item.nodeId ?? item.id)?.trim();
+                    const opId = item.id && item.id !== item.nodeId ? item.id.trim() : undefined;
+                    const name = item.name?.trim();
+                    if (id || opId || name) targets.push({ id, opId, name });
                 }
             }
         }
-        if (Array.isArray(parsedContent.removed)) {
+        if (Array.isArray(parsedContent?.removed)) {
             for (const item of parsedContent.removed) {
-                if (typeof item === "string") targets.push(item);
-                else if (item && typeof item === "object") {
-                    if (typeof item.nodeId === "string") targets.push(item.nodeId);
-                    if (typeof item.id === "string") targets.push(item.id);
-                    if (typeof item.name === "string") targets.push(item.name);
+                if (typeof item === "string" && item.trim()) {
+                    targets.push({ id: item.trim() });
+                } else if (item && typeof item === "object") {
+                    const id = (item.nodeId ?? item.id)?.trim();
+                    const opId = item.id && item.id !== item.nodeId ? item.id.trim() : undefined;
+                    const name = item.name?.trim();
+                    if (id || opId || name) targets.push({ id, opId, name });
                 }
             }
         }
-        if (Array.isArray(parsedContent.createdNodeIds)) {
+        if (Array.isArray(parsedContent?.createdNodeIds)) {
             for (const id of parsedContent.createdNodeIds) {
-                if (typeof id === "string") targets.push(id);
+                if (typeof id === "string" && id.trim()) targets.push({ id: id.trim() });
             }
         }
+        return targets;
     }
 
     if (args) {
         if (Array.isArray(args.ops)) {
             for (const op of args.ops) {
                 if (op && typeof op === "object") {
-                    if (typeof op.id === "string") targets.push(op.id);
-                    if (typeof op.name === "string") targets.push(op.name);
-                    if (typeof op.body === "string") targets.push(op.body);
+                    const id = (op.id ?? op.nodeId)?.trim();
+                    const name = (op.name ?? op.body)?.trim();
+                    if (id || name) targets.push({ id, name });
                 }
             }
         }
-        if (typeof args.nodeId === "string") targets.push(args.nodeId);
-        if (typeof args.sourceNodeId === "string") targets.push(args.sourceNodeId);
-        if (typeof args.id === "string") targets.push(args.id);
+        if (typeof args.nodeId === "string" && args.nodeId.trim()) targets.push({ id: args.nodeId.trim() });
+        if (typeof args.sourceNodeId === "string" && args.sourceNodeId.trim()) {
+            targets.push({ id: args.sourceNodeId.trim() });
+        }
+        if (typeof args.id === "string" && args.id.trim()) targets.push({ id: args.id.trim() });
         if (Array.isArray(args.nodeIds)) {
-            for (const id of args.nodeIds) if (typeof id === "string") targets.push(id);
+            for (const id of args.nodeIds)
+                if (typeof id === "string" && id.trim()) targets.push({ id: id.trim() });
         }
         if (Array.isArray(args.ids)) {
-            for (const id of args.ids) if (typeof id === "string") targets.push(id);
+            for (const id of args.ids)
+                if (typeof id === "string" && id.trim()) targets.push({ id: id.trim() });
         }
     }
 
     return targets;
 }
 
-function extractVerifiedTargets(
+function extractVerifiedEvidence(
     toolName: string,
     rawArgs: string,
     parsedContent: ToolOutputShape | undefined,
-): string[] {
-    const verified: string[] = [];
+): VerifiedEvidence {
+    const ids = new Set<string>();
+    const names = new Set<string>();
     if (!parsedContent || typeof parsedContent !== "object" || typeof parsedContent.error === "string") {
-        return verified;
+        return { ids, names };
     }
 
     if (toolName === "measure_nodes") {
@@ -462,65 +503,76 @@ function extractVerifiedTargets(
             : Array.isArray(parsedContent.measurements)
               ? parsedContent.measurements
               : [];
-        if (nodeList.length > 0) {
-            for (const node of nodeList) {
-                if (typeof node === "string") {
-                    verified.push(node);
-                } else if (node && typeof node === "object") {
-                    if (typeof node.id === "string") verified.push(node.id);
-                    if (typeof node.name === "string") verified.push(node.name);
-                }
+        for (const node of nodeList) {
+            if (typeof node === "string" && node.trim()) {
+                ids.add(node.trim());
+            } else if (node && typeof node === "object") {
+                if (typeof node.id === "string" && node.id.trim()) ids.add(node.id.trim());
+                if (typeof node.name === "string" && node.name.trim())
+                    names.add(node.name.trim().toLowerCase());
             }
         }
     } else if (toolName === "get_node_properties") {
         const nodeList = Array.isArray(parsedContent.nodes) ? parsedContent.nodes : [];
-        if (nodeList.length > 0) {
-            for (const node of nodeList) {
-                if (typeof node === "string") {
-                    verified.push(node);
-                } else if (node && typeof node === "object") {
-                    if (typeof node.id === "string") verified.push(node.id);
-                    if (typeof node.name === "string") verified.push(node.name);
-                }
+        for (const node of nodeList) {
+            if (typeof node === "string" && node.trim()) {
+                ids.add(node.trim());
+            } else if (node && typeof node === "object") {
+                if (typeof node.id === "string" && node.id.trim()) ids.add(node.id.trim());
+                if (typeof node.name === "string" && node.name.trim())
+                    names.add(node.name.trim().toLowerCase());
             }
         }
     } else if (toolName === "bom_report") {
         const items = Array.isArray(parsedContent.items) ? parsedContent.items : [];
-        if (items.length > 0) {
-            for (const item of items) {
-                if (Array.isArray(item.nodeIds)) {
-                    for (const id of item.nodeIds) if (typeof id === "string") verified.push(id);
-                }
-                if (typeof item.nodeId === "string") verified.push(item.nodeId);
-                if (typeof item.name === "string") verified.push(item.name);
+        for (const item of items) {
+            if (Array.isArray(item.nodeIds)) {
+                for (const id of item.nodeIds) if (typeof id === "string" && id.trim()) ids.add(id.trim());
             }
+            if (typeof item.nodeId === "string" && item.nodeId.trim()) ids.add(item.nodeId.trim());
+            if (typeof item.name === "string" && item.name.trim()) names.add(item.name.trim().toLowerCase());
         }
     } else if (toolName === "classify_material") {
         const items = Array.isArray(parsedContent.items) ? parsedContent.items : [];
-        if (items.length > 0) {
-            for (const item of items) {
-                if (typeof item.nodeId === "string") verified.push(item.nodeId);
-                if (typeof item.name === "string") verified.push(item.name);
-            }
+        for (const item of items) {
+            if (typeof item.nodeId === "string" && item.nodeId.trim()) ids.add(item.nodeId.trim());
+            if (typeof item.name === "string" && item.name.trim()) names.add(item.name.trim().toLowerCase());
         }
     } else if (toolName === "run_program") {
         if (parsedContent.results && typeof parsedContent.results === "object") {
             const resObj = parsedContent.results as Record<string, unknown>;
             for (const [key, val] of Object.entries(resObj)) {
                 if (val !== undefined && val !== null) {
-                    verified.push(key);
+                    ids.add(key.trim());
                 }
             }
         }
     }
 
-    return verified;
+    return { ids, names };
 }
 
-function matchesTarget(target: string, verifiedList: string[]): boolean {
-    if (target === "*") return false;
-    const targetLower = target.toLowerCase();
-    return verifiedList.some((v) => v === target || v.toLowerCase() === targetLower);
+function isTargetVerified(target: VerificationTarget, evidence: VerifiedEvidence): boolean {
+    // If target has an ID, IT MUST MATCH BY ID ONLY!
+    // Display name cannot be used to verify an object with a known ID (avoids name collisions).
+    if (target.id && target.id.trim()) {
+        const targetId = target.id.trim();
+        const matchesId =
+            evidence.ids.has(targetId) ||
+            evidence.ids.has(targetId.toLowerCase()) ||
+            (target.opId
+                ? evidence.ids.has(target.opId) || evidence.ids.has(target.opId.toLowerCase())
+                : false);
+        return matchesId;
+    }
+
+    // Only if target has NO ID at all, fall back to matching by name
+    if (target.name && target.name.trim()) {
+        return evidence.names.has(target.name.trim().toLowerCase());
+    }
+
+    // Target has neither ID nor name (e.g. unknown write op "*"): cannot match arbitrary evidence
+    return false;
 }
 
 /** How much of each recovery path this run has already spent. Each has its own ceiling. */

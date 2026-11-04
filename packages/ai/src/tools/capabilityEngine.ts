@@ -1079,7 +1079,7 @@ function addCreatedNode(
     name: string,
     shape: Result<IShape>,
 ): void {
-    const node = new EditableShapeNode({ document: doc, name, shape });
+    const node = new EditableShapeNode({ document: doc, name, shape, id: op.id });
     doc.modelManager.addNode(node);
     if (op.id) registerRef(doc, localRefs, op.id, { nodeId: node.id, kind: "shape", value: shape.value });
     created.push({ id: op.id, nodeId: node.id, name });
