@@ -1,124 +1,124 @@
-# 附录 B 快捷键与鼠标操作
+# Phụ lục B Phím tắt và thao tác chuột
 
-## B.1 默认快捷键（Chili3d 导航配置）
+## B.1 Phím tắt mặc định (Cấu hình điều hướng Chili3d)
 
-| 命令 | 快捷键 |
+| Lệnh | Phím tắt |
 | --- | --- |
-| 保存文档 | Ctrl+S |
-| 打开文档 | Ctrl+O |
-| 撤销 | Ctrl+Z |
-| 重做 | Ctrl+Y 或 Ctrl+Shift+Z |
-| 删除节点 | Delete 或 Backspace |
-| 重复上一个命令 | Space 或 Enter |
-| 直线 | L |
-| 矩形 | R |
-| 圆形 | C |
-| 测量长度 | D |
-| 立方体 | B |
-| 球体 | S |
-| 圆柱 | Y |
-| 圆锥 | N |
-| 管状体 | Shift+P |
-| 修剪 | T |
-| 偏移 | O |
-| 旋转 | Shift+R |
-| 挤出 | P |
-| 移动 | M |
-| 阵列 | Shift+A |
-| 交集 | Shift+I |
-| 分解 | X |
-| 倒角 | Shift+C |
-| 圆角 | Shift+F |
-| 推拉 | Q |
+| Lưu tài liệu | Ctrl+S |
+| Mở tài liệu | Ctrl+O |
+| Hoàn tác | Ctrl+Z |
+| Làm lại | Ctrl+Y hoặc Ctrl+Shift+Z |
+| Xóa nút | Delete hoặc Backspace |
+| Lặp lại lệnh trước | Space hoặc Enter |
+| Đoạn thẳng | L |
+| Hình chữ nhật | R |
+| Đường tròn | C |
+| Đo chiều dài | D |
+| Khối hộp | B |
+| Khối cầu | S |
+| Khối trụ | Y |
+| Khối nón | N |
+| Ống dẫn | Shift+P |
+| Cắt tỉa | T |
+| Song song (Offset) | O |
+| Xoay | Shift+R |
+| Đùn khối | P |
+| Di chuyển | M |
+| Mảng | Shift+A |
+| Giao nhau | Shift+I |
+| Phân rã | X |
+| Vát mép | Shift+C |
+| Bo góc | Shift+F |
+| Đẩy-kéo | Q |
 
-> 快捷键按当前“3D 导航”配置显示和匹配。快捷键不区分大小写；在输入框内输入时不会触发。
+> Phím tắt được hiển thị và khớp theo cấu hình "Điều hướng 3D" hiện tại. Phím tắt không phân biệt chữ hoa, chữ thường; khi đang nhập liệu trong ô văn bản sẽ không kích hoạt phím tắt.
 >
-> macOS 的全局 `Ctrl` 快捷键也可使用 `Cmd`，例如 `Cmd+S`、`Cmd+Z`。这只是键盘修饰键的兼容：项目树多选仍明确要求 `Ctrl+单击`，不是 `Cmd+单击`。
+> Trên macOS, các phím tắt `Ctrl` toàn cục cũng có thể dùng `Cmd`, ví dụ `Cmd+S`, `Cmd+Z`. Đây chỉ là sự tương thích của phím bổ trợ trên bàn phím: thao tác chọn nhiều mục trên cây dự án vẫn yêu cầu rõ ràng là `Ctrl+nhấp chuột`, không phải `Cmd+nhấp chuột`.
 >
-> 在没有正在处理的拾取、且焦点不在输入框时，`Space`/`Enter` 重复上一个命令，不要求先清空选择；命令拾取过程中则用于确认。
+> Khi không có thao tác chọn điểm/đối tượng đang diễn ra và tiêu điểm không nằm trong ô nhập liệu, phím `Space`/`Enter` sẽ lặp lại lệnh gần nhất mà không yêu cầu phải xóa vùng chọn trước; trong quá trình chọn đối tượng của lệnh thì dùng để xác nhận.
 
-## B.2 其他导航配置的差异
+## B.2 Khác biệt giữa các cấu hình điều hướng khác
 
-Revit 和 Blender 只覆盖下表中的命令，其余快捷键继承默认配置。表中直接写出继承后的有效键，避免把“未覆盖”误认为“没有快捷键”：
+Revit và Blender chỉ ghi đè các lệnh trong bảng dưới đây, các phím tắt còn lại được kế thừa từ cấu hình mặc định. Bảng này liệt kê trực tiếp các phím có hiệu lực sau khi kế thừa, tránh nhầm lẫn giữa "không bị ghi đè" với "không có phím tắt":
 
-| 命令 | Revit | Blender |
+| Lệnh | Revit | Blender |
 | --- | --- | --- |
-| 移动 | `M` 然后 `V` | G |
-| 旋转 | `R` 然后 `O` | R |
-| 修剪 | `T` 然后 `R` | T（同默认） |
-| 直线 | `L` 然后 `I` | L（同默认） |
-| 挤出 | P（同默认） | E |
+| Di chuyển | `M` rồi `V` | G |
+| Xoay | `R` rồi `O` | R |
+| Cắt tỉa | `T` rồi `R` | T (như mặc định) |
+| Đoạn thẳng | `L` rồi `I` | L (như mặc định) |
+| Đùn khối | P (như mặc định) | E |
 
-Creo 与 Solidworks 配置只改变鼠标导航方式，命令键与默认一致。
+Cấu hình Creo và Solidworks chỉ thay đổi phương thức điều hướng chuột, các phím lệnh vẫn giữ nguyên như mặc định.
 
-## B.3 鼠标与视图
+## B.3 Thao tác chuột và góc nhìn
 
-| 操作 | 效果 |
+| Thao tác | Hiệu quả |
 | --- | --- |
-| 滚轮 | 缩放（Solidworks/Creo 反向） |
-| 中键拖动 | 按导航配置平移或旋转 |
-| Shift + 中键拖动 | 按导航配置旋转或平移 |
-| 双击中键 | 适应内容 |
-| 左键拖动 | 框选 |
-| 左键单击 | 选择节点 / 拾取 |
-| Shift + 左键单击 | 视口里加选/减选 |
-| 右键 | 取消当前拾取（无右键菜单） |
-| 单击 X/Y/Z 轴球 | 沿轴正视 |
-| 拖动轴球 | 自由环绕 |
+| Con lăn cuộn | Thu phóng (ngược chiều với Solidworks/Creo) |
+| Kéo chuột giữa | Kéo lia (Pan) hoặc xoay góc nhìn theo cấu hình điều hướng |
+| Shift + Kéo chuột giữa | Xoay góc nhìn hoặc kéo lia theo cấu hình điều hướng |
+| Nhấp đúp chuột giữa | Khớp toàn bộ nội dung vào khung nhìn (Fit content) |
+| Kéo chuột trái | Chọn theo khung (Window selection) |
+| Nhấp chuột trái | Chọn nút / Chọn đối tượng |
+| Shift + Nhấp chuột trái | Thêm vào / Bớt khỏi vùng chọn trong khung nhìn |
+| Nhấp chuột phải | Hủy thao tác chọn hiện tại (không có menu ngữ cảnh chuột phải) |
+| Nhấp vào quả cầu trục X/Y/Z | Nhìn trực diện vuông góc theo trục |
+| Kéo quả cầu trục | Xoay góc nhìn tự do quanh mô hình |
 
-## B.4 模型树与命令
+## B.4 Cây mô hình và thao tác lệnh
 
-| 操作 | 效果 |
+| Thao tác | Hiệu quả |
 | --- | --- |
-| Ctrl + 单击（树） | 切换多选 |
-| Shift + 单击（树） | 范围选择 |
-| 双击草图节点 | 编辑草图 |
-| 拖行到文件夹 | 改变父子关系 |
-| 拖特征行 | 重排特征链 |
-| Enter / Space | 确认当前拾取 / 提交拖拽值 |
-| Esc | 取消拾取 / 退出命令 / 清除选择 |
-| Tab | 在光标下重叠形状间循环 |
-| Delete | 删除选中节点 |
+| Ctrl + Nhấp chuột (trên cây) | Bật/tắt chọn nhiều đối tượng |
+| Shift + Nhấp chuột (trên cây) | Chọn theo dải liên tiếp |
+| Nhấp đúp vào nút phác thảo | Chỉnh sửa phác thảo |
+| Kéo thả vào thư mục | Thay đổi quan hệ cha - con |
+| Kéo thả hàng tính năng | Sắp xếp lại thứ tự chuỗi tính năng |
+| Enter / Space | Xác nhận thao tác chọn hiện tại / Áp dụng giá trị kéo rê |
+| Esc | Hủy thao tác chọn / Thoát lệnh / Bỏ chọn đối tượng |
+| Tab | Chuyển đổi luân phiên giữa các hình học chồng lấn dưới con trỏ |
+| Delete | Xóa các nút đang chọn |
 
-## B.5 草图专用
+## B.5 Dành riêng cho phác thảo (Sketch)
 
-| 操作 | 效果 |
+| Thao tác | Hiệu quả |
 | --- | --- |
-| Esc | 逐层退出：链 → 工具 → 约束/实体 → 会话 |
-| Enter | 结束当前链/确认 |
-| 框选 | 选择多个草图实体 |
-| 双击尺寸文字 | 修改尺寸值 |
-| 双击阵列/偏移徽标 | 修改数量/间距/角度 |
-| Delete / Backspace | 删除光标下或选中的约束/实体 |
+| Esc | Thoát từng cấp: chuỗi đối tượng → công cụ → ràng buộc/thực thể → phiên phác thảo |
+| Enter | Kết thúc chuỗi vẽ hiện tại / Xác nhận |
+| Chọn theo khung | Chọn nhiều thực thể phác thảo |
+| Nhấp đúp vào chữ số kích thước | Sửa đổi giá trị kích thước |
+| Nhấp đúp vào ký hiệu mảng/offset | Sửa đổi số lượng / khoảng cách / góc |
+| Delete / Backspace | Xóa ràng buộc / thực thể dưới con trỏ hoặc đang được chọn |
 
-## B.6 自定义快捷键
+## B.6 Tùy chỉnh phím tắt
 
-目前没有图形化的快捷键编辑器。默认映射定义在：
+Hiện tại chưa có trình biên tập phím tắt dạng đồ họa. Ánh xạ phím mặc định được định nghĩa tại:
 
 ```text
 packages/core/src/command/shortcutProfiles.ts
 ```
 
-`Chili3dShortcuts` 是默认表，`RevitShortcuts`、`BlenderShortcuts` 等在此基础上覆盖。修改后重新构建即可生效。
+`Chili3dShortcuts` là bảng mặc định, `RevitShortcuts`, `BlenderShortcuts`... được xây dựng dựa trên việc ghi đè lên bảng này. Sau khi chỉnh sửa, chỉ cần biên dịch (build) lại ứng dụng là có hiệu lực.
 
-## B.7 Pro 直接编辑
+## B.7 Pro Chỉnh sửa trực tiếp
 
-以下操作仅适用于 **Chili3D Pro** 的直接编辑模式，详见 [第 13 章](13-pro-direct-editing.md)。
+Các thao tác sau đây chỉ áp dụng cho chế độ chỉnh sửa trực tiếp của **Chili3D Pro**, chi tiết xem tại [Chương 13](13-pro-direct-editing.md).
 
-| 操作 | 效果 |
+| Thao tác | Hiệu quả |
 | --- | --- |
-| 左键双击模型 | 进入直接编辑；不可直接编辑的节点先询问是否转换 |
-| 单击顶点 / 边 / 面 | 选择当前节点的子形状 |
-| Shift + 单击 | 加选 / 减选子形状 |
-| 拖动黄色圆形手柄 | 推拉/偏移平面，或通过拖拽生成圆角/倒角、修改已有圆角 |
-| Alt（推拉命令拾取目标点时） | 切换 `新面` 模式 |
-| Delete / Backspace | 删除选中的边、面或辅助线，不是删除整个节点 |
-| Enter / Space | 确认命令中的当前拾取 |
-| Esc | 先取消当前命令；未运行命令时退出直接编辑 |
-| Ctrl+Z / Ctrl+Y | 撤销 / 重做已提交的编辑 |
+| Nhấp đúp chuột trái vào mô hình | Vào chế độ chỉnh sửa trực tiếp; nút không thể chỉnh sửa trực tiếp sẽ hỏi trước xem có chuyển đổi không |
+| Nhấp chuột vào đỉnh / cạnh / mặt | Chọn hình con (sub-shape) của nút hiện tại |
+| Shift + Nhấp chuột | Thêm vào / Bớt khỏi vùng chọn hình con |
+| Kéo tay cầm tròn màu vàng | Đẩy-kéo/offset mặt phẳng, hoặc kéo rê để tạo bo góc/vát mép, chỉnh sửa bo góc có sẵn |
+| Alt (khi lệnh đẩy-kéo đang chọn điểm đích) | Chuyển đổi chế độ `Tạo mặt mới` |
+| Delete / Backspace | Xóa cạnh, mặt hoặc đường hỗ trợ đang chọn (không phải xóa toàn bộ nút) |
+| Enter / Space | Xác nhận thao tác chọn hiện tại trong lệnh |
+| Esc | Hủy lệnh đang chạy trước; khi không có lệnh nào đang chạy thì thoát chế độ chỉnh sửa trực tiếp |
+| Ctrl+Z / Ctrl+Y | Hoàn tác / Làm lại thao tác chỉnh sửa đã áp dụng |
 
-也可以点 **编辑 → 管理 → 退出**，或单击编辑边界以外的区域离开编辑模式。退出不会撤销修改，也不会自动保存。
+Bạn cũng có thể nhấp **Chỉnh sửa → Quản lý → Thoát**, hoặc nhấp vào vùng bên ngoài khung bao chỉnh sửa để rời khỏi chế độ chỉnh sửa. Thoát sẽ không hoàn tác các thay đổi và cũng không tự động lưu.
 
 ---
 
-回到 [手册目录](README.md) · 查 [附录 C 术语表](appendix-glossary.md)
+Quay lại [Mục lục sổ tay](README.md) · Tra cứu [Phụ lục C Bảng thuật ngữ](appendix-glossary.md)

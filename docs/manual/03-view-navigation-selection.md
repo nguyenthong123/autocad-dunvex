@@ -1,100 +1,103 @@
-# 3. 视图、选择与捕捉
+# 3. Góc nhìn, chọn đối tượng và bắt điểm
 
-## 3.1 相机导航
+<a id="31-相机导航"></a>
+## 3.1 Điều hướng Camera
 
-Chili3D 提供 5 套导航配置，在首页的“3D 导航”里选择；状态栏会显示当前配置的鼠标提示。默认是 **Chili3d**。
+Chili3D cung cấp 5 bộ cấu hình điều hướng, có thể lựa chọn trong mục "Kiểu điều hướng 3D" ở trang chủ; thanh trạng thái sẽ hiển thị hướng dẫn thao tác chuột của cấu hình hiện tại. Cấu hình mặc định là **Chili3d**.
 
-| 配置 | 平移 | 旋转 |
+| Cấu hình | Kéo lia (Pan) | Xoay góc nhìn (Orbit) |
 | --- | --- | --- |
-| Chili3d | 中键拖动 | Shift + 中键拖动 |
-| Revit | 中键拖动 | Shift + 中键拖动 |
-| Blender | Shift + 中键拖动 | 中键拖动 |
-| Creo | Shift + 中键拖动 | 中键拖动 |
-| Solidworks | Ctrl + 中键拖动 | 中键拖动 |
+| Chili3d | Kéo chuột giữa | Shift + Kéo chuột giữa |
+| Revit | Kéo chuột giữa | Shift + Kéo chuột giữa |
+| Blender | Shift + Kéo chuột giữa | Kéo chuột giữa |
+| Creo | Shift + Kéo chuột giữa | Kéo chuột giữa |
+| Solidworks | Ctrl + Kéo chuột giữa | Kéo chuột giữa |
 
-其他通用操作：
+Các thao tác chung khác:
 
-- **滚轮**：朝光标方向缩放。Solidworks 与 Creo 配置会反转滚轮方向以匹配原软件。
-- **双击中键**（半秒内两次）：适应内容。
-- **左键拖动**：不是旋转相机，而是拉出矩形框选。旋转围绕当前选择的中心，或光标下形状的中心。
-- **右键**：不弹浏览器菜单；在草图里，右键可以取消当前拾取。
-- **触屏**：单指拖动（拾取激活时）、双指平移缩放、三指旋转。
+- **Con lăn cuộn**: Thu phóng theo hướng con trỏ chuột. Cấu hình Solidworks và Creo sẽ đảo ngược chiều cuộn để khớp với phần mềm gốc.
+- **Nhấp đúp chuột giữa** (2 lần trong vòng nửa giây): Khớp toàn bộ nội dung vào khung nhìn (Fit content).
+- **Kéo chuột trái**: Không phải xoay camera, mà là kéo khung chữ nhật để chọn đối tượng. Thao tác xoay camera sẽ quay quanh tâm của đối tượng đang chọn, hoặc tâm của hình dạng nằm dưới con trỏ chuột.
+- **Chuột phải**: Không bật menu ngữ cảnh trình duyệt; trong phác thảo, chuột phải có thể hủy thao tác chọn hiện tại.
+- **Màn hình cảm ứng**: Kéo 1 ngón tay (khi thao tác chọn đang kích hoạt), 2 ngón tay để kéo lia và thu phóng, 3 ngón tay để xoay góc nhìn.
 
-## 3.2 投影与显示
+<a id="32-投影与显示"></a>
+## 3.2 Phép chiếu và hiển thị
 
-- 视口右侧的两个图标分别切换到**正交**和**透视**投影。
-- 左上角的 `[ 实体和线框 ]` 点开可切换 **实体 / 线框 / 实体和线框**。
-- **适应内容**：有当前选择时优先把选择框满视口；无选择时框场景。新建文档后模型很小、看不见时，可以先点它。
-- 要框全场景，先在没有运行命令时按 `Esc` 清除选择，再点“适应内容”。可见性不是范围计算的唯一条件：隐藏对象仍可能计入范围，参考几何等辅助内容则可能按类型排除。若适配后主体异常小，检查是否有远离主体的节点，或只选目标后重新适配。
-- 场景书签（**基本 → 场景 → 从相机创建**）可以保存并召回常用视角，详见 [第 2.3 节](02-interface.md#23-视口)。
+- Hai biểu tượng bên phải khung nhìn dùng để chuyển đổi giữa phép chiếu **trực giao (orthographic)** và **phối cảnh (perspective)**.
+- Dòng chữ `[ Khối đặc và khung dây ]` ở góc trên bên trái nhấp vào để chuyển giữa **Khối đặc / Khung dây / Khối đặc và khung dây**.
+- **Khớp nội dung**: Khi có đối tượng đang chọn, ưu tiên đưa đối tượng đó vừa khít khung nhìn; khi không chọn gì sẽ khớp toàn bộ khung cảnh. Khi tạo tài liệu mới mà mô hình quá nhỏ không nhìn thấy, bạn có thể nhấp vào nút này trước tiên.
+- Để khớp toàn bộ khung cảnh, khi không chạy lệnh nào hãy nhấn `Esc` để xóa vùng chọn rồi mới nhấp "Khớp nội dung". Tính khả kiến (ẩn/hiện) không phải là điều kiện duy nhất khi tính toán phạm vi: đối tượng bị ẩn vẫn có thể được tính vào phạm vi bao quanh, trong khi hình học tham chiếu có thể bị loại trừ theo loại phần tử. Nếu sau khi khớp nội dung mà chi tiết chính trông quá nhỏ, hãy kiểm tra xem có nút nào nằm quá xa chi tiết chính không, hoặc chỉ chọn đối tượng mục tiêu rồi khớp lại.
+- Thẻ đánh dấu góc nhìn (**Cơ bản → Khung cảnh → Tạo từ camera**) có thể lưu và gọi lại các góc nhìn thường dùng, chi tiết xem tại [Mục 2.3](02-interface.md#23-视口).
 
-![显示模式下拉菜单与蓝色法兰](images/16-display-modes.png)
+![Menu thả xuống chế độ hiển thị và mặt bích xanh](images/16-display-modes.png)
 
-*视口左上角可切换实体、线框或实体和线框。*
+*Góc trên bên trái khung nhìn có thể chuyển đổi giữa khối đặc, khung dây hoặc khối đặc và khung dây.*
 
-## 3.3 选择
+## 3.3 Chọn đối tượng
 
-| 操作 | 结果 |
+| Thao tác | Kết quả |
 | --- | --- |
-| 左键单击形状 | 选中整个节点 |
-| 左键单击空白 | 清除选择 |
-| Shift + 单击 | 在视口选择中切换该节点（加选/减选） |
-| 左键拖动 | 框选普通模型，按渲染对象中心命中 |
-| Ctrl + 单击（项目树，macOS 也用 Ctrl，不是 Cmd） | 切换多选 |
-| Shift + 单击（项目树） | 连续范围选择 |
-| Tab | 在光标下重叠的多个形状之间循环 |
-| Enter / Space | 确认当前拾取（在命令中） |
-| Esc | 清除选择，或取消当前命令 |
+| Nhấp chuột trái vào hình dạng | Chọn toàn bộ nút |
+| Nhấp chuột trái vào khoảng trống | Xóa vùng chọn |
+| Shift + Nhấp chuột | Bật/tắt nút đó trong vùng chọn khung nhìn (thêm vào / bớt ra) |
+| Kéo chuột trái | Chọn theo khung các mô hình thông thường, trúng khi tâm đối tượng kết xuất lọt vào khung |
+| Ctrl + Nhấp chuột (cây dự án, trên macOS cũng dùng Ctrl, không dùng Cmd) | Bật/tắt chọn nhiều đối tượng |
+| Shift + Nhấp chuột (cây dự án) | Chọn một dải đối tượng liên tục |
+| Tab | Chuyển đổi luân phiên giữa các hình dạng chồng lấn dưới con trỏ chuột |
+| Enter / Space | Xác nhận thao tác chọn hiện tại (khi đang trong lệnh) |
+| Esc | Xóa vùng chọn, hoặc hủy lệnh hiện tại |
 
-普通模型框选不要求把整个模型完全包住，操作时尽量让对象中心落入矩形。子形状和注释另有检测方式，不能套用一个统一的“相交即选中”规则。框选后应核对项目树和属性面板；漏选时调整矩形覆盖对象中心，或换一个视角再试。
+Chọn theo khung cho mô hình thông thường không đòi hỏi phải bao trùm toàn bộ mô hình, khi thao tác hãy cố gắng để tâm của đối tượng rơi vào khung chữ nhật. Các hình con (sub-shape) và chú thích có phương thức phát hiện riêng, không áp dụng một quy tắc chung "chạm vào là chọn". Sau khi chọn theo khung nên đối chiếu lại trên cây dự án và bảng thuộc tính; nếu bị sót đối tượng thì điều chỉnh lại khung chữ nhật bao phủ tâm đối tượng, hoặc đổi góc nhìn khác rồi thử lại.
 
-选择状态用绿色显示。由于悬停也是绿色，看到绿色时以属性面板/状态栏的名称为准。
+Trạng thái được chọn hiển thị bằng màu xanh lá cây. Do trạng thái rê chuột (hover) cũng là màu xanh lá, nên khi nhìn thấy màu xanh hãy lấy tên hiển thị trong bảng thuộc tính / thanh trạng thái làm chuẩn.
 
-在命令执行过程中，选择会被命令接管：例如“圆角”只接受边，“抽壳”只接受面，鼠标悬停时会自动过滤可拾取的类型。命令中框选结果比预期少时，先检查状态栏要求的对象或子形状类型，不要只反复扩大选框。
+Trong quá trình thực thi lệnh, thao tác chọn sẽ do lệnh đó tiếp quản: ví dụ "Bo góc" chỉ chấp nhận chọn cạnh, "Làm rỗng" chỉ chấp nhận chọn mặt, khi rê chuột hệ thống sẽ tự động lọc các loại đối tượng được phép chọn. Nếu số đối tượng chọn theo khung trong lệnh ít hơn mong đợi, hãy kiểm tra loại đối tượng hoặc hình con mà thanh trạng thái đang yêu cầu, tránh việc chỉ liên tục mở rộng khung chọn.
 
-## 3.4 变换与拖拽
+## 3.4 Biến đổi và kéo rê
 
-- 选中支持直接变换的节点后，属性面板的“矩阵”折叠区可以精确输入位移、旋转、缩放。
-- 视口里出现箭头/圆环/方块手柄时（移动、旋转、阵列、拉伸、推拉等命令），拖动即可实时预览。
-- 拖动时状态栏显示数值；也可以在命令面板里键入数值，或在拖拽状态下直接键入（会弹出数值输入框）。
+- Sau khi chọn nút có hỗ trợ biến đổi trực tiếp, mục thu gọn "Ma trận" trong bảng thuộc tính cho phép nhập chính xác khoảng dịch chuyển, góc xoay và tỷ lệ thu phóng.
+- Khi trong khung nhìn xuất hiện tay cầm mũi tên/vòng tròn/khối hộp (trong các lệnh di chuyển, xoay, mảng, đùn, đẩy-kéo...), kéo rê tay cầm để xem trước thay đổi theo thời gian thực.
+- Khi kéo rê, thanh trạng thái hiển thị giá trị số; bạn cũng có thể gõ trực tiếp giá trị số vào bảng lệnh, hoặc gõ trực tiếp bàn phím ngay trong lúc kéo rê (sẽ bật lên một ô nhập số).
 
-## 3.5 捕捉与追踪
+<a id="35-捕捉与追踪"></a>
+## 3.5 Bắt điểm và dò gióng
 
-状态栏右侧的 `捕捉` 复选框控制总开关；点旁边的小箭头，在弹出面板中逐项开关捕捉类型：
+Hộp kiểm `Bắt điểm` ở bên phải thanh trạng thái là công tắc chính; nhấp vào mũi tên nhỏ bên cạnh để bật/tắt từng loại bắt điểm trong bảng điều khiển:
 
-| 捕捉 | 吸附到 |
+| Bắt điểm | Hút vào vị trí |
 | --- | --- |
-| 端点 | 线段/边的端点 |
-| 中点 | 线段/边的中点 |
-| 圆心 | 圆/圆弧/椭圆的圆心 |
-| 垂点 | 目标曲线上的垂足 |
-| 交点 | 两条曲线的交点 |
-| 切点 | 圆的切点 |
-| 在边线上 | 边上任意最近点 |
-| 在面上 | 面的任意位置 |
-| 追踪 | 从已捕捉点引出的对齐/延长线，以及两条追踪线的交点 |
+| Điểm mút | Điểm đầu/cuối của đoạn thẳng/cạnh |
+| Trung điểm | Điểm chính giữa của đoạn thẳng/cạnh |
+| Tâm tròn | Tâm của đường tròn / cung tròn / elip |
+| Điểm vuông góc | Chân đường vuông góc trên đường cong mục tiêu |
+| Giao điểm | Điểm giao nhau của hai đường cong |
+| Tiếp điểm | Điểm tiếp xúc của đường tròn |
+| Trên cạnh | Điểm gần nhất bất kỳ trên cạnh |
+| Trên mặt | Vị trí bất kỳ trên bề mặt |
+| Dò gióng | Đường căn gióng / kéo dài dẫn ra từ điểm đã bắt, cùng giao điểm của hai đường dò gióng |
 
-- `追踪` 在状态栏单独开关，不在上述弹出面板中。
-- 捕捉在绘制、拾取点、拖动草图点、按钮拾取时都生效。
-- 草图里还有“磁性”捕捉：画线接近水平/竖直时会自动加水平/竖直约束；接近相切时会加相切约束。
-- 如果总是吸附到不想吸的点，临时关掉对应复选框即可。
+- `Dò gióng` có công tắc riêng trên thanh trạng thái, không nằm trong bảng bật/tắt các loại bắt điểm nói trên.
+- Bắt điểm có hiệu lực trong mọi thao tác vẽ hình, chọn điểm, kéo điểm phác thảo, chọn qua nút bấm.
+- Trong phác thảo còn có cơ chế bắt điểm "từ tính": vẽ đường gần nằm ngang/thẳng đứng sẽ tự động thêm ràng buộc nằm ngang/thẳng đứng; vẽ gần tiếp xúc sẽ tự động thêm ràng buộc tiếp xúc.
+- Nếu con trỏ chuột liên tục hút vào các điểm không mong muốn, bạn chỉ cần tạm thời tắt hộp kiểm tương ứng.
 
-## 3.6 工作平面
+## 3.6 Mặt phẳng làm việc
 
-工作平面决定“画在哪里”和“点落在哪个平面”。
+Mặt phẳng làm việc quyết định "vẽ ở đâu" và "điểm rơi trên mặt phẳng nào".
 
-- **动态工作平面**（默认开启，**基本 → 工作平面 → 动态工作平面**）：每次拾取点时，自动选择离光标最近的 XY/XZ/YZ 世界平面，所以点会落在最自然的平面上。
-- 关闭动态工作平面后，点落在视图当前的工作平面上。
-- **设置工作平面**：弹出对话框，选择 XOY / YOZ / ZOX。
-- **对齐到平面**：拾取一个平面（实体的平面或基准面），把它设为工作平面。
-- **从截面创建**：先拾取一条边，再在边上拾取一点，工作平面垂直于该曲线并经过该点。
+- **Mặt phẳng làm việc động** (mặc định bật, **Cơ bản → Mặt phẳng làm việc → Mặt phẳng làm việc động**): Mỗi lần chọn điểm, hệ thống tự động chọn mặt phẳng thế giới XY/XZ/YZ gần con trỏ nhất, giúp điểm rơi trên mặt phẳng tự nhiên nhất.
+- Khi tắt mặt phẳng làm việc động, điểm sẽ rơi trên mặt phẳng làm việc hiện tại của khung nhìn.
+- **Đặt mặt phẳng làm việc**: Bật hộp thoại để chọn XOY / YOZ / ZOX.
+- **Căn chỉnh theo mặt phẳng**: Chọn một mặt phẳng (mặt phẳng của khối đặc hoặc mặt phẳng chuẩn) để đặt làm mặt phẳng làm việc.
+- **Tạo từ mặt cắt**: Chọn một cạnh trước, sau đó chọn một điểm trên cạnh đó, mặt phẳng làm việc sẽ vuông góc với đường cong và đi qua điểm đó.
 
-新建草图时也会让你选基准面：视口中央出现红/绿/蓝三个半透明方块，分别对应 YZ / ZX / XY 面；点哪个就以哪个面为草图平面。
+Khi tạo phác thảo mới, hệ thống cũng yêu cầu bạn chọn mặt phẳng chuẩn: giữa khung nhìn xuất hiện 3 khối vuông bán trong suốt màu đỏ/xanh lá/xanh dương, tương ứng với mặt YZ / ZX / XY; nhấp vào khối vuông nào thì mặt đó sẽ trở thành mặt phẳng phác thảo.
 
-![选择草图基准面](images/02-sketch-plane-pick.png)
+![Chọn mặt phẳng chuẩn phác thảo](images/02-sketch-plane-pick.png)
 
-在**参数化**标签里，**基准面**（`feature.plane`）会创建一个可复用的基准面节点，类型包括：偏移面、过点平行面、线角度、过点法向、三点、中面、曲线点。基准面会出现在项目树中，可作为草图平面、镜像平面、拔模中性面等引用。
+Trong tab **Tham số**, lệnh **Mặt phẳng chuẩn** (`feature.plane`) sẽ tạo ra một nút mặt phẳng chuẩn có thể tái sử dụng, bao gồm các loại: mặt phẳng lệch (offset), mặt phẳng song song qua điểm, mặt phẳng theo góc nghiêng của đường, mặt phẳng pháp tuyến qua điểm, qua ba điểm, mặt phẳng trung gian, qua điểm trên đường cong. Mặt phẳng chuẩn sẽ xuất hiện trên cây dự án và có thể dùng làm tham chiếu cho mặt phẳng phác thảo, mặt phẳng đối xứng gương, mặt trung hòa góc thoát khuôn...
 
 ---
 
-下一步：[第 4 章 直接建模](04-direct-modeling.md)
+Bước tiếp theo: [Chương 4 Dựng hình trực tiếp](04-direct-modeling.md)

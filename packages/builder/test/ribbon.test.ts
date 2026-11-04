@@ -40,6 +40,10 @@ describe("DefaultRibbon", () => {
 
     test("second tab should be manager tab", () => {
         expect(DefaultRibbon[1].tabName).toBe("ribbon.tab.manager");
+        const managerGroups = DefaultRibbon[1].groups;
+        const otherGroup = managerGroups.find((g) => g.groupName === "ribbon.group.other");
+        expect(otherGroup).toBeDefined();
+        expect(otherGroup?.items).toEqual(["test.performance", "app.manual"]);
     });
 
     test("should not contain any sketch commands without useParametric", () => {

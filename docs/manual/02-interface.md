@@ -1,175 +1,177 @@
-# 2. 界面总览
+# 2. Tổng quan giao diện
 
-Chili3D 的主界面由标题栏、功能区、视口、项目树、属性面板、状态栏和 AI 助手面板组成。不熟悉节点、参数化体、实例等名词时，可先查 [附录 C 术语表](appendix-glossary.md)。
+Giao diện chính của Chili3D bao gồm thanh tiêu đề, thanh công cụ Ribbon, khung nhìn, cây dự án, bảng thuộc tính, thanh trạng thái và bảng điều khiển Trợ lý AI. Khi chưa quen với các khái niệm như nút (node), thân tham số (parametric body), thực thể (instance)... bạn có thể tra cứu trước tại [Phụ lục C Bảng thuật ngữ](appendix-glossary.md).
 
-![基本标签、基础实体与主界面](images/08-basic-tab.png)
+![Tab cơ bản, hình khối cơ sở và giao diện chính](images/08-basic-tab.png)
 
-## 2.1 标题栏
+## 2.1 Thanh tiêu đề
 
-从左到右：
+Từ trái sang phải:
 
-| 区域 | 内容 |
+| Khu vực | Nội dung |
 | --- | --- |
-| 品牌 | 辣椒图标与 `Chili3D - v0.8.0`，点击回到首页 |
-| 首页 | 房子图标，回到启动页 |
-| 快捷命令 | `保存`（Ctrl+S）、`保存到文件`、`撤销`（Ctrl+Z）、`重做`（Ctrl+Y / Ctrl+Shift+Z） |
-| 功能区标签 | `基本`、`参数化`、`管理`；进入草图时右侧临时出现 `草图` |
-| 文档标签 | 每个打开的文档一个标签，点标签切换；`×` 关闭，右侧 `+` 新建文档 |
-| 右侧 | GitHub 仓库链接 |
+| Thương hiệu | Biểu tượng quả ớt và dòng chữ `Chili3D - v0.8.0`, nhấp vào để quay về trang chủ |
+| Trang chủ | Biểu tượng ngôi nhà, quay lại trang khởi động |
+| Lệnh nhanh | `Lưu bản vẽ` (Ctrl+S), `Tải tệp xuống`, `Hoàn tác` (Ctrl+Z), `Làm lại` (Ctrl+Y / Ctrl+Shift+Z) |
+| Tab Ribbon | `Cơ bản`, `Tham số`, `Quản lý`; khi vào phác thảo sẽ tạm thời xuất hiện tab `Phác thảo` ở bên phải |
+| Tab tài liệu | Mỗi tài liệu đang mở có một tab riêng, nhấp vào tab để chuyển đổi; `×` để đóng, dấu `+` bên phải để tạo tài liệu mới |
+| Bên phải | Liên kết đến kho mã nguồn GitHub |
 
-文档标签同时显示文档名。文档名可在项目树根节点 + 属性面板修改，保存后会显示在首页“最近项目”中。
+Tab tài liệu đồng thời hiển thị tên tài liệu. Tên tài liệu có thể đổi tại nút gốc trên cây dự án + bảng thuộc tính, sau khi lưu sẽ hiển thị trong mục "Dự án gần đây" ở trang chủ.
 
-## 2.2 功能区（Ribbon）
+## 2.2 Thanh công cụ Ribbon
 
-功能区是 Office 风格的多标签工具栏。三个常驻标签：
+Ribbon là thanh công cụ đa tab theo phong cách Office. Ba tab thường trực gồm:
 
-### 基本
+### Cơ bản
 
-直接建模命令，按组排列：
+Các lệnh dựng hình trực tiếp, được sắp xếp theo từng nhóm:
 
-| 组 | 内容 |
+| Nhóm | Nội dung |
 | --- | --- |
-| 绘制 | 直线、矩形、圆弧（4 种）、立方体/球体/圆柱/圆锥/棱锥（组内下拉）、挤出、放样/戈登（下拉）、扫略、旋转 |
-| 修改 | 移动、旋转/镜像/阵列、修剪/延伸/抽壳、分割/缝合/简化、圆角/倒角/分解、删除/删除子元素/删除特征 |
-| 转换 | 转多段线、转组合体、转为面/壳/体 |
-| 布尔运算 | 交集、减去、合并 |
-| 工作平面 | 动态工作平面开关、设置工作平面/对齐到平面/从截面创建 |
-| 工具 | 曲线投影、创建组、相交曲线/偏移/复制形状，下拉里还有修复形状/检查形状 |
-| 测量 | 长度、角度、选择（汇总面积/体积） |
-| 注释 | 尺寸、半径/直径/角度、文字 |
-| 场景 | 从相机创建（视角书签） |
-| 导入/导出 | 导入、导出 |
-| 其他 | 微信群二维码、AI 助手开关 |
+| Vẽ | Đoạn thẳng, hình chữ nhật, cung tròn (4 loại), khối hộp/khối cầu/khối trụ/khối nón/kim tự tháp (menu thả xuống), đùn khối, loft/mặt Gordon (thả xuống), quét dẫn, xoay tròn |
+| Chỉnh sửa | Di chuyển, xoay/đối xứng gương/mảng, cắt tỉa/kéo dài/làm rỗng, phân tách/khâu ghép/đơn giản hóa, bo góc/vát mép/phân rã, xóa nút/xóa phần tử con/xóa tính năng |
+| Chuyển đổi | Chuyển thành đường bao dây, chuyển thành khối phức hợp, chuyển thành mặt/vỏ/khối đặc |
+| Phép toán Boolean | Giao nhau, trừ khối, hợp nhất |
+| Mặt phẳng làm việc | Bật/tắt mặt phẳng làm việc động, đặt mặt phẳng làm việc/căn chỉnh theo mặt phẳng/tạo từ mặt cắt |
+| Công cụ | Chiếu đường cong, tạo nhóm, đường cong giao nhau/offset/sao chép hình, trong menu thả xuống còn có sửa chữa hình/kiểm tra hình |
+| Đo lường | Chiều dài, góc, chọn đối tượng (tổng hợp diện tích/thể tích) |
+| Chú thích | Kích thước, bán kính/đường kính/góc, chữ văn bản |
+| Khung cảnh | Tạo từ camera (đánh dấu góc nhìn) |
+| Nhập/Xuất | Nhập bản vẽ, xuất bản vẽ |
+| Khác | Mã QR nhóm hỗ trợ WeChat, bật/tắt Trợ lý AI |
 
-### 参数化
+### Tham số
 
-![参数化功能区](images/07-parametric-tab.png)
+![Thanh công cụ tham số](images/07-parametric-tab.png)
 
-| 组 | 内容 |
+| Nhóm | Nội dung |
 | --- | --- |
-| 草图 | 新建草图、编辑草图 |
-| 创建 | 基准面、立方体/圆柱/球体/圆锥（下拉）、拉伸、旋转/放样/扫掠、加厚/筋/螺旋线 |
-| 特征 | 推拉、圆角/倒角/修改圆角/修改倒角（下拉）、拔模、抽壳、偏移面/分割/孔、移除特征/线性/环形/曲线阵列（下拉）、镜像 |
-| 布尔运算 | 合并、减去、交集 |
-| 节点操作 | 移动、旋转/镜像/使独立、删除/油漆桶/阵列 |
-| 注释 | 与基本标签相同 |
-| 导入/导出 | 与基本标签相同 |
-| 其他 | 变量、微信群、AI 助手 |
+| Phác thảo | Tạo phác thảo mới, chỉnh sửa phác thảo |
+| Tạo | Mặt phẳng chuẩn, khối hộp/khối trụ/khối cầu/khối nón (thả xuống), đùn khối, xoay/loft/quét dẫn, làm dày/gân/đường xoắn ốc |
+| Tính năng | Đẩy-kéo, bo góc/vát mép/sửa bo góc/sửa vát mép (thả xuống), góc vát thoát khuôn, làm rỗng, offset mặt/phân tách/lỗ, gỡ tính năng/mảng tuyến tính/mảng xoay/mảng theo đường dẫn (thả xuống), đối xứng gương |
+| Phép toán Boolean | Hợp nhất, trừ khối, giao nhau |
+| Thao tác nút | Di chuyển, xoay/đối xứng/tách độc lập, xóa/sơn màu/mảng |
+| Chú thích | Giống tab Cơ bản |
+| Nhập/Xuất | Giống tab Cơ bản |
+| Khác | Biến số, nhóm WeChat, Trợ lý AI |
 
-### 管理
+### Quản lý
 
-目前只有 `性能测试` 一个命令（在新建文档中创建 20×20×20 个随机盒子并报告耗时），用于粗略检查内核与渲染性能。
+Hiện tại chỉ có lệnh `Kiểm tra hiệu năng` (tạo 20×20×20 khối hộp ngẫu nhiên trong một tài liệu mới và báo cáo thời gian xử lý), dùng để kiểm tra sơ bộ hiệu năng của nhân dựng hình và bộ kết xuất.
 
-### 草图（上下文标签）
+### Phác thảo (Tab ngữ cảnh)
 
-只有进入草图会话时才会出现，包含退出草图、绘图、约束、标注、修改、其他五组：见 [第 7 章](07-sketch.md)。
+Chỉ xuất hiện khi vào phiên làm việc phác thảo, bao gồm 5 nhóm: Thoát phác thảo, Vẽ, Ràng buộc, Kích thước, Chỉnh sửa, Khác: xem chi tiết tại [Chương 7](07-sketch.md).
 
-### 组的折叠下拉
+### Nút gộp thả xuống của nhóm
 
-组名右侧带小三角的按钮是下拉组（split button）：点击组名本身执行“主”命令，点小三角展开其余命令。例如“修改 → 旋转”主按钮是旋转，下拉里还有镜像、阵列。
+Nút có mũi tên tam giác nhỏ bên phải tên nhóm là nút phân tách (split button): nhấp trực tiếp vào nút chính để thực thi lệnh "chính", nhấp vào tam giác nhỏ để mở rộng các lệnh còn lại. Ví dụ: nút chính của "Chỉnh sửa → Xoay" là xoay, mở rộng bên dưới còn có đối xứng gương và mảng.
 
-## 2.3 视口
+<a id="23-视口"></a>
+## 2.3 Khung nhìn
 
-视口是中央的 3D 区域，左上角显示当前显示模式，例如 `[ 实体和线框 ]`。
+Khung nhìn là khu vực 3D ở trung tâm, góc trên bên trái hiển thị chế độ hiển thị hiện tại, ví dụ `[ Khối đặc và khung dây ]`.
 
-### 显示模式
+### Chế độ hiển thị
 
-点左上角的 `[ 实体和线框 ]` 展开菜单：
+Nhấp vào dòng chữ `[ Khối đặc và khung dây ]` ở góc trên bên trái để mở menu:
 
-- **实体**：只显示着色实体。
-- **线框**：只显示边线。
-- **实体和线框**：着色 + 边线，默认。
+- **Khối đặc**: Chỉ hiển thị bề mặt khối được tô bóng.
+- **Khung dây**: Chỉ hiển thị các cạnh viền.
+- **Khối đặc và khung dây**: Tô bóng + cạnh viền (mặc định).
 
-### 相机控件（视口右侧竖排）
+### Điều khiển Camera (Dải nút dọc bên phải khung nhìn)
 
-| 图标 | 功能 |
+| Biểu tượng | Chức năng |
 | --- | --- |
-| 正交视图图标 | 切到正交投影 |
-| 透视视图图标 | 切到透视投影（默认） |
-| 四角框 | 适应内容（优先当前选择；无选择时框场景） |
-| 放大镜 + | 以视口中心放大 |
-| 放大镜 − | 以视口中心缩小 |
+| Biểu tượng hình chiếu trực diện | Chuyển sang phép chiếu trực giao (Orthographic) |
+| Biểu tượng phối cảnh | Chuyển sang phép chiếu phối cảnh (Perspective, mặc định) |
+| Khung bốn góc | Khớp nội dung (ưu tiên đối tượng đang chọn; nếu không chọn gì thì khớp toàn bộ khung cảnh) |
+| Kính lúp + | Phóng to lấy tâm khung nhìn làm chuẩn |
+| Kính lúp − | Thu nhỏ lấy tâm khung nhìn làm chuẩn |
 
-### 坐标轴指示器
+### Trục tọa độ chỉ hướng
 
-视口右上角的 X/Y/Z 彩色小球是坐标轴指示器，不是视图立方体：
+Quả cầu màu X/Y/Z ở góc trên bên phải khung nhìn là bộ chỉ hướng trục tọa độ, không phải khối lập phương điều hướng:
 
-- 点任意小球：相机转到沿该轴正视。
-- 按住拖动：自由环绕。
+- Nhấp vào quả cầu bất kỳ: Camera xoay nhìn trực diện theo trục đó.
+- Nhấn giữ và kéo chuột: Xoay tự do quanh mô hình.
 
-### 视角书签（场景）
+### Đánh dấu góc nhìn (Khung cảnh)
 
-点 **基本 → 场景 → 从相机创建**，会把当前相机位置、目标点和上方向保存为一个“场景”书签，出现在视口底部中央。之后：
+Nhấp **Cơ bản → Khung cảnh → Tạo từ camera**, hệ thống sẽ lưu vị trí camera, điểm ngắm và hướng lên hiện tại thành một thẻ đánh dấu "khung cảnh", xuất hiện ở chính giữa đáy khung nhìn. Sau đó:
 
-- 点书签：相机飞回该视角。
-- 点书签右侧齿轮：重命名。
-- 点 `×`：删除书签。
+- Nhấp vào thẻ: Camera bay mượt về góc nhìn đó.
+- Nhấp vào bánh răng bên phải thẻ: Đổi tên.
+- Nhấp vào dấu `×`: Xóa thẻ đánh dấu.
 
-## 2.4 项目树
+## 2.4 Cây dự án
 
-左上侧是项目树，显示当前文档的节点层级。
+Phía trên bên trái là cây dự án, hiển thị cấu trúc phân cấp các nút của tài liệu hiện tại.
 
-![项目树与属性面板](images/06-feature-list.png)
+![Cây dự án và bảng thuộc tính](images/06-feature-list.png)
 
-- **选择**：单击选中；`Ctrl+单击` 切换多选（macOS 也用 `Ctrl`，不是 `Cmd`）；`Shift+单击` 连续范围选择。
-- **可见性**：行尾的眼睛图标切换显示/隐藏。父节点隐藏时，子节点的眼睛会变灰。
-- **重命名**：树里没有重命名。选中节点后在属性面板改“名称”。
-- **层级**：树支持文件夹（工具栏第一个图标）和拖放。把行拖到**文件夹**上会成为它的子节点；拖到普通行上会插入到该行之前（同一父级）。参数化体下面的隐藏输入（被消耗的工具）不能单独拖走。
-- **警告标记**：节点右侧出现 `!` 时，悬停可看原因（例如草图的外部参考丢失）。
-- **工具栏**：新建文件夹、全部折叠、全部展开。
-- **草图**：双击草图节点可以进入草图编辑会话。
+- **Chọn đối tượng**: Nhấp chuột trái để chọn; `Ctrl+nhấp chuột` để bật/tắt chọn nhiều đối tượng (trên macOS cũng dùng `Ctrl`, không dùng `Cmd`); `Shift+nhấp chuột` để chọn một dải liên tục.
+- **Hiển thị**: Biểu tượng con mắt ở cuối hàng để bật/tắt hiển thị hoặc ẩn. Khi nút cha bị ẩn, biểu tượng mắt của các nút con sẽ bị xám mờ.
+- **Đổi tên**: Không thể đổi tên trực tiếp trên cây. Chọn nút rồi sửa mục "Tên đối tượng" trong bảng thuộc tính.
+- **Phân cấp**: Cây hỗ trợ thư mục (biểu tượng đầu tiên trên thanh công cụ) và kéo thả. Kéo một hàng vào **thư mục** sẽ biến nó thành nút con của thư mục đó; kéo vào hàng thông thường sẽ chèn vào ngay trước hàng đó (cùng cấp cha). Các đầu vào ẩn bên dưới thân tham số (các công cụ đã bị tiêu thụ) không thể kéo tách riêng ra ngoài.
+- **Dấu hiệu cảnh báo**: Khi bên phải nút xuất hiện dấu `!`, rê chuột vào để xem nguyên nhân (ví dụ: tham chiếu ngoài của phác thảo bị mất).
+- **Thanh công cụ**: Tạo thư mục mới, thu gọn tất cả, mở rộng tất cả.
+- **Phác thảo**: Nhấp đúp vào nút phác thảo để vào phiên chỉnh sửa phác thảo.
 
-## 2.5 属性面板
+## 2.5 Bảng thuộc tính
 
-左下侧显示当前选中对象的属性。先在项目树确认选中的是目标节点；常见的几块：
+Phía dưới bên trái hiển thị các thuộc tính của đối tượng đang được chọn. Trước tiên hãy xác nhận trên cây dự án rằng bạn đã chọn đúng nút đích; các khối thường gặp:
 
-1. **名称**：文本输入，回车提交。
-2. **矩阵**（可展开）：位移、旋转、缩放，只出现在支持直接变换的节点上。参数化体的移动会记录为特征，草图也不提供直接矩阵编辑。
-3. **形状参数**：只显示该节点实际提供的可编辑字段，例如立方体的长/宽/高、矩形的宽/高、圆的半径、圆柱的半径与高度、挤出的长度。改动会立刻重建该节点，算作一次撤销步骤。
-4. **材质**：显示当前材质名；点击色块打开材质编辑器（见 [第 5.6 节](05-modify-convert-measure.md#56-材质与外观)）。
-5. **特征**（仅参数化体）：有序特征列表，每行可展开参数、重排、抑制、重命名、重新选择和删除。详见 [第 6 章](06-parametric-modeling.md)。
+1. **Tên đối tượng**: Nhập văn bản, nhấn Enter để xác nhận.
+2. **Ma trận** (có thể mở rộng): Tịnh tiến, xoay, tỷ lệ thu phóng, chỉ xuất hiện trên các nút hỗ trợ biến đổi trực tiếp. Di chuyển thân tham số sẽ được ghi lại thành tính năng, phác thảo cũng không hỗ trợ sửa ma trận trực tiếp.
+3. **Tham số hình học**: Chỉ hiển thị các trường có thể chỉnh sửa thực tế của nút đó, ví dụ dài/rộng/cao của khối hộp, rộng/cao của hình chữ nhật, bán kính của đường tròn, bán kính và chiều cao của khối trụ, chiều dài đùn khối. Thay đổi sẽ tái tạo lại nút đó ngay lập tức và được tính là một bước hoàn tác.
+4. **Vật liệu**: Hiển thị tên vật liệu hiện tại; nhấp vào ô màu để mở trình chỉnh sửa vật liệu (xem [Mục 5.6](05-modify-convert-measure.md#56-材质与外观)).
+5. **Tính năng** (chỉ có ở thân tham số): Danh sách tính năng có thứ tự, mỗi hàng có thể mở rộng tham số, sắp xếp lại thứ tự, ẩn/nén, đổi tên, chọn lại tham chiếu và xóa. Chi tiết xem tại [Chương 6](06-parametric-modeling.md).
 
-属性面板的编辑即时生效，并且与 AI 的 `set_node_properties` 修改的是同一批底层属性。但它不是原命令面板的完整副本：**只有实际列出的字段才可编辑**。没有出现的轮廓、旋转轴、扫掠路径等输入不能在这里补改；这类直接建模结果通常只能撤销后重做，或用参数化体重建，详见 [第 4.6 节](04-direct-modeling.md#46-直接建模的编辑方式)。
+Các chỉnh sửa trong bảng thuộc tính có hiệu lực ngay lập tức, và cùng sửa đổi các thuộc tính tầng dưới giống như lệnh `set_node_properties` của AI. Tuy nhiên đây không phải là bản sao chép đầy đủ của bảng lệnh ban đầu: **chỉ có những trường thực sự được liệt kê mới có thể chỉnh sửa**. Những đầu vào không xuất hiện như biên dạng cắt, trục xoay, đường dẫn quét... không thể bổ sung sửa đổi ở đây; những kết quả dựng hình trực tiếp dạng này thường chỉ có thể hoàn tác rồi làm lại, hoặc tái tạo bằng thân tham số, xem chi tiết tại [Mục 4.6](04-direct-modeling.md#46-直接建模的编辑方式).
 
-修改后先检查视口和项目树中的结果。若形状异常或改错了对象，立即 `Ctrl+Z` 撤销这次编辑；不要继续在错误结果上叠加命令。
+Sau khi sửa đổi, trước tiên hãy kiểm tra kết quả trong khung nhìn và trên cây dự án. Nếu hình dạng bất thường hoặc sửa nhầm đối tượng, hãy lập tức nhấn `Ctrl+Z` để hoàn tác lần chỉnh sửa này; không nên tiếp tục xếp chồng các lệnh khác lên kết quả đã sai.
 
-## 2.6 状态栏
+## 2.6 Thanh trạng thái
 
-底部状态栏分两半：
+Thanh trạng thái ở đáy màn hình chia làm hai nửa:
 
-- **左**：当前提示。默认显示导航方式（`Middle 平移视图，Shift+Middle 旋转视图，滚轮缩放视图`）；执行命令时显示下一步要做什么，例如“请选择面”“请选择边”“回车结束”。**遇到不确定时，先看这一行。**
-- **右**：`捕捉` 复选框控制总开关，旁边的小箭头展开 8 个捕捉类型；`追踪` 单独开关，含义见 [第 3.5 节](03-view-navigation-selection.md#35-捕捉与追踪)。`错误: n` 打开“错误记录”，可查看最近的错误详情或清空记录。
+- **Bên trái**: Dòng nhắc hiện tại. Mặc định hiển thị thao tác điều hướng (`Chuột giữa kéo lia khung nhìn, Shift+Chuột giữa xoay khung nhìn, Con lăn cuộn thu phóng khung nhìn`); khi thực thi lệnh sẽ hiển thị việc cần làm tiếp theo, ví dụ "Vui lòng chọn mặt", "Vui lòng chọn cạnh", "Nhấn Enter để kết thúc". **Khi thấy băn khoăn chưa rõ bước tiếp theo, hãy nhìn vào dòng này trước tiên.**
+- **Bên phải**: Hộp kiểm `Bắt điểm` điều khiển công tắc chính, mũi tên nhỏ bên cạnh mở rộng 8 kiểu bắt điểm; công tắc `Dò gióng` riêng biệt, ý nghĩa xem tại [Mục 3.5](03-view-navigation-selection.md#35-捕捉与追踪). Mục `Lỗi: n` mở "Nhật ký lỗi", có thể xem chi tiết các lỗi gần đây hoặc xóa sạch nhật ký.
 
-## 2.7 命令面板
+<a id="27-命令面板"></a>
+## 2.7 Bảng điều khiển lệnh
 
-执行需要参数的命令时，视口上方会出现一个浮动面板，显示命令图标、名称、可调选项以及确认/取消按钮。
+Khi thực thi các lệnh cần nhập tham số, phía trên khung nhìn sẽ xuất hiện một bảng điều khiển nổi, hiển thị biểu tượng lệnh, tên lệnh, các tùy chọn có thể điều chỉnh cùng các nút xác nhận/hủy bỏ.
 
-![拉伸命令面板](images/05-extrude-panel.png)
+![Bảng lệnh đùn khối](images/05-extrude-panel.png)
 
-- 选项包括下拉框（操作、终止条件）、文本框（深度、偏移、角度）、复选框（对称、反向、合并）。
-- 文本输入**在失焦或按回车时提交**，随后视口预览会更新。
-- 需要拾取时，面板右侧显示已选数量、绿色对勾（确认）和红色叉（取消）。
-- `Esc` 取消整个命令；`Enter` / `Space` 确认当前拾取或提交拖拽值。
+- Tùy chọn bao gồm hộp thả xuống (thao tác, điều kiện kết thúc), ô nhập văn bản (độ sâu, khoảng lệch, góc), hộp kiểm (đối xứng, đảo hướng, hợp nhất).
+- Nhập văn bản **sẽ xác nhận áp dụng khi mất tiêu điểm (blur) hoặc khi nhấn Enter**, sau đó bản xem trước trong khung nhìn sẽ cập nhật.
+- Khi cần chọn đối tượng, phía bên phải bảng hiển thị số lượng đã chọn, dấu tích xanh (xác nhận) và dấu chéo đỏ (hủy bỏ).
+- `Esc` hủy toàn bộ lệnh; `Enter` / `Space` xác nhận thao tác chọn hiện tại hoặc áp dụng giá trị kéo rê.
 
-## 2.8 AI 助手面板
+## 2.8 Bảng điều khiển Trợ lý AI
 
-右侧停靠的 AI 助手面板：可以关闭、拖出成浮动窗口、再拖回停靠。详情见 [第 9 章](09-ai-assistant.md)。
+Bảng điều khiển Trợ lý AI neo ở cạnh phải: có thể đóng lại, kéo ra thành cửa sổ nổi, rồi kéo thả neo trở lại. Chi tiết xem tại [Chương 9](09-ai-assistant.md).
 
-![AI 助手](images/13-ai-panel.png)
+![Trợ lý AI](images/13-ai-panel.png)
 
-## 2.9 Pro 上下文“编辑”标签
+## 2.9 Tab ngữ cảnh "Chỉnh sửa" của bản Pro
 
-仅 **Chili3D Pro** 提供。双击视口中的模型并进入直接编辑后，功能区自动显示 **编辑** 标签；退出后自动关闭。
+Chỉ có trên phiên bản **Chili3D Pro**. Khi nhấp đúp vào mô hình trong khung nhìn để vào chế độ chỉnh sửa trực tiếp, thanh công cụ Ribbon sẽ tự động hiển thị tab **Chỉnh sửa**; khi thoát ra sẽ tự động đóng lại.
 
-| 组 | 内容 |
+| Nhóm | Nội dung |
 | --- | --- |
-| 分割 | 线、圆弧（4 种）、圆/椭圆、矩形/多边形、偏移；除偏移外的绘制工具可切换为辅助线 |
-| 修改 | 移动、复制、旋转、镜像、阵列；处理当前节点的子形状或分割线 |
-| 工具 | 推拉、偏移面、简化、修复、圆角/倒角、特征删除 |
-| 管理 | 编辑设置（隔离模式、拖拽编辑圆角）、退出 |
+| Phân tách | Đoạn thẳng, cung tròn (4 loại), đường tròn/elip, hình chữ nhật/đa giác, offset; các công cụ vẽ ngoại trừ offset đều có thể chuyển thành đường hỗ trợ |
+| Chỉnh sửa | Di chuyển, sao chép, xoay, đối xứng gương, mảng; thao tác trên hình con hoặc đường phân tách của nút hiện tại |
+| Công cụ | Đẩy-kéo, offset mặt, đơn giản hóa, sửa chữa, bo góc/vát mép, xóa tính năng |
+| Quản lý | Cài đặt chỉnh sửa (chế độ cô lập, kéo rê sửa bo góc), Thoát |
 
-编辑时只处理当前可编辑节点，其他对象按设置被锁定或隐藏。参数化节点在双击后需要先转换，转换会丢失原特征列表；完整操作和注意事项见 [第 13 章 Pro 直接编辑](13-pro-direct-editing.md)。
+Khi chỉnh sửa chỉ thao tác trên nút có thể chỉnh sửa hiện tại, các đối tượng khác sẽ bị khóa hoặc ẩn tùy theo cài đặt. Nút tham số khi nhấp đúp cần được chuyển đổi trước, việc chuyển đổi sẽ làm mất danh sách tính năng ban đầu; hướng dẫn thao tác đầy đủ và các lưu ý xem tại [Chương 13 Pro chỉnh sửa trực tiếp](13-pro-direct-editing.md).
 
 ---
 
-下一步：[第 3 章 视图、选择与捕捉](03-view-navigation-selection.md)
+Bước tiếp theo: [Chương 3 Góc nhìn, chọn đối tượng và bắt điểm](03-view-navigation-selection.md)

@@ -1,169 +1,171 @@
-# 4. 直接建模：绘图、构造与布尔
+# 4. Dựng hình trực tiếp: Vẽ hình, cấu trúc và Boolean
 
-直接建模（**基本** 标签）直接操作几何：每条命令生成一个形状节点，或用一个新形状替换旧节点，**没有参数化特征历史**。优点是快、对导入的模型同样适用；改尺寸时只能编辑属性面板实际提供的字段，或者撤销后重做、重新绘制，不能按完整的命令历史回溯修改。
+Dựng hình trực tiếp (tab **Cơ bản**) thao tác trực tiếp trên hình học: mỗi lệnh sẽ tạo ra một nút hình dạng mới hoặc thay thế nút cũ bằng một hình dạng mới, **không lưu lại lịch sử tính năng tham số**. Ưu điểm là nhanh, áp dụng linh hoạt cho cả các mô hình nhập vào từ bên ngoài; khi sửa đổi kích thước, bạn chỉ có thể chỉnh sửa các trường dữ liệu mà bảng thuộc tính thực sự cung cấp, hoặc phải hoàn tác rồi làm lại / vẽ lại từ đầu, không thể quay ngược dòng thời gian để sửa đổi toàn bộ lịch sử lệnh.
 
-需要保留可编辑特征关系时，请使用 **参数化** 标签中的参数化体，见 [第 6 章](06-parametric-modeling.md)。
+Nếu cần lưu lại các mối quan hệ tính năng có thể chỉnh sửa, vui lòng dùng thân tham số trong tab **Tham số**, xem chi tiết tại [Chương 6](06-parametric-modeling.md).
 
-![直接建模创建的蓝色带孔法兰](images/15-direct-modeling.png)
+![Mặt bích xanh có lỗ tạo bằng dựng hình trực tiếp](images/15-direct-modeling.png)
 
-*直接建模示例：底板、圆柱凸台与孔组成的法兰，结果不依赖参数化特征链。*
+*Ví dụ dựng hình trực tiếp: Mặt bích gồm tấm đáy, vấu lồi hình trụ và lỗ, kết quả không phụ thuộc vào chuỗi tính năng tham số.*
 
-## 4.1 通用操作方式
+## 4.1 Phương thức thao tác chung
 
-- 命令启动后，状态栏会说明下一步要拾取什么。
-- 拾取时悬停高亮，左键确认；需要多个对象时连续点击，`Enter`/`Space` 结束。
-- `Esc` 取消当前命令或当前拾取。
-- 命令面板里的选项随时可改，改完预览会刷新。
-- 每完成一次命令就是一次撤销步骤（Ctrl+Z）。
-- 提交前检查选中的对象、预览和会消耗源节点的选项；提交后检查结果节点与源节点是否符合预期。选错输入或误删源节点时先撤销，不要在错误结果上继续建模。
+- Sau khi khởi động lệnh, thanh trạng thái sẽ hướng dẫn rõ bước tiếp theo cần chọn đối tượng gì.
+- Khi chọn đối tượng, rê chuột để làm nổi bật (highlight), nhấp chuột trái để xác nhận; khi cần chọn nhiều đối tượng thì nhấp liên tiếp, nhấn `Enter`/`Space` để kết thúc.
+- `Esc` để hủy lệnh hiện tại hoặc hủy lượt chọn đối tượng hiện tại.
+- Các tùy chọn trong bảng điều khiển lệnh có thể thay đổi bất kỳ lúc nào, sau khi sửa xong bản xem trước sẽ làm mới ngay.
+- Mỗi lần hoàn thành một lệnh được tính là một bước hoàn tác (Ctrl+Z).
+- Trước khi xác nhận, hãy kiểm tra kỹ các đối tượng được chọn, bản xem trước và các tùy chọn có nguy cơ tiêu thụ nút nguồn; sau khi xác nhận, hãy kiểm tra xem nút kết quả và nút nguồn có đúng như mong muốn không. Nếu chọn nhầm đầu vào hoặc vô tình xóa mất nút nguồn, hãy hoàn tác ngay, không nên tiếp tục dựng hình trên kết quả sai sót.
 
-## 4.2 绘制组
+## 4.2 Nhóm Vẽ (Draw)
 
-### 直线（L）
+### Đoạn thẳng (L)
 
-拾取起点、终点。默认**连续绘制**：画完一段后自动从终点继续，按 `Esc` 或 `Enter` 结束整条链。命令面板的“相连”复选框控制这个行为。
+Nhấp chọn điểm đầu, điểm cuối. Mặc định là **vẽ liên tục**: sau khi vẽ xong một đoạn sẽ tự động nối tiếp từ điểm cuối, nhấn `Esc` hoặc `Enter` để kết thúc toàn bộ chuỗi. Hộp kiểm "Nối liền" trong bảng lệnh điều khiển hành vi này.
 
-### 矩形（R）
+### Hình chữ nhật (R)
 
-拾取第一个角点、对角点。也可以在拾取第一点后直接键入 `宽,高` 回车，得到精确尺寸。
+Nhấp chọn điểm góc thứ nhất, rồi chọn điểm góc đối diện. Bạn cũng có thể gõ trực tiếp `Rộng,Cao` rồi nhấn Enter ngay sau điểm thứ nhất để nhận kích thước chính xác.
 
-### 圆（C）
+### Đường tròn (C)
 
-拾取圆心、半径点。键入数值可直接定半径。
+Nhấp chọn tâm, điểm bán kính. Có thể gõ giá trị số trực tiếp để cố định bán kính.
 
-### 椭圆
+### Hình Elip
 
-拾取中心 → 长轴端点 → 短轴端点。三个点决定椭圆的平面、朝向和两个半轴。
+Nhấp chọn tâm → điểm mút trục lớn → điểm mút trục nhỏ. Ba điểm này quyết định mặt phẳng, hướng và hai bán trục của elip.
 
-### 正多边形
+### Đa giác đều
 
-拾取中心、半径点。命令面板的“边数”默认为 6。
+Nhấp chọn tâm, điểm bán kính. Mục "Số cạnh" trong bảng lệnh mặc định là 6.
 
-> 圆、椭圆、正多边形和多段线的命令面板里有 **“面”** 复选框：勾选（默认）生成平面片体，取消则生成线框。需要后续拉伸时，片体通常更方便。
+> Trong bảng lệnh của Đường tròn, Elip, Đa giác đều và Đa giác có hộp kiểm **"Mặt"**: tích chọn (mặc định) sẽ tạo ra một tấm mặt phẳng, bỏ tích sẽ tạo ra khung dây (wire). Khi cần đùn khối sau đó, tấm mặt phẳng thường thuận tiện hơn.
 
-### 圆弧（4 种）
+### Cung tròn (4 loại)
 
-| 命令 | 步骤 |
+| Lệnh | Các bước thực hiện |
 | --- | --- |
-| 圆弧 | 圆心 → 半径 → 起始方向/扫掠角 |
-| 两点圆弧 | 起点 → 终点 → 弧高（凸起方向与高度） |
-| 三点圆弧 | 起点 → 弧上的点 → 终点 |
-| 相切相切半径圆弧 | 选两条相邻边 → 半径 |
+| Cung tròn | Tâm → Bán kính → Hướng bắt đầu / Góc quét |
+| Cung tròn qua 2 điểm | Điểm đầu → Điểm cuối → Độ cao cung (hướng và độ lồi) |
+| Cung tròn qua 3 điểm | Điểm đầu → Điểm trên cung → Điểm cuối |
+| Cung tròn tiếp xúc tiếp xúc bán kính (TTR) | Chọn hai cạnh liền kề → Bán kính |
 
-### 立方体（B）
+### Khối hộp (B)
 
-拾取底面的第一个角点、对角点，再拾取高度点。长、宽、高分别对应 `dx / dy / dz`，可在属性面板修改。
+Nhấp chọn điểm góc thứ nhất, góc đối diện trên mặt đáy, rồi nhấp chọn điểm chiều cao. Chiều dài, chiều rộng, chiều cao tương ứng với `dx / dy / dz`, có thể chỉnh sửa trong bảng thuộc tính.
 
-### 球体（S）
+### Khối cầu (S)
 
-拾取球心、半径点。
+Nhấp chọn tâm cầu, điểm bán kính.
 
-### 圆柱（Y）
+### Khối trụ (Y)
 
-拾取底面圆心、半径点、高度点。圆柱沿拾取平面的法向生成。
+Nhấp chọn tâm đáy, điểm bán kính, điểm chiều cao. Khối trụ được tạo dọc theo hướng pháp tuyến của mặt phẳng được chọn.
 
-### 圆锥（N）
+### Khối nón (N)
 
-拾取底面圆心、半径点、高度点。
+Nhấp chọn tâm đáy, điểm bán kính, điểm chiều cao của đỉnh nón.
 
-### 棱锥
+### Khối kim tự tháp
 
-拾取底面第一个角点、对角点、锥顶高度点。
+Nhấp chọn điểm góc thứ nhất, góc đối diện của mặt đáy, rồi chọn điểm chiều cao đỉnh chóp.
 
-> **挤出、旋转、扫掠共同注意：** 命令面板的“删除对象”默认勾选。若拾取的是完整轮廓节点，提交后整个节点会被消耗；以整个节点拾取的旋转轴或扫掠路径也会被消耗。取消勾选可保留源节点，但结果保存的是创建时的几何，之后修改源轮廓、轴或路径不会联动更新。**这不是参数化历史。** 还要后续编辑输入时请先取消勾选；误消耗源节点时立即 `Ctrl+Z`，整次命令可以一起撤销。
+> **Lưu ý chung cho Đùn khối, Xoay tròn, Quét dẫn:** Tùy chọn "Xóa đối tượng" trong bảng lệnh mặc định được tích chọn. Nếu đối tượng được chọn là một nút biên dạng hoàn chỉnh, sau khi xác nhận toàn bộ nút đó sẽ bị tiêu thụ; trục xoay hoặc đường dẫn quét nếu chọn bằng cả nút cũng sẽ bị tiêu thụ. Bỏ tích chọn này có thể giữ lại các nút nguồn, nhưng kết quả chỉ lưu lại hình học tại thời điểm tạo, việc chỉnh sửa biên dạng nguồn, trục hoặc đường dẫn sau đó sẽ không tự động cập nhật liên kết. **Đây không phải là lịch sử tham số.** Nếu còn muốn chỉnh sửa đầu vào sau này, hãy bỏ tích chọn trước; nếu lỡ tiêu thụ mất nút nguồn, nhấn `Ctrl+Z` ngay để hoàn tác toàn bộ lệnh cùng lúc.
 
-### 挤出（P）
+### Đùn khối (P)
 
-直接建模的挤出是“从已有轮廓拉出几何”：
+Đùn khối trong dựng hình trực tiếp là "kéo dài hình học từ một biên dạng có sẵn":
 
-1. 选择要挤出的面、边或线框（包括草图轮廓）。
-2. 沿法向拖拽箭头设置距离，或在命令面板输入数值。
-3. `Enter` 确认。
+1. Chọn mặt, cạnh hoặc đường bao dây cần đùn (bao gồm cả biên dạng phác thảo).
+2. Kéo mũi tên dọc theo hướng pháp tuyến để đặt khoảng cách, hoặc nhập giá trị số trong bảng lệnh.
+3. Nhấn `Enter` để xác nhận.
 
-与参数化拉伸不同，这里生成的是一个独立的挤出结果节点，不会进入参数化体的特征列表。挤出长度随后可在属性面板修改，但这不会改变原轮廓，也不会建立两者的联动。
+Khác với đùn khối tham số, ở đây tạo ra một nút kết quả đùn khối độc lập, không đi vào danh sách tính năng của thân tham số. Chiều dài đùn sau đó có thể sửa trong bảng thuộc tính, nhưng điều này không làm thay đổi biên dạng nguồn ban đầu và cũng không thiết lập quan hệ liên kết giữa hai bên.
 
-### 放样 / 戈登曲面
+### Nối mặt cắt (Loft) / Bề mặt Gordon
 
-- **放样**：按预期顺序依次选择多个截面（面、草图轮廓或闭合线框），`Enter` 结束选择。命令面板可设“实体”“直纹曲面”“连续性”“删除对象”。
-- **戈登曲面**：至少 2 条轮廓边 + 2 条引导边，先选轮廓，再选引导。适合用一组交叉曲线生成曲面；提交前检查两组曲线是否形成相交网格，失败时先修正数量和交叉关系再重试。
+- **Nối mặt cắt (Loft)**: Lần lượt chọn các mặt cắt theo đúng thứ tự dự kiến (mặt, biên dạng phác thảo hoặc đường bao dây khép kín), nhấn `Enter` để kết thúc chọn. Bảng lệnh có thể thiết lập "Khối đặc", "Mặt kẻ (ruled surface)", "Độ liên tục", "Xóa đối tượng".
+- **Bề mặt Gordon**: Cần ít nhất 2 cạnh biên dạng + 2 cạnh dẫn hướng, chọn biên dạng trước rồi chọn dẫn hướng sau. Thích hợp để tạo mặt cong từ một lưới đường cong cắt nhau; trước khi xác nhận hãy kiểm tra xem hai nhóm đường cong có tạo thành lưới giao cắt chuẩn xác không, nếu thất bại hãy chỉnh lại số lượng và mối quan hệ giao cắt rồi thử lại.
 
-### 扫略（扫掠）
+### Quét đường dẫn (Sweep)
 
-界面按钮目前写作 `扫略`。先选**截面**（边或线框，可多选），确认后再选**路径**（一条线框或逐段拾取的连续边链）。命令面板的“圆角”控制路径拐角是否做圆滑过渡。若一直没有预览或提交失败，先检查截面是否有效、路径是否连通，再重新拾取。
+Trên giao diện nút hiện có tên là `Quét đường dẫn`. Chọn **Mặt cắt** trước (cạnh hoặc đường bao dây, có thể chọn nhiều), xác nhận xong chọn tiếp **Đường dẫn** (một đường bao dây hoặc chuỗi cạnh liên tục được chọn từng đoạn). Mục "Bo góc" trong bảng lệnh điều khiển việc có làm trơn mượt các khúc cua của đường dẫn hay không. Nếu không thấy bản xem trước hoặc xác nhận thất bại, hãy kiểm tra xem mặt cắt có hợp lệ và đường dẫn có liên tục không rồi chọn lại.
 
-### 旋转
+### Xoay tròn khối (Revolve)
 
-先选截面，再选旋转轴。旋转轴必须是**直线边**，且不能把截面自身作为轴。命令面板的“角度”默认 360°，必须为非零有效数值；不足 360° 时得到一段回转体。提示无法旋转时，先检查轴、角度和截面选择，再重试。
+Chọn mặt cắt trước, sau đó chọn trục xoay. Trục xoay bắt buộc phải là **cạnh thẳng**, và không thể lấy chính mặt cắt làm trục xoay. Mục "Góc" trong bảng lệnh mặc định là 360°, phải là một giá trị số hợp lệ khác 0; khi góc nhỏ hơn 360° sẽ thu được một phần vật thể xoay tròn. Khi có thông báo không thể xoay, hãy kiểm tra lại trục, góc xoay và mặt cắt đã chọn rồi thử lại.
 
-### 折叠项：点、多段线、贝塞尔、螺旋线、管状体、文字
+### Các mục thu gọn: Điểm, Đa giác, Bezier, Đường xoắn ốc, Ống dẫn, Chữ văn bản
 
-这些命令在“绘制”组的下拉里（组名右侧的小三角）。
+Các lệnh này nằm trong menu mở rộng của nhóm "Vẽ" (tam giác nhỏ bên phải tên nhóm).
 
-- **点**：单击放置一个点。
-- **多段线**：连续拾取点，可闭合；适合画折线轮廓。
-- **贝塞尔**：连续拾取控制点，绘制贝塞尔曲线。
-- **螺旋线**：拾取中心、半径、高度；命令面板的“螺距”控制每圈上升高度。
-- **管状体**：连续拾取折线路径的点，`Enter`/`Esc` 结束；命令面板的“半径”决定管体半径。
-- **文字**：命令面板设置字体、字高、内容、放置方式（选两点 / 沿路径）。按提示拾取位置、方向与深度。字体第一次使用时按需下载，不同字体有不同体积；当前字体缺字时会记录日志并跳过该字形。
+- **Điểm**: Nhấp chuột một lần để đặt một điểm.
+- **Đa giác**: Nhấp chọn liên tiếp các điểm, có thể khép kín; thích hợp để vẽ biên dạng đường gấp khúc.
+- **Đường cong Bezier**: Nhấp chọn liên tiếp các điểm điều khiển để vẽ đường cong Bezier.
+- **Đường xoắn ốc**: Nhấp chọn tâm, bán kính, chiều cao; mục "Bước xoắn" trong bảng lệnh điều khiển độ cao tăng lên sau mỗi vòng xoay.
+- **Ống dẫn**: Nhấp chọn liên tiếp các điểm của đường dẫn gấp khúc, nhấn `Enter`/`Esc` để kết thúc; mục "Bán kính" trong bảng lệnh quyết định bán kính của ống.
+- **Chữ văn bản**: Bảng lệnh cho phép chọn font chữ, chiều cao chữ, nội dung, phương thức đặt (chọn 2 điểm / dọc theo đường dẫn). Làm theo lời nhắc để chọn vị trí, hướng và độ dày đùn. Font chữ được tải về theo nhu cầu ở lần sử dụng đầu tiên, mỗi font có dung lượng khác nhau; nếu font hiện tại thiếu ký tự nào đó, hệ thống sẽ ghi nhật ký và bỏ qua ký tự đó.
 
-## 4.3 布尔运算组
+<a id="43-布尔运算组"></a>
+## 4.3 Nhóm Phép toán Boolean
 
-三个命令的操作完全相同，只是运算不同：
+Cả ba lệnh đều có thao tác hoàn toàn giống nhau, chỉ khác ở phép tính hình học:
 
-| 命令 | 结果 |
+| Lệnh | Kết quả |
 | --- | --- |
-| 合并 | 目标 ∪ 工具 |
-| 减去 | 目标 − 工具 |
-| 交集 | 目标 ∩ 工具 |
+| Hợp nhất | Đối tượng đích ∪ Công cụ |
+| Trừ khối | Đối tượng đích − Công cụ |
+| Giao nhau | Đối tượng đích ∩ Công cụ |
 
-步骤：
+Các bước thực hiện:
 
-1. 选择**目标**实体（第一个拾取）。
-2. 选择**工具**实体（可多选），`Enter` 结束。
-3. 命令面板的“保留操作对象”：
-   - 不勾选（默认）：目标和工具都被结果节点替换。
-   - 勾选：工具实体保留在场景中，目标被结果替换。
+1. Chọn khối **Đích** (đối tượng được chọn đầu tiên).
+2. Chọn khối **Công cụ** (có thể chọn nhiều), nhấn `Enter` để kết thúc.
+3. Trong bảng lệnh, tùy chọn "Giữ lại công cụ":
+   - Không tích chọn (mặc định): Cả đối tượng đích và công cụ đều bị thay thế bởi nút kết quả.
+   - Có tích chọn: Khối công cụ được giữ lại trong khung cảnh, chỉ có đối tượng đích bị thay thế bởi kết quả.
 
-布尔失败时会弹出错误提示，原节点保持不变。如果某个实体被“实例”引用，它不能被消耗，命令会拒绝并提示先删除实例或对实例执行 `使独立`。
+Khi Boolean thất bại, một thông báo lỗi sẽ xuất hiện và các nút ban đầu được giữ nguyên. Nếu một khối đặc nào đó đang được một "thực thể" (instance) tham chiếu đến, nó sẽ không thể bị tiêu thụ; lệnh sẽ từ chối và nhắc bạn xóa thực thể đó trước hoặc thực hiện lệnh `Tách rời` (`modify.detach`) cho thực thể.
 
-## 4.4 转换组
+## 4.4 Nhóm Chuyển đổi
 
-| 命令 | 作用 |
+| Lệnh | Tác dụng |
 | --- | --- |
-| 转多段线 | 把选中的边/线框转成一个线框节点 |
-| 转组合体 | 把多个形状合成一个组合体（不融合，内部仍分离） |
-| 转为面 | 用选中的边/线框围成一个面 |
-| 转为壳 | 把选中的面缝合成壳 |
-| 转为体 | 把闭合的壳转为实体 |
+| Chuyển thành đường bao dây | Chuyển các cạnh/đường bao dây được chọn thành một nút đường bao dây |
+| Chuyển thành khối phức hợp | Gộp nhiều hình dạng vào một khối phức hợp (không hòa tan, bên trong vẫn tách biệt) |
+| Chuyển thành mặt | Dùng các cạnh/đường bao dây khép kín được chọn để tạo thành một mặt phẳng/mặt cong |
+| Chuyển thành vỏ | Khâu ghép các mặt được chọn thành một vỏ (shell) |
+| Chuyển thành khối đặc | Chuyển một vỏ khép kín thành khối rắn (solid) |
 
-注意：转换命令会**替换**原来选中的节点（原节点被删除，结果接管）。转换前建议先保存或确认可以撤销。
+Lưu ý: Các lệnh chuyển đổi sẽ **thay thế** nút được chọn ban đầu (nút gốc bị xóa, nút kết quả tiếp quản). Trước khi chuyển đổi, bạn nên lưu tài liệu hoặc chắc chắn rằng có thể hoàn tác.
 
-## 4.5 工具组
+## 4.5 Nhóm Công cụ
 
-| 命令 | 说明 |
+| Lệnh | Giải thích |
 | --- | --- |
-| 曲线投影 | 选一条曲线，再选一个面，按“方向”（默认 `0,0,-1`）投影到面上，得到一条投影曲线 |
-| 创建组 | 把可编组对象组合为整体（不是项目树文件夹）；实例及其源、被标注引用的节点等不能这样编组，命令会提示并保持其独立 |
-| 相交曲线 | 选两个形状，得到它们的交线 |
-| 偏移 | 选边/线框/面，再沿法向拾取距离；连接类型可选圆弧/相切/相交 |
-| 复制形状 | 选若干边或面，复制成独立节点，保持原位置与变换 |
-| 修复形状 | 对选中形状运行 ShapeFix，修复常见拓扑问题 |
-| 检查形状 | 逐面检查有效性，弹出对话框列出每个面的检查结果 |
+| Chiếu đường cong | Chọn một đường cong, sau đó chọn một mặt, chiếu theo "Hướng" (mặc định `0,0,-1`) lên mặt đó để nhận được một đường cong chiếu |
+| Tạo nhóm | Gom các đối tượng có thể tạo nhóm lại thành một khối tổng thể (không phải thư mục cây dự án); thực thể và nguồn của nó, nút đang bị kích thước tham chiếu... không thể tạo nhóm theo cách này, lệnh sẽ báo và giữ chúng độc lập |
+| Đường cong giao nhau | Chọn hai hình dạng để lấy đường giao tuyến của chúng |
+| Song song (Offset) | Chọn cạnh/đường bao dây/mặt, sau đó chọn khoảng cách theo phương pháp tuyến; kiểu nối góc có thể chọn cung tròn/tiếp xúc/giao nhau |
+| Sao chép hình | Chọn các cạnh hoặc mặt để sao chép thành các nút độc lập, giữ nguyên vị trí và phép biến đổi ban đầu |
+| Sửa chữa hình | Chạy công cụ ShapeFix trên hình dạng được chọn để sửa các lỗi tô pô phổ biến |
+| Kiểm tra hình | Kiểm tra tính hợp lệ từng mặt, bật hộp thoại liệt kê kết quả kiểm tra của từng mặt |
 
-`创建组` 会要求设置组件名称和插入点，把选中对象移入组件定义，并可生成组件节点。组件使用创建时冻结的合并网格，不是随源几何继续联动的普通文件夹；只需要整理项目树时，应改用项目树工具栏的文件夹。实例及其源、被标注引用的节点、已被特征消耗的工具等不能这样编组。
+Lệnh `Tạo nhóm` sẽ yêu cầu đặt tên cụm chi tiết và điểm chèn, đưa các đối tượng được chọn vào định nghĩa cụm chi tiết và có thể tạo ra nút cụm chi tiết. Cụm chi tiết sử dụng lưới hợp nhất được cố định tại thời điểm tạo, không phải là thư mục thông thường liên tục cập nhật theo hình học nguồn; khi chỉ cần sắp xếp cây dự án, bạn nên dùng thư mục trên thanh công cụ của cây. Thực thể cùng nguồn của nó, nút bị kích thước tham chiếu, công cụ đã bị tính năng tiêu thụ... không thể tạo nhóm theo cách này.
 
-“修复形状”和“检查形状”在“工具”组的下拉里。
+"Sửa chữa hình" và "Kiểm tra hình" nằm trong menu thả xuống của nhóm "Công cụ".
 
-## 4.6 直接建模的编辑方式
+<a id="46-直接建模的编辑方式"></a>
+## 4.6 Phương thức chỉnh sửa trong dựng hình trực tiếp
 
-直接建模节点不一定保留原命令参数。属性面板只能编辑它实际列出的字段，以当前选中节点的显示为准：
+Nút dựng hình trực tiếp không nhất thiết phải giữ lại các tham số lệnh ban đầu. Bảng thuộc tính chỉ có thể chỉnh sửa các trường dữ liệu mà nó thực sự liệt kê, căn cứ theo hiển thị của nút đang chọn:
 
-- **可直接修改的示例**：立方体的位置、长、宽、高；圆柱的圆心、半径、高度；圆的圆心、半径；矩形的宽、高；挤出的长度。
-- **未暴露原命令输入的示例**：直接旋转结果不提供轮廓、轴和角度字段；扫掠结果不提供截面、路径和拐角选项字段。
-- 放样/戈登结果、导入形状、直接圆角/倒角后的修形结果，同样没有原命令参数列表可供继续编辑。
+- **Ví dụ có thể sửa trực tiếp**: Tọa độ vị trí, chiều dài, chiều rộng, chiều cao của khối hộp; tâm, bán kính, chiều cao của khối trụ; tâm, bán kính của đường tròn; chiều rộng, chiều cao của hình chữ nhật; chiều dài của đùn khối.
+- **Ví dụ không để lộ đầu vào lệnh gốc**: Kết quả xoay tròn trực tiếp không cung cấp các trường biên dạng, trục xoay và góc; kết quả quét dẫn không cung cấp các trường mặt cắt, đường dẫn và tùy chọn bo góc.
+- Kết quả của nối mặt cắt (Loft)/mặt Gordon, hình học nhập từ tệp ngoài, kết quả sửa hình sau khi bo góc/vát mép trực tiếp cũng hoàn toàn không có danh sách tham số lệnh gốc để tiếp tục chỉnh sửa.
 
-对可编辑字段的修改会立刻重建该节点，并算作一次撤销步骤。对未暴露原命令输入的结果，只能撤销后重做，或使用参数化体重建；不能修改源轮廓后期待结果联动。若要回到一串操作中的某一步，使用撤销/重做，而不是期待直接建模具有参数化历史。
+Việc sửa đổi các trường có thể chỉnh sửa sẽ lập tức tái tạo lại nút đó và được tính là một bước hoàn tác. Đối với các kết quả không để lộ đầu vào lệnh gốc, bạn chỉ có thể hoàn tác để làm lại, hoặc tái tạo bằng thân tham số; không thể trông đợi việc sửa biên dạng nguồn sẽ tự động cập nhật kết quả. Nếu muốn quay lại một bước nào đó trong chuỗi thao tác, hãy dùng Hoàn tác/Làm lại, chứ không nên trông đợi dựng hình trực tiếp có sẵn lịch sử tham số.
 
 ---
 
-下一步：[第 5 章 修改、测量与注释](05-modify-convert-measure.md)
+Bước tiếp theo: [Chương 5 Chỉnh sửa, đo lường và chú thích](05-modify-convert-measure.md)

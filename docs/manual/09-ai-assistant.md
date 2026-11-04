@@ -1,142 +1,145 @@
-# 9. AI 助手
+# 9. Trợ lý AI
 
-Chili3D 的 AI 助手不是外挂聊天框：它读写同一个文档、同一份选择、同一棵项目树，做出的修改也进入同一个撤销栈。模型请求由浏览器**直接**发给你配置的 API 端点，不经过 Chili3D 的中转服务器；这不代表数据不出本机，具体发送内容见 [第 9.6 节](#96-隐私)。
+Trợ lý AI của Chili3D không phải là một khung chat gắn ngoài: nó trực tiếp đọc và ghi vào cùng một tài liệu, cùng một vùng chọn, cùng một cây dự án, và các thay đổi do nó thực hiện cũng đi vào cùng một ngăn xếp hoàn tác. Yêu cầu gửi tới mô hình được trình duyệt gửi **trực tiếp** tới API endpoint mà bạn cấu hình, không thông qua bất kỳ máy chủ trung gian nào của Chili3D; điều này không có nghĩa là dữ liệu không rời khỏi máy tính, nội dung gửi đi cụ thể xem tại [Mục 9.6](#96-隐私).
 
-## 9.1 打开与布局
+## 9.1 Mở và bố cục giao diện
 
-- 点 **基本/参数化 → 其他 → AI 助手**，或右侧面板标题栏的图标切换显示。
-- 面板默认停靠在右侧；拖动标题栏可以拖出成浮动窗口，浮动窗口标题栏上有“停靠”按钮可以放回去。
-- 标题栏按钮：设置（齿轮）、历史对话、新建对话、停靠/关闭。
+- Nhấp **Cơ bản/Tham số → Khác → Trợ lý AI**, hoặc nhấp vào biểu tượng trên thanh tiêu đề của bảng bên phải để bật/tắt hiển thị.
+- Bảng điều khiển mặc định neo ở bên phải; kéo thanh tiêu đề có thể tách thành cửa sổ nổi, trên thanh tiêu đề của cửa sổ nổi có nút "Neo" để gắn lại vị trí cũ.
+- Các nút trên thanh tiêu đề: Cài đặt (bánh răng), Lịch sử hội thoại, Tạo hội thoại mới, Neo/Đóng.
 
-![AI 助手](images/13-ai-panel.png)
+![Trợ lý AI](images/13-ai-panel.png)
 
-## 9.2 配置模型
+<a id="92-配置模型"></a>
+## 9.2 Cấu hình mô hình
 
-第一次打开（或没有可用的 Key 时）会显示设置页：
-设置页也可随时从标题栏齿轮进入。
+Lần đầu mở (hoặc khi chưa có API Key hợp lệ), trang cài đặt sẽ hiển thị:
+Trang cài đặt cũng có thể mở bất kỳ lúc nào bằng cách nhấp vào biểu tượng bánh răng trên thanh tiêu đề.
 
-![AI 助手设置](images/14-ai-settings.png)
+![Cài đặt Trợ lý AI](images/14-ai-settings.png)
 
-| 项 | 说明 |
+| Mục | Giải thích |
 | --- | --- |
-| 服务商 | Anthropic API / Completions API（OpenAI 兼容）/ Responses API |
-| Base URL | API 根地址；切换服务商会填入预设值，也可自行修改以使用兼容网关 |
-| 模型 | 模型 ID，例如 `claude-opus-5`、`gpt-5.5` |
-| 思考深度 | 默认 / low / medium / high / xhigh / max；默认表示不发送思考深度字段，由端点决定 |
-| 上下文窗口 | 200K / 256K / 400K / 512K / 1M；既用于显示占用，也用于按约 80% 的预算裁剪重发历史 |
-| API Key | 只保存在当前会话内存；可选择交给浏览器密码管理器保存 |
+| Nhà cung cấp | Anthropic API / Completions API (Tương thích OpenAI) / Responses API |
+| Base URL | Địa chỉ gốc của API; khi chuyển đổi nhà cung cấp sẽ tự điền giá trị preset, bạn cũng có thể tự sửa để dùng proxy/gateway tương thích |
+| Mô hình | Mã định danh mô hình, ví dụ `claude-opus-5`, `gpt-5.5` |
+| Độ sâu suy nghĩ | Mặc định / low / medium / high / xhigh / max; Mặc định nghĩa là không gửi trường độ sâu suy nghĩ, để endpoint tự quyết định |
+| Cửa sổ ngữ cảnh | 200K / 256K / 400K / 512K / 1M; dùng để hiển thị mức dung lượng đã dùng, đồng thời dùng để cắt tỉa lịch sử gửi lại theo ngân sách khoảng 80% |
+| API Key | Chỉ lưu trong bộ nhớ của phiên làm việc hiện tại; có thể chọn giao cho trình quản lý mật khẩu của trình duyệt lưu giữ |
 
-说明：
+Lưu ý:
 
-- Base URL 不要自行追加 `/chat/completions` 或 `/responses`，客户端会按所选服务商组织具体请求。比如 OpenAI 官方两种 API 的根地址预设都是 `https://api.openai.com/v1`。
-- 远程端点通常需要 **HTTPS**；本地开发地址可按浏览器规则使用 HTTP。端点还需要支持 **CORS、流式响应和工具调用**，并允许来自当前 Chili3D 源的跨域请求。只支持普通文本聊天并不等于兼容建模助手；参考图片和视口截图能否被理解，还取决于所用模型的视觉能力。
-- “默认”思考深度**不保证旧网关兼容**：它只是少发送一个可选字段，网关仍须支持该服务商请求使用的其他字段和流式协议。
-- Key 不会写入应用的浏览器存储。刷新页面后需要重新输入，除非你选择让浏览器密码管理器保存并填写。
-- 如果你的模型把输出额度都花在推理上、正文被截断，调低“思考深度”。
+- Base URL không tự ý thêm các phần đuôi như `/chat/completions` hoặc `/responses`, client sẽ tự động cấu trúc yêu cầu cụ thể theo nhà cung cấp đã chọn. Ví dụ địa chỉ gốc preset cho cả hai loại API chính thức của OpenAI đều là `https://api.openai.com/v1`.
+- Các endpoint từ xa thông thường yêu cầu **HTTPS**; địa chỉ phát triển cục bộ có thể dùng HTTP theo quy định của trình duyệt. Endpoint cũng cần hỗ trợ **CORS, phản hồi dạng luồng (streaming) và gọi công cụ (tool calling)**, đồng thời cho phép yêu cầu cross-origin từ domain của Chili3D hiện tại. Việc endpoint chỉ hỗ trợ chat văn bản thông thường không đồng nghĩa với việc tương thích với trợ lý dựng hình CAD; khả năng hiểu hình ảnh tham khảo và ảnh chụp màn hình khung nhìn còn phụ thuộc vào năng lực thị giác (vision) của mô hình được dùng.
+- Độ sâu suy nghĩ "Mặc định" **không đảm bảo tương thích với các gateway cũ**: nó chỉ đơn giản là không gửi một trường tùy chọn, gateway vẫn phải hỗ trợ các trường khác và giao thức streaming mà nhà cung cấp đó yêu cầu.
+- API Key không được ghi vào bộ nhớ lưu trữ trình duyệt của ứng dụng. Sau khi làm mới (F5) trang web bạn cần nhập lại, trừ khi bạn chọn để trình quản lý mật khẩu của trình duyệt lưu và tự động điền.
+- Nếu mô hình của bạn dành hết dung lượng token đầu ra cho việc suy luận (thinking) khiến câu trả lời chính bị ngắt quãng, hãy giảm bớt "Độ sâu suy nghĩ".
 
-点 `保存` 后进入对话界面。
+Nhấp `Lưu` để vào giao diện hội thoại.
 
-## 9.3 对话
+<a id="93-对话"></a>
+## 9.3 Hội thoại
 
-- 在底部输入框里用自然语言描述需求，`Enter` 发送，`Shift+Enter` 换行。
-- 输入框左侧 `+` 可以附加参考图片；也可以直接粘贴图片。
-- 发送后按钮变为“停止”，可以中断本轮。
-- 助手可能先问你一个澄清问题（例如选择哪个面），直接在输入框回答即可。
-- 助手执行工具时，会在消息流里显示“已创建 …”“已删除 …”等操作，部分操作可以点击在视口中定位对象。
-- 每条用户消息可以“回退”：把文档和对话都恢复到这条消息之前，并把这条消息放回输入框。适合“这一步不对，重来”。
+- Nhập yêu cầu bằng ngôn ngữ tự nhiên vào ô nhập liệu dưới đáy, nhấn `Enter` để gửi, `Shift+Enter` để xuống dòng.
+- Nút `+` bên trái ô nhập liệu dùng để đính kèm hình ảnh tham khảo; cũng có thể dán ảnh trực tiếp từ clipboard.
+- Sau khi gửi, nút gửi chuyển thành "Dừng", có thể bấm vào để ngắt lượt trả lời hiện tại.
+- Trợ lý có thể hỏi bạn câu hỏi làm rõ trước (ví dụ chọn mặt nào), bạn chỉ cần trả lời trực tiếp trong ô nhập liệu.
+- Khi trợ lý thực thi các công cụ, trong luồng tin nhắn sẽ hiển thị các thao tác như "Đã tạo...", "Đã xóa...", một số thao tác có thể nhấp chuột vào để định vị đối tượng trên khung nhìn.
+- Mỗi tin nhắn của người dùng đều có thể "Cuộn lại (Rollback)": khôi phục cả tài liệu và hội thoại về thời điểm trước tin nhắn đó, đồng thời đưa nội dung tin nhắn đó trở lại ô nhập liệu. Rất tiện cho tình huống "bước này không đúng, làm lại".
 
-### 自然语言提示词模板
+### Mẫu câu lệnh (Prompt Template) bằng ngôn ngữ tự nhiên
 
-把目标、约束和验收条件一次写清楚，比只说“做一个法兰”更可靠。可以按下面的模板组织需求，无关项可省略：
+Mô tả rõ ràng mục tiêu, ràng buộc và điều kiện nghiệm thu trong một lần gửi sẽ đáng tin cậy hơn nhiều so với việc chỉ nói chung chung "làm một cái mặt bích". Bạn có thể cấu trúc yêu cầu theo mẫu dưới đây, các mục không liên quan có thể bỏ qua:
 
 ```text
-对象：【新建什么，或要修改哪个节点；可先选中目标并写明节点名称】
-尺寸：【长、宽、高、直径、厚度、圆角等，单位明确写 mm】
-位置/基准：【坐标、原点、基准面、参考面/边，以及方向】
-操作：【创建、拉伸、开孔、布尔、移动、改属性等】
-是否参数化：【保留可继续编辑的特征树 / 直接形状即可】
-保留：【哪些现有节点、特征、工具对象或材料不能删除或替换】
-验收：【需要核对的尺寸、数量、位置和视图】
-如果目标或尺寸有歧义，请先提问，不要自行假设。
+Đối tượng: [Tạo mới cái gì, hoặc sửa node nào; có thể chọn trước mục tiêu và ghi rõ tên node]
+Kích thước: [Dài, rộng, cao, đường kính, độ dày, góc bo... ghi rõ đơn vị mm]
+Vị trí/Chuẩn: [Tọa độ, gốc tọa độ, mặt phẳng chuẩn, mặt/cạnh tham chiếu, và phương hướng]
+Thao tác: [Tạo mới, đùn, tạo lỗ, boolean, di chuyển, đổi thuộc tính...]
+Có tham số hóa không: [Giữ lại cây tính năng có thể tiếp tục chỉnh sửa / chỉ cần hình dạng trực tiếp]
+Giữ lại: [Những node hiện có, tính năng, đối tượng công cụ hoặc vật liệu nào không được xóa hay thay thế]
+Nghiệm thu: [Kích thước, số lượng, vị trí và góc nhìn cần kiểm tra đối chiếu]
+Nếu mục tiêu hoặc kích thước có điểm mơ hồ, vui lòng hỏi lại trước, không tự ý giả định.
 ```
 
-复杂零件可以分轮完成，例如先核对主体尺寸，再添加孔和圆角；每轮都说明要保留的上一步结果。
+Với các chi tiết phức tạp, có thể chia thành nhiều lượt trao đổi, ví dụ kiểm tra kích thước thân chính trước, sau đó mới thêm lỗ và góc bo; mỗi lượt đều nêu rõ kết quả cần giữ lại của bước trước.
 
-### 参考图片
+### Hình ảnh tham khảo
 
-粘贴或上传图片后，助手会先“读图”（核对尺寸、特征），核对完成前不允许执行会改变几何的工具。读图失败时会提示“未能核对参考图——将不依赖它继续”。图片理解能力取决于模型，参考图也不能替代关键尺寸的明确输入。
+Sau khi dán hoặc tải ảnh lên, trợ lý sẽ "đọc ảnh" trước (đối chiếu kích thước, đặc điểm hình học), trước khi hoàn tất đối chiếu sẽ không được phép chạy các công cụ làm thay đổi hình học. Khi đọc ảnh thất bại sẽ có thông báo "Không thể đối chiếu ảnh tham khảo — sẽ tiếp tục mà không phụ thuộc vào ảnh". Khả năng hiểu ảnh phụ thuộc vào mô hình, và ảnh tham khảo cũng không thể thay thế cho việc nhập rõ ràng các kích thước quan trọng.
 
-### 历史与上下文
+### Lịch sử và ngữ cảnh
 
-- 对话写入当前文档的 `document.userData`。点“历史对话”可以切换、删除，新建对话不会删除旧对话。
-- 每轮结束会更新内存中的对话，但只有在**保存文档**时才持久化到 IndexedDB；`保存到文件` 也会把对话写入 `.cd`。未保存的新对话和修改会在关闭或刷新后丢失，分享前的隐私处理见 [第 9.6 节](#96-隐私)。
-- “上下文窗口”不仅决定占用显示，还决定重发历史预算：估算超过窗口的约 **80%** 时，较早的完整轮次会从发送内容中裁掉，关键意图、操作和失败记录会提炼成简短记录供模型参考。界面中的完整对话仍然保留。
-- 裁剪时还可能移除不再需要的旧推理内容和过期视口截图；出现“以上更早的消息已不再发送给模型”时，表示模型看到的上下文已经不同于屏幕上的完整记录。
-- 输入区旁的上下文条显示当前占用 / 窗口大小。窗口值应符合端点和模型的实际能力，并不是填得越大越好。
+- Hội thoại được ghi vào `document.userData` của tài liệu hiện tại. Nhấp "Lịch sử hội thoại" để chuyển đổi, xóa; việc tạo hội thoại mới không xóa hội thoại cũ.
+- Mỗi lượt kết thúc sẽ cập nhật hội thoại trong bộ nhớ RAM, nhưng chỉ khi **lưu tài liệu** thì mới được lưu cố định vào IndexedDB; `Lưu thành tệp` cũng sẽ ghi hội thoại vào tệp `.cd`. Hội thoại và các sửa đổi mới chưa lưu sẽ bị mất khi đóng tab hoặc làm mới trang, cách xử lý riêng tư trước khi chia sẻ xem tại [Mục 9.6](#96-隐私).
+- "Cửa sổ ngữ cảnh" không chỉ quyết định thanh hiển thị dung lượng, mà còn quyết định ngân sách gửi lại lịch sử: khi ước tính vượt quá khoảng **80%** cửa sổ, các lượt hội thoại đầy đủ trước đó sẽ bị cắt bớt khỏi nội dung gửi đi, ý đồ chính, thao tác và bản ghi lỗi sẽ được cô đọng thành tóm tắt ngắn gọn cho mô hình tham khảo. Toàn bộ hội thoại đầy đủ trên giao diện vẫn được giữ nguyên vẹn.
+- Khi cắt tỉa cũng có thể loại bỏ nội dung suy luận cũ và ảnh chụp màn hình khung nhìn đã hết hạn; khi xuất hiện dòng "Các tin nhắn sớm hơn ở trên không còn được gửi tới mô hình nữa", điều đó biểu thị ngữ cảnh mà mô hình nhìn thấy đã khác với toàn bộ bản ghi hiển thị trên màn hình.
+- Thanh ngữ cảnh cạnh ô nhập liệu hiển thị dung lượng hiện tại / kích thước cửa sổ. Giá trị kích thước cửa sổ nên phù hợp với năng lực thực tế của endpoint và mô hình, không phải điền càng lớn càng tốt.
 
-## 9.4 助手能做什么
+## 9.4 Trợ lý có thể làm những gì
 
-- **从描述建模**：例如“创建一个 10×20×5 的盒子，再倒 2mm 圆角”。
-- **修改现有模型**：改尺寸、加圆角、开孔、布尔、移动、改材质。
-- **读取文档**：项目树、几何、当前选择、视口截图，因此“把这个法兰加厚”能定位到正确对象。
-- **测量与查询**：长度、面积、体积；面/曲线/曲面类型。
-- **组织文档**：建文件夹、移动节点、重命名、设置属性。
-- **文档变量**：读取/写入变量表。
-- **视图操作**：适应内容、切换视角、截图。
-- **导出**：把选中对象导出为文件。
+- **Dựng hình từ mô tả**: Ví dụ "Tạo một hộp 10×20×5, sau đó bo góc 2mm".
+- **Chỉnh sửa mô hình hiện có**: Đổi kích thước, thêm góc bo, tạo lỗ, Boolean, di chuyển, đổi vật liệu.
+- **Đọc thông tin tài liệu**: Cây dự án, hình học, vùng chọn hiện tại, ảnh chụp màn hình khung nhìn, nhờ đó lệnh "Làm dày mặt bích này lên" có thể định vị chính xác đối tượng.
+- **Đo đạc và truy vấn**: Chiều dài, diện tích, thể tích; kiểu mặt cong/đường cong.
+- **Tổ chức tài liệu**: Tạo thư mục, di chuyển node, đổi tên, thiết lập thuộc tính.
+- **Biến số tài liệu**: Đọc/ghi bảng biến số.
+- **Thao tác khung nhìn**: Khớp khung nhìn (Fit view), chuyển góc nhìn, chụp ảnh màn hình.
+- **Xuất tệp**: Xuất đối tượng được chọn ra tệp tin.
 
-![AI 助手生成的铁艺桌与完整对话（英文界面）](images/18-ai-modeling-result.png)
+![Bàn sắt nghệ thuật do Trợ lý AI tạo cùng toàn bộ hội thoại (giao diện tiếng Anh)](images/18-ai-modeling-result.png)
 
-*AI 根据对话完成铁艺桌建模并调整桌面材质；右侧保留本轮修改说明（英文界面）。*
+*AI hoàn thành dựng hình bàn sắt nghệ thuật theo hội thoại và điều chỉnh vật liệu mặt bàn; bên phải lưu giữ hướng dẫn sửa đổi của lượt này (giao diện tiếng Anh).*
 
-### 两条建模路径
+### Hai luồng dựng hình
 
-| 路径 | 结果 | 适合 |
+| Luồng | Kết quả | Phù hợp cho |
 | --- | --- | --- |
-| `run_program` | 直接建模形状（`EditableShapeNode`），一个调用一个撤销步骤 | 一次性形状、测量、查询、修改 |
-| `run_parametric` | 参数化特征树，之后仍可在属性面板继续编辑 | 需要保留设计意图的零件 |
+| `run_program` | Hình dạng dựng trực tiếp (`EditableShapeNode`), một lần gọi là một bước hoàn tác | Hình dạng dùng một lần, đo lường, truy vấn, chỉnh sửa nhanh |
+| `run_parametric` | Cây tính năng tham số, sau đó vẫn có thể tiếp tục chỉnh sửa trong bảng thuộc tính | Các chi tiết cần giữ lại ý đồ thiết kế lâu dài |
 
-注意：
+Lưu ý:
 
-- `run_program` 的编辑类操作（布尔、圆角、推拉等）会**消耗**输入节点，用返回的新节点继续。
-- 不要把参数化实体交给 `run_program` 的编辑类操作——那会破坏特征链。要组合多个参数化体，请让助手用 `run_parametric` 的布尔操作。
-- 任何一步失败，整个程序会回滚，不会留下半成品；助手会读错误并修正后重试。
-- 单位和角度固定为毫米、度。
+- Các thao tác chỉnh sửa của `run_program` (Boolean, bo góc, đẩy-kéo...) sẽ **tiêu thụ** node đầu vào, và tiếp tục bằng node mới trả về.
+- Không đưa thân tham số vào các thao tác chỉnh sửa của `run_program` — việc đó sẽ phá vỡ chuỗi tính năng. Muốn kết hợp nhiều thân tham số, hãy yêu cầu trợ lý dùng thao tác Boolean của `run_parametric`.
+- Bất kỳ bước nào thất bại, toàn bộ chương trình sẽ hoàn tác lại, không để lại sản phẩm dở dang; trợ lý sẽ đọc lỗi, tự sửa chữa rồi thử lại.
+- Đơn vị chiều dài và góc được ấn định cố định là milimét (mm) và độ (°).
 
-### 结果核对清单
+### Danh mục kiểm tra đối chiếu kết quả
 
-不要只凭助手回复“已完成”就保存或交付，至少核对：
+Không chỉ dựa vào việc trợ lý trả lời "Đã hoàn thành" để lưu hoặc bàn giao ngay, tối thiểu hãy kiểm tra:
 
-- **项目树**：目标节点是否正确，有没有意外删除、消耗或替换输入对象；要求参数化时，特征链是否保留且能继续编辑。
-- **关键尺寸**：用测量或几何查询核对长宽、厚度、孔径、数量、位置和体积，单位是否为 mm。
-- **空间关系**：适应内容并从多个视角检查基准、方向、对齐、间隙和相交，确认没有多余形体或选错面。
-- **保留要求**：原有节点、特征、材料、变量和参考几何是否按提示词保留。
-- **最终结果**：撤销或“回退”不正确的轮次后重新生成；核对无误再保存、导出或分享。
+- **Cây dự án**: Node mục tiêu có đúng không, có vô tình xóa, tiêu thụ hay thay thế nhầm đối tượng đầu vào nào không; khi yêu cầu tham số hóa, chuỗi tính năng có được giữ lại và tiếp tục chỉnh sửa được không.
+- **Kích thước quan trọng**: Dùng công cụ đo hoặc truy vấn hình học để kiểm tra dài rộng, độ dày, đường kính lỗ, số lượng, vị trí và thể tích, đơn vị có đúng là mm không.
+- **Quan hệ không gian**: Khớp toàn cảnh và kiểm tra từ nhiều góc nhìn về chuẩn, phương hướng, căn gióng, khe hở và sự giao nhau, xác nhận không có khối hình thừa hoặc chọn nhầm mặt.
+- **Yêu cầu bảo toàn**: Các node, tính năng, vật liệu, biến số và hình học tham chiếu ban đầu có được giữ lại theo đúng câu lệnh nhắc không.
+- **Kết quả cuối cùng**: Hoàn tác hoặc "Cuộn lại" lượt chưa đúng rồi tạo lại; sau khi kiểm tra không còn sai sót mới lưu, xuất tệp hoặc chia sẻ.
 
-## 9.5 没有 API Key 时
+## 9.5 Khi không có API Key
 
-不配置 Key 也能使用应用的所有非 AI 功能。AI 面板会保持未配置状态（不显示输入框和示例），直到你在设置里填入 Key。
+Khi không cấu hình API Key, bạn vẫn có thể sử dụng bình thường toàn bộ các tính năng không liên quan đến AI của ứng dụng. Bảng điều khiển AI sẽ ở trạng thái chưa cấu hình (không hiển thị ô nhập liệu và các ví dụ), cho đến khi bạn điền Key trong phần Cài đặt.
 
-## 9.6 隐私
+<a id="96-隐私"></a>
+## 9.6 Quyền riêng tư
 
-请求直接发往你填写的 Base URL，不经过 Chili3D 的中转；使用远程端点时，数据会离开本机到达该端点及其实际模型服务。每轮发送的不只是输入框里的文字：
+Yêu cầu được gửi trực tiếp tới Base URL mà bạn điền, không qua máy chủ trung gian của Chili3D; khi dùng endpoint từ xa, dữ liệu sẽ rời khỏi máy tính để tới endpoint đó cùng dịch vụ mô hình thực tế của nó. Mỗi lượt gửi đi không chỉ có phần văn bản trong ô nhập liệu:
 
-- **文档与选择摘要**：当前文档名称、节点数量，以及节点的 ID、类型、名称、层级和形状类别；当前选中的节点也会包含在内。
-- **对话与参考图**：保留在本轮上下文中的历史消息，以及你粘贴或上传的图片。
-- **工具产生的内容**：助手调用工具时，还可能发送几何查询结果、节点属性、材质、文档变量、工具参数与结果，以及视口截图。并非每轮都会发送全部内容，取决于任务和实际工具调用。
+- **Tóm tắt tài liệu và vùng chọn**: Tên tài liệu hiện tại, số lượng node, cùng ID, kiểu, tên, cấp bậc phân tầng và danh mục hình dạng của các node; các node đang được chọn cũng sẽ được gửi kèm.
+- **Hội thoại và ảnh tham khảo**: Các tin nhắn lịch sử còn lưu trong ngữ cảnh của lượt này, cùng hình ảnh bạn dán hoặc tải lên.
+- **Nội dung do công cụ sinh ra**: Khi trợ lý gọi công cụ, còn có thể gửi kết quả truy vấn hình học, thuộc tính node, vật liệu, biến số tài liệu, tham số và kết quả công cụ, cùng ảnh chụp màn hình khung nhìn. Không phải lượt nào cũng gửi toàn bộ nội dung, mà tùy thuộc vào nhiệm vụ và các lệnh gọi công cụ thực tế.
 
-使用自建网关或第三方兼容端点时，应按实际接收方评估其日志、留存和隐私策略。“无中转”不等于“完全本地”或“只发送提示词”。
+Khi dùng gateway tự dựng hoặc endpoint tương thích của bên thứ ba, bạn cần tự đánh giá chính sách ghi log, lưu giữ và quyền riêng tư của bên tiếp nhận thực tế. "Không qua trung gian" không đồng nghĩa với "hoàn toàn cục bộ" hay "chỉ gửi câu lệnh nhắc".
 
-### 对话保存与分享
+### Lưu trữ và chia sẻ hội thoại
 
-- 对话属于当前文档的 `document.userData`，保存文档时写入 IndexedDB，执行 `保存到文件` 时也会进入 `.cd`。其中可能包含用户参考图片、工具参数和工具结果；上下文裁剪不会替你删除文档中的完整历史。
-- 分享文档前，在“历史对话”中删除相关对话，确认不再含有敏感文字、图片或工具记录，然后再保存文档或重新导出 `.cd`。只新建对话或只让模型忘记旧上下文是不够的。
-- 已经下载或分享出去的 `.cd` 不会因之后删除历史而自动更新，需要重新导出并替换。
+- Hội thoại thuộc `document.userData` của tài liệu hiện tại, khi lưu tài liệu sẽ được ghi vào IndexedDB, khi thực hiện `Lưu thành tệp` cũng sẽ đi vào tệp `.cd`. Trong đó có thể chứa hình ảnh tham khảo của người dùng, tham số công cụ và kết quả công cụ; việc cắt tỉa ngữ cảnh không tự động xóa lịch sử đầy đủ trong tài liệu cho bạn.
+- Trước khi chia sẻ tài liệu, hãy vào "Lịch sử hội thoại" để xóa các hội thoại liên quan, xác nhận không còn chứa văn bản, hình ảnh hoặc bản ghi công cụ nhạy cảm, rồi mới lưu tài liệu hoặc xuất lại tệp `.cd`. Chỉ tạo hội thoại mới hoặc chỉ để mô hình quên ngữ cảnh cũ là chưa đủ.
+- Các tệp `.cd` đã tải về hoặc chia sẻ ra ngoài trước đó sẽ không tự động cập nhật khi bạn xóa lịch sử sau này, bạn cần phải xuất lại và thay thế tệp cũ.
 
-API Key 只保存在当前会话内存中，不随文档保存，也不进入 `.cd`。你可以选择浏览器密码管理器保管它；此时其存储和同步行为由浏览器及你的密码管理器设置决定。
+API Key chỉ lưu trong bộ nhớ tạm của phiên làm việc hiện tại, không lưu cùng tài liệu và không đi vào tệp `.cd`. Bạn có thể chọn để trình quản lý mật khẩu của trình duyệt lưu giữ nó; lúc này hành vi lưu trữ và đồng bộ hóa do trình duyệt và cài đặt trình quản lý mật khẩu của bạn quyết định.
 
-Microsoft Clarity 是页面中**独立于 AI 请求的统计通道**，与 Base URL 所指的模型服务不是一回事。自托管部署时可以从 Web 入口页移除 Clarity 统计脚本，或在浏览器、网络策略中阻止统计请求；这些设置与 AI 端点配置互不影响。
+Microsoft Clarity là **kênh thống kê trên trang web độc lập hoàn toàn với các yêu cầu AI**, không liên quan gì đến dịch vụ mô hình mà Base URL trỏ tới. Khi triển khai tự lưu trữ (self-hosted), bạn có thể gỡ bỏ script thống kê Clarity khỏi trang web chính, hoặc chặn các yêu cầu thống kê trong trình duyệt hay chính sách mạng; các cài đặt này không ảnh hưởng lẫn nhau với cấu hình endpoint AI.
 
 ---
 
-下一步：[第 10 章 设置、插件与快捷键](10-settings-plugins.md)
+Bước tiếp theo: [Chương 10 Cài đặt, plugin và phím tắt](10-settings-plugins.md)

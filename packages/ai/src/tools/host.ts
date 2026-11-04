@@ -1,8 +1,10 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
+import { recordRuntimeError } from "../diagnostics";
 import { redactDataUrls } from "../llm/redact";
 import type { ImagePart, Tool } from "../llm/types";
+import { onRecentError } from "../memory";
 import { buildTools } from "./index";
 
 /** The half of a tool a caller outside this page may hold: schemas are data, handlers are not. */
@@ -56,6 +58,28 @@ export function createToolHost(): ToolHost {
             if (!tool) return { ok: false, content: `Unknown tool: ${name}` };
             try {
                 const result = await tool.handler(args ?? {});
+                const textContent = typeof result === "string" ? result : result.content;
+
+                // Capture explicit error objects returned as JSON string
+                try {
+                    const parsedRes = JSON.parse(textContent);
+                    if (
+                        parsedRes &&
+                        typeof parsedRes === "object" &&
+                        typeof parsedRes["error"] === "string"
+                    ) {
+                        const errMsg = parsedRes["error"] as string;
+                        recordRuntimeError({
+                            toolName: name,
+                            error: new Error(errMsg),
+                            args: args ?? {},
+                        });
+                        onRecentError({ toolName: name, errorMessage: errMsg });
+                    }
+                } catch {
+                    // Not a JSON error, normal result
+                }
+
                 // The bridge result never passes through the chat loop's redaction, and it is
                 // replayed by the calling agent too: the same bytes rule applies here.
                 if (typeof result === "string") {
@@ -66,6 +90,8 @@ export function createToolHost(): ToolHost {
                 // The chat loop lets a throwing handler end the run; a bridge caller has no run to
                 // end, so the failure is reported back to the calling model as the tool's answer.
                 const message = error instanceof Error ? error.message : String(error);
+                recordRuntimeError({ toolName: name, error, args: args ?? {} });
+                onRecentError({ toolName: name, errorMessage: message });
                 return { ok: false, content: redactDataUrls(message) };
             }
         },

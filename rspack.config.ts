@@ -74,6 +74,10 @@ export default defineConfig({
                         ignore: ["**/**/index.html"],
                     },
                 },
+                {
+                    from: resolve(configDir, "docs/manual"),
+                    to: "manual",
+                },
             ],
         }),
         new rspack.DefinePlugin({

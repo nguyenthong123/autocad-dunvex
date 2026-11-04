@@ -1,332 +1,335 @@
-# 6. 参数化建模
+# 6. Dựng hình tham số
 
-参数化实体（Parametric Body）是 Chili3D 的“设计树”模型：实体本身不保存最终几何，只保存一条**有序特征列表**。每次修改或重建时，列表从上到下重新执行一遍，因此改上游特征会自动带动下游。
+Thân tham số (Parametric Body) là mô hình "cây thiết kế" của Chili3D: bản thân thân không lưu giữ hình học cuối cùng, mà chỉ lưu giữ một **danh sách tính năng có thứ tự**. Mỗi khi sửa đổi hoặc tái dựng (rebuild), danh sách sẽ được thực thi lại từ trên xuống dưới, do đó việc thay đổi tính năng ở thượng nguồn sẽ tự động kéo theo các tính năng ở hạ nguồn thay đổi.
 
-![参数化特征链生成的绿色机械零件（英文界面）](images/19-parametric-result.png)
+![Chi tiết cơ khí màu xanh lá tạo bởi chuỗi tính năng tham số (giao diện tiếng Anh)](images/19-parametric-result.png)
 
-*复杂参数化零件示例：修改上游草图尺寸后，特征链会重新求值（英文界面）。*
+*Ví dụ chi tiết tham số phức tạp: sau khi sửa kích thước phác thảo ở thượng nguồn, chuỗi tính năng sẽ được tính toán lại (giao diện tiếng Anh).*
 
-## 6.1 参数化体和特征链
+<a id="61-参数化体和特征链"></a>
+## 6.1 Thân tham số và chuỗi tính năng
 
-- 一个参数化体在项目树中显示为 `参数化实体1`，它下面藏着被消耗的草图、工具实体等输入。
-- 选中实体后，属性面板出现 **特征** 折叠区，每行是一个特征（拉伸、孔、圆角……）。
-- 调整顺序：拖动特征行的标题即可重排。
-- 特征行左侧的图标表示类型，右侧 `⋯` 打开菜单。
+- Một thân tham số hiển thị trong cây dự án dưới dạng `Thân tham số 1`, bên dưới nó ẩn chứa các đầu vào bị tiêu thụ như phác thảo (sketch), thân công cụ (tool body).
+- Sau khi chọn thân, trên bảng thuộc tính sẽ xuất hiện vùng gập **Tính năng**, mỗi hàng là một tính năng (đùn, tạo lỗ, bo góc...).
+- Điều chỉnh thứ tự: Kéo thả tiêu đề của hàng tính năng để sắp xếp lại thứ tự.
+- Biểu tượng bên trái hàng tính năng biểu thị loại tính năng, biểu tượng `⋯` bên phải dùng để mở menu thao tác.
 
-### 特征行菜单
+### Menu hàng tính năng
 
-| 菜单项 | 作用 |
+| Mục menu | Tác dụng |
 | --- | --- |
-| 重命名 | 修改特征显示名 |
-| 重新选择 | 该特征支持的引用失效时，重新拾取；可重选的对象随特征而异 |
-| 抑制 / 取消抑制 | 暂时跳过该特征，保留它在列表中的位置 |
-| 按变量抑制… | 指定一个文档变量：变量解析为 0 时抑制该特征，可勾选“变量非零时抑制”反向 |
-| 删除 | 从特征链中移除该特征并重建 |
+| Đổi tên | Sửa tên hiển thị của tính năng |
+| Chọn lại | Khi tham chiếu mà tính năng hỗ trợ bị mất hiệu lực, chọn lại đối tượng; đối tượng có thể chọn lại tùy thuộc vào tính năng |
+| Ẩn (Nén) / Bỏ ẩn | Tạm thời bỏ qua tính năng này, vẫn giữ nguyên vị trí của nó trong danh sách |
+| Ẩn theo biến số… | Chỉ định một biến số tài liệu: khi biến số phân giải thành 0 thì ẩn tính năng, có thể tích chọn "Ẩn khi biến số khác 0" để đảo ngược |
+| Xóa | Loại bỏ tính năng này khỏi chuỗi tính năng và tái dựng lại |
 
-### 展开与参数
+### Mở rộng và tham số
 
-点特征行（不是 `⋯`）展开，行内出现：
+Nhấp vào hàng tính năng (không phải nhấp vào `⋯`) để mở rộng, bên trong hàng sẽ hiển thị:
 
-- 该特征自己的参数输入框；
-- 缺失的输入（`缺失的输入 #n`）与引用列表；
-- 错误/警告文字；
-- “依赖于 / 被用于”的关系行，点名称可跳到对应特征。
+- Các ô nhập tham số riêng của tính năng đó;
+- Các đầu vào bị thiếu (`Đầu vào bị thiếu #n`) và danh sách tham chiếu;
+- Dòng chữ lỗi/cảnh báo;
+- Hàng quan hệ "Phụ thuộc vào / Được dùng cho", nhấp vào tên có thể chuyển nhanh đến tính năng tương ứng.
 
-参数编辑在失焦或回车时提交，一次编辑就是一个撤销步骤。
+Chỉnh sửa tham số được xác nhận khi rời tiêu điểm (blur) hoặc nhấn Enter; mỗi lần chỉnh sửa là một bước hoàn tác.
 
-### 回滚条
+### Thanh cuộn ngược (Rollback bar)
 
-特征列表行与行之间有细横线（回滚槽）。点击某条槽，模型只重建到该位置，后面的特征变灰（但仍保留）。再次点击或拖动回滚条可以恢复。适合查看“做到某一步时是什么样”。
+Giữa các hàng trong danh sách tính năng có các đường kẻ ngang mảnh (rãnh cuộn ngược). Khi nhấp vào một rãnh nào đó, mô hình sẽ chỉ được tái dựng đến vị trí đó, các tính năng phía sau sẽ chuyển sang màu xám (nhưng vẫn được giữ lại). Nhấp lại hoặc kéo thanh cuộn ngược để khôi phục. Rất thích hợp để xem "mô hình trông như thế nào khi làm đến bước đó".
 
-### 失败处理
+### Xử lý lỗi tái dựng
 
-某个特征失败时，视口保留的是**最后一次完整特征链成功重建**的结果，而不是本次失败前已经算出的特征前缀。错误参数或表达式也会写入特征，所以“画面没动”既不代表编辑没保存，也不代表参数有效。建议按以下顺序恢复：
+Khi một tính năng bị lỗi, khung nhìn sẽ giữ lại kết quả của **lần tái dựng thành công toàn bộ chuỗi tính năng gần nhất**, chứ không phải là tiền tố tính năng đã tính được trước khi lỗi xảy ra lần này. Tham số hoặc biểu thức lỗi cũng sẽ được ghi vào tính năng, vì vậy "hình ảnh không thay đổi" không có nghĩa là chỉnh sửa chưa được lưu, cũng không có nghĩa là tham số hợp lệ. Bạn nên xử lý khôi phục theo thứ tự sau:
 
-1. 如果失败来自刚提交的编辑，先执行一次 **撤销**（默认快捷键 `Ctrl+Z`），撤回这次错误编辑，再小步修改；重建失败不会自动回滚已写入的参数。
-2. 从特征链最上方的**第一条错误**修起。修好并重建后，再检查后续错误，不要先围着由它引起的下游故障调整。
-3. 对 `缺失的输入` 使用 **重新选择**；需要确认某个特征所依据的前置形状时，用回滚条定位，检查完再恢复完整链。
-4. 确认特征确实不再需要后，最后才考虑抑制或删除。它们也会改变几何，可能让下游引用进一步失效。
+1. Nếu lỗi xuất phát từ chỉnh sửa vừa nhập, trước tiên hãy thực hiện **Hoàn tác** (phím tắt mặc định `Ctrl+Z`) để thu hồi chỉnh sửa lỗi đó, rồi tiến hành chỉnh sửa từng bước nhỏ; việc tái dựng thất bại sẽ không tự động cuộn lại tham số đã ghi.
+2. Sửa từ **lỗi đầu tiên** ở trên cùng của chuỗi tính năng. Sau khi sửa xong và tái dựng, mới kiểm tra các lỗi tiếp theo, không nên điều chỉnh vòng quanh các lỗi hạ nguồn do nó gây ra.
+3. Đối với `Đầu vào bị thiếu`, sử dụng chức năng **Chọn lại**; khi cần xác nhận hình dạng tiền đề mà một tính năng dựa vào, hãy dùng thanh cuộn ngược để định vị, kiểm tra xong thì khôi phục lại toàn bộ chuỗi.
+4. Sau khi xác nhận tính năng thực sự không còn cần thiết nữa, mới cân nhắc việc ẩn hoặc xóa. Các thao tác này cũng làm thay đổi hình học và có thể khiến các tham chiếu hạ nguồn bị mất hiệu lực thêm.
 
-引用的面、边、顶点或草图在重建后找不到时，特征行会提示。部分特征会暂用最后保存的引用位置或其他回退值继续建模，因此旧形状可能仍在；应及时重新选择，不能据此认定引用和参数都健康。
+Khi mặt, cạnh, đỉnh hoặc phác thảo được tham chiếu không tìm thấy sau khi tái dựng, hàng tính năng sẽ đưa ra cảnh báo. Một số tính năng sẽ tạm thời dùng vị trí tham chiếu đã lưu cuối cùng hoặc giá trị dự phòng khác để tiếp tục dựng hình, do đó hình dạng cũ có thể vẫn còn; bạn nên chọn lại kịp thời, không thể dựa vào việc này để kết luận rằng tham chiếu và tham số đều ổn.
 
-### 引用为什么稳定
+### Vì sao tham chiếu duy trì ổn định
 
-下游特征引用的面、边、顶点和草图轮廓是按**跟踪标识**保存的，而不是按索引。上游改动导致拓扑变化时，引用会尽量重新匹配；匹配不到时才需要“重新选择”。
+Mặt, cạnh, đỉnh và biên dạng phác thảo được tính năng hạ nguồn tham chiếu được lưu theo **mã định danh theo dõi (tracking identity)**, chứ không theo chỉ số thứ tự (index). Khi thay đổi ở thượng nguồn dẫn đến biến đổi cấu trúc liên kết (topology), các tham chiếu sẽ cố gắng khớp lại; chỉ khi không thể khớp được thì mới cần "Chọn lại".
 
-## 6.2 创建参数化体
+## 6.2 Tạo thân tham số
 
-### 从草图开始
+### Bắt đầu từ phác thảo
 
-1. **参数化 → 新建草图**，选基准面（红/绿/蓝方块）或实体上的平面。
-2. 在草图里画闭合轮廓。
-3. 退出草图，选中草图，点 **拉伸 / 旋转 / 放样 / 扫掠**。
-4. 设置参数，确认。第一个特征会创建参数化体。
+1. **Tham số → Tạo phác thảo mới**, chọn mặt phẳng chuẩn (các khối vuông Đỏ/Xanh lá/Xanh dương) hoặc một mặt phẳng trên thân.
+2. Vẽ biên dạng khép kín trong phác thảo.
+3. Thoát phác thảo, chọn phác thảo, nhấp **Đùn (Extrude) / Xoay (Revolve) / Vuốt nối (Loft) / Quét (Sweep)**.
+4. Thiết lập tham số, xác nhận. Tính năng đầu tiên sẽ tạo ra thân tham số.
 
-一个草图里有多个闭合轮廓时，拉伸会同时拉伸它们；内环会成为孔。
+Khi trong một phác thảo có nhiều biên dạng khép kín, lệnh đùn sẽ đùn tất cả chúng cùng lúc; vòng khép kín bên trong sẽ trở thành lỗ rỗng.
 
-### 从图元开始
+### Bắt đầu từ hình học nguyên mẫu
 
-**参数化 → 创建立方体/圆柱/球体/圆锥** 会直接创建一个参数化体，第一个特征就是该图元。命令面板的 `操作` 可以是新建、加入、移除、相交，`目标实体` 选择已有体。
+**Tham số → Tạo hình hộp/hình trụ/hình cầu/hình nón** sẽ trực tiếp tạo ra một thân tham số, tính năng đầu tiên chính là hình học nguyên mẫu đó. Tùy chọn `Thao tác` trên bảng lệnh có thể là Tạo mới, Gộp thêm, Loại bỏ, Giao nhau; `Thân mục tiêu` dùng để chọn thân đã có.
 
-### 基准面
+### Mặt phẳng chuẩn (Datum Plane)
 
-**参数化 → 基准面** 创建可复用的基准面节点，类型：
+**Tham số → Mặt phẳng chuẩn** tạo các node mặt phẳng chuẩn có thể tái sử dụng, bao gồm các kiểu:
 
-| 类型 | 定义方式 |
+| Kiểu | Cách định nghĩa |
 | --- | --- |
-| 偏移面 | 相对一个已有平面偏移距离 |
-| 过点平行面 | 通过一点且平行于某平面 |
-| 线角度 | 绕一条线旋转一个角度 |
-| 过点法向 | 通过一点、给定法向 |
-| 三点 | 通过三个点 |
-| 中面 | 两个平行平面的中间面 |
-| 曲线点 | 过曲线上一点且垂直于曲线 |
+| Mặt song song cách đều (Offset) | Cách một mặt phẳng đã có một khoảng cách |
+| Mặt song song qua điểm | Đi qua một điểm và song song với một mặt phẳng |
+| Mặt nghiêng theo đường | Xoay quanh một đường thẳng một góc |
+| Mặt pháp tuyến qua điểm | Đi qua một điểm với hướng pháp tuyến cho trước |
+| Ba điểm | Đi qua ba điểm |
+| Mặt chính giữa | Mặt nằm chính giữa hai mặt phẳng song song |
+| Mặt qua điểm trên đường cong | Đi qua một điểm trên đường cong và vuông góc với đường cong |
 
-基准面可用于草图平面、镜像平面、拔模中性面等。
+Mặt phẳng chuẩn có thể dùng làm mặt phẳng phác thảo, mặt phẳng đối xứng, mặt trung hòa cho lệnh rút góc nghiêng (draft)...
 
-## 6.3 构造类特征
+## 6.3 Nhóm tính năng tạo hình
 
-### 拉伸
+### Đùn (Extrude)
 
-- 轮廓：草图轮廓面，或实体上的平面。
-- `操作`：新建 / 加入 / 移除 / 相交。
-- `深度`：给定深度时主方向的距离，可直接键入表达式。
-- `深度 2`：创建后展开特征行可见；未勾选 `对称` 时，在主方向的反侧再拉伸这段独立距离。必须为正值，与 `对称` 互斥。
-- `对称`：主侧按 `深度`（或终止条件）拉伸，另一侧也走同样的**完整距离**，不是把深度对半分。例如给定深度为 10 时，轮廓两侧各拉伸 10，总厚度为 20。
-- `反向`：翻转主拉伸方向。
-- `起始偏移`：从轮廓平面偏移一段再开始。
-- `终止偏移`（到面/到点时可用）：正值沿实际拉伸方向越过目标，负值在到达目标前停下。
-- `拔模角度`：侧壁的锥度。
+- Biên dạng: Mặt biên dạng phác thảo, hoặc mặt phẳng trên thân.
+- `Thao tác`: Tạo mới / Gộp thêm / Loại bỏ / Giao nhau.
+- `Độ sâu`: Khoảng cách theo hướng chính khi dùng độ sâu cho trước, có thể nhập trực tiếp biểu thức.
+- `Độ sâu 2`: Hiển thị khi mở rộng hàng tính năng sau khi tạo; khi không tích chọn `Đối xứng`, đùn thêm khoảng cách độc lập này về phía ngược lại của hướng chính. Phải là giá trị dương và xung đột với `Đối xứng`.
+- `Đối xứng`: Phía chính đùn theo `Độ sâu` (hoặc điều kiện kết thúc), phía còn lại cũng đi một **khoảng cách đầy đủ** như vậy, chứ không phải chia đôi độ sâu. Ví dụ khi độ sâu cho trước là 10, hai bên biên dạng mỗi bên đùn 10, tổng chiều dày là 20.
+- `Đảo chiều`: Lật ngược hướng đùn chính.
+- `Khoảng lệch bắt đầu`: Bắt đầu đùn sau khi lệch một đoạn so với mặt phẳng biên dạng.
+- `Khoảng lệch kết thúc` (dùng được khi chọn Đến mặt/Đến điểm): Giá trị dương sẽ vượt quá mục tiêu theo hướng đùn thực tế, giá trị âm sẽ dừng lại trước khi chạm tới mục tiêu.
+- `Góc nghiêng (Draft)`: Góc côn của thành bên.
 
-`终止条件` 的行为如下：
+Hành vi của `Điều kiện kết thúc`:
 
-| 选项 | 终止方式 |
+| Tùy chọn | Cách kết thúc |
 | --- | --- |
-| 给定深度 | 用 `深度` 决定主方向的长度 |
-| 完全贯穿 | 自动越过**当前参数化体在此特征之前**的形状；需要前置特征，不是贯穿文档里的所有实体，也不计入此特征之后的形状 |
-| 到面 | 以拾取的面为限，停在沿拉伸方向先到达的近侧；参数允许时，端面会贴合目标曲面 |
-| 到点 | 以拾取的顶点确定终点，使终止位置通过该点 |
+| Độ sâu cho trước | Dùng `Độ sâu` để xác định chiều dài theo hướng chính |
+| Xuyên thủng hoàn toàn | Tự động xuyên qua toàn bộ hình dạng của **thân tham số hiện tại đứng trước tính năng này**; cần có tính năng phía trước, không phải xuyên qua tất cả các thân trong tài liệu, cũng không tính đến hình dạng của các tính năng phía sau tính năng này |
+| Đến mặt | Lấy mặt được chọn làm giới hạn, dừng ở phía gần mà hướng đùn chạm tới trước; khi tham số cho phép, mặt đầu mút sẽ áp sát mặt cong mục tiêu |
+| Đến điểm | Dùng đỉnh được chọn để xác định điểm kết thúc, sao cho vị trí kết thúc đi qua điểm đó |
 
-`到面` 的曲面贴合主要用于**单个草图轮廓**，且没有起止偏移、对称、深度 2 或拔模；操作可以是新建、加入或移除。多个轮廓、相交操作、目标引用只能使用冻结几何，或内核无法完成曲面贴合时，会退回按近侧距离生成平面端盖。看到平面端盖时，应检查这些条件和特征行的警告。
+Khả năng áp sát mặt cong của `Đến mặt` chủ yếu dùng cho **một biên dạng phác thảo đơn lẻ**, và không có khoảng lệch bắt đầu/kết thúc, không đối xứng, không có độ sâu 2 hoặc góc nghiêng; thao tác có thể là Tạo mới, Gộp thêm hoặc Loại bỏ. Khi có nhiều biên dạng, thao tác giao nhau, tham chiếu mục tiêu chỉ dùng được hình học cố định (frozen geometry), hoặc khi kernel không thể hoàn thành việc áp sát mặt cong, lệnh sẽ lùi về tạo nắp phẳng theo khoảng cách gần nhất. Khi thấy nắp phẳng, bạn nên kiểm tra các điều kiện này và cảnh báo trên hàng tính năng.
 
-选择“到面/到点”后，单击只是选定目标，还要按 `Enter` 或确认按钮完成目标拾取。目标位于当前方向背后时，会自动朝目标反向；目标在起始面上、跨越起始面，或偏移使终点退回起点之前，则会报错。
+Sau khi chọn "Đến mặt/Đến điểm", một cú nhấp chuột chỉ là chọn mục tiêu, bạn cần nhấn `Enter` hoặc nút xác nhận để hoàn tất việc chọn mục tiêu. Khi mục tiêu nằm phía sau hướng hiện tại, lệnh sẽ tự động đảo chiều về phía mục tiêu; nếu mục tiêu nằm trên mặt bắt đầu, cắt ngang qua mặt bắt đầu, hoặc khoảng lệch khiến điểm kết thúc lùi về trước điểm bắt đầu thì lệnh sẽ báo lỗi.
 
-### 旋转
+### Xoay (Revolve)
 
-选择轮廓和旋转轴，设置 `角度`（默认 360°）、`对称`、`角度 2`（双向旋转）、`操作`。
+Chọn biên dạng và trục xoay, thiết lập `Góc` (mặc định 360°), `Đối xứng`, `Góc 2` (xoay hai chiều), `Thao tác`.
 
-### 放样
+### Vuốt nối (Loft)
 
-依次选择多个截面，设置 `实体`、`直纹曲面`、`连续性`、`操作`。截面顺序决定放样方向。
+Lần lượt chọn nhiều tiết diện, thiết lập `Thân đặc`, `Mặt kẻ (Ruled surface)`, `Độ liên tục`, `Thao tác`. Thứ tự tiết diện quyết định hướng vuốt nối.
 
-### 扫掠
+### Quét (Sweep)
 
-选择截面后逐段拾取路径边，最后确认。路径可以由多段边组成，但这些边必须属于**同一个节点**，并能首尾连接成一条线框。
+Sau khi chọn tiết diện, lần lượt chọn từng đoạn cạnh của đường dẫn, cuối cùng xác nhận. Đường dẫn có thể gồm nhiều đoạn cạnh, nhưng các cạnh này phải thuộc **cùng một node**, và có thể nối đầu-đuôi thành một đường khung dây.
 
-- `操作`：新建 / 加入 / 移除 / 相交。
-- `圆角`：控制**路径拐角**的过渡是否圆滑，不是给截面轮廓倒圆角。
-- `轮廓控制`：创建后可在特征行中编辑，包括 `Frenet 标架`（默认）、`校正 Frenet 标架` 和 `固定方向`。
+- `Thao tác`: Tạo mới / Gộp thêm / Loại bỏ / Giao nhau.
+- `Bo góc`: Điều khiển chuyển tiếp ở **góc gập của đường dẫn** có bo tròn mượt mà hay không, không phải là bo góc cho biên dạng tiết diện.
+- `Điều khiển biên dạng`: Có thể chỉnh sửa trong hàng tính năng sau khi tạo, bao gồm `Hệ tọa độ Frenet` (mặc định), `Hệ tọa độ Frenet hiệu chỉnh` và `Hướng cố định`.
 
-`固定方向` 会自动把世界 `+Z` 投影到轮廓平面，作为保持不变的参考方向；轮廓平面水平时改用世界 `+Y`。不需要再拾取方向。
+`Hướng cố định` sẽ tự động chiếu trục thế giới `+Z` lên mặt phẳng biên dạng để làm hướng tham chiếu giữ cố định; khi mặt phẳng biên dạng nằm ngang sẽ chuyển sang dùng trục thế giới `+Y`. Không cần phải chọn thêm hướng thủ công.
 
-### 加厚
+### Làm dày (Thicken)
 
-把面或壳加厚成实体：`厚度`、`厚度 2`、`对称`、`反向`、`操作`。
+Làm dày mặt hoặc vỏ thành khối solid: `Độ dày`, `Độ dày 2`, `Đối xứng`, `Đảo chiều`, `Thao tác`.
 
-### 螺旋线
+### Đường xoắn ốc (Helix)
 
-设置 `半径`、`长度`、`螺距`。螺旋线可以作为扫掠路径。
+Thiết lập `Bán kính`, `Chiều dài`, `Bước xoắn`. Đường xoắn ốc có thể dùng làm đường dẫn quét.
 
-### 筋
+### Gân tăng cứng (Rib)
 
-选择开放的边线链作为筋的位置，设置 `厚度`、`操作`，`延伸到零件` 决定筋是否延伸直到碰到实体。
+Chọn chuỗi cạnh hở làm vị trí gân, thiết lập `Độ dày`, `Thao tác`; tùy chọn `Kéo dài tới chi tiết` quyết định gân có kéo dài cho tới khi chạm vào khối solid hay không.
 
-## 6.4 修饰类特征
+## 6.4 Nhóm tính năng tinh chỉnh
 
-### 推拉（Q）
+### Đẩy-Kéo (Push-Pull, Q)
 
-推拉是一个“智能入口”，根据你拾取的对象决定打开哪个特征命令：
+Đẩy-Kéo là một "cửa ngõ thông minh", tự động quyết định mở lệnh tính năng nào dựa vào đối tượng bạn chọn:
 
-| 拾取 | 拖拽结果 |
+| Đối tượng chọn | Kết quả khi kéo |
 | --- | --- |
-| 草图轮廓面 | 拉伸（拖出距离，方向/端部决定新建、加入或切除） |
-| 实体平面 | 偏移面 |
-| 圆角/倒角特征生成的面 | 修改对应圆角/倒角 |
-| 边 | 正距离 = 圆角，负距离 = 倒角 |
+| Mặt biên dạng phác thảo | Đùn (kéo ra khoảng cách, hướng/đầu mút quyết định tạo mới, gộp thêm hay cắt bỏ) |
+| Mặt phẳng trên thân đặc | Dời mặt song song (Offset face) |
+| Mặt tạo bởi tính năng bo góc/vát mép | Chỉnh sửa bán kính bo/vát mép tương ứng |
+| Cạnh | Khoảng cách dương = Bo góc, khoảng cách âm = Vát mép |
 
-拖动箭头或在命令面板输入数值，回车提交。推拉一次只处理一类对象（面或边）。
+Kéo mũi tên hoặc nhập giá trị trên bảng lệnh, nhấn Enter để xác nhận. Lệnh Đẩy-Kéo mỗi lần chỉ xử lý một loại đối tượng (mặt hoặc cạnh).
 
-### 孔
+### Tạo lỗ (Hole)
 
-**孔** 是减材特征，必须依附已有参数化体，并且该体在孔特征之前已经有形状；不能把孔作为空特征链的第一个特征。
+**Tạo lỗ** là tính năng trừ bớt vật liệu (subtractive), bắt buộc phải gắn vào một thân tham số đã có, và thân đó phải có hình dạng trước tính năng tạo lỗ; không thể đặt tính năng tạo lỗ làm tính năng đầu tiên của một chuỗi rỗng.
 
-可以用两种方式放置孔心：
+Có thể đặt tâm lỗ theo hai cách:
 
-1. **直接在面上拾取**：单击参数化体的平面作为 `钻孔面`，再在面上单击一个或多个孔心，按 `Enter` 或确认按钮结束。孔心必须落在该面范围内。
-2. **绑定草图独立点**：单击可见草图中用 **点** 工具创建的一个或多个非构造独立点，再确认。绑定点必须来自**同一草图**；移动或重新约束这些点后，孔心会随点更新并投影到钻孔面。程序会尝试从草图平面推断共面的钻孔面；找不到合适面时，保留已选点并手动单击钻孔面，再完成孔心拾取。
+1. **Chọn trực tiếp trên mặt**: Nhấp vào mặt phẳng của thân tham số làm `Mặt khoan`, sau đó nhấp một hoặc nhiều tâm lỗ trên mặt, nhấn `Enter` hoặc nút xác nhận để kết thúc. Tâm lỗ phải nằm trong phạm vi của mặt đó.
+2. **Liên kết với điểm độc lập trong phác thảo**: Nhấp vào một hoặc nhiều điểm độc lập không phải đường dựng hình (non-construction) được tạo bằng công cụ **Điểm** trong phác thảo đang hiển thị, rồi xác nhận. Các điểm liên kết phải đến từ **cùng một phác thảo**; sau khi di chuyển hoặc ràng buộc lại các điểm này, tâm lỗ sẽ cập nhật theo điểm và chiếu lên mặt khoan. Chương trình sẽ cố gắng suy ra mặt khoan đồng phẳng từ mặt phẳng phác thảo; khi không tìm thấy mặt phù hợp, hệ thống sẽ giữ lại các điểm đã chọn và bạn nhấp thủ công vào mặt khoan, rồi hoàn tất việc chọn tâm lỗ.
 
-在结束拾取前，于命令面板中设置 `类型` 和尺寸。三种类型共用 `直径`、`深度（留空 = 贯通）` 和 `钻尖角`，其余参数为：
+Trước khi kết thúc việc chọn điểm, hãy thiết lập `Kiểu` và kích thước trên bảng lệnh. Cả ba kiểu đều dùng chung `Đường kính`, `Độ sâu (để trống = xuyên thủng)` và `Góc mũi khoan`, các tham số còn lại gồm:
 
-| 类型 | 专用参数 | 形状 |
+| Kiểu | Tham số riêng | Hình dạng |
 | --- | --- | --- |
-| 简单 | 无 | 直钻孔，盲孔底部带钻尖 |
-| 沉孔 | `沉孔直径`、`沉孔深度` | 孔口有圆柱形沉台 |
-| 锥沉孔 | `锥沉孔直径`、`锥沉孔角度` | 孔口有锥形沉面 |
+| Đơn giản | Không có | Lỗ khoan thẳng, đáy lỗ bịt có góc nhọn mũi khoan |
+| Lỗ bậc (Counterbore) | `Đường kính lỗ bậc`, `Độ sâu lỗ bậc` | Miệng lỗ có bậc hình trụ tròn |
+| Lỗ côn (Countersink) | `Đường kính lỗ côn`, `Góc lỗ côn` | Miệng lỗ có vát côn |
 
-深度和钻尖的约定：
+Quy ước về độ sâu và mũi khoan:
 
-- **新建孔时深度留空即为贯通**，会穿过当前实体；填入正值则创建盲孔。
-- 盲孔 `深度` 从钻孔面量到**钻尖尖端**，已经包含钻尖，不是只量圆柱直壁；因此深度必须大于钻尖自身的高度。
-- `钻尖角` 是钻尖的包含角，默认 **118°**。
+- **Khi tạo lỗ mới, để trống độ sâu tức là xuyên thủng**, lỗ sẽ xuyên qua toàn bộ thân hiện tại; nhập giá trị dương sẽ tạo lỗ bịt (blind hole).
+- `Độ sâu` của lỗ bịt được đo từ mặt khoan đến **chóp mũi khoan**, đã bao gồm cả phần mũi nhọn của mũi khoan, chứ không chỉ đo đoạn thành trụ thẳng; vì vậy độ sâu bắt buộc phải lớn hơn chiều cao của bản thân chóp mũi khoan.
+- `Góc mũi khoan` là góc mở của mũi khoan, mặc định là **118°**.
 
-尺寸还必须满足：钻孔直径为正；钻尖角和锥沉孔角度均在 0° 到 180° 之间；沉孔直径、锥沉孔直径都要大于钻孔直径；沉孔深度为正；沉孔深度或锥沉面高度都必须小于钻孔圆柱直壁的长度，不能把直壁全部占掉。
+Kích thước cũng phải thỏa mãn: đường kính khoan là số dương; góc mũi khoan và góc lỗ côn nằm trong khoảng từ 0° đến 180°; đường kính lỗ bậc, đường kính lỗ côn đều phải lớn hơn đường kính lỗ khoan; độ sâu lỗ bậc là số dương; độ sâu lỗ bậc hoặc chiều cao vát côn đều phải nhỏ hơn chiều dài thành trụ của lỗ khoan, không được chiếm hết toàn bộ thành thẳng.
 
-#### 孔规格预设
+#### Preset quy cách lỗ
 
-创建孔以后，展开它的**特征行**，在 `预设` 下拉框中选择规格。可选尺寸为 `M3`、`M4`、`M5`、`M6`、`M8`、`M10`、`M12`、`M14`、`M16`、`M20`。
+Sau khi tạo lỗ, mở rộng **hàng tính năng** của nó, chọn quy cách trong danh sách thả xuống `Preset`. Các kích thước có sẵn gồm `M3`, `M4`, `M5`, `M6`, `M8`, `M10`, `M12`, `M14`, `M16`, `M20`.
 
-- **简单**：每个规格提供 `close` / `normal` / `loose` 三档间隙孔径。
-- **沉孔**：使用普通间隙孔径，并填入相应的头部容纳直径和沉孔深度。
-- **锥沉孔**：使用普通间隙孔径，并填入相应的头部容纳直径和 90° 锥角；**M14 没有锥沉孔预设**。
+- **Đơn giản**: Mỗi quy cách cung cấp 3 mức đường kính lỗ dung sai: `close` (chặt) / `normal` (bình thường) / `loose` (lỏng).
+- **Lỗ bậc**: Dùng đường kính lỗ dung sai bình thường, và điền sẵn đường kính chứa đầu bu-lông và độ sâu bậc tương ứng.
+- **Lỗ côn**: Dùng đường kính lỗ dung sai bình thường, và điền sẵn đường kính chứa đầu bu-lông và góc côn 90°; **M14 không có preset lỗ côn**.
 
-例如 M8 普通间隙：
+Ví dụ với ren M8 dung sai bình thường:
 
-- 简单孔选择 M8 的 `normal` 档，钻孔直径为 **9**；
-- 沉孔选择 M8 的 `⌀9 / ⌀14×8` 预设，钻孔直径为 **9**，沉孔直径为 **14**、深度为 **8**；
-- 锥沉孔选择 M8 的 `⌀9 / ⌀17.92×90°` 预设，钻孔直径为 **9**，锥沉孔直径为 **17.92**、角度为 **90°**。
+- Lỗ đơn giản chọn mức `normal` của M8, đường kính khoan là **9**;
+- Lỗ bậc chọn preset `⌀9 / ⌀14×8` của M8, đường kính khoan là **9**, đường kính lỗ bậc là **14**, độ sâu là **8**;
+- Lỗ côn chọn preset `⌀9 / ⌀17.92×90°` của M8, đường kính khoan là **9**, đường kính lỗ côn là **17.92**, góc là **90°**.
 
-预设只把数值写入相应尺寸字段，之后仍可自行修改；它**不生成螺纹，也不是攻丝底孔表**。
+Preset chỉ ghi các giá trị số vào các ô kích thước tương ứng, sau đó bạn vẫn có thể tự sửa đổi; preset **không tạo ren thực tế, cũng không phải bảng đường kính lỗ mồi để taro ren**.
 
-孔心引用丢失时，特征行的 **重新选择** 只会重新拾取孔心，不能更换钻孔面。若钻孔面本身已经丢失，需要重新创建孔特征。
+Khi mất tham chiếu tâm lỗ, chức năng **Chọn lại** trên hàng tính năng chỉ chọn lại tâm lỗ, không thể thay đổi mặt khoan. Nếu bản thân mặt khoan đã bị mất, bạn cần phải tạo lại tính năng lỗ.
 
-### 圆角
+### Bo góc (Fillet)
 
-选择边（可多选），设置 `半径`。`末端半径` 留空表示等半径；填入不同值可做变半径圆角。确认后生成一个圆角特征。
+Chọn cạnh (có thể chọn nhiều cạnh), thiết lập `Bán kính`. Để trống `Bán kính đầu cuối` biểu thị bo góc bán kính đều; nhập giá trị khác nhau để tạo bo góc bán kính biến thiên. Sau khi xác nhận sẽ sinh ra một tính năng bo góc.
 
-### 倒角
+### Vát mép (Chamfer)
 
-选择边，选择模式：
+Chọn cạnh, chọn chế độ vát:
 
-| 模式 | 参数 |
+| Chế độ | Tham số |
 | --- | --- |
-| 等距离 | 距离 |
-| 双距离 | 距离 1、距离 2 |
-| 距离和角度 | 距离、角度、翻转方向 |
+| Khoảng cách bằng nhau | Khoảng cách |
+| Hai khoảng cách | Khoảng cách 1, Khoảng cách 2 |
+| Khoảng cách và góc | Khoảng cách, Góc, Đảo chiều |
 
-### 修改圆角 / 修改倒角
+### Sửa bo góc / Sửa vát mép
 
-选择由某个圆角/倒角特征生成的面，直接修改该特征的半径/距离。这通常比删掉特征再重做更能保留设计意图，并减少下游引用失效；但半径或距离导致拓扑改变时，仍应检查下游特征。
+Chọn mặt được tạo bởi một tính năng bo góc/vát mép nào đó, trực tiếp sửa bán kính/khoảng cách của tính năng đó. Cách này thường bảo toàn ý đồ thiết kế tốt hơn việc xóa tính năng rồi làm lại, đồng thời giảm thiểu việc các tham chiếu hạ nguồn bị mất hiệu lực; tuy nhiên khi bán kính hoặc khoảng cách làm thay đổi cấu trúc liên kết, bạn vẫn nên kiểm tra lại các tính năng hạ nguồn.
 
-### 拔模
+### Rút góc nghiêng (Draft)
 
-1. 选择中性面（基准面或实体平面）——拔模绕它旋转。
-2. 选择要拔模的面（可多选）。
-3. 设置 `角度`；`反向` 翻转倾斜方向。
+1. Chọn mặt trung hòa (mặt phẳng chuẩn hoặc mặt phẳng trên thân) — góc nghiêng sẽ xoay quanh mặt này.
+2. Chọn các mặt cần tạo độ nghiêng (có thể chọn nhiều mặt).
+3. Thiết lập `Góc`; `Đảo chiều` để lật ngược hướng nghiêng.
 
-### 抽壳
+### Tạo vỏ rỗng (Shell)
 
-选择要开口的面，设置 `厚度`、`向外`、`连接类型`。实体被挖空成薄壁。
+Chọn các mặt cần mở nắp, thiết lập `Độ dày`, `Hướng ra ngoài`, `Kiểu nối`. Thân solid sẽ được khoét rỗng thành dạng thành mỏng.
 
-### 偏移面
+### Dời mặt song song (Offset Face)
 
-选择要移动的面（可多选），设置 `距离`。`保持圆角半径` 用于面旁边有圆角的情况：勾选后会先移除圆角、移动面、再按原半径重建圆角（否则圆角半径会跟着面一起变，并把后面的面拖走）。
+Chọn các mặt cần di chuyển (có thể chọn nhiều mặt), thiết lập `Khoảng cách`. Tùy chọn `Giữ bán kính bo góc` dùng cho trường hợp bên cạnh mặt có góc bo: khi tích chọn, hệ thống sẽ gỡ bỏ góc bo trước, dời mặt đi, rồi tái dựng lại góc bo theo bán kính ban đầu (nếu không, bán kính góc bo sẽ biến dạng theo mặt và kéo các mặt phía sau đi theo).
 
-- 不是实体、或有封闭内腔、或平滑面上有尖边时，命令会拒绝并说明原因。
-- 距离设得太大时，命令会报告“太远”的大致上限。
+- Nếu không phải khối solid, hoặc có khoang rỗng khép kín bên trong, hoặc trên mặt trơn có cạnh sắc, lệnh sẽ từ chối và giải thích nguyên nhân rõ ràng.
+- Khi khoảng cách đặt quá lớn, lệnh sẽ báo giới hạn tối đa ước tính.
 
-### 分割
+### Phân tách (Split)
 
-选择一个实体和分割工具（面/边/线框），设置 `保留侧`：两侧 / 法向侧 / 对侧。
+Chọn một thân và công cụ phân tách (mặt/cạnh/khung dây), thiết lập `Phía giữ lại`: Cả hai phía / Phía pháp tuyến / Phía đối diện.
 
-### 阵列
+### Mảng tham số
 
-三种参数化阵列：
+Ba kiểu mảng tham số:
 
-| 命令 | 参数 |
+| Lệnh | Tham số |
 | --- | --- |
-| 线性阵列 | 方向 1、间距、数量；勾选方向 2 后可设间距 2、数量 2；跳过实例在特征行里编辑 |
-| 环形阵列 | 阵列轴、总角度、数量、均布 |
-| 曲线阵列 | 路径、间距或均布、取向（锁定 / 沿切线） |
+| Mảng thẳng | Hướng 1, Khoảng cách, Số lượng; khi tích chọn Hướng 2 có thể đặt Khoảng cách 2, Số lượng 2; việc bỏ qua instance được chỉnh sửa trong hàng tính năng |
+| Mảng xoay vòng | Trục mảng, Tổng góc, Số lượng, Phân bố đều |
+| Mảng theo đường cong | Đường dẫn, Khoảng cách hoặc Phân bố đều, Định hướng (Khóa cố định / Theo tiếp tuyến) |
 
-### 镜像
+### Đối xứng (Mirror)
 
-选择镜像平面（基准面或实体平面），`合并` 决定镜像结果是否与原体合并。
+Chọn mặt phẳng đối xứng (mặt phẳng chuẩn hoặc mặt phẳng trên thân), tùy chọn `Hợp nhất` quyết định kết quả đối xứng có gộp chung với thân gốc hay không.
 
-### 布尔
+### Boolean
 
-- **合并**：目标 ∪ 工具
-- **减去**：目标 − 工具
-- **交集**：目标 ∩ 工具
+- **Hợp nhất (Union)**: Mục tiêu ∪ Công cụ
+- **Trừ bớt (Cut)**: Mục tiêu − Công cụ
+- **Giao nhau (Intersection)**: Mục tiêu ∩ Công cụ
 
-工具实体不会被删除，而是**隐藏并挂到实体的特征列表下**，作为该布尔特征的输入。要修改或删除它们，通过特征列表操作。
+Thân công cụ sẽ không bị xóa, mà được **ẩn đi và gắn bên dưới danh sách tính năng của thân**, đóng vai trò là đầu vào cho tính năng Boolean đó. Để sửa đổi hoặc xóa chúng, hãy thao tác thông qua danh sách tính năng.
 
-### 移除特征与重新选择
+### Xóa tính năng và Chọn lại
 
-- `移除特征`：选择一个由某特征生成的面（如圆角面），把该特征从链中移除并愈合。
-- `重新选择`：特征引用的几何丢失时使用；也可以从特征行菜单进入。
+- `Xóa tính năng`: Chọn một mặt do tính năng nào đó tạo ra (như mặt bo tròn), loại bỏ tính năng đó khỏi chuỗi và hàn lành bề mặt.
+- `Chọn lại`: Dùng khi hình học mà tính năng tham chiếu bị mất; cũng có thể truy cập từ menu hàng tính năng.
 
-## 6.5 体与节点操作
+<a id="65-体与节点操作"></a>
+## 6.5 Thao tác trên thân và node
 
-- **移动 / 旋转 / 镜像**：对参数化体做**刚体变换**，变换会作为一个 `transform` 特征追加到特征链末尾（阵列、复制生成的则是实例节点）。
-- **阵列**：生成多个实例或组；实例共享源几何，修改源会影响所有实例。
-- **使独立**：把实例（instance）变成拥有独立几何的副本；修改副本不影响源。
-- **删除**：删除整个体及其特征链。
-- **油漆桶**：给整个体换材质。
+- **Di chuyển / Xoay / Đối xứng**: Thực hiện **biến đổi vật rắn (rigid transform)** trên thân tham số, biến đổi này sẽ được bổ sung như một tính năng `transform` vào cuối chuỗi tính năng (còn mảng và sao chép sẽ tạo ra các node instance).
+- **Mảng**: Tạo ra nhiều instance hoặc nhóm; các instance chia sẻ chung hình học nguồn, việc sửa nguồn sẽ ảnh hưởng đến tất cả các instance.
+- **Tách độc lập**: Biến thực thể (instance) thành bản sao có hình học độc lập; sửa bản sao không ảnh hưởng đến nguồn.
+- **Xóa**: Xóa toàn bộ thân cùng toàn bộ chuỗi tính năng của nó.
+- **Thùng sơn**: Đổi vật liệu cho toàn bộ thân.
 
-草图不能被移动——它定义在世界坐标里，位置由创建时的基准面决定。要移动设计，移动体本身或修改草图/特征参数。
+Phác thảo không thể di chuyển — nó được định nghĩa trong hệ tọa độ thế giới, vị trí do mặt phẳng chuẩn khi tạo quyết định. Muốn di chuyển thiết kế, hãy di chuyển bản thân thân đó hoặc sửa đổi tham số phác thảo/tính năng.
 
-## 6.6 文档变量
+<a id="66-文档变量"></a>
+## 6.6 Biến số tài liệu
 
-**参数化 → 其他 → 变量**（或 `feature.variable`）打开文档级变量表：
+**Tham số → Khác → Biến số** (hoặc `feature.variable`) để mở bảng biến số cấp tài liệu:
 
-![变量对话框](images/09-variables.png)
+![Hộp thoại biến số](images/09-variables.png)
 
-| 列 | 说明 |
+| Cột | Giải thích |
 | --- | --- |
-| 名称 | 变量名，必须匹配 `[A-Za-z_][A-Za-z0-9_]*`，不能与常量 `pi`、`e` 重名 |
-| 类型 | 长度 / 角度 / 无量纲 |
-| 值 | 聚焦时编辑表达式，失焦后显示解析值或错误 |
-| 描述 | 名称旁的小标记里编辑，可选 |
+| Tên | Tên biến số, phải khớp với biểu thức chính quy `[A-Za-z_][A-Za-z0-9_]*`, không được trùng tên với hằng số `pi`, `e` |
+| Kiểu | Chiều dài / Góc / Không thứ nguyên (vô hướng) |
+| Giá trị | Khi được trỏ chuột vào thì sửa biểu thức, khi rời trỏ chuột sẽ hiển thị giá trị đã phân giải hoặc thông báo lỗi |
+| Mô tả | Chỉnh sửa trong ô nhỏ cạnh tên, tùy chọn |
 
-操作：
+Thao tác:
 
-- 在表格**底部空白行的“名称”框**输入新变量名，失焦或按 `Enter` 即可新增；不是用标题栏 `+`。新行默认为长度类型、表达式为 `0`。
-- 选中已有行后，可用标题栏按钮删除、上移、下移。
-- 名称、表达式等字段在失焦或按 `Enter` 时立即提交并触发相关草图和实体重建；面板没有统一的“确定”步骤，关闭面板也不会撤销修改。每次提交是一个撤销步骤。
-- 变量按顺序求值，**只能引用它上面的变量**，因此不会出现循环。
-- 拖动表头边缘可以调整“名称/类型”列宽，也可以用方向键微调。
-- **错误表达式也会原样保存**。失败行标红且不产生可供引用的值；不依赖它的独立行仍会求值，但引用这个失败变量的下游变量也会失败。
+- Nhập tên biến mới vào **ô "Tên" ở hàng trống dưới đáy bảng**, rời ô hoặc nhấn `Enter` để thêm mới; không phải dùng nút `+` trên thanh tiêu đề. Hàng mới mặc định là kiểu Chiều dài, biểu thức là `0`.
+- Sau khi chọn một hàng đã có, có thể dùng các nút trên thanh tiêu đề để Xóa, Di chuyển lên, Di chuyển xuống.
+- Các trường như tên, biểu thức sẽ lập tức được xác nhận khi rời tiêu điểm hoặc nhấn `Enter` và kích hoạt tái dựng các phác thảo cùng thân liên quan; bảng không có nút "Xác nhận" chung, việc đóng bảng cũng không hoàn tác các thay đổi. Mỗi lần xác nhận là một bước hoàn tác.
+- Biến số được tính toán tuần tự từ trên xuống dưới, **chỉ có thể tham chiếu các biến nằm phía trên nó**, do đó sẽ không xảy ra tham chiếu vòng tròn.
+- Kéo mép tiêu đề cột để chỉnh độ rộng cột "Tên/Kiểu", hoặc dùng các phím mũi tên để tinh chỉnh.
+- **Biểu thức lỗi cũng được lưu nguyên trạng**. Hàng bị lỗi được đánh dấu màu đỏ và không sinh ra giá trị có thể tham chiếu; các hàng độc lập không phụ thuộc vào nó vẫn được tính toán, nhưng các biến hạ nguồn tham chiếu biến lỗi này cũng sẽ bị lỗi theo.
 
-表达式支持：
+Hỗ trợ biểu thức:
 
-- 数字、其他变量名、`+ - * / %`、括号；不支持 `^` 幂运算符，也不要写 `mm` 等单位后缀；
-- 常量 `pi`、`e`；
-- 函数 `abs`、`sqrt`、`floor`、`ceil`、`round`、`min`、`max`、`sin`、`cos`、`tan`、`asin`、`acos`、`atan`、`atan2`；
-- 角度一律用度：`sin(30)` 是 0.5，`sin(90)` 才是 1，`sin(pi/2)` **不是** 1；
-- 类型会检查：长度变量不能直接放进角度槽位，`sqrt` 要求输入的量纲指数为偶数。
+- Số, tên biến khác, `+ - * / %`, dấu ngoặc đơn; không hỗ trợ toán tử lũy thừa `^`, và không viết các hậu tố đơn vị như `mm`;
+- Hằng số `pi`, `e`;
+- Hàm số: `abs`, `sqrt`, `floor`, `ceil`, `round`, `min`, `max`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`;
+- Góc luôn luôn tính theo độ: `sin(30)` bằng 0.5, `sin(90)` mới bằng 1, `sin(pi/2)` **không phải** là 1;
+- Có kiểm tra thứ nguyên (kiểu): biến chiều dài không thể đưa trực tiếp vào vị trí của góc, hàm `sqrt` yêu cầu số mũ thứ nguyên của đầu vào phải là số chẵn.
 
-假设 `width`、`height` 是长度变量，`tilt` 是角度变量，可用以下量纲表达式：
+Giả sử `width`, `height` là biến chiều dài, `tilt` là biến góc, có thể dùng các biểu thức thứ nguyên sau:
 
-| 表达式 | 结果类型与用途 |
+| Biểu thức | Kiểu kết quả và công dụng |
 | --- | --- |
-| `width*2` | 长度，例如把总宽定义为宽度的两倍 |
-| `width/height` | 无量纲比值 |
-| `sqrt(width*height)` | 长度，即长度平方所构成面积的平方根 |
-| `width*cos(tilt)` | 长度，即宽度在倾斜方向上的投影 |
-| `atan2(height,width)` | 角度；参数顺序是先 y、后 x |
+| `width*2` | Chiều dài, ví dụ định nghĩa tổng bề rộng gấp đôi bề rộng |
+| `width/height` | Tỷ số không thứ nguyên |
+| `sqrt(width*height)` | Chiều dài, tức căn bậc hai của diện tích tạo bởi bình phương chiều dài |
+| `width*cos(tilt)` | Chiều dài, tức hình chiếu của bề rộng theo hướng nghiêng |
+| `atan2(height,width)` | Góc; thứ tự tham số là y trước, x sau |
 
-在特征参数或草图尺寸里直接输入变量名或表达式即可，例如 `深度 = plateThickness * 2`。
+Trong tham số tính năng hoặc kích thước phác thảo, chỉ cần nhập trực tiếp tên biến hoặc biểu thức, ví dụ: `Độ sâu = plateThickness * 2`.
 
-### 按变量抑制
+### Ẩn theo biến số
 
-特征行菜单 → `按变量抑制…`，选择一个变量：
+Menu hàng tính năng → `Ẩn theo biến số…`, chọn một biến số:
 
-- 变量解析为 0 时抑制该特征；
-- 勾选“变量非零时抑制”则反过来；
-- 变量不存在或解析失败时，**不会抑制特征**，只在特征行显示警告。
+- Khi biến số phân giải thành 0 thì ẩn tính năng này;
+- Tích chọn "Ẩn khi biến số khác 0" thì đảo ngược lại quy tắc;
+- Khi biến số không tồn tại hoặc phân giải thất bại, **tính năng sẽ không bị ẩn**, mà chỉ hiển thị cảnh báo trên hàng tính năng.
 
-被变量抑制的行有单独的颜色，和手动抑制区分开。
+Hàng bị ẩn theo biến số có màu sắc hiển thị riêng biệt để phân biệt với hàng bị ẩn thủ công.
 
 ---
 
-下一步：[第 7 章 草图](07-sketch.md)
+Bước tiếp theo: [Chương 7 Phác thảo](07-sketch.md)

@@ -2,6 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 import { I18n, type IDocument, type INode, ShapeNode, ShapeTypes, ShapeTypeUtils } from "@chili3d/core";
+import { getSessionMemory } from "../memory/sessionMemory";
 
 /** The kind names a node can report, lower-cased to match what `shape.shapeType` answers with. */
 const SHAPE_KINDS = new Set(
@@ -51,10 +52,21 @@ export function requireDocument(): IDocument | string {
 
 /** Node with the given id, or the serialized error response when it does not exist. */
 export function requireNode(doc: IDocument, id: string): INode | string {
-    return (
-        findNode(doc, id) ??
-        JSON.stringify({
-            error: `node not found: ${id} — it may have been consumed by an edit-style run_program op (e.g. booleanCut) or deleted; the consumed nodes are listed in run_program's "removed". Call get_document_state for the current node list instead of retrying.`,
-        })
-    );
+    const found = findNode(doc, id);
+    if (found) return found;
+
+    try {
+        const mem = getSessionMemory();
+        if (mem.removedNodeIds.includes(id)) {
+            return JSON.stringify({
+                error: `node "${id}" was already consumed or deleted in this session (found in sessionMemory.removedNodeIds). It no longer exists in the document model. Call get_document_state to view active nodes.`,
+            });
+        }
+    } catch {
+        // Fall through
+    }
+
+    return JSON.stringify({
+        error: `node not found: ${id} — it may have been consumed by an edit-style run_program op (e.g. booleanCut) or deleted; the consumed nodes are listed in run_program's "removed". Call get_document_state for the current node list instead of retrying.`,
+    });
 }

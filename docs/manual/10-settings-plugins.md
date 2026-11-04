@@ -1,137 +1,138 @@
-# 10. 设置、插件与扩展
+# 10. Cài đặt, plugin và mở rộng
 
-## 10.1 首页设置
+## 10.1 Cài đặt trang chủ
 
-首页左侧的设置项会立即生效，并保存在浏览器本地：
+Các mục cài đặt ở bên trái trang chủ sẽ có hiệu lực ngay lập tức và được lưu trong bộ nhớ cục bộ của trình duyệt:
 
-| 设置 | 选项 |
+| Cài đặt | Các tùy chọn |
 | --- | --- |
-| 语言 | English / 简体中文 / Português (Brasil) / Русский |
-| 主题 | 系统 / 浅色 / 深色 |
-| 3D 导航 | Chili3d / Revit / Blender / Creo / Solidworks |
-| 环绕方式 | 转盘（锁定 Z 轴） / 轨迹球（自由旋转） |
+| Ngôn ngữ | English / 简体中文 / Português (Brasil) / Русский / Tiếng Việt |
+| Giao diện (Theme) | Hệ thống / Sáng / Tối |
+| Điều hướng 3D | Chili3d / Revit / Blender / Creo / Solidworks |
+| Kiểu xoay vòng | Mâm xoay (Turntable - Khóa trục Z) / Trackball (Xoay tự do) |
 
-- **主题**：默认跟随系统；“系统”模式下切换操作系统深浅色，界面和 3D 场景会一起切换。
-- **3D 导航**：决定中键/Shift+中键的平移与旋转分配，见 [第 3.1 节](03-view-navigation-selection.md#31-相机导航)。
-- **环绕方式**：转盘模式保持 Z 轴向上，适合建筑/机械；轨迹球像转动手中的球，适合自由观察。
+- **Giao diện**: Mặc định đi theo hệ thống; ở chế độ "Hệ thống", khi chuyển đổi chế độ sáng/tối trên hệ điều hành, giao diện ứng dụng và khung cảnh 3D sẽ tự động chuyển đổi theo.
+- **Điều hướng 3D**: Quyết định việc phân bổ thao tác rê chuột giữa (MMB) / Shift+chuột giữa cho việc tịnh tiến (Pan) và xoay (Orbit), xem tại [Mục 3.1](03-view-navigation-selection.md#31-相机导航).
+- **Kiểu xoay vòng**: Chế độ Mâm xoay giữ cho trục Z luôn hướng lên trên, rất thích hợp cho kiến trúc và cơ khí; chế độ Trackball giống như xoay một quả cầu trong tay, phù hợp để quan sát tự do mọi góc độ.
 
-单位固定为**毫米**、角度固定为**度**，没有切换项。
+Đơn vị đo được ấn định cố định là **milimét (mm)**, góc được ấn định là **độ (°)**, không có tùy chọn thay đổi.
 
-## 10.2 界面布局调整
+## 10.2 Điều chỉnh bố cục giao diện
 
-- 拖项目树与属性面板之间的横向分隔条：调整两者高度比例。
-- 拖侧栏与视口之间的竖向分隔条：调整侧栏宽度。
-- 拖 AI 面板左侧的分隔条：调整 AI 面板宽度。
-- 文档标签和功能区标签会自动适应窗口宽度；功能区放不下时可横向滚动。
+- Kéo thanh phân cách ngang giữa cây dự án và bảng thuộc tính: Điều chỉnh tỷ lệ chiều cao của hai khu vực.
+- Kéo thanh phân cách dọc giữa thanh bên và khung nhìn: Điều chỉnh độ rộng của thanh bên.
+- Kéo thanh phân cách bên trái bảng điều khiển AI: Điều chỉnh độ rộng của bảng điều khiển AI.
+- Các thẻ tab tài liệu và thẻ Ribbon tự động thích ứng với chiều rộng cửa sổ; khi thanh Ribbon không đủ chỗ hiển thị, bạn có thể cuộn ngang.
 
-## 10.3 快捷键
+## 10.3 Phím tắt
 
-完整列表见 [附录 B](appendix-shortcuts.md)。最常用的：
+Danh sách đầy đủ xem tại [Phụ lục B](appendix-shortcuts.md). Các phím tắt thông dụng nhất:
 
-| 快捷键 | 命令 |
+| Phím tắt | Lệnh |
 | --- | --- |
-| Ctrl+S / Ctrl+O | 保存 / 打开 |
-| Ctrl+Z / Ctrl+Y | 撤销 / 重做 |
-| Delete / Backspace | 删除选中节点 |
-| Space / Enter | 重复上一个命令 |
-| L / R / C | 直线 / 矩形 / 圆 |
-| B / S / Y / N | 立方体 / 球体 / 圆柱 / 圆锥 |
-| P / Q | 挤出 / 推拉 |
-| M / Shift+R / Shift+A | 移动 / 旋转 / 阵列 |
-| Shift+F / Shift+C | 圆角 / 倒角 |
-| T / O | 修剪 / 偏移 |
-| D | 测量长度 |
-| X / Shift+I | 分解 / 交集 |
+| Ctrl+S / Ctrl+O | Lưu / Mở |
+| Ctrl+Z / Ctrl+Y | Hoàn tác / Làm lại |
+| Delete / Backspace | Xóa node được chọn |
+| Space / Enter | Lặp lại lệnh trước đó |
+| L / R / C | Đoạn thẳng / Hình chữ nhật / Đường tròn |
+| B / S / Y / N | Hình hộp / Hình cầu / Hình trụ / Hình nón |
+| P / Q | Đùn khối / Đẩy-Kéo |
+| M / Shift+R / Shift+A | Di chuyển / Xoay / Mảng |
+| Shift+F / Shift+C | Bo góc / Vát mép |
+| T / O | Cắt tỉa / Dời song song (Offset) |
+| D | Đo chiều dài |
+| X / Shift+I | Phân rã / Giao nhau |
 
-`Space`/`Enter` 在文本输入区之外且**不处于拾取状态**时重复上一个命令，与当前有没有选中对象无关；命令正在拾取时，它们用于确认当前拾取。
+Phím `Space`/`Enter` khi ở ngoài vùng nhập văn bản và **không ở trong trạng thái chọn điểm** sẽ lặp lại lệnh gần nhất vừa dùng, không phụ thuộc vào việc có đang chọn đối tượng nào hay không; khi lệnh đang trong trạng thái chọn điểm, hai phím này dùng để xác nhận thao tác chọn điểm hiện tại.
 
-macOS 的全局 Ctrl 快捷键也接受 `Cmd`，例如 `Cmd+S`、`Cmd+Z`。但项目树的多选仍是 **Ctrl+单击**，不能用 Cmd 替代；Shift+单击用于范围选择。
+Trên macOS, các phím tắt toàn cục dùng Ctrl cũng chấp nhận phím `Cmd`, ví dụ `Cmd+S`, `Cmd+Z`. Tuy nhiên thao tác chọn nhiều node trong cây dự án vẫn là **Ctrl+Nhấp chuột**, không thể thay thế bằng Cmd; thao tác Shift+Nhấp chuột dùng để chọn một dải liên tục.
 
-## 10.4 插件
+<a id="104-插件"></a>
+## 10.4 Plugin
 
-### 加载插件
+### Tải plugin
 
-三种方式：
+Có ba cách tải plugin:
 
-1. URL 参数（可重复）。远程地址有两种有效形式：
+1. Qua tham số URL (có thể xuất hiện nhiều lần). Địa chỉ từ xa có hai hình thức hợp lệ:
 
    ```text
    http://localhost:8080/?plugin=https://example.com/my-plugin/
    http://localhost:8080/?plugin=https://example.com/my-plugin.chiliplugin
    ```
 
-   - 目录地址：目录中必须有 `manifest.json`，由清单声明入口 JS、CSS 和资源；
-   - `.chiliplugin` 地址：直接指向完整插件包。
+   - Địa chỉ thư mục: Bên trong thư mục bắt buộc phải có tệp `manifest.json`, bản kê khai (manifest) sẽ khai báo tệp JS đầu vào, CSS và các tài nguyên;
+   - Địa chỉ `.chiliplugin`: Trỏ trực tiếp tới gói plugin hoàn chỉnh.
 
-   不能把任意 `extension.js` 之类的单个脚本地址当作插件 URL。
+   Không thể dùng địa chỉ của một script đơn lẻ bất kỳ như `extension.js` làm URL plugin.
 
-2. 把 `.chiliplugin` 文件拖进窗口。
-3. 在页面里通过插件管理接口加载（`app.pluginManager.loadFromUrl`），同样使用上面的目录或包地址。
+2. Kéo thả tệp `.chiliplugin` trực tiếp vào cửa sổ ứng dụng.
+3. Tải thông qua API quản lý plugin trong trang web (`app.pluginManager.loadFromUrl`), cũng sử dụng địa chỉ thư mục hoặc địa chỉ gói ở trên.
 
-### 信任、安全与跨域
+### Tin cậy, an toàn và CORS
 
-插件入口是可执行的 JavaScript，并能调用应用接口、注册命令和服务、读取或修改文档；它不是只能添加按钮的受限模板。**只加载你信任作者和来源的插件**，来源不明时不要点“信任”，最好先审查代码和清单。
+Tệp đầu vào của plugin là mã JavaScript có thể thực thi, có quyền gọi các API của ứng dụng, đăng ký lệnh và dịch vụ, cũng như đọc hoặc chỉnh sửa tài liệu; nó không phải là một mẫu template bị giới hạn chỉ để thêm nút bấm. **Chỉ tải các plugin mà bạn tin tưởng tác giả và nguồn gốc phát hành**, khi không rõ nguồn gốc thì tuyệt đối không bấm "Tin cậy", tốt nhất nên kiểm tra kỹ mã nguồn và bản kê khai manifest trước.
 
-- 远程插件来自陌生域名时，会先弹出“是否信任来自以下域名的脚本？”的确认，选择信任后才加载。这个确认不是安全扫描，信任的是来源域名。
-- 本地拖入 `.chiliplugin` **不会经过陌生域名确认**。没有提示不代表安全，本地包同样只应来自可信来源。
-- 远程加载清单、插件包、入口脚本和其他资源时，服务器必须正确允许 **CORS**。加载失败时检查地址形式、清单、网络响应和浏览器控制台中的跨域错误。
+- Khi plugin từ xa đến từ một tên miền lạ, trước tiên sẽ bật lên hộp thoại xác nhận "Bạn có tin cậy script đến từ tên miền sau đây không?", chỉ sau khi bạn chọn tin cậy thì plugin mới được tải. Hộp thoại này không phải là quét mã độc, mà là xác nhận sự tin cậy đối với tên miền nguồn.
+- Kéo thả tệp `.chiliplugin` từ máy cục bộ **sẽ không qua bước xác nhận tên miền lạ**. Việc không có thông báo không đồng nghĩa với an toàn tuyệt đối, gói cục bộ cũng chỉ nên đến từ các nguồn đáng tin cậy.
+- Khi tải bản kê khai manifest, gói plugin, script đầu vào và các tài nguyên khác từ xa, máy chủ bắt buộc phải cho phép **CORS** chuẩn xác. Khi tải thất bại, hãy kiểm tra hình thức địa chỉ, manifest, phản hồi mạng và lỗi cross-origin trong Console của trình duyệt.
 
-### 插件能做什么
+### Plugin có thể làm được những gì
 
-插件可以注册：
+Plugin có thể đăng ký:
 
-- 新命令（`Command`）；
-- 新功能区标签/组/按钮；
-- 新的 i18n 文案；
-- 面板、工具、事件处理等。
+- Lệnh mới (`Command`);
+- Thẻ Ribbon mới / Nhóm Ribbon mới / Nút bấm mới;
+- Văn bản bản địa hóa i18n mới;
+- Bảng điều khiển (panel), công cụ, bộ xử lý sự kiện...
 
-加载后的插件通常会在功能区新增一个 **插件** 标签。
+Sau khi tải, plugin thường sẽ thêm một thẻ **Plugin** mới trên thanh Ribbon.
 
-### 仓库自带示例
+### Các ví dụ có sẵn trong kho lưu trữ
 
-| 示例 | 内容 |
+| Ví dụ | Nội dung |
 | --- | --- |
-| HelloWorld（JavaScript / TypeScript） | 最小插件：一个命令 + 一个功能区按钮 + 中英文文案 |
-| 宏管理器 | 新建/编辑/运行/删除 JavaScript 宏。插件标签中出现“宏” |
-| 可视化编程 | 基于 Rete.js 的节点式编辑器（Grasshopper 风格）。插件标签中出现“可视化编程” |
+| HelloWorld (JavaScript / TypeScript) | Plugin tối giản: Một lệnh + Một nút bấm trên Ribbon + Bản dịch tiếng Trung/Anh |
+| Trình quản lý macro (Macro Manager) | Tạo mới/chỉnh sửa/chạy/xóa macro JavaScript. Xuất hiện mục "Macro" trong thẻ Plugin |
+| Lập trình trực quan (Visual Programming) | Trình chỉnh sửa dạng node dựa trên Rete.js (phong cách Grasshopper). Xuất hiện mục "Lập trình trực quan" trong thẻ Plugin |
 
-这些示例位于仓库的插件工作区。以宏管理器为例，在它的项目目录中构建与打包：
+Các ví dụ này nằm trong thư mục workspace plugin của kho mã nguồn. Lấy ví dụ trình quản lý macro, bạn có thể build và đóng gói trong thư mục dự án của nó:
 
 ```bash
-npm run build      # 构建
-npm run package    # 生成 .chiliplugin
+npm run build      # Build mã nguồn
+npm run package    # Sinh tệp .chiliplugin
 ```
 
-`.chiliplugin` 是一个包含 `manifest.json`、入口 JS/CSS 和资源的包；把它拖进 Chili3D 即可加载。拖包不会写入一个永久“已安装插件”列表，刷新后需要重新拖入，或改用 `?plugin=` 启动参数。信任某个域名会保存该信任设置，但也不会自动加载这个域名的插件。
+Tệp `.chiliplugin` là một gói chứa `manifest.json`, JS/CSS đầu vào và các tài nguyên; kéo thả nó vào Chili3D là có thể tải ngay. Việc kéo thả tệp không ghi vào danh sách "plugin đã cài đặt" vĩnh viễn, sau khi làm mới (F5) trang web bạn cần kéo thả lại, hoặc dùng tham số khởi động `?plugin=`. Việc tin cậy một tên miền nào đó sẽ lưu lại cài đặt tin cậy đó, nhưng cũng không tự động tải các plugin từ tên miền này.
 
-## 10.5 性能测试
+## 10.5 Kiểm thử hiệu năng (Performance Test)
 
-**管理** 标签里的 `性能测试` 会：
+Nút `Kiểm thử hiệu năng` trong thẻ **Quản lý** sẽ:
 
-1. 新建一个名为 `OCC Performace Test` 的文档；
-2. 生成 20×20×20 = 8000 个随机尺寸的盒子；
-3. 弹窗报告总耗时。
+1. Tạo một tài liệu mới có tên `OCC Performace Test`;
+2. Sinh ra 20×20×20 = 8000 hình hộp với kích thước ngẫu nhiên;
+3. Bật thông báo báo cáo tổng thời gian thực hiện.
 
-它用于粗略比较机器/浏览器的内核与渲染性能，会占用大量内存，建议只在新会话里运行。
+Công cụ này dùng để so sánh sơ bộ hiệu năng dựng hình và render của phần cứng/trình duyệt, tiêu tốn lượng lớn bộ nhớ RAM, vì vậy khuyến nghị chỉ nên chạy trong một phiên làm việc mới.
 
-![管理标签](images/12-manager-tab.png)
+![Thẻ Quản lý](images/12-manager-tab.png)
 
-## 10.6 浏览器要求与数据
+## 10.6 Yêu cầu trình duyệt và dữ liệu
 
-- 需要支持 **WebAssembly** 和 **WebGL 2** 的现代浏览器（Chrome/Edge/Firefox/Safari 的较新版本）。
-- 文档与最近项目保存在浏览器 **IndexedDB**；清理站点数据会丢失它们，重要文档先按 [第 8.2 节](08-document-files.md#82-保存版本与备份) 备份。
-- 主题、语言、导航、环绕方式，以及不含 Key 的 AI 配置保存在本地存储；AI 对话随所在文档保存。
-- 文档、最近项目和设置按浏览器源（协议、域名、端口）隔离。官网、镜像、不同端口或不同浏览器之间不会自动同步，迁移文档要使用 `.cd`，设置则需分别配置。
-- AI API Key 只存在于当前会话内存；可选择使用浏览器密码管理器保管，隐私说明见 [第 9.6 节](09-ai-assistant.md#96-隐私)。
-- 应用使用 Microsoft Clarity 统计，它是独立于 AI 请求的统计通道。自托管时可从 Web 入口页移除统计脚本，或通过浏览器、网络策略阻止统计请求。
+- Cần trình duyệt hiện đại hỗ trợ **WebAssembly** và **WebGL 2** (các phiên bản mới của Chrome/Edge/Firefox/Safari).
+- Tài liệu và dự án gần đây được lưu trong **IndexedDB** của trình duyệt; việc dọn dẹp dữ liệu duyệt web sẽ làm mất chúng, các tài liệu quan trọng hãy sao lưu trước theo hướng dẫn tại [Mục 8.2](08-document-files.md#82-保存版本与备份).
+- Giao diện, ngôn ngữ, điều hướng, kiểu xoay vòng, cùng cấu hình AI không chứa Key được lưu trong LocalStorage; hội thoại AI được lưu cùng tài liệu tương ứng.
+- Tài liệu, dự án gần đây và cài đặt được cách ly theo nguồn trình duyệt (giao thức, tên miền, cổng). Trang chính thức, trang mirror, các cổng khác nhau hoặc các trình duyệt khác nhau sẽ không tự động đồng bộ hóa; muốn chuyển tài liệu phải dùng tệp `.cd`, còn cài đặt thì phải cấu hình riêng ở từng nơi.
+- API Key của AI chỉ tồn tại trong bộ nhớ RAM của phiên làm việc hiện tại; có thể chọn để trình quản lý mật khẩu của trình duyệt lưu giữ, giải thích về quyền riêng tư xem tại [Mục 9.6](09-ai-assistant.md#96-隐私).
+- Ứng dụng sử dụng thống kê Microsoft Clarity, đây là kênh thống kê độc lập với các yêu cầu AI. Khi tự triển khai (self-hosted), bạn có thể gỡ bỏ script thống kê Clarity khỏi trang web chính, hoặc chặn các yêu cầu thống kê qua trình duyệt hay chính sách mạng.
 
-## 10.7 从哪里获取帮助
+## 10.7 Tìm trợ giúp ở đâu
 
-- 首页右侧的“社区视频”有更新记录和案例展示。
-- GitHub：<https://github.com/xiangechen/chili3d>（Issues / Discussions）。
-- 微信群二维码在功能区的“其他”组。
-- B 站有中文视频教程（见项目 README）。
+- Phần "Video cộng đồng" ở bên phải trang chủ có các video ghi lại cập nhật và trình diễn ca sử dụng mẫu.
+- GitHub: <https://github.com/xiangechen/chili3d> (Issues / Discussions).
+- Mã QR nhóm WeChat nằm trong nhóm "Khác" trên thanh Ribbon.
+- Bilibili có các video hướng dẫn bằng tiếng Trung (xem trong README của dự án).
 
 ---
 
-下一步：[第 11 章 常见问题](11-faq.md)，或回到 [手册目录](README.md)。
+Bước tiếp theo: [Chương 11 Câu hỏi thường gặp](11-faq.md), hoặc quay lại [Mục lục sổ tay](README.md).

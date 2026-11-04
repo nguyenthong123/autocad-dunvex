@@ -2,6 +2,10 @@
 // See LICENSE file in the project root for full license information.
 
 export const I18N_KEYS = [
+    "app.manual.back",
+    "app.manual.close",
+    "app.manual.loading",
+    "app.manual.title",
     "ai.advanced",
     "ai.advancedWarning",
     "ai.apiKey",
@@ -136,6 +140,7 @@ export const I18N_KEYS = [
     "circle.radius",
     "command.act.alignCamera",
     "command.ai.toggleChat",
+    "command.app.manual",
     "command.boolean.common",
     "command.boolean.cut",
     "command.boolean.join",

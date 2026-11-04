@@ -3,7 +3,9 @@
 
 import { Transaction } from "@chili3d/core";
 import type { ParametricOp, ProgramResult } from "@chili3d/parametric";
+import { recordRuntimeError } from "../diagnostics";
 import type { Tool } from "../llm/types";
+import { onNodesCreated, onRecentError } from "../memory";
 import { requireDocument } from "./documentContext";
 
 /**
@@ -181,11 +183,34 @@ async function runParametric(args: Record<string, unknown>): Promise<string> {
     let result: ProgramResult | undefined;
     // Synchronous by construction: the solver is initialized above, and a throw here
     // rolls the whole program back, so a half-built body never survives.
-    Transaction.execute(document, "run_parametric", () => {
-        result = parametric.runParametricProgram(document, ops as ParametricOp[]);
-        document.selection.clearSelection();
-        document.visual.update();
-    });
+    try {
+        Transaction.execute(document, "run_parametric", () => {
+            result = parametric.runParametricProgram(document, ops as ParametricOp[]);
+            document.selection.clearSelection();
+            document.visual.update();
+        });
+        if (result?.created) {
+            onNodesCreated(result.created.map((c) => ({ id: c.nodeId, name: c.name })));
+        }
+    } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const opMatch = /op \d+ \("([^"]+)"\)/.exec(errMsg);
+        const failedOperation = opMatch
+            ? opMatch[1]
+            : (args["ops"] as Array<{ op?: string }> | undefined)?.[0]?.op;
+        recordRuntimeError({
+            toolName: "run_parametric",
+            operation: failedOperation,
+            error: err,
+            args,
+        });
+        onRecentError({
+            toolName: "run_parametric",
+            operation: failedOperation,
+            errorMessage: errMsg,
+        });
+        throw err;
+    }
     // Serialized outside the transaction on purpose: a fault here is a reporting fault,
     // and it must not discard a build that has already committed to history.
     return JSON.stringify(result);

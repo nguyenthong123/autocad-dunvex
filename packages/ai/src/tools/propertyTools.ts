@@ -13,6 +13,7 @@ import {
     Transaction,
 } from "@chili3d/core";
 import type { Tool } from "../llm/types";
+import { onNodeRenamed } from "../memory";
 import { findNode, requireDocument, requireNode } from "./documentContext";
 import { describeProperties, prepareUpdates } from "./propertyBag";
 
@@ -144,6 +145,9 @@ const setNodePropertiesHandler: Tool["handler"] = async (args) => {
     if (typeof updates === "string") return updates;
 
     applyUpdates(doc, node, updates);
+    if (typeof requested["name"] === "string" && (requested["name"] as string).trim()) {
+        onNodeRenamed(id, (requested["name"] as string).trim());
+    }
     return JSON.stringify({
         id,
         updated: describeNode(node, doc).properties.filter((p) => updates.has(p.name)),

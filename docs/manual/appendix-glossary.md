@@ -1,84 +1,84 @@
-# 附录 C 术语表
+# Phụ lục C Bảng thuật ngữ
 
-这份术语表解释手册中反复出现的 CAD 概念。它不是严格的数学定义，而是帮助你判断“该选什么、命令会改什么”。
+Bảng thuật ngữ này giải thích các khái niệm CAD xuất hiện lặp đi lặp lại trong cuốn sổ tay. Đây không phải là định nghĩa toán học thuần túy khắt khe, mà nhằm giúp bạn phán đoán "nên chọn đối tượng nào, lệnh sẽ thay đổi những gì".
 
-## C.1 文档与对象
+## C.1 Tài liệu và đối tượng
 
-| 术语 | 含义 |
+| Thuật ngữ | Ý nghĩa |
 | --- | --- |
-| 文档 | 一个可独立保存的 Chili3D 文件环境，包含项目树、几何、变量、场景、AI 对话等数据。每个打开的文档有独立选择和撤销栈。见 [第 8 章](08-document-files.md)。 |
-| 节点（Node） | 项目树中的一个对象，例如立方体、草图、参数化体、文件夹或标注。删除节点与删除节点上的某条边不是一回事。 |
-| 参数化体（Body） | 由有序特征列表驱动的实体容器。修改上游特征后，体会按列表重新计算。它不是简单的“一个形状节点”。 |
-| 特征（Feature） | 参数化体中的一步设计操作，例如拉伸、孔或圆角。特征可以编辑、重排、抑制、删除，并可能引用其他几何。 |
-| 直接建模节点 | 保存当前几何结果的节点，不保留完整设计历史。部分节点暴露尺寸属性；如果面板没有列出原命令参数，就不能在属性面板里继续编辑这些参数。 |
-| 文件夹 | 只用于组织项目树层级，不改变几何。可通过项目树工具栏创建，与 `创建组` 不是同一种对象。 |
-| 组件（创建组） | 把选中对象移入组件定义，并可生成组件节点。组件使用创建时冻结的合并网格，不是普通的树文件夹，也不是布尔合并；它与形状实例属于不同机制。 |
+| Tài liệu (Document) | Môi trường tệp Chili3D có thể lưu độc lập, chứa dữ liệu về cây dự án, hình học, biến số, khung cảnh, hội thoại AI... Mỗi tài liệu đang mở có vùng chọn và ngăn xếp hoàn tác (undo stack) riêng biệt. Xem [Chương 8](08-document-files.md). |
+| Nút (Node) | Một đối tượng trong cây dự án, ví dụ như khối hộp, phác thảo, thân tham số, thư mục hoặc kích thước ghi chú. Xóa một nút hoàn toàn khác với việc xóa một cạnh nào đó trên nút. |
+| Thân tham số (Parametric Body) | Vật chứa khối rắn (solid) được điều khiển bởi danh sách tính năng (feature list) có thứ tự. Khi sửa đổi tính năng phía trước (upstream), thân tham số sẽ tự động tính toán lại theo danh sách. Đây không đơn thuần chỉ là "một nút hình dạng". |
+| Tính năng (Feature) | Một bước thao tác thiết kế trong thân tham số, ví dụ như đùn khối, tạo lỗ hoặc bo góc. Tính năng có thể chỉnh sửa, sắp xếp lại thứ tự, ẩn/nén (suppress), xóa và có thể tham chiếu đến hình học khác. |
+| Nút dựng hình trực tiếp | Nút lưu trữ kết quả hình học hiện tại, không giữ lại toàn bộ lịch sử thiết kế. Một số nút có hiển thị thuộc tính kích thước; nếu bảng thuộc tính không liệt kê các tham số của lệnh gốc, bạn sẽ không thể tiếp tục chỉnh sửa các tham số đó trong bảng thuộc tính. |
+| Thư mục (Folder) | Chỉ dùng để sắp xếp phân cấp trên cây dự án, không làm thay đổi hình học. Có thể tạo thông qua thanh công cụ của cây dự án, và không phải cùng một loại đối tượng với lệnh `Tạo nhóm`. |
+| Cụm chi tiết (Tạo nhóm) | Đưa các đối tượng được chọn vào định nghĩa cụm chi tiết và có thể tạo ra các nút cụm chi tiết. Cụm chi tiết sử dụng lưới hợp nhất được cố định tại thời điểm tạo, không phải là thư mục cây thông thường, cũng không phải là phép hợp Boolean; nó thuộc cơ chế khác so với thực thể hình dạng (shape instance). |
 
-## C.2 几何与拓扑
+## C.2 Hình học và tô pô
 
-| 术语 | 含义 |
+| Thuật ngữ | Ý nghĩa |
 | --- | --- |
-| 顶点（Vertex） | 几何中的点状拓扑元素，通常是边的端点，也可作为拉伸的终止目标。 |
-| 边（Edge） | 有边界的曲线段，例如直线边、圆边或圆弧边。圆角、倒角等命令通常要求选边。 |
-| 线框（Wire） | 按顺序连接的一组边，可以开放或闭合。闭合线框可进一步形成面或作为扫掠路径。 |
-| 面（Face） | 有边界的曲面，例如平面、圆柱面或 B 样条曲面。面不一定属于实体。 |
-| 壳（Shell） | 一组连接的面。闭合壳可以转为实体，开放壳本身通常没有体积。 |
-| 实体（Solid） | 有封闭边界的精确三维几何，可计算体积，适合大多数布尔和机械建模操作。 |
-| 组合体（Compound） | 把多个形状放在同一个拓扑容器中，不自动融合它们。`转组合体` 与 `布尔合并` 的结果不同。 |
-| 轮廓（Profile） | 用于拉伸、旋转、放样等操作的截面输入。闭合外环形成区域，内环通常形成孔洞；构造线和独立点不参与实体轮廓。 |
-| B-rep | 边界表示，用精确曲线、曲面和拓扑描述 CAD 几何。STEP、IGES、BREP 常用于交换这类数据。 |
-| 网格（Mesh） | 用大量三角形等近似表面，常用于显示、打印或交换渲染模型。STL 导入后不会恢复原始光滑 CAD 曲面。 |
+| Đỉnh (Vertex) | Phần tử tô pô dạng điểm trong hình học, thường là điểm mút của cạnh, cũng có thể dùng làm đích dừng cho thao tác đùn khối. |
+| Cạnh (Edge) | Đoạn đường cong có giới hạn, ví dụ như cạnh thẳng, cạnh tròn hoặc cạnh cung tròn. Các lệnh như bo góc (fillet), vát mép (chamfer) thường yêu cầu chọn cạnh. |
+| Đường bao dây (Wire) | Tập hợp các cạnh được nối liên tiếp theo thứ tự, có thể hở hoặc khép kín. Đường bao dây khép kín có thể tạo thành mặt hoặc dùng làm đường dẫn quét (sweep path). |
+| Mặt (Face) | Bề mặt có ranh giới, ví dụ như mặt phẳng, mặt trụ hoặc mặt cong B-spline. Mặt không nhất thiết phải thuộc về một khối rắn (solid). |
+| Vỏ (Shell) | Tập hợp các mặt nối liền nhau. Vỏ khép kín (closed shell) có thể chuyển đổi thành khối rắn (solid), còn vỏ hở (open shell) thường không có thể tích. |
+| Khối rắn (Solid) | Hình học không gian ba chiều chính xác có ranh giới khép kín, có thể tính toán thể tích, phù hợp cho hầu hết các thao tác Boolean và dựng hình cơ khí. |
+| Khối phức hợp (Compound) | Đặt nhiều hình dạng vào cùng một vật chứa tô pô mà không tự động hợp nhất chúng. Lệnh `Chuyển thành khối phức hợp` cho kết quả khác với `Hợp nhất Boolean`. |
+| Biên dạng (Profile) | Mặt cắt đầu vào dùng cho các thao tác đùn, xoay, loft... Vòng ngoài khép kín tạo thành diện tích đặc, vòng trong thường tạo thành lỗ rỗng; đường dựng và điểm độc lập không tham gia vào biên dạng khối đặc. |
+| B-rep | Biểu diễn ranh giới (Boundary Representation), sử dụng đường cong, mặt cong và tô pô chính xác để mô tả hình học CAD. Định dạng STEP, IGES, BREP thường được dùng để trao đổi dữ liệu loại này. |
+| Lưới tam giác (Mesh) | Xấp xỉ bề mặt bằng một lượng lớn tam giác, thường dùng để hiển thị, in 3D hoặc trao đổi mô hình kết xuất. Tệp STL sau khi nhập vào sẽ không khôi phục lại các mặt cong CAD trơn láng ban đầu. |
 
-## C.3 草图与参数
+## C.3 Phác thảo và tham số
 
-| 术语 | 含义 |
+| Thuật ngữ | Ý nghĩa |
 | --- | --- |
-| 草图 | 位于某个平面上的二维几何及其约束、尺寸和引用，可作为参数化特征的输入。 |
-| 构造线 | 草图中的参考几何，显示为虚线，可参与捕捉和约束，但不参与拉伸等实体轮廓。 |
-| 外部参考 / 投影边 | 从草图外几何建立的参考。可用于定位和约束；源几何变化或丢失时，需要检查引用状态。 |
-| 几何约束 | 规定重合、水平、相切、平行等关系，不一定包含数值。 |
-| 驱动尺寸 | 数值会推动几何变化的尺寸，例如把宽度从 80 改为 100。 |
-| 从动尺寸 | 只读取当前几何、不反过来驱动它的尺寸。冗余尺寸可能自动转为从动。 |
-| 自由度 | 草图仍可独立变化的程度。自由度为 0 且没有冲突时，草图完全约束。 |
-| 变量 | 文档级命名值，可驱动特征参数和草图尺寸。变量类型区分长度、角度和无量纲。 |
-| 表达式 | 由数字、变量、运算符和函数组成的参数写法，例如 `plateWidth - holeInset`。量纲必须与参数要求相容。 |
+| Phác thảo (Sketch) | Hình học 2D nằm trên một mặt phẳng cùng với các ràng buộc, kích thước và tham chiếu, có thể dùng làm đầu vào cho các tính năng tham số. |
+| Đường dựng (Construction line) | Hình học tham chiếu trong phác thảo, hiển thị dưới dạng nét đứt, có thể tham gia vào bắt điểm và ràng buộc nhưng không tham gia vào biên dạng khối đặc của đùn khối. |
+| Tham chiếu ngoài / Cạnh chiếu | Tham chiếu được thiết lập từ hình học bên ngoài phác thảo. Dùng để định vị và ràng buộc; khi hình học nguồn thay đổi hoặc mất đi, cần kiểm tra lại trạng thái tham chiếu. |
+| Ràng buộc hình học | Quy định các mối quan hệ như trùng khớp (coincident), nằm ngang (horizontal), tiếp xúc (tangent), song song (parallel)... mà không nhất thiết phải chứa giá trị số. |
+| Kích thước chủ động (Driving dimension) | Kích thước mà giá trị số của nó sẽ thúc đẩy hình học biến đổi, ví dụ sửa chiều rộng từ 80 thành 100. |
+| Kích thước bị động (Driven dimension) | Kích thước chỉ đọc giá trị từ hình học hiện tại mà không điều khiển ngược lại hình học. Kích thước dư thừa có thể tự động chuyển thành kích thước bị động (kích thước tham khảo). |
+| Bậc tự do (DOF) | Mức độ mà phác thảo vẫn có thể thay đổi độc lập. Khi bậc tự do bằng 0 và không có xung đột, phác thảo được ràng buộc đầy đủ (fully constrained). |
+| Biến số (Variable) | Giá trị được đặt tên ở cấp tài liệu, có thể điều khiển tham số tính năng và kích thước phác thảo. Loại biến được phân biệt thành chiều dài, góc và không thứ nguyên (vô hướng). |
+| Biểu thức (Expression) | Cách viết tham số bao gồm các con số, biến số, toán tử và hàm số, ví dụ `plateWidth - holeInset`. Thứ nguyên/đơn vị phải tương thích với yêu cầu của tham số. |
 
-## C.4 参数化重建与引用
+## C.4 Tái tạo và tham chiếu tham số
 
-| 术语 | 含义 |
+| Thuật ngữ | Ý nghĩa |
 | --- | --- |
-| 重建 | 按当前参数和引用重新执行特征列表，或重新计算某个直接建模节点。看到旧形状不代表本次重建成功。 |
-| 跟踪引用 | 下游特征对面、边、顶点或草图轮廓保存的稳定身份，用于上游修改后重新寻找对应几何。它不是永远可靠的固定序号。 |
-| 重新选择 | 引用无法自动恢复时，重新拾取特征所需输入。不同特征支持重选的引用不同，并非所有丢失都能用它修复。 |
-| 抑制 | 暂时跳过一个特征但保留它在列表中的位置。取消抑制后会再次参与重建。 |
-| 按变量抑制 | 由变量值决定是否跳过特征。引用的变量解析失败时不会简单按 0 处理，应先看警告。 |
-| 回滚条 | 控制参数化体暂时只重建到特征列表的某个位置，用于检查中间状态和定位问题。 |
-| 上游 / 下游 | 特征列表中较早 / 较晚的操作。修改上游会迫使下游重新计算，也可能改变下游引用的几何。 |
+| Tái tạo (Rebuild) | Thực thi lại danh sách tính năng theo các tham số và tham chiếu hiện tại, hoặc tính toán lại một nút dựng hình trực tiếp nào đó. Nhìn thấy hình dạng cũ không có nghĩa là lần tái tạo này đã thành công. |
+| Tham chiếu theo dõi (Tracked reference) | Định danh ổn định được các tính năng phía sau (downstream) lưu lại đối với mặt, cạnh, đỉnh hoặc biên dạng phác thảo, dùng để tìm lại hình học tương ứng sau khi tính năng phía trước (upstream) thay đổi. Đây không phải là một số thứ tự cố định luôn luôn tin cậy. |
+| Chọn lại (Reselect) | Thao tác chọn lại các đầu vào cần thiết cho tính năng khi tham chiếu không thể tự động khôi phục. Các tính năng khác nhau hỗ trợ chọn lại tham chiếu khác nhau, không phải mọi trường hợp mất tham chiếu đều sửa được bằng thao tác này. |
+| Ẩn/Nén tính năng (Suppress) | Tạm thời bỏ qua một tính năng nhưng vẫn giữ lại vị trí của nó trong danh sách tính năng. Sau khi hủy nén (unsuppress), tính năng sẽ lại tham gia vào quá trình tái tạo. |
+| Nén theo biến số | Giá trị của biến số quyết định việc có bỏ qua tính năng hay không. Khi biến số tham chiếu bị lỗi phân giải, hệ thống sẽ không đơn giản coi nó là 0, mà cần xem cảnh báo trước. |
+| Thanh cuộn lui (Rollback bar) | Điều khiển thân tham số tạm thời chỉ tái tạo đến một vị trí nhất định trong danh sách tính năng, dùng để kiểm tra trạng thái trung gian và xác định lỗi. |
+| Phía trước / Phía sau (Upstream / Downstream) | Các thao tác nằm ở vị trí sớm hơn / muộn hơn trong danh sách tính năng. Việc sửa đổi tính năng phía trước sẽ buộc các tính năng phía sau phải tính toán lại và có thể làm thay đổi hình học mà phía sau đang tham chiếu. |
 
-## C.5 选择、复制与操作对象
+## C.5 Chọn đối tượng, sao chép và đối tượng thao tác
 
-| 术语 | 含义 |
+| Thuật ngữ | Ý nghĩa |
 | --- | --- |
-| 子形状 | 节点内部的边、面、顶点等。选择整个节点与选择子形状使用的命令和结果不同。 |
-| 目标 | 布尔等操作中被保留并修改的主体。直接建模的结果可能替换目标节点。 |
-| 工具 | 用于切割、合并、分割等操作的另一个形状。是否保留工具取决于命令和建模路径。 |
-| 实例 | 与源对象共享几何的关联副本。修改源会影响实例；需要单独修改时使用 `使独立`。 |
-| 独立副本 | 与源对象脱离共享关系的副本，之后可单独修改。 |
-| 工作平面 | 点拾取和二维绘制所依据的平面。动态工作平面会根据拾取位置自动选择平面。 |
-| 捕捉 | 把输入点吸附到端点、中点、圆心、交点、边或面等已知几何位置。 |
-| 追踪 | 从已捕捉点建立对齐或延长辅助线，帮助找到对齐点和辅助线交点。 |
+| Hình con (Sub-shape) | Các cạnh, mặt, đỉnh... bên trong một nút. Chọn toàn bộ nút và chọn hình con sẽ sử dụng các lệnh và mang lại kết quả khác nhau. |
+| Đối tượng đích (Target) | Đối tượng chủ thể được giữ lại và sửa đổi trong các thao tác như Boolean. Kết quả của dựng hình trực tiếp có thể thay thế nút đích ban đầu. |
+| Công cụ (Tool / Cutter) | Hình dạng khác dùng để cắt, hợp nhất, phân tách... trong các thao tác. Việc có giữ lại công cụ hay không tùy thuộc vào từng lệnh và quy trình dựng hình. |
+| Thực thể (Instance) | Bản sao liên kết dùng chung hình học với đối tượng nguồn. Sửa đổi nguồn sẽ ảnh hưởng đến thực thể; khi cần chỉnh sửa riêng biệt thì dùng lệnh `Tách rời` (`modify.detach` / Tách độc lập). |
+| Bản sao độc lập | Bản sao đã tách khỏi mối quan hệ dùng chung với đối tượng nguồn, sau đó có thể chỉnh sửa độc lập. |
+| Mặt phẳng làm việc (Workplane) | Mặt phẳng làm chuẩn cho việc chọn điểm và vẽ 2D. Mặt phẳng làm việc động sẽ tự động chọn mặt phẳng dựa trên vị trí con trỏ chuột. |
+| Bắt điểm (Snap) | Hút điểm nhập liệu vào các vị trí hình học đã biết như điểm mút, trung điểm, tâm tròn, giao điểm, cạnh hoặc mặt. |
+| Dò gióng (Tracking) | Thiết lập đường gióng căn chỉnh hoặc đường kéo dài từ điểm đã bắt được, giúp tìm điểm căn gióng và giao điểm đường gióng. |
 
-## C.6 Pro 直接编辑
+## C.6 Pro Chỉnh sửa trực tiếp
 
-| 术语 | 含义 |
+| Thuật ngữ | Ý nghĩa |
 | --- | --- |
-| 直接编辑 | Pro 中双击模型后修改当前 B-rep 的工作流，可直接处理边、面和分割线，不依赖原参数化特征树。见 [第 13 章](13-pro-direct-editing.md)。 |
-| 可编辑节点 | 保存当前几何并允许进入 Pro 直接编辑的节点。参数化节点转换为此类节点后会丢失原特征列表。 |
-| 编辑边界 | 编辑模式中标出当前节点范围的青色虚线框，不是新的实体几何。 |
-| 辅助线（Pro） | 在编辑模式中绘制的虚线参考边，可捕捉、选中并随文档保存，但不分割实体，只在编辑该节点时显示。 |
-| 隔离模式 | 编辑当前节点时对其他对象采用的显示方式：`锁定` 保留可见，`隐藏` 只显示当前节点。 |
-| 偏移面 / 推拉 | 偏移面让所选面及相邻几何随法线移动，并可处理曲面；推拉主要用于平面的局部拉伸或凹陷。拖拽平面时 Pro 会按几何情况在两者间选择。 |
+| Chỉnh sửa trực tiếp (Direct editing) | Quy trình làm việc trong bản Pro cho phép nhấp đúp vào mô hình để sửa đổi B-rep hiện tại, có thể thao tác trực tiếp với các cạnh, mặt và đường phân tách mà không phụ thuộc vào cây tính năng tham số gốc. Xem [Chương 13](13-pro-direct-editing.md). |
+| Nút có thể chỉnh sửa (Editable node) | Nút lưu trữ hình học hiện tại và cho phép vào chế độ Pro chỉnh sửa trực tiếp. Nút tham số sau khi chuyển đổi thành loại nút này sẽ bị mất danh sách tính năng ban đầu. |
+| Khung bao chỉnh sửa (Editing boundary) | Khung hộp nét đứt màu xanh lơ biểu thị phạm vi của nút hiện tại trong chế độ chỉnh sửa, đây không phải là hình học khối rắn mới. |
+| Đường hỗ trợ (Guide line - Pro) | Cạnh tham chiếu nét đứt được vẽ trong chế độ chỉnh sửa, có thể bắt điểm, chọn và được lưu cùng tài liệu, nhưng không làm phân tách khối đặc và chỉ hiển thị khi đang chỉnh sửa nút đó. |
+| Chế độ cô lập (Isolate mode) | Phương thức hiển thị các đối tượng khác khi đang chỉnh sửa nút hiện tại: `Khóa` giữ hiển thị nhưng khóa chọn, `Ẩn` chỉ hiển thị nút hiện tại. |
+| Offset mặt / Đẩy-kéo | Offset mặt làm cho mặt được chọn và các hình học liền kề di chuyển theo hướng pháp tuyến, đồng thời có thể xử lý cả mặt cong; đẩy-kéo chủ yếu dùng để kéo dài hoặc làm lõm cục bộ một mặt phẳng. Khi kéo rê mặt phẳng, Pro sẽ tự động lựa chọn giữa hai phương thức này tùy theo tình huống hình học. |
 
 ---
 
-回到 [手册目录](README.md) · 继续 [附录 A 命令速查表](appendix-commands.md)
+Quay lại [Mục lục sổ tay](README.md) · Tiếp tục xem [Phụ lục A Bảng tra nhanh lệnh](appendix-commands.md)

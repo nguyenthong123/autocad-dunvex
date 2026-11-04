@@ -2,6 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 import type { Tool } from "../llm/types";
+import { onUserConstraint } from "../memory";
 
 export interface AskRequest {
     question: string;
@@ -56,13 +57,17 @@ export function buildAskUserTool(): Tool {
             required: ["question"],
         },
         handler: (args, signal) => {
+            const req = parseRequest(args);
             const ask = handler;
             if (!ask) {
                 return Promise.resolve(
                     JSON.stringify({ error: "no chat panel is open to answer this question" }),
                 );
             }
-            return ask(parseRequest(args), signal);
+            return ask(req, signal).then((answer) => {
+                onUserConstraint(req.question, answer);
+                return answer;
+            });
         },
     };
 }

@@ -1,327 +1,331 @@
-# 13. Pro 直接编辑
+# 13. Pro Chỉnh sửa trực tiếp
 
-> 本章仅适用于 **Chili3D Pro**。社区版没有这里的双击编辑会话和上下文 **编辑** 标签；社区版的直接建模与修改命令见 [第 4 章](04-direct-modeling.md) 和 [第 5 章](05-modify-convert-measure.md)。
+> Chương này chỉ áp dụng cho **Chili3D Pro**. Phiên bản Community không có phiên làm việc nhấp đúp chỉnh sửa và thẻ ngữ cảnh **Chỉnh sửa**; các lệnh dựng hình trực tiếp và sửa đổi của bản Community xem tại [Chương 4](04-direct-modeling.md) và [Chương 5](05-modify-convert-measure.md).
 
-Pro 的**直接编辑**用于修改已经存在的 B-rep 几何：双击模型后，直接选择顶点、边或面，通过拖拽、推拉、偏移、分割、圆角、倒角、移动和修复等操作改变当前节点。它不需要原模型带有参数化特征树，因此也适合处理导入模型。
+Tính năng **Chỉnh sửa trực tiếp** của bản Pro dùng để sửa đổi hình học B-rep đã tồn tại: sau khi nhấp đúp vào mô hình, bạn có thể trực tiếp chọn đỉnh, cạnh hoặc mặt, rồi thông qua các thao tác kéo rê, đẩy-kéo, offset, phân tách, bo góc, vát mép, di chuyển và sửa chữa để thay đổi node hiện tại. Nó không yêu cầu mô hình gốc phải có cây tính năng tham số, vì thế rất thích hợp để xử lý mô hình nhập vào (import).
 
-## 13.1 先分清三种操作方式
+## 13.1 Phân biệt rõ ba phương thức thao tác
 
-| 方式 | 主要入口 | 修改对象 | 是否保留特征历史 |
+| Phương thức | Lối vào chính | Đối tượng sửa đổi | Có giữ lại lịch sử tính năng không |
 | --- | --- | --- | --- |
-| 直接建模 | **基本** 标签 | 创建或替换形状节点 | 不保留完整历史；部分节点可改公开参数 |
-| 参数化建模 | **参数化** 标签、草图 | 参数化体及其特征链 | 保留，可编辑特征并联动重建 |
-| Pro 直接编辑 | 双击模型后的 **编辑** 标签 | 可编辑节点中的边、面等子形状 | 不新增参数化特征历史，以撤销和备份回退 |
+| Dựng hình trực tiếp | Thẻ **Cơ bản** | Tạo hoặc thay thế node hình dạng | Không giữ lịch sử hoàn chỉnh; một số node sửa được tham số công khai |
+| Dựng hình tham số | Thẻ **Tham số**, Phác thảo | Thân tham số và chuỗi tính năng của nó | Có giữ lại, có thể sửa tính năng và liên kết tái dựng |
+| Pro Chỉnh sửa trực tiếp | Thẻ **Chỉnh sửa** sau khi nhấp đúp vào mô hình | Các hình dạng con (sub-shape) như cạnh, mặt trong node có thể chỉnh sửa | Không thêm lịch sử tính năng tham số mới, quay lui bằng hoàn tác và sao lưu |
 
-如果后续仍需通过变量、草图尺寸和特征链驱动模型，应优先留在参数化工作流中。直接编辑适合快速修形、无历史模型和需要手动拾取的局部修改。
+Nếu về sau bạn vẫn cần điều khiển mô hình thông qua biến số, kích thước phác thảo và chuỗi tính năng, hãy ưu tiên ở lại luồng làm việc tham số. Chỉnh sửa trực tiếp phù hợp cho việc sửa nhanh hình dạng, mô hình không có lịch sử và các chỉnh sửa cục bộ cần chọn điểm thủ công.
 
-**开始前先保存。** 建议用 `Ctrl+S` 保存当前文档，并在重要修改前用 `保存到文件` 留下 `.cd` 备份。直接编辑不会自动保存；退出编辑模式也不会保存文档。
+**Lưu trước khi bắt đầu.** Bạn nên nhấn `Ctrl+S` để lưu tài liệu hiện tại, và trước các chỉnh sửa quan trọng hãy dùng `Lưu thành tệp` để để lại bản sao lưu `.cd`. Chỉnh sửa trực tiếp không tự động lưu; việc thoát khỏi chế độ chỉnh sửa cũng không lưu tài liệu.
 
-## 13.2 进入、转换与退出
+<a id="132-进入转换与退出"></a>
+## 13.2 Vào chế độ, chuyển đổi và thoát
 
-### 双击进入编辑模式
+### Nhấp đúp để vào chế độ chỉnh sửa
 
-1. 在视口中找到要修改的形状。
-2. 用鼠标左键快速双击该形状。
-3. 已是可编辑节点的模型直接进入编辑；其他形状节点会弹出 `转换为可编辑节点` 的提示。
-4. 进入后，功能区自动打开 **编辑** 标签，模型周围出现青色虚线编辑边界。
+1. Tìm hình dạng cần sửa đổi trong khung nhìn.
+2. Nhấp đúp chuột trái nhanh vào hình dạng đó.
+3. Nếu mô hình đã là node có thể chỉnh sửa, hệ thống sẽ vào thẳng chế độ chỉnh sửa; các node hình dạng khác sẽ bật lên thông báo `Chuyển đổi thành node có thể chỉnh sửa`.
+4. Sau khi vào, thanh Ribbon tự động mở thẻ **Chỉnh sửa**, xung quanh mô hình xuất hiện khung ranh giới chỉnh sửa bằng nét đứt màu xanh ngọc.
 
-编辑模式只针对当前节点。不要通过双击项目树文字进入；入口是视口中的模型形状。
+Chế độ chỉnh sửa chỉ tác động lên node hiện tại. Không vào chế độ này bằng cách nhấp đúp vào chữ trong cây dự án; lối vào duy nhất là hình dạng mô hình trong khung nhìn.
 
-### 转换为可编辑节点前必须确认的影响
+### Ảnh hưởng bắt buộc phải xác nhận trước khi chuyển đổi thành node có thể chỉnh sửa
 
-参数化体或其他尚未可直接编辑的形状节点，需要先转换。点击 `转换为可编辑节点` 后：
+Thân tham số hoặc các node hình dạng chưa thể trực tiếp chỉnh sửa cần phải chuyển đổi trước. Sau khi nhấp `Chuyển đổi thành node có thể chỉnh sửa`:
 
-- 当前几何、名称、变换和材质会保留；
-- **原参数化特征列表及其可编辑历史会丢失**，结果成为保存当前 B-rep 的可编辑节点；
-- 之后的直接编辑不会重新生成这棵树，也不能在属性面板恢复原特征参数；
-- 误转换时立即 `Ctrl+Z`。已经继续做了其他操作时，可能需要逐步撤销，或重新打开转换前的备份。
+- Hình học hiện tại, tên, ma trận biến đổi và vật liệu sẽ được giữ nguyên;
+- **Danh sách tính năng tham số ban đầu và lịch sử chỉnh sửa của nó sẽ bị mất**, kết quả trở thành một node có thể chỉnh sửa lưu trữ B-rep hiện tại;
+- Các thao tác chỉnh sửa trực tiếp sau đó sẽ không tạo lại cây tính năng này, cũng không thể khôi phục lại các tham số tính năng ban đầu trong bảng thuộc tính;
+- Nếu chuyển đổi nhầm, hãy nhấn `Ctrl+Z` ngay lập tức. Nếu đã lỡ thao tác tiếp các bước khác, bạn có thể cần phải hoàn tác từng bước, hoặc mở lại bản sao lưu trước khi chuyển đổi.
 
-![双击节点后的可编辑节点转换提示](images/21-pro-convert-dialog.png)
+![Thông báo chuyển đổi thành node có thể chỉnh sửa sau khi nhấp đúp vào node](images/21-pro-convert-dialog.png)
 
-*不可直接编辑的节点会先显示转换提示；确认前应评估特征历史和实例影响。*
+*Node không thể chỉnh sửa trực tiếp sẽ hiển thị thông báo chuyển đổi trước; bạn nên đánh giá ảnh hưởng đến lịch sử tính năng và instance trước khi xác nhận.*
 
-如果只是要修改拉伸深度、孔径等已有特征参数，应点 `取消`，改用 [第 6 章](06-parametric-modeling.md) 的参数化编辑，不要为了改一个尺寸而转换整个参数化体。
+Nếu bạn chỉ muốn sửa đổi độ sâu đùn, đường kính lỗ hoặc các tham số tính năng đã có, hãy nhấp `Hủy`, chuyển sang dùng cách chỉnh sửa tham số ở [Chương 6](06-parametric-modeling.md), đừng chuyển đổi cả thân tham số chỉ vì muốn sửa một kích thước.
 
-### 双击实例会编辑源节点
+### Nhấp đúp vào instance sẽ chỉnh sửa node nguồn
 
-双击实例时，Pro 会转到它的**源节点**。对源节点的转换和后续几何修改会反映到共享该源的所有实例，而不是只改当前副本。
+Khi nhấp đúp vào một thực thể (instance), bản Pro sẽ chuyển đến **node nguồn** của nó. Việc chuyển đổi và các sửa đổi hình học tiếp theo trên node nguồn sẽ phản ánh lên tất cả các instance dùng chung nguồn này, chứ không chỉ sửa riêng bản sao hiện tại.
 
-只改一个实例时，先退出编辑，选中该实例并执行 `使独立`，再双击编辑。实例关系见 [第 5.1 节](05-modify-convert-measure.md#51-变换移动旋转镜像阵列)。
+Khi chỉ muốn sửa một instance riêng lẻ, trước tiên hãy thoát chế độ chỉnh sửa, chọn instance đó và thực hiện `Tách độc lập`, rồi mới nhấp đúp vào để chỉnh sửa. Mối quan hệ instance xem tại [Mục 5.1](05-modify-convert-measure.md#51-变换移动旋转镜像阵列).
 
-### 退出编辑模式
+### Thoát chế độ chỉnh sửa
 
-以下任一方式都可以退出：
+Có thể thoát bằng bất kỳ cách nào sau đây:
 
-- 点 **编辑 → 管理 → 退出**；
-- 没有运行命令时按 `Esc`；如果正在拾取或执行命令，先按 `Esc` 取消当前命令；
-- 单击编辑边界以外的区域。
+- Nhấp **Chỉnh sửa → Quản lý → Thoát**;
+- Nhấn `Esc` khi không chạy lệnh nào; nếu đang chọn điểm hoặc thực thi lệnh, nhấn `Esc` để hủy lệnh hiện tại trước;
+- Nhấp chuột ra vùng bên ngoài khung ranh giới chỉnh sửa.
 
-退出后会解除本次编辑对其他对象的隐藏或锁定，恢复普通选择，并关闭 **编辑** 标签。**退出不等于撤销，也不等于保存。** 已提交的修改仍留在文档中，需要 `Ctrl+S` 保存。
+Sau khi thoát, hệ thống sẽ gỡ bỏ trạng thái ẩn hoặc khóa đối với các đối tượng khác trong lần chỉnh sửa này, khôi phục lại chế độ lựa chọn thông thường và đóng thẻ **Chỉnh sửa**. **Thoát không đồng nghĩa với hoàn tác, cũng không đồng nghĩa với đã lưu.** Các sửa đổi đã xác nhận vẫn nằm trong tài liệu, bạn cần nhấn `Ctrl+S` để lưu lại.
 
-## 13.3 选择、隔离与编辑设置
+## 13.3 Lựa chọn, cách ly và cài đặt chỉnh sửa
 
-### 子形状选择
+### Chọn hình dạng con (Sub-shape)
 
-| 操作 | 结果 |
+| Thao tác | Kết quả |
 | --- | --- |
-| 单击顶点、边或面 | 选中当前节点内的子形状 |
-| `Shift+单击` | 加选或减选子形状 |
-| `Enter` / `Space` | 在命令中确认当前拾取 |
-| `Esc` | 先取消当前命令或拾取；未运行命令时退出编辑 |
-| `Delete` / `Backspace` | 删除选中的边、面或辅助线并重建当前节点 |
+| Nhấp vào đỉnh, cạnh hoặc mặt | Chọn hình dạng con bên trong node hiện tại |
+| `Shift+Nhấp chuột` | Chọn thêm hoặc bớt hình dạng con |
+| `Enter` / `Space` | Xác nhận thao tác chọn hiện tại trong lệnh |
+| `Esc` | Hủy lệnh hoặc thao tác chọn hiện tại trước; khi không có lệnh nào chạy thì thoát chỉnh sửa |
+| `Delete` / `Backspace` | Xóa các cạnh, mặt hoặc đường hỗ trợ được chọn và tái dựng lại node hiện tại |
 
-普通模式单击形状是选择整个节点；编辑模式单击是选择节点内部的子形状。命令会继续过滤输入，例如圆角只接受边，偏移面只接受面。多选移动时，边和面不能混选，命令会保留与首个选中对象相同的类型。
+Ở chế độ bình thường, nhấp vào hình dạng là chọn toàn bộ node; ở chế độ chỉnh sửa, nhấp chuột là chọn các hình dạng con bên trong node. Các lệnh sẽ tiếp tục lọc đầu vào, ví dụ lệnh bo góc chỉ nhận cạnh, lệnh offset mặt chỉ nhận mặt. Khi chọn nhiều đối tượng để di chuyển, không thể chọn lẫn lộn cả cạnh và mặt, lệnh sẽ chỉ giữ lại loại đối tượng cùng kiểu với đối tượng được chọn đầu tiên.
 
-![Pro 直接编辑模式中的面选择、黄色手柄和编辑边界](images/22-pro-edit-mode.png)
+![Chế độ Pro chỉnh sửa trực tiếp với mặt được chọn, tay cầm màu vàng và ranh giới chỉnh sửa](images/22-pro-edit-mode.png)
 
-*进入编辑后自动打开“编辑”标签；绿色面为当前选择，黄色圆形手柄用于拖拽，青色虚线框标出编辑边界。*
+*Sau khi vào chế độ chỉnh sửa, thẻ "Chỉnh sửa" sẽ tự động mở; mặt màu xanh lá là vùng chọn hiện tại, tay cầm tròn màu vàng dùng để kéo rê, khung nét đứt màu xanh ngọc đánh dấu ranh giới chỉnh sửa.*
 
-### 隔离模式
+### Chế độ cách ly
 
-打开 **编辑 → 管理 → 编辑设置**，在 `隔离模式` 中选择：
+Mở **Chỉnh sửa → Quản lý → Cài đặt chỉnh sửa**, trong phần `Chế độ cách ly` chọn:
 
-| 模式 | 编辑时的效果 |
+| Chế độ | Hiệu ứng khi chỉnh sửa |
 | --- | --- |
-| `锁定`（默认） | 其他对象仍可见，但不能作为普通编辑对象选中；适合观察装配关系 |
-| `隐藏` | 只显示正在编辑的节点；适合检查内部或避免遮挡 |
+| `Khóa` (Mặc định) | Các đối tượng khác vẫn nhìn thấy, nhưng không thể chọn làm đối tượng chỉnh sửa thông thường; thích hợp để quan sát quan hệ lắp ráp |
+| `Ẩn` | Chỉ hiển thị node đang chỉnh sửa; thích hợp để kiểm tra bên trong hoặc tránh bị che khuất |
 
-无论哪种模式，编辑命令都只修改当前节点。切换模式立即生效；退出编辑后解除本次隔离，并恢复普通选择。该设置保存在浏览器本地，下次编辑会继续使用。
+Dù ở chế độ nào, các lệnh chỉnh sửa cũng chỉ tác động lên node hiện tại. Việc chuyển đổi chế độ có hiệu lực ngay lập tức; sau khi thoát chỉnh sửa sẽ gỡ bỏ cách ly và khôi phục lựa chọn thông thường. Cài đặt này được lưu trong LocalStorage của trình duyệt và sẽ tiếp tục áp dụng cho lần chỉnh sửa tiếp theo.
 
-需要移动整个节点或编辑另一个零件时，先退出直接编辑，再使用普通节点选择或 **基本** 标签的命令。
+Khi cần di chuyển toàn bộ node hoặc chỉnh sửa chi tiết khác, hãy thoát chỉnh sửa trực tiếp trước, sau đó dùng chế độ chọn node thông thường hoặc các lệnh trong thẻ **Cơ bản**.
 
-### 拖拽编辑圆角开关
+### Công tắc kéo chỉnh sửa bo góc
 
-`编辑设置` 中的 `拖拽编辑圆角` 默认关闭。开启后，可拖动识别出的现有圆角面来调整半径，见 [第 13.4 节](#134-拖拽编辑)。该开关同样会保存在浏览器本地。
+Tùy chọn `Kéo chỉnh sửa bo góc` trong `Cài đặt chỉnh sửa` mặc định tắt. Sau khi bật, bạn có thể kéo các mặt bo góc đã nhận diện để điều chỉnh bán kính, xem tại [Mục 13.4](#134-拖拽编辑). Công tắc này cũng được lưu trong LocalStorage của trình duyệt.
 
-### 删除子形状与删除节点不同
+### Xóa hình dạng con khác với xóa node
 
-编辑模式中的 `Delete` / `Backspace` 作用于当前选择的子形状：
+Phím `Delete` / `Backspace` trong chế độ chỉnh sửa tác động lên các hình dạng con đang được chọn:
 
-- 删除面会使原来的封闭壳出现开口，**不会自动用新面堵住洞口**；
-- 删除边会经过简化和重建，结果取决于周围拓扑；
-- 选中辅助线时，只删除辅助线，不切掉实体几何；
-- 要干净地移除圆角、凸台等局部特征，优先尝试 `特征删除`，不要直接删除它的所有面。
+- Xóa mặt sẽ khiến vỏ kín ban đầu xuất hiện lỗ hở, **không tự động dùng mặt mới để bịt lỗ**;
+- Xóa cạnh sẽ trải qua quá trình đơn giản hóa và tái dựng, kết quả phụ thuộc vào cấu trúc liên kết xung quanh;
+- Khi chọn đường hỗ trợ, chỉ xóa đường hỗ trợ chứ không cắt gọt hình học của thân đặc;
+- Để loại bỏ sạch sẽ các tính năng cục bộ như góc bo, vấu lồi, hãy ưu tiên thử dùng `Xóa tính năng`, đừng trực tiếp xóa tất cả các mặt của nó.
 
-误删后立即 `Ctrl+Z`。`修复` 可以缝合和修复现有几何，但不能凭空恢复一张已经删除的面。
+Nếu lỡ xóa nhầm, hãy nhấn `Ctrl+Z` ngay lập tức. Lệnh `Sửa chữa` có thể khâu và vá các hình học hiện có, nhưng không thể tự khôi phục một mặt đã bị xóa mất.
 
-## 13.4 拖拽编辑
+<a id="134-拖拽编辑"></a>
+## 13.4 Chỉnh sửa kéo rê
 
-选中可处理的边或面后，附近会出现黄色圆形拖拽手柄。按住手柄并移动鼠标，视口显示几何预览和数值；松开后，根据操作吸附情况提交，或弹出数值输入框供精确输入。结果不符时先撤销，再重新选择。
+Sau khi chọn cạnh hoặc mặt có thể xử lý, gần đó sẽ xuất hiện một tay cầm kéo hình tròn màu vàng. Nhấn giữ tay cầm và di chuyển chuột, khung nhìn sẽ hiển thị hình học xem trước và giá trị; sau khi thả chuột, hệ thống sẽ xác nhận theo tình trạng bắt dính, hoặc bật hộp thoại nhập số để nhập giá trị chính xác. Nếu kết quả không đúng, hãy hoàn tác trước rồi chọn lại.
 
-### 平面拖拽：偏移或推拉
+### Kéo mặt phẳng: Offset hoặc Đẩy-Kéo
 
-1. 单击一个平面；需要一起移动时，用 `Shift+单击` 选择法线平行的多个平面。
-2. 拖动黄色手柄，沿面的法线向外或向内移动。
-3. 查看预览。Pro 优先按**偏移面**处理，让相邻面和可保留的圆角跟随；当前选择或几何不适合偏移时，会退回**推拉**方式。
-4. 松开后输入最终数值并确认，或使用下述面吸附结果。
+1. Nhấp vào một mặt phẳng; khi cần di chuyển cùng lúc, dùng `Shift+Nhấp chuột` để chọn nhiều mặt phẳng có pháp tuyến song song.
+2. Kéo tay cầm màu vàng di chuyển ra ngoài hoặc vào trong theo hướng pháp tuyến của mặt.
+3. Quan sát bản xem trước. Bản Pro sẽ ưu tiên xử lý theo kiểu **Dời mặt song song (Offset face)** để các mặt lân cận và góc bo có thể giữ lại cùng đi theo; khi vùng chọn hoặc hình học hiện tại không thích hợp để offset, hệ thống sẽ lùi về phương thức **Đẩy-Kéo (Push-Pull)**.
+4. Thả chuột rồi nhập giá trị cuối cùng và xác nhận, hoặc dùng kết quả bắt dính mặt dưới đây.
 
-![拖动平面黄色手柄时的实时几何预览](images/23-pro-face-drag.png)
+![Hình ảnh xem trước hình học theo thời gian thực khi kéo tay cầm màu vàng của mặt phẳng](images/23-pro-face-drag.png)
 
-*拖动平面手柄时，视口实时显示新形状和距离；松开后再确认精确数值。*
+*Khi kéo tay cầm của mặt phẳng, khung nhìn hiển thị hình dạng mới và khoảng cách theo thời gian thực; sau khi nhả chuột mới xác nhận giá trị chính xác.*
 
-拖动时可把光标移到与拖动方向平行的目标面上，将移动面吸附到该面的位置。目标可以来自其他可见模型；它被用作位置参考，不会被修改。
+Khi kéo có thể di chuột đến mặt mục tiêu song song với hướng kéo để bắt dính mặt di chuyển vào vị trí mặt đó. Mục tiêu có thể đến từ các mô hình khác đang hiển thị; nó chỉ dùng làm tham chiếu vị trí chứ không bị sửa đổi.
 
-检测到相对面时，数值对话框可能提供：
+Khi phát hiện có mặt đối diện, hộp thoại giá trị có thể cung cấp:
 
-- `总长`：移动后，相对面与当前面之间的总距离；
-- `距离`：本次从原位置开始移动的增量。
+- `Tổng chiều dài`: Sau khi di chuyển, tổng khoảng cách giữa mặt đối diện và mặt hiện tại;
+- `Khoảng cách`: Độ dời tăng thêm trong lần di chuyển này tính từ vị trí cũ.
 
-先确认当前显示的是哪种数值，再输入。没有相对面时，数值就是本次拖动距离。若提示无法保持圆角半径并已改用推拉，应重新检查圆角和相邻面，不要只看移动面的终点。
+Hãy xác nhận xem giá trị hiện đang hiển thị là loại nào trước khi nhập. Khi không có mặt đối diện, giá trị chính là khoảng cách kéo của lần này. Nếu có cảnh báo không thể giữ bán kính bo góc và đã chuyển sang dùng đẩy-kéo, bạn nên kiểm tra lại góc bo và các mặt liền kề, không chỉ nhìn mỗi điểm đích của mặt di chuyển.
 
-![平面拖拽后的总长和距离精确输入框](images/24-pro-pushpull-input.png)
+![Hộp thoại nhập chính xác tổng chiều dài và khoảng cách sau khi kéo mặt phẳng](images/24-pro-pushpull-input.png)
 
-*存在相对面时，可在“总长”和“距离”之间切换；两种数值的含义不同。*
+*Khi có mặt đối diện, có thể chuyển đổi giữa "Tổng chiều dài" và "Khoảng cách"; ý nghĩa của hai giá trị này hoàn toàn khác nhau.*
 
-### 边拖拽：圆角或倒角
+### Kéo cạnh: Bo góc hoặc Vát mép
 
-1. 选择一条边，或用 `Shift+单击` 选择多条可处理边。
-2. 拖动黄色手柄。拖动方向决定生成圆角还是倒角，预览会显示对应结果。
-3. 松开后，在 `半径` 或 `长度` 对话框中输入精确值并确认。
+1. Chọn một cạnh, hoặc dùng `Shift+Nhấp chuột` để chọn nhiều cạnh có thể xử lý.
+2. Kéo tay cầm màu vàng. Hướng kéo quyết định việc tạo bo góc hay vát mép, bản xem trước sẽ hiển thị kết quả tương ứng.
+3. Thả chuột, nhập giá trị chính xác vào hộp thoại `Bán kính` hoặc `Chiều dài` rồi xác nhận.
 
-只有连接两个非平行面的边才提供这种手柄。自由边、相邻面互相平行的边或无法计算的拓扑不会出现手柄。拖拽会限制在几何允许的范围附近，但复杂边仍可能构建失败；失败时减小半径或长度、减少同时选择的边，或改用命令面板重试。
+Chỉ các cạnh nối giữa hai mặt không song song mới xuất hiện loại tay cầm này. Cạnh tự do, cạnh có hai mặt liền kề song song nhau hoặc cấu trúc liên kết không thể tính toán sẽ không xuất hiện tay cầm. Thao tác kéo sẽ bị giới hạn xung quanh phạm vi hình học cho phép, tuy nhiên các cạnh phức tạp vẫn có thể tạo hình thất bại; khi thất bại hãy giảm bán kính hoặc chiều dài, giảm bớt số cạnh chọn cùng lúc, hoặc chuyển sang dùng bảng lệnh để thử lại.
 
-### 拖动现有圆角面改半径
+### Kéo mặt bo góc hiện có để đổi bán kính
 
-1. 在 **编辑设置** 中开启 `拖拽编辑圆角`。
-2. 选择识别出的非平面圆角面。
-3. 拖动手柄调整半径，松开后确认数值。
+1. Trong **Cài đặt chỉnh sửa**, bật tùy chọn `Kéo chỉnh sửa bo góc`.
+2. Chọn mặt bo góc cong phi phẳng đã được nhận diện.
+3. Kéo tay cầm để điều chỉnh bán kính, thả chuột rồi xác nhận giá trị.
 
-只有能识别并移除、再重建的圆角面支持此操作。普通圆柱面或其他曲面不一定会出现手柄；需要改变孔壁或圆柱侧面的半径时，使用 `偏移面`。
+Chỉ các mặt bo góc có thể nhận diện, gỡ bỏ và tái dựng lại được mới hỗ trợ thao tác này. Mặt trụ thông thường hoặc các mặt cong khác không nhất thiết xuất hiện tay cầm; khi cần đổi bán kính thành lỗ hoặc mặt bên hình trụ, hãy dùng `Dời mặt song song (Offset face)`.
 
-## 13.5 工具：推拉、偏移面、圆角与倒角
+<a id="135-工具推拉偏移面圆角与倒角"></a>
+## 13.5 Công cụ: Đẩy-kéo, Dời mặt song song, Bo góc và Vát mép
 
-### 推拉
+### Đẩy-Kéo
 
-**编辑 → 工具 → 推拉** 用两次拾取完成一个平面的推拉：
+**Chỉnh sửa → Công cụ → Đẩy-Kéo** hoàn thành việc đẩy-kéo một mặt phẳng qua hai lần chọn điểm:
 
-1. 选择一个平面。
-2. 沿该面的法线拾取目标点，观察预览。
-3. 在拾取目标点时按 `Alt`，可切换 `新面` 模式：开启时保留推拉形成的分面，关闭时尝试简化共面边和面。该模式没有独立复选框，切换后以预览中的分面和边线为准。
-4. 确认结果；需要精确尺寸时使用点捕捉或数值输入。
+1. Chọn một mặt phẳng.
+2. Lần lượt chọn điểm mục tiêu dọc theo pháp tuyến của mặt đó, quan sát bản xem trước.
+3. Khi chọn điểm mục tiêu, nhấn giữ phím `Alt` để chuyển đổi chế độ `Mặt mới`: khi bật sẽ giữ lại các mặt phân chia do đẩy-kéo tạo thành, khi tắt sẽ cố gắng đơn giản hóa các cạnh và mặt đồng phẳng. Chế độ này không có hộp kiểm riêng, sau khi chuyển đổi hãy căn cứ vào các mặt phân chia và đường cạnh trong bản xem trước.
+4. Xác nhận kết quả; khi cần kích thước chính xác hãy dùng bắt điểm hoặc nhập giá trị số.
 
-推拉只接受具有明确平面的面。要改变圆柱侧面的半径，或希望相邻圆角尽量保持原半径，应改用 `偏移面`。
+Đẩy-kéo chỉ chấp nhận các mặt có mặt phẳng xác định rõ ràng. Muốn thay đổi bán kính mặt bên hình trụ, hoặc mong muốn các góc bo liền kề giữ tối đa bán kính ban đầu, nên chuyển sang dùng `Dời mặt song song`.
 
-### 偏移面
+### Dời mặt song song (Offset face)
 
-**编辑 → 工具 → 偏移面** 可移动平面或曲面，适合调整板厚、外形以及孔和圆柱的半径：
+**Chỉnh sửa → Công cụ → Dời mặt song song** có thể di chuyển mặt phẳng hoặc mặt cong, thích hợp để điều chỉnh độ dày tấm, ngoại hình cũng như bán kính của lỗ và hình trụ:
 
-1. 选择一个或多个面，按 `Enter` / `Space` 或确认按钮结束拾取。
-2. 在命令面板设置 `距离`。正值沿面的外法线移动，负值反向移动；不能输入 `0`。
-3. 按需设置 `保持圆角半径`（默认开启）。开启时，移动面旁边的圆角会尽量拆除后按原半径重建；无法保持时，命令会拒绝提交，而不是静默改成其他半径。
-4. 检查半透明原几何上的结果预览，再确认。
+1. Chọn một hoặc nhiều mặt, nhấn `Enter` / `Space` hoặc nút xác nhận để kết thúc việc chọn.
+2. Trên bảng lệnh, nhập `Khoảng cách`. Giá trị dương di chuyển theo hướng pháp tuyến ngoài của mặt, giá trị âm di chuyển ngược lại; không được nhập `0`.
+3. Thiết lập tùy chọn `Giữ bán kính bo góc` (mặc định bật) theo nhu cầu. Khi bật, các góc bo cạnh mặt di chuyển sẽ được cố gắng tháo dỡ rồi dựng lại theo bán kính cũ; khi không thể giữ được, lệnh sẽ từ chối xác nhận chứ không âm thầm đổi sang bán kính khác.
+4. Kiểm tra bản xem trước kết quả trên hình học gốc bán trong suốt rồi mới xác nhận.
 
-![对圆柱凸台侧面执行偏移面的命令预览](images/25-pro-offset-face.png)
+![Bản xem trước lệnh Dời mặt song song trên mặt bên của vấu lồi hình trụ](images/25-pro-offset-face.png)
 
-*选择圆柱侧面并设置距离后，原几何半透明显示，可直观检查偏移结果和“保持圆角半径”选项。*
+*Sau khi chọn mặt bên hình trụ và đặt khoảng cách, hình học gốc hiển thị bán trong suốt, có thể kiểm tra trực quan kết quả offset và tùy chọn "Giữ bán kính bo góc".*
 
-对孔壁而言，实体面的外法线通常朝向孔内，因此**正距离通常使孔变小，负距离通常使孔变大**。不同拓扑仍应以预览和最终测量为准。
+Đối với thành lỗ, pháp tuyến ngoài của mặt thân đặc thường hướng vào trong tâm lỗ, vì vậy **khoảng cách dương thường làm lỗ nhỏ lại, khoảng cách âm thường làm lỗ to ra**. Các cấu trúc liên kết khác nhau vẫn nên căn cứ vào bản xem trước và đo đạc cuối cùng.
 
-常见提示的处理：
+Xử lý các thông báo thường gặp:
 
-| 提示或现象 | 处理方法 |
+| Thông báo hoặc hiện tượng | Cách xử lý |
 | --- | --- |
-| 距离超出可偏移范围 | 减小距离，或分多次小距离修改 |
-| 这些面无法偏移 | 换选面，先 `简化`，或改用 `推拉` |
-| 需要实体 | 当前对象不是可偏移的实体；改用适合面/壳的命令 |
-| 存在封闭内部空腔 | 当前偏移流程不支持，改用其他建模路径 |
-| 无法保持圆角半径 | 减小距离、调整选面，或先移除再重建圆角 |
+| Khoảng cách vượt quá phạm vi có thể offset | Giảm khoảng cách, hoặc chia thành nhiều lần sửa với khoảng cách nhỏ |
+| Các mặt này không thể offset | Chọn lại mặt khác, dùng `Đơn giản hóa` trước, hoặc chuyển sang `Đẩy-Kéo` |
+| Yêu cầu khối solid | Đối tượng hiện tại không phải solid có thể offset; đổi sang lệnh phù hợp cho mặt/vỏ |
+| Tồn tại khoang rỗng khép kín bên trong | Quy trình offset hiện tại không hỗ trợ, đổi sang luồng dựng hình khác |
+| Không thể giữ bán kính bo góc | Giảm khoảng cách, chỉnh lại mặt chọn, hoặc gỡ bỏ góc bo rồi dựng lại sau |
 
-失败时不要反复提交同一组输入。先撤销已确认的错误结果，再检查模型是否仍然封闭、选面是否正确。
+Khi thất bại đừng gửi lặp lại cùng một nhóm dữ liệu đầu vào. Hãy hoàn tác kết quả sai đã xác nhận trước, rồi kiểm tra xem mô hình có còn khép kín không, việc chọn mặt có đúng không.
 
-### 圆角 / 倒角
+### Bo góc / Vát mép
 
-1. 点 **编辑 → 工具 → 圆角**，或展开该拆分按钮选择 `倒角`。
-2. 选择一条或多条边，结束拾取。
-3. 分别输入 `半径` 或 `长度`，检查预览后确认。
+1. Nhấp **Chỉnh sửa → Công cụ → Bo góc**, hoặc mở rộng nút chia này chọn `Vát mép`.
+2. Chọn một hoặc nhiều cạnh, kết thúc chọn.
+3. Nhập tương ứng `Bán kính` hoặc `Chiều dài`, kiểm tra bản xem trước rồi xác nhận.
 
-这些命令只处理当前编辑节点，结果直接替换当前几何，不生成可继续编辑的参数化圆角/倒角特征。需要保留半径参数和上游联动时，应取消编辑转换并使用参数化命令。
+Các lệnh này chỉ xử lý node đang chỉnh sửa hiện tại, kết quả trực tiếp thay thế hình học hiện tại mà không tạo ra các tính năng bo góc/vát mép tham số có thể tiếp tục chỉnh sửa. Khi cần giữ lại tham số bán kính và liên kết thượng nguồn, bạn nên hủy chuyển đổi chỉnh sửa và dùng các lệnh tham số.
 
-## 13.6 分割：在现有模型上绘制
+## 13.6 Phân tách: Vẽ hình trực tiếp trên mô hình hiện có
 
-**编辑 → 分割** 中的工具不是新建独立草图节点，而是把绘制的几何用于当前节点的分割。一般流程为：选择工具 → 在面或工作平面上拾取 → 检查分割结果。
+Các công cụ trong **Chỉnh sửa → Phân tách** không tạo ra các node phác thảo độc lập mới, mà sử dụng hình học vẽ ra để phân tách node hiện tại. Quy trình chung là: Chọn công cụ → Chọn điểm trên mặt hoặc mặt phẳng làm việc → Kiểm tra kết quả phân tách.
 
-| 工具 | 拾取步骤 / 选项 |
+| Công cụ | Các bước chọn điểm / Tùy chọn |
 | --- | --- |
-| 线 | 起点 → 终点；可连续绘制，`Enter` 或 `Esc` 结束 |
-| 圆弧 | 圆心 → 起点/半径点 → 决定扫掠角的点 |
-| 2点圆弧 | 起点 → 终点 → 弧高点 |
-| 3点圆弧 | 起点 → 弧上一点 → 终点 |
-| 相切相切半径圆弧 | 两条参考边 → 决定半径的点或数值 |
-| 圆 | 圆心 → 半径点 |
-| 椭圆 | 中心 → 长轴端点 → 短轴端点 |
-| 矩形 | 第一角点 → 对角点；`中心矩形` 改为中心 → 角点 |
-| 多边形 | 中心 → 半径点；在命令面板设置边数 |
-| 偏移 | 选择一个面 → 拾取偏移距离；使用面的**外环**，可设置连接类型 |
+| Đoạn thẳng | Điểm bắt đầu → Điểm kết thúc; có thể vẽ liên tục, nhấn `Enter` hoặc `Esc` để kết thúc |
+| Cung tròn | Tâm → Điểm bắt đầu/bán kính → Điểm quyết định góc quét |
+| Cung tròn 2 điểm | Điểm bắt đầu → Điểm kết thúc → Điểm chiều cao cung |
+| Cung tròn 3 điểm | Điểm bắt đầu → Một điểm trên cung → Điểm kết thúc |
+| Cung tiếp tuyến - tiếp tuyến - bán kính | Hai cạnh tham chiếu → Điểm hoặc giá trị quyết định bán kính |
+| Đường tròn | Tâm → Điểm bán kính |
+| Elip | Tâm → Điểm mút trục lớn → Điểm mút trục nhỏ |
+| Hình chữ nhật | Điểm góc thứ nhất → Điểm góc đối diện; `Hình chữ nhật tâm` đổi thành tâm → điểm góc |
+| Đa giác | Tâm → Điểm bán kính; thiết lập số cạnh trên bảng lệnh |
+| Dời song song (Offset) | Chọn một mặt → Chọn khoảng cách offset; sử dụng **vòng ngoài** của mặt, có thể đặt kiểu nối |
 
-绘制时可使用端点、中点、圆心、交点、在面上等捕捉。先让首个拾取点落在目标平面上，或先设置好工作平面，再检查预览，避免把分割线画到错误方向。
+Khi vẽ hình có thể dùng các kiểu bắt điểm như điểm mút, trung điểm, tâm tròn, giao điểm, trên mặt. Hãy để điểm chọn đầu tiên rơi trên mặt phẳng mục tiêu, hoặc thiết lập mặt phẳng làm việc trước, rồi kiểm tra bản xem trước để tránh vẽ đường phân tách sai hướng.
 
-### 分割会保留可继续使用的线
+### Phân tách giữ lại các đường có thể tiếp tục sử dụng
 
-线、圆弧和闭合轮廓会与当前形状求交并分割面。绘制工具还会保留落在原形状外的线段作为自由边；这些边与已有边界组成合适的共面闭合环时，可以形成新面。因此可以像在平面上作画一样，逐步分割、补面，再推拉某个区域。
+Đoạn thẳng, cung tròn và biên dạng khép kín sẽ cắt với hình dạng hiện tại và phân tách mặt. Công cụ vẽ cũng sẽ giữ lại các đoạn đường nằm ngoài hình dạng gốc làm cạnh tự do; khi các cạnh này cùng với ranh giới đã có tạo thành vòng khép kín đồng phẳng phù hợp, chúng có thể tạo thành mặt mới. Vì vậy bạn có thể giống như vẽ tranh trên mặt phẳng, từng bước phân tách, bù mặt, rồi đẩy-kéo một vùng nào đó.
 
-如果只要局部凸台，先画完整闭合轮廓，再选择轮廓内的面进行推拉。分割失败时当前节点保持原样；不要假定预览已经提交，应以命令结束后的模型为准。
+Nếu chỉ cần tạo vấu lồi cục bộ, hãy vẽ biên dạng khép kín hoàn chỉnh trước, sau đó chọn mặt bên trong biên dạng để đẩy-kéo. Khi phân tách thất bại, node hiện tại giữ nguyên như cũ; đừng giả định bản xem trước đã được xác nhận, hãy căn cứ vào mô hình sau khi lệnh kết thúc.
 
-### 辅助线
+### Đường hỗ trợ (Auxiliary line)
 
-除 `偏移` 外，上述绘制分割工具提供 `辅助线` 复选框：
+Ngoại trừ công cụ `Dời song song (Offset)`, các công cụ vẽ phân tách nêu trên đều cung cấp hộp kiểm `Đường hỗ trợ`:
 
-- **不勾选（默认）**：绘制内容参与实际分割；
-- **勾选**：绘制内容保存为虚线辅助边，不切割实体，但仍可捕捉和选中。
+- **Không tích chọn (Mặc định)**: Nội dung vẽ ra tham gia vào phân tách thực tế;
+- **Tích chọn**: Nội dung vẽ ra được lưu dưới dạng cạnh hỗ trợ nét đứt, không cắt gọt thân đặc nhưng vẫn có thể bắt điểm và chọn được.
 
-辅助线只在编辑该节点时显示，退出后隐藏但不会删除，并随节点和文档保存。要删除辅助线，重新进入编辑，选中虚线后按 `Delete` / `Backspace`。辅助线适合保留定位线、对齐参考和后续分割所需的构造几何。
+Đường hỗ trợ chỉ hiển thị khi đang chỉnh sửa node đó, sau khi thoát ra sẽ ẩn đi nhưng không bị xóa, và được lưu cùng node và tài liệu. Muốn xóa đường hỗ trợ, hãy vào lại chế độ chỉnh sửa, chọn đường nét đứt rồi nhấn `Delete` / `Backspace`. Đường hỗ trợ rất thích hợp để lưu giữ các đường định vị, tham chiếu căn gióng và hình học dựng hình cần cho các bước phân tách tiếp theo.
 
-![实际分割边与虚线辅助线的区别](images/26-pro-split-auxiliary.png)
+![Sự khác biệt giữa cạnh phân tách thực tế và đường hỗ trợ nét đứt](images/26-pro-split-auxiliary.png)
 
-*前方长虚线为辅助参考，右侧实线轮廓为实际分割；勾选“辅助线”后，绘制内容不会切割实体。*
+*Đường nét đứt dài phía trước là tham chiếu hỗ trợ, biên dạng nét liền bên phải là phân tách thực tế; khi tích chọn "Đường hỗ trợ", nội dung vẽ ra sẽ không cắt gọt thân đặc.*
 
-## 13.7 修改：移动、复制、旋转、镜像与阵列
+## 13.7 Sửa đổi: Di chuyển, Sao chép, Xoay, Đối xứng và Mảng
 
-这一组命令直接处理当前节点的子形状，不等同于 **基本** 标签对整个节点的变换。
+Nhóm lệnh này trực tiếp xử lý các hình dạng con của node hiện tại, không tương đương với các phép biến đổi trên toàn bộ node trong thẻ **Cơ bản**.
 
-### 移动
+### Di chuyển
 
-`移动` 会移动选中的面或边，并重建受影响的相邻面：
+Lệnh `Di chuyển` sẽ di chuyển các mặt hoặc cạnh được chọn, và tái dựng lại các mặt lân cận bị ảnh hưởng:
 
-1. 预先选择同类型的多个面或多条边，或启动命令后按提示选择。
-2. 拾取基点。
-3. 拾取目标点；两点向量决定移动量和方向。
-4. 检查预览和最终拓扑。
+1. Chọn trước nhiều mặt hoặc nhiều cạnh cùng loại, hoặc khởi động lệnh rồi chọn theo lời nhắc.
+2. Chọn điểm cơ sở.
+3. Chọn điểm đích; vectơ giữa hai điểm quyết định lượng di chuyển và phương hướng.
+4. Kiểm tra bản xem trước và cấu trúc liên kết cuối cùng.
 
-它不是对整个节点做刚体平移。需要整体移动时，退出编辑后使用普通 `移动` 或属性面板的矩阵。
+Lệnh này không phải là tịnh tiến vật rắn trên toàn bộ node. Khi cần di chuyển tổng thể, hãy thoát chỉnh sửa rồi dùng lệnh `Di chuyển` thông thường hoặc ma trận biến đổi trong bảng thuộc tính.
 
-### 复制、旋转、镜像
+### Sao chép, Xoay, Đối xứng
 
-这三个命令以选中的**边**为输入，把变换后的边写回当前形状用于分割；原边保留，不会生成一组独立节点。
+Ba lệnh này lấy các **cạnh** được chọn làm đầu vào, ghi các cạnh sau biến đổi trở lại hình dạng hiện tại để dùng cho việc phân tách; cạnh gốc được giữ lại và không tạo ra nhóm node độc lập.
 
-| 命令 | 操作步骤 |
+| Lệnh | Các bước thao tác |
 | --- | --- |
-| 复制 | 选边 → 基点 → 目标点；可连续放置副本，`Esc` 结束 |
-| 旋转 | 选边 → 旋转中心 → 参考点 → 角度点 |
-| 镜像 | 选边 → 镜像线上的两个点 |
+| Sao chép | Chọn cạnh → Điểm cơ sở → Điểm đích; có thể đặt liên tiếp các bản sao, nhấn `Esc` để kết thúc |
+| Xoay | Chọn cạnh → Tâm xoay → Điểm tham chiếu → Điểm góc |
+| Đối xứng | Chọn cạnh → Hai điểm trên đường đối xứng |
 
-它们适合复制分割线和局部轮廓。需要复制整个实体或创建关联实例时，应退出编辑并使用 **基本 → 修改** 中的对应命令。
+Chúng thích hợp để sao chép các đường phân tách và biên dạng cục bộ. Khi cần sao chép toàn bộ thân đặc hoặc tạo instance liên kết, bạn nên thoát chỉnh sửa và dùng lệnh tương ứng trong **Cơ bản → Chỉnh sửa**.
 
-### 阵列
+### Mảng
 
-1. 选择一条或多条边并确认。
-2. 在命令面板选择 `线形阵列`、`环形阵列`、`沿曲线阵列` 或 `矩形阵列`。
-3. 按阵列类型拾取方向、中心轴、路径或矩形方向，并设置数量、间距/总长等参数。
-4. 确认后，选中边会按阵列位置复制到当前节点并参与分割。
+1. Chọn một hoặc nhiều cạnh rồi xác nhận.
+2. Trên bảng lệnh chọn `Mảng thẳng`, `Mảng xoay vòng`, `Mảng theo đường cong` hoặc `Mảng chữ nhật`.
+3. Tùy theo kiểu mảng chọn hướng, trục tâm, đường dẫn hoặc hướng chữ nhật, và thiết lập các tham số như số lượng, khoảng cách/tổng chiều dài.
+4. Sau khi xác nhận, các cạnh được chọn sẽ được sao chép đến vị trí mảng trong node hiện tại và tham gia phân tách.
 
-矩形阵列只提供 X/Y 两个方向，没有 Z 向数量和编组选项。数量按包含原位置理解；它表示分割边的阵列数量，不是新增实体节点数。
+Mảng chữ nhật ở đây chỉ cung cấp hai hướng X/Y, không có số lượng theo hướng Z và không có tùy chọn nhóm. Số lượng được hiểu là đã bao gồm cả vị trí ban đầu; nó biểu thị số lượng mảng của các cạnh phân tách, chứ không phải số node thân đặc tăng thêm.
 
-## 13.8 简化、修复与特征删除
+## 13.8 Đơn giản hóa, Sửa chữa và Xóa tính năng
 
-### 简化
+### Đơn giản hóa
 
-点 **编辑 → 工具 → 简化**，立即处理当前节点，不需要再选面。它会清理小面并合并可简化的共面/共线几何，适合在导入模型或多次分割后减少多余边。
+Nhấp **Chỉnh sửa → Công cụ → Đơn giản hóa**, lệnh xử lý ngay node hiện tại mà không cần chọn mặt. Nó sẽ dọn dẹp các mặt nhỏ và gộp các hình học đồng phẳng/cùng đường thẳng có thể đơn giản hóa, thích hợp để giảm bớt các cạnh thừa sau khi nhập mô hình hoặc sau nhiều lần phân tách.
 
-简化会改变拓扑，可能让原本用于选边、选面的分割消失。先确认哪些边界必须保留；重要修改前备份，结果不符时撤销。
+Đơn giản hóa sẽ làm thay đổi cấu trúc liên kết, có thể khiến các đường phân tách vốn dùng để chọn cạnh, chọn mặt bị biến mất. Hãy xác nhận trước những ranh giới nào bắt buộc phải giữ lại; sao lưu trước các sửa đổi lớn, hoàn tác nếu kết quả không như ý.
 
-### 修复
+### Sửa chữa
 
-点 **编辑 → 工具 → 修复**，对当前节点依次进行容差处理、壳缝合、形状修复和小面清理。适合处理导入后存在缝隙或局部拓扑问题的模型。
+Nhấp **Chỉnh sửa → Công cụ → Sửa chữa**, hệ thống sẽ lần lượt xử lý dung sai, khâu vỏ, sửa chữa hình dạng và dọn dẹp mặt nhỏ cho node hiện tại. Thích hợp để xử lý mô hình nhập vào có khe hở hoặc sự cố cấu trúc liên kết cục bộ.
 
-修复不是万能补面工具：它不能恢复原参数化历史，也不能保证重建被删除的整张面。修复后仍要检查关键尺寸、开口和实体封闭性。
+Sửa chữa không phải công cụ vá mặt vạn năng: nó không thể khôi phục lại lịch sử tham số ban đầu, cũng không đảm bảo tái dựng lại toàn bộ một mặt đã bị xóa mất. Sau khi sửa chữa bạn vẫn phải kiểm tra các kích thước quan trọng, độ hở và tính kín của khối solid.
 
-### 特征删除
+### Xóa tính năng
 
-1. 点 **编辑 → 工具 → 特征删除**。
-2. 选择要移除的局部特征所生成的面，例如圆角面或凸台特征面；可多选。
-3. 确认后，应用尝试移除这些面并延伸周围几何进行愈合。
+1. Nhấp **Chỉnh sửa → Công cụ → Xóa tính năng**.
+2. Chọn các mặt do tính năng cục bộ cần loại bỏ tạo ra, ví dụ mặt bo góc hoặc mặt vấu lồi; có thể chọn nhiều mặt.
+3. Sau khi xác nhận, ứng dụng cố gắng gỡ bỏ các mặt này và kéo dài hình học xung quanh để hàn lành lại.
 
-这里的“特征”是可由几何识别的局部形状，不是项目树里的参数化特征行。若选面不正确或周围几何无法延伸，操作可能失败或得到意外结果；先撤销，再调整选择。
+"Tính năng" ở đây là hình dạng cục bộ có thể nhận diện theo hình học, chứ không phải hàng tính năng tham số trong cây dự án. Nếu chọn mặt không đúng hoặc hình học xung quanh không thể kéo dài tiếp giáp, thao tác có thể thất bại hoặc cho ra kết quả bất ngờ; hãy hoàn tác trước rồi điều chỉnh lại vùng chọn.
 
-| 操作 | 适用目的 |
+| Thao tác | Mục đích áp dụng |
 | --- | --- |
-| `Delete` / `Backspace` | 直接删除选中的边、面或辅助线 |
-| `特征删除` | 移除局部几何特征并尝试愈合邻面 |
-| 普通模式的 `删除` | 删除项目树中的整个节点 |
+| `Delete` / `Backspace` | Trực tiếp xóa các cạnh, mặt hoặc đường hỗ trợ được chọn |
+| `Xóa tính năng` | Loại bỏ tính năng hình học cục bộ và cố gắng hàn lành các mặt lân cận |
+| Lệnh `Xóa` ở chế độ thường | Xóa toàn bộ node trong cây dự án |
 
-## 13.9 一个完整的 Pro 修形流程
+<a id="139-一个完整的-pro-修形流程"></a>
+## 13.9 Một quy trình sửa hình Pro hoàn chỉnh
 
-目标：在导入的块体上画一个矩形凸台，调整现有孔径，添加圆角，再检查并保存。
+Mục tiêu: Trên một khối hình nhập vào, vẽ một vấu lồi hình chữ nhật, điều chỉnh đường kính lỗ đã có, thêm góc bo, sau đó kiểm tra và lưu lại.
 
-1. **备份**：导入模型后先 `Ctrl+S`，重要节点再 `保存到文件`。
-2. **进入编辑**：双击导入节点。若弹出转换提示，确认该节点没有仍需保留的参数化历史，再决定转换。
-3. **设置隔离**：在 `编辑设置` 中保留 `锁定` 以观察周围零件，或切到 `隐藏` 避免遮挡。
-4. **画出凸台区域**：选择 **分割 → 矩形**，在顶面画闭合矩形；需要参考线时先勾选 `辅助线` 绘制定位几何，再取消勾选画实际分割线。
-5. **推拉区域**：选择矩形内部的新面，拖动黄色手柄。需要精确高度时在松开后输入数值，或吸附到平行目标面。
-6. **调整孔径**：点 `偏移面`，选择孔的圆柱壁，输入带符号的距离。先预览孔是变大还是变小，再确认并测量。
-7. **处理边角**：选择要处理的边并拖拽，或使用 `圆角` / `倒角` 命令输入精确值。
-8. **清理与检查**：按需执行 `简化`；退出编辑，使用 `检查形状` 和测量命令复核几何。删除过面时尤其要检查模型是否意外成为开放壳。
-9. **保存与交付**：`Ctrl+S` 保存可编辑文档，另存 `.cd` 备份；需要交给其他 CAD 时再导出 STEP，并在接收方软件中复核。
+1. **Sao lưu**: Sau khi nhập mô hình hãy nhấn `Ctrl+S` trước, các mốc quan trọng dùng thêm `Lưu thành tệp`.
+2. **Vào chế độ chỉnh sửa**: Nhấp đúp vào node nhập vào. Nếu bật hộp thoại chuyển đổi, hãy xác nhận node này không còn lịch sử tham số nào cần giữ lại, rồi mới quyết định chuyển đổi.
+3. **Cài đặt cách ly**: Trong `Cài đặt chỉnh sửa` giữ `Khóa` để quan sát các chi tiết xung quanh, hoặc chuyển sang `Ẩn` để tránh bị che khuất.
+4. **Vẽ vùng vấu lồi**: Chọn **Phân tách → Hình chữ nhật**, vẽ hình chữ nhật khép kín trên mặt đỉnh; khi cần đường tham chiếu hãy tích chọn `Đường hỗ trợ` để vẽ hình học định vị trước, sau đó bỏ tích chọn để vẽ đường phân tách thực tế.
+5. **Đẩy-kéo vùng hình**: Chọn mặt mới bên trong hình chữ nhật, kéo tay cầm màu vàng. Khi cần chiều cao chính xác, hãy nhập giá trị sau khi nhả chuột, hoặc bắt dính vào mặt mục tiêu song song.
+6. **Điều chỉnh đường kính lỗ**: Nhấp `Dời mặt song song`, chọn thành trụ của lỗ, nhập khoảng cách có dấu âm/dương. Xem trước lỗ to ra hay nhỏ lại trước khi xác nhận và đo đạc.
+7. **Xử lý góc cạnh**: Chọn các cạnh cần xử lý rồi kéo rê, hoặc dùng lệnh `Bo góc` / `Vát mép` nhập giá trị chính xác.
+8. **Dọn dẹp và kiểm tra**: Thực hiện `Đơn giản hóa` nếu cần; thoát chế độ chỉnh sửa, dùng `Kiểm tra hình dạng` và các lệnh đo lường để đối chiếu lại hình học. Nếu từng xóa mặt, đặc biệt cần kiểm tra xem mô hình có vô tình trở thành vỏ hở hay không.
+9. **Lưu và bàn giao**: Nhấn `Ctrl+S` lưu tài liệu chỉnh sửa được, lưu thêm bản sao lưu `.cd`; khi cần chuyển giao cho phần mềm CAD khác hãy xuất tệp STEP, và kiểm tra đối chiếu lại trong phần mềm phía người nhận.
 
-## 13.10 编辑失败时的恢复顺序
+## 13.10 Thứ tự khôi phục khi chỉnh sửa thất bại
 
-1. **停止继续叠加操作**，先区分是预览失败还是已提交后的错误结果。
-2. 已提交的错误结果立即 `Ctrl+Z`；转换丢失特征历史时，逐步撤销到转换之前，或恢复转换前的备份。
-3. 检查当前是否仍在编辑正确节点，选中的面/边是否属于该节点，类型和数量是否符合命令要求。
-4. 检查 `隔离模式`、工作平面和捕捉；点不到目标时，换一个视角再试。
-5. 对多余分割先尝试 `简化`，对导入缝隙尝试 `修复`，再减小距离或半径重试。
-6. 编辑完成后退出模式，测量关键尺寸并执行 `检查形状`。不要只凭“看起来正确”或命令没有报错就交付。
-7. 确认无误后再保存。保存、撤销和备份规则见 [第 8 章](08-document-files.md)，更多问题见 [第 11.6 节](11-faq.md#116-pro-直接编辑)。
+1. **Dừng việc tiếp tục thực hiện thêm các thao tác chồng chất**, trước tiên phân biệt rõ đó là thất bại ở bản xem trước hay kết quả sai đã được xác nhận.
+2. Với kết quả sai đã xác nhận hãy nhấn `Ctrl+Z` ngay; khi việc chuyển đổi làm mất lịch sử tính năng, hãy hoàn tác từng bước về trước lúc chuyển đổi, hoặc khôi phục bản sao lưu trước khi chuyển đổi.
+3. Kiểm tra xem hiện tại có đang chỉnh sửa đúng node hay không, các mặt/cạnh được chọn có thuộc node đó không, kiểu và số lượng có khớp yêu cầu lệnh không.
+4. Kiểm tra `Chế độ cách ly`, mặt phẳng làm việc và bắt điểm; khi không nhấp chọn được mục tiêu, hãy đổi góc nhìn khác rồi thử lại.
+5. Với các phân tách thừa hãy thử `Đơn giản hóa` trước, với khe hở nhập vào hãy thử `Sửa chữa`, rồi giảm khoảng cách hoặc bán kính để thử lại.
+6. Sau khi chỉnh sửa xong hãy thoát chế độ chỉnh sửa, đo đạc các kích thước quan trọng và thực hiện `Kiểm tra hình dạng`. Đừng chỉ dựa vào cảm giác "trông có vẻ đúng" hoặc lệnh không báo lỗi mà vội vàng bàn giao.
+7. Xác nhận không còn sai sót rồi mới lưu. Quy tắc lưu, hoàn tác và sao lưu xem tại [Chương 8](08-document-files.md), các câu hỏi khác xem tại [Mục 11.6](11-faq.md#116-pro-直接编辑).
 
 ---
 
-上一章：[第 12 章 典型工作流程](12-workflows.md) · 回到 [手册目录](README.md) · 查 [附录 A 命令速查表](appendix-commands.md)
+Chương trước: [Chương 12 Quy trình làm việc điển hình](12-workflows.md) · Quay lại [Mục lục sổ tay](README.md) · Tra cứu [Phụ lục A Bảng tra cứu lệnh nhanh](appendix-commands.md)

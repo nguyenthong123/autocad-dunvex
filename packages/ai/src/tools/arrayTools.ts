@@ -14,6 +14,7 @@ import {
     XYZ,
 } from "@chili3d/core";
 import type { Tool } from "../llm/types";
+import { onNodesCreated } from "../memory";
 import { findNode, requireDocument, requireNode } from "./documentContext";
 
 export const MAX_ARRAY_COUNT = 200;
@@ -576,6 +577,8 @@ function applyArrayTool(): Tool {
 
                 folder.add(...createdNodes);
             });
+
+            onNodesCreated(createdNodes.map((n) => ({ id: n.id, name: n.name })));
 
             return JSON.stringify({
                 planId,

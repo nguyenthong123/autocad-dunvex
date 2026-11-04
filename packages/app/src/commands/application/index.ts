@@ -2,6 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 export * from "./documentTaskCommand";
+export * from "./manualCommand";
 export * from "./newDocument";
 export * from "./openDocument";
 export * from "./panView";

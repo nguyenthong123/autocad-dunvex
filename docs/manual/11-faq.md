@@ -1,167 +1,168 @@
-# 11. 常见问题
+# 11. Các câu hỏi thường gặp (FAQ)
 
-## 11.1 视图与选择
+## 11.1 Khung nhìn và lựa chọn
 
-### 模型看不见，或小得只有一个点
+### Mô hình không nhìn thấy được, hoặc nhỏ như một dấu chấm
 
-按视口右侧的“适应内容”图标，或**双击中键**。新建的空文档相机很远，第一次画出小尺寸模型时尤其容易这样。若适应后主体仍异常小，检查是否有远离主体的节点，或只选目标后重新适应；详见 [第 3.2 节](03-view-navigation-selection.md#32-投影与显示)。
+Nhấp vào biểu tượng "Khớp nội dung (Fit content)" ở bên phải khung nhìn, hoặc **nhấp đúp chuột giữa (MMB)**. Khi tạo tài liệu mới còn trống, camera thường ở rất xa, đặc biệt là khi lần đầu tiên vẽ ra một mô hình có kích thước nhỏ. Nếu sau khi khớp nội dung mà vật thể chính vẫn nhỏ bất thường, hãy kiểm tra xem có node nào nằm rất xa vật thể chính hay không, hoặc chỉ chọn đối tượng mục tiêu rồi khớp nội dung lại; chi tiết xem tại [Mục 3.2](03-view-navigation-selection.md#32-投影与显示).
 
-### 命令面板消失了，或点哪里都没反应
+### Bảng lệnh biến mất, hoặc nhấp vào đâu cũng không có phản hồi
 
-- 可能有一个模态对话框在等你回答（导入/导出、重命名、数值输入）。先回答或取消它。
-- 按 `Esc` 取消当前命令。
-- 如果拖拽手柄还“粘”在鼠标上，松开鼠标键再试。
+- Có thể đang có một hộp thoại phương thức (modal dialog) đang chờ bạn trả lời (nhập/xuất, đổi tên, nhập giá trị số). Hãy trả lời hoặc hủy hộp thoại đó trước.
+- Nhấn phím `Esc` để hủy lệnh hiện tại.
+- Nếu các tay cầm kéo rê vẫn "dính" vào chuột, hãy nhả nút chuột ra rồi thử lại.
 
-命令面板的正常显示方式见 [第 2.7 节](02-interface.md#27-命令面板)。
+Cách hiển thị bình thường của bảng lệnh xem tại [Mục 2.7](02-interface.md#27-命令面板).
 
-### 报错提示一闪而过，在哪里看完整内容
+### Thông báo lỗi lướt qua quá nhanh, xem lại nội dung đầy đủ ở đâu
 
-点状态栏右侧的 `错误: n` 打开“错误记录”。对话框按时间倒序列出最近的错误，最多保留 100 条，包含完整错误文本；需要重试或上报问题时可以复制这些内容。`清空错误` 只清空日志，不会撤销造成错误的操作，也不会修复几何。
+Nhấp vào mục `Lỗi: n` ở bên phải thanh trạng thái để mở "Bản ghi lỗi". Hộp thoại sẽ liệt kê các lỗi gần đây theo thứ tự thời gian đảo ngược, lưu tối đa 100 bản ghi kèm theo toàn văn thông báo lỗi; bạn có thể sao chép nội dung này khi cần thử lại hoặc báo cáo sự cố. Nút `Xóa sạch lỗi` chỉ xóa nhật ký log, không hoàn tác thao tác gây ra lỗi và không sửa chữa hình học.
 
-### 右键没有菜单
+### Nhấp chuột phải không hiện menu ngữ cảnh
 
-Chili3D 没有右键菜单。删除、重命名、编辑都在功能区、属性面板和项目树里；草图中的右键用于取消当前拾取。视图和选择操作见 [第 3 章](03-view-navigation-selection.md)。
+Chili3D không có menu chuột phải. Các thao tác xóa, đổi tên, chỉnh sửa đều nằm trên thanh Ribbon, bảng thuộc tính và cây dự án; trong phác thảo, chuột phải dùng để hủy thao tác chọn điểm hiện tại. Các thao tác khung nhìn và lựa chọn xem tại [Chương 3](03-view-navigation-selection.md).
 
-## 11.2 草图
+## 11.2 Phác thảo (Sketch)
 
-### 草图改完，实体没变
+### Sửa phác thảo xong nhưng thân đặc không thay đổi
 
-- 确认已经**退出草图**（草图会话中的修改在退出时提交/求解），见 [第 7.9 节](07-sketch.md#79-草图的退出与清理)。
-- 如果特征行显示错误，实体保留的是最后一次成功重建的形状；先修复错误。
-- 检查该草图是否真的被某个特征使用。
+- Xác nhận bạn đã **thoát phác thảo** (các sửa đổi trong phiên làm việc phác thảo chỉ được xác nhận/giải khi thoát ra), xem tại [Mục 7.9](07-sketch.md#79-草图的退出与清理).
+- Nếu hàng tính năng hiển thị lỗi, thân đặc sẽ giữ lại hình dạng của lần tái dựng thành công gần nhất; hãy sửa lỗi trước.
+- Kiểm tra xem phác thảo đó có thực sự được tính năng nào sử dụng hay không.
 
-### 草图旋转不了视图
+### Trong phác thảo không thể xoay góc nhìn
 
-草图会话会锁定正对草图平面的视角并禁用旋转，这是设计行为。点 `退出草图` 后即可自由旋转，见 [第 7.1 节](07-sketch.md#71-新建与编辑草图)。
+Phiên làm việc phác thảo sẽ khóa góc nhìn vuông góc chính diện với mặt phẳng phác thảo và vô hiệu hóa tính năng xoay camera, đây là hành vi có chủ đích theo thiết kế. Nhấp `Thoát phác thảo` là có thể xoay tự do, xem tại [Mục 7.1](07-sketch.md#71-新建与编辑草图).
 
-### 约束冲突 / 冗余
+### Xung đột ràng buộc / Ràng buộc dư thừa
 
-打开 **约束列表**，悬停行定位；使用 **找出元凶** 尝试定位冲突约束。优先撤销或删除刚添加的、自动生成的重复约束；只有诊断明确要求时才按提示删除一组。几何塌缩还应修改造成塌缩的尺寸，详见 [第 7.4 节](07-sketch.md#74-约束)。
+Mở **Danh sách ràng buộc**, rê chuột qua từng hàng để định vị; dùng công cụ **Tìm thủ phạm** để thử định vị các ràng buộc xung đột. Ưu tiên hoàn tác hoặc xóa bỏ các ràng buộc trùng lặp vừa mới thêm hoặc tự động sinh ra; chỉ khi chẩn đoán yêu cầu rõ ràng mới xóa theo nhóm như gợi ý. Trường hợp sụp đổ hình học thì cần sửa lại kích thước gây sụp đổ, xem chi tiết tại [Mục 7.4](07-sketch.md#74-约束).
 
-## 11.3 参数化与建模
+## 11.3 Tham số và dựng hình
 
-### 改了一个特征，下游特征报错
+### Sửa một tính năng thì các tính năng hạ nguồn báo lỗi
 
-通常是上游改动删掉/合并了下游引用的面或边。展开报错的特征行，若该引用支持重新选择，用 `⋯ → 重新选择` 重新拾取；或者调整上游参数让拓扑保持稳定。重建与引用规则见 [第 6.1 节](06-parametric-modeling.md#61-参数化体和特征链)。
+Thường là do thay đổi ở thượng nguồn đã xóa mất hoặc gộp các mặt/cạnh mà hạ nguồn đang tham chiếu. Mở rộng hàng tính năng báo lỗi, nếu tham chiếu đó hỗ trợ chọn lại thì dùng `⋯ → Chọn lại` để chọn lại đối tượng; hoặc điều chỉnh tham số thượng nguồn để cấu trúc liên kết giữ ổn định. Quy tắc tái dựng và tham chiếu xem tại [Mục 6.1](06-parametric-modeling.md#61-参数化体和特征链).
 
-### 特征报错后，为什么旧形状仍显示
+### Sau khi tính năng báo lỗi, tại sao hình dạng cũ vẫn hiển thị
 
-这是保护行为：重建失败时保留**最后一次成功重建**的形状，失败行显示错误。旧形状仍在视口中不代表本次修改成功，也不应把它当成新结果导出。先修复参数或引用；确认不再需要该特征后，才考虑抑制或删除。详见 [第 6.1 节](06-parametric-modeling.md#61-参数化体和特征链)。
+Đây là hành vi bảo vệ: khi tái dựng thất bại, hệ thống sẽ giữ lại hình dạng của **lần tái dựng thành công toàn bộ chuỗi tính năng gần nhất**, và hàng bị lỗi sẽ hiển thị thông báo lỗi. Hình dạng cũ vẫn nằm trong khung nhìn không có nghĩa là lần sửa này thành công, và cũng không nên dùng nó để xuất tệp mới. Hãy sửa tham số hoặc tham chiếu trước; sau khi xác nhận tính năng thực sự không còn cần thiết nữa thì mới cân nhắc ẩn hoặc xóa. Xem chi tiết tại [Mục 6.1](06-parametric-modeling.md#61-参数化体和特征链).
 
-### 变量名写中文，行标红 “Invalid variable name”
+### Đặt tên biến số bằng tiếng Việt có dấu/tiếng Trung bị báo đỏ "Invalid variable name"
 
-变量名必须是 ASCII 标识符：`[A-Za-z_][A-Za-z0-9_]*`。中文、空格、连字符都不行，也不能与 `pi`、`e` 重名。完整规则见 [第 6.6 节](06-parametric-modeling.md#66-文档变量)。
+Tên biến số bắt buộc phải là mã định danh ASCII: `[A-Za-z_][A-Za-z0-9_]*`. Chữ có dấu, khoảng trắng, dấu gạch nối đều không được phép, và cũng không được trùng tên với hằng số `pi`, `e`. Quy tắc đầy đủ xem tại [Mục 6.6](06-parametric-modeling.md#66-文档变量).
 
-### 一个变量出错，为什么下游变量、草图和特征也报错
+### Một biến số bị lỗi, tại sao các biến số hạ nguồn, phác thảo và tính năng cũng báo lỗi theo
 
-变量按表中顺序求值，解析失败的行不会提供可供后续引用的值。引用它的下游变量、草图尺寸或特征参数因此也会出现解析或重建错误，其他独立变量仍可正常求值。先修复最上游的第一个错误，再检查仍存在的下游错误；变量更新后的重建失败同样会保留旧形状。见 [第 6.6 节](06-parametric-modeling.md#66-文档变量)。
+Biến số được tính toán tuần tự theo thứ tự trong bảng, hàng phân giải thất bại sẽ không cung cấp giá trị cho các hàng phía sau tham chiếu. Vì vậy các biến hạ nguồn, kích thước phác thảo hoặc tham số tính năng tham chiếu đến nó cũng sẽ xuất hiện lỗi phân giải hoặc tái dựng, trong khi các biến độc lập khác vẫn tính toán bình thường. Hãy sửa lỗi đầu tiên ở phía trên cùng trước, rồi kiểm tra lại các lỗi hạ nguồn còn lại; việc tái dựng thất bại sau khi cập nhật biến số cũng sẽ giữ lại hình dạng cũ. Xem [Mục 6.6](06-parametric-modeling.md#66-文档变量).
 
-### 布尔运算后原来的零件不见了
+### Sau phép toán Boolean các chi tiết ban đầu bị biến mất
 
-直接建模的布尔默认会用结果节点**替换**目标和工具。想保留工具，命令面板勾选“保留操作对象”。参数化布尔则会把工具隐藏挂到体的特征列表下，不删除。直接建模的操作顺序见 [第 4.3 节](04-direct-modeling.md#43-布尔运算组)。
+Phép toán Boolean trong dựng hình trực tiếp mặc định sẽ dùng node kết quả để **thay thế** cả mục tiêu lẫn công cụ. Nếu muốn giữ lại công cụ, trên bảng lệnh hãy tích chọn "Giữ lại đối tượng thao tác". Còn phép toán Boolean tham số sẽ ẩn công cụ đi và gắn dưới danh sách tính năng của thân, không xóa bỏ. Thứ tự thao tác trong dựng hình trực tiếp xem tại [Mục 4.3](04-direct-modeling.md#43-布尔运算组).
 
-### 移动/旋转命令说“该节点是输入几何，不能移动”
+### Lệnh Di chuyển/Xoay báo "Node này là hình học đầu vào, không thể di chuyển"
 
-草图、基准面等参考几何定义在世界坐标里，不能作为实体移动。移动使用它们的参数化体，或修改草图平面/特征参数，见 [第 6.5 节](06-parametric-modeling.md#65-体与节点操作)。
+Các hình học tham chiếu như phác thảo, mặt phẳng chuẩn được định nghĩa trong hệ tọa độ thế giới, không thể di chuyển như một thân đặc. Hãy di chuyển thân tham số đang sử dụng chúng, hoặc sửa đổi mặt phẳng phác thảo/tham số tính năng, xem [Mục 6.5](06-parametric-modeling.md#65-体与节点操作).
 
-### 参数化体的阵列/复制修改了源，所有实例都变了
+### Mảng/Sao chép thân tham số khi sửa nguồn làm tất cả các bản sao đổi theo
 
-阵列和复制默认生成**实例**，共享源几何。需要独立修改时，选中实例执行 `使独立`，见 [第 6.5 节](06-parametric-modeling.md#65-体与节点操作)。
+Mảng và sao chép mặc định sẽ tạo ra các **thực thể (instance)**, chia sẻ chung hình học nguồn. Khi cần chỉnh sửa độc lập, hãy chọn instance đó rồi thực hiện lệnh `Tách độc lập`, xem [Mục 6.5](06-parametric-modeling.md#65-体与节点操作).
 
-## 11.4 文档与文件
+## 11.4 Tài liệu và tệp tin
 
-### 新建文档叫 `undefined 1`
+### Tài liệu tạo mới có tên là `undefined 1`
 
-v0.8.0 的已知问题。选中项目树根节点，在属性面板把“名称”改成有意义的名字即可；保存后首页的最近项目会显示新名字。重命名只改名称，不会改变文档 ID 或生成独立副本。
+Đây là vấn đề đã biết ở phiên bản v0.8.0. Bạn chỉ cần chọn node gốc trong cây dự án, rồi trên bảng thuộc tính đổi "Tên" thành tên có ý nghĩa; sau khi lưu, danh sách dự án gần đây ở trang chủ sẽ hiển thị tên mới. Đổi tên chỉ thay đổi tên hiển thị, không làm đổi ID tài liệu và không tạo ra bản sao độc lập.
 
-### 关闭文档时误丢了未保存修改，怎么办
+### Khi đóng tài liệu lỡ làm mất các chỉnh sửa chưa lưu, phải làm sao
 
-文档标签的 `×` 总会询问，而且两个选项都会关闭：原生“确定”先保存到 IndexedDB 再关闭，“取消”则**不保存仍关闭**，没有留在文档的第三项。若以前保存过，可从最近项目或备份 `.cd` 重新打开，回到上次保存的内容；从未保存的新文档或未保存修改无法靠撤销找回。关闭前的正确操作见 [第 8.1 节](08-document-files.md#81-文档与标签)。
+Biểu tượng `×` trên tab tài liệu luôn luôn hỏi xác nhận, và cả hai nút đều sẽ đóng tài liệu: nút "OK" của trình duyệt sẽ lưu vào IndexedDB trước rồi mới đóng, còn nút "Cancel" thì **không lưu nhưng vẫn đóng**, không có tùy chọn ở lại tài liệu. Nếu trước đó từng lưu, bạn có thể mở lại từ dự án gần đây hoặc bản sao lưu `.cd` để lấy lại nội dung của lần lưu trước; còn với tài liệu mới chưa từng lưu hoặc các sửa đổi chưa lưu thì không thể lấy lại bằng hoàn tác. Thao tác chuẩn trước khi đóng xem tại [Mục 8.1](08-document-files.md#81-文档与标签).
 
-### 误删了最近项目，能恢复吗
+### Lỡ xóa mất dự án gần đây, có khôi phục được không
 
-最近项目卡片的 `×` 在确认后会同时删除 IndexedDB 中的文档和最近记录，没有回收站。如果有 `.cd` 备份，打开它并按 `Ctrl+S` 即可重新写入文档和最近记录；STEP 只能恢复几何，不能恢复完整文档。预防与恢复所需备份见 [第 8.2 节](08-document-files.md#82-保存版本与备份)。
+Biểu tượng `×` trên thẻ dự án gần đây sau khi xác nhận sẽ đồng thời xóa dữ liệu tài liệu trong IndexedDB và bản ghi gần đây, hoàn toàn không có thùng rác để khôi phục. Nếu bạn có bản sao lưu `.cd`, hãy mở nó ra và nhấn `Ctrl+S` để ghi lại vào tài liệu và danh sách gần đây; tệp STEP chỉ khôi phục được hình học, không khôi phục được tài liệu trọn vẹn. Phòng ngừa và bản sao lưu cần thiết xem tại [Mục 8.2](08-document-files.md#82-保存版本与备份).
 
-### 保存后刷新页面，文档不见了
+### Sau khi lưu rồi làm mới trang web, tài liệu bị biến mất
 
-- 确认用的是 `保存`（Ctrl+S）而不是只导出文件；保存会写入浏览器 IndexedDB。
-- 浏览器处于隐私模式、或清理了站点数据时，IndexedDB 会被清空。
-- 确认仍使用原来的浏览器源：官网、镜像、不同协议或端口不会自动同步文档和设置，见 [第 8.8 节](08-document-files.md#88-数据存放位置)。
-- 重要文件请用 `保存到文件`（`.cd`）并导出 STEP 做几何备份。
+- Xác nhận bạn đã dùng lệnh `Lưu` (Ctrl+S) chứ không chỉ đơn thuần là xuất tệp; lệnh Lưu mới ghi dữ liệu vào IndexedDB của trình duyệt.
+- Khi trình duyệt ở chế độ ẩn danh (Incognito/Private) hoặc đã dọn dẹp dữ liệu trang web, IndexedDB sẽ bị xóa sạch.
+- Xác nhận bạn vẫn đang dùng đúng nguồn trình duyệt (origin) ban đầu: trang web chính thức, trang mirror, các giao thức hoặc cổng khác nhau sẽ không tự động đồng bộ tài liệu và cài đặt, xem [Mục 8.8](08-document-files.md#88-数据存放位置).
+- Đối với các tài liệu quan trọng, vui lòng dùng `Lưu thành tệp` (`.cd`) và xuất thêm STEP để dự phòng hình học.
 
-### `.cd` 文件打不开
+### Tệp `.cd` không mở được
 
-当前应用版本是 **0.8.0**，文档格式版本 `documentVersion` 是 **0.7.1**；打开时严格匹配的是后者，**不同格式版本必定拒绝**，不做迁移。用相同文档格式版本打开，跨版本则使用事先导出的 STEP 等文件恢复几何。版本与备份策略见 [第 8.2 节](08-document-files.md#82-保存版本与备份)。
+Phiên bản ứng dụng hiện tại là **0.8.0**, và phiên bản định dạng tài liệu `documentVersion` là **0.7.1**; khi mở tệp hệ thống đối chiếu nghiêm ngặt số hiệu định dạng tài liệu, **khác phiên bản định dạng chắc chắn bị từ chối**, không có chuyển đổi tự động. Hãy mở bằng phiên bản ứng dụng có cùng định dạng tài liệu, trường hợp khác phiên bản hãy dùng tệp STEP đã xuất trước đó để khôi phục hình học. Chiến lược phiên bản và sao lưu xem tại [Mục 8.2](08-document-files.md#82-保存版本与备份).
 
-### 打开 `.cd` 后重命名再保存，为什么覆盖了原最近项目
+### Mở tệp `.cd` sau đó đổi tên rồi lưu, tại sao lại ghi đè lên dự án gần đây ban đầu
 
-`.cd` 保留原文档 ID，`Ctrl+S` 会覆盖同一浏览器源中同 ID 的记录；重命名不改变 ID，也不会生成独立副本。需要保留修改前的状态时，应事先生成并妥善保管另一份下载的 `.cd` 备份，见 [第 8.2 节](08-document-files.md#82-保存版本与备份)。
+Tệp `.cd` giữ nguyên ID tài liệu gốc, phím tắt `Ctrl+S` sẽ ghi đè lên bản ghi có cùng ID trong cùng nguồn trình duyệt; việc đổi tên không làm đổi ID và không tạo ra bản sao độc lập. Khi cần giữ lại trạng thái trước khi chỉnh sửa, bạn nên tải về và cất giữ một bản sao lưu `.cd` độc lập khác trước khi sửa, xem [Mục 8.2](08-document-files.md#82-保存版本与备份).
 
-### `?url=` / `?model=` 加载模型失败
+### Tải mô hình qua `?url=` / `?model=` bị thất bại
 
-使用文件名以受支持扩展名结尾的下载直链，并确认跨域服务器允许 CORS。带查询参数的签名 URL 可能使扩展名识别失效，可先下载再手动打开。HTTP 状态、跨域和扩展名问题请到浏览器开发者工具的控制台排查，详见 [第 8.6 节](08-document-files.md#86-url-参数)。
+Hãy dùng liên kết tải trực tiếp có tên tệp kết thúc bằng phần mở rộng được hỗ trợ, và đảm bảo máy chủ cho phép CORS. Các URL có chữ ký chứa tham số truy vấn có thể khiến việc nhận diện phần mở rộng bị lỗi, bạn có thể tải về trước rồi mở thủ công. Khi gặp sự cố về HTTP, CORS hay phần mở rộng, hãy mở Console trong Developer Tools của trình duyệt để kiểm tra, chi tiết xem tại [Mục 8.6](08-document-files.md#86-url-参数).
 
-### STL 导入后为什么都是三角面，能恢复光滑 CAD 曲面吗
+### Tại sao nhập tệp STL vào toàn là lưới tam giác, có khôi phục được mặt cong trơn CAD không
 
-不能靠导入恢复。STL 会成为三角面组成的 OCCT 形状，不还原原来的解析曲面或参数化历史；需要光滑 CAD 曲面时使用 STEP、IGES 或 BREP，见 [第 8.3 节](08-document-files.md#83-导入)。
+Không thể khôi phục bằng cách nhập lại. STL sẽ trở thành hình dạng OCCT cấu thành từ các mặt tam giác, không thể hoàn nguyên lại mặt giải tích ban đầu hay lịch sử tham số; khi cần mặt cong CAD trơn mượt hãy sử dụng STEP, IGES hoặc BREP, xem [Mục 8.3](08-document-files.md#83-导入).
 
-### 导出没有文件
+### Xuất tệp nhưng không thấy tệp tải về
 
-- 先选中要导出的模型。只有**多个对象且不合并**时才打包成 `.zip`；单对象即使不勾合并，也会下载普通格式文件。
-- 普通文件和 ZIP 都按第一个选中节点命名，先按这个名称检查下载列表。
-- 浏览器可能拦截下载，检查地址栏右侧的下载提示。导出规则见 [第 8.4 节](08-document-files.md#84-导出)。
+- Trước tiên hãy chọn mô hình cần xuất. Chỉ khi **chọn nhiều đối tượng và không tích hợp nhất** thì mới đóng gói thành `.zip`; với một đối tượng đơn lẻ dù không tích hợp nhất hệ thống vẫn tải về tệp định dạng thông thường.
+- Cả tệp thông thường và tệp ZIP đều đặt tên theo node được chọn đầu tiên, hãy kiểm tra danh sách tải về theo tên này.
+- Trình duyệt có thể đã chặn tải xuống tự động, hãy kiểm tra biểu tượng thông báo tải về ở bên phải thanh địa chỉ. Quy tắc xuất tệp xem tại [Mục 8.4](08-document-files.md#84-导出).
 
-## 11.5 AI 与插件
+## 11.5 AI và plugin
 
-### AI 回复被截断，或一直“思考中”
+### Trả lời của AI bị ngắt quãng, hoặc luôn ở trạng thái "Đang suy nghĩ"
 
-- 在 AI 设置里调低“思考深度”，给正文留出输出额度。
-- 检查上下文窗口设置是否与实际模型一致；占用过高时，较早轮次会被裁剪并提炼成记录。
-- 端点、模型 ID 或 Key 填错时会报错，不会静默失败；还要检查端点是否支持流式响应和工具调用。
-- 需要停止时点“停止”。配置与上下文规则见 [第 9.2 节](09-ai-assistant.md#92-配置模型) 和 [第 9.3 节](09-ai-assistant.md#93-对话)。
+- Trong phần Cài đặt AI, hãy giảm bớt "Độ sâu suy nghĩ" để nhường hạn mức token đầu ra cho phần nội dung chính.
+- Kiểm tra xem thiết lập kích thước cửa sổ ngữ cảnh có phù hợp với mô hình thực tế hay không; khi chiếm dụng quá lớn, các lượt hội thoại sớm hơn sẽ bị cắt tỉa và cô đọng thành bản tóm tắt.
+- Khi điền sai Endpoint, Model ID hoặc Key hệ thống sẽ báo lỗi chứ không im lặng thất bại; đồng thời cần kiểm tra xem endpoint có hỗ trợ streaming và tool calling hay không.
+- Khi cần dừng lại, hãy bấm nút "Dừng". Cấu hình và quy tắc ngữ cảnh xem tại [Mục 9.2](09-ai-assistant.md#92-配置模型) và [Mục 9.3](09-ai-assistant.md#93-对话).
 
-### AI 端点已填写，为什么仍无法连接或不能看图
+### Đã điền AI Endpoint, tại sao vẫn không kết nối được hoặc không xem được ảnh
 
-Base URL 应填 API 根地址，不要自行追加 `/chat/completions` 或 `/responses`。远程端点通常需要 HTTPS，本地开发地址可按浏览器规则使用 HTTP；端点还需支持 CORS、流式响应和工具调用，图片输入取决于模型能力。“默认”思考深度也不保证旧网关兼容，排查清单见 [第 9.2 节](09-ai-assistant.md#92-配置模型)。
+Base URL chỉ nên điền địa chỉ gốc của API, không tự thêm `/chat/completions` hay `/responses`. Endpoint từ xa thường yêu cầu HTTPS, địa chỉ cục bộ có thể dùng HTTP theo quy định trình duyệt; endpoint cần hỗ trợ CORS, streaming và tool calling, khả năng nhận ảnh phụ thuộc vào mô hình. Độ sâu suy nghĩ "Mặc định" không đảm bảo tương thích với các gateway cũ, danh mục kiểm tra xem tại [Mục 9.2](09-ai-assistant.md#92-配置模型).
 
-### AI 对话会随 `.cd` 一起分享吗
+### Hội thoại AI có bị chia sẻ cùng tệp `.cd` không
 
-会。保存到 `.cd` 的对话可能包含文字、参考图片、工具参数和结果。分享前先在“历史对话”中删除相关内容，再保存文档或重新导出文件；只新建对话不够。发送内容和清理步骤见 [第 9.6 节](09-ai-assistant.md#96-隐私)。
+Có. Các cuộc hội thoại lưu vào `.cd` có thể chứa văn bản, hình ảnh tham khảo, tham số và kết quả công cụ. Trước khi chia sẻ, hãy vào "Lịch sử hội thoại" để xóa nội dung liên quan, rồi mới lưu tài liệu hoặc xuất lại tệp; chỉ tạo hội thoại mới là chưa đủ. Nội dung gửi đi và quy trình dọn dẹp xem tại [Mục 9.6](09-ai-assistant.md#96-隐私).
 
-### 陌生来源的插件可以信任吗
+### Plugin từ nguồn lạ có đáng tin cậy không
 
-插件会执行 JavaScript 并能调用应用接口，只应安装可信作者和来源的包。远程陌生域名的确认不是安全扫描；本地拖包不会经过这个确认，也不代表安全。无法确认来源时不要加载，见 [第 10.4 节](10-settings-plugins.md#104-插件)。
+Plugin thực thi mã JavaScript và có thể gọi các API của ứng dụng, vì vậy bạn chỉ nên cài đặt các gói từ tác giả và nguồn đáng tin cậy. Hộp thoại xác nhận tên miền lạ không phải là quét mã độc; kéo thả tệp cục bộ sẽ không qua hộp thoại này và cũng không có nghĩa là an toàn tuyệt đối. Khi không thể xác nhận nguồn gốc thì không nên tải, xem [Mục 10.4](10-settings-plugins.md#104-插件).
 
-### 远程插件加载失败，或控制台提示 CORS
+### Plugin từ xa tải thất bại, hoặc Console báo lỗi CORS
 
-确认地址是含 `manifest.json` 的插件目录，或直接的 `.chiliplugin` 包地址，而不是任意 `extension.js`。远程清单、包、脚本和资源都要由服务器正确允许 CORS；再检查控制台中的网络错误。两种正确示例见 [第 10.4 节](10-settings-plugins.md#104-插件)。
+Xác nhận địa chỉ là thư mục plugin chứa `manifest.json`, hoặc trực tiếp là địa chỉ gói `.chiliplugin`, chứ không phải là script `extension.js` đơn lẻ bất kỳ. Bản kê khai, gói plugin, script và tài nguyên từ xa bắt buộc phải được máy chủ cho phép CORS; sau đó kiểm tra lỗi mạng trong Console. Hai ví dụ chuẩn xác xem tại [Mục 10.4](10-settings-plugins.md#104-插件).
 
-## 11.6 Pro 直接编辑
+<a id="116-pro-直接编辑"></a>
+## 11.6 Chỉnh sửa trực tiếp Pro (Pro Direct Editing)
 
-### 双击模型后为什么要求“转换为可编辑节点”
+### Nhấp đúp vào mô hình tại sao lại yêu cầu "Chuyển đổi thành node có thể chỉnh sửa"
 
-该节点不是可直接编辑的形状，例如参数化体仍由特征列表驱动。转换会保留当前几何，但**删除原参数化特征列表和可编辑历史**。仍需修改特征参数时点 `取消`，回到参数化工作流；确认转换后发现误操作，立即 `Ctrl+Z`。详见 [第 13.2 节](13-pro-direct-editing.md#132-进入转换与退出)。
+Node này không phải là hình dạng có thể chỉnh sửa trực tiếp, ví dụ thân tham số vẫn do danh sách tính năng điều khiển. Chuyển đổi sẽ giữ lại hình học hiện tại, nhưng **xóa bỏ danh sách tính năng tham số và lịch sử chỉnh sửa ban đầu**. Khi vẫn cần sửa tham số tính năng, hãy nhấp `Hủy` để quay lại luồng làm việc tham số; nếu sau khi xác nhận chuyển đổi phát hiện thao tác nhầm, hãy nhấn ngay `Ctrl+Z`. Chi tiết xem tại [Mục 13.2](13-pro-direct-editing.md#132-进入转换与退出).
 
-### 只双击了一个实例，为什么其他实例也变了
+### Chỉ nhấp đúp vào một instance, tại sao các instance khác cũng bị đổi theo
 
-Pro 会转到实例的源节点进行转换和编辑，所以共享该源的所有实例都会更新。只改一个实例时，先对它执行 `使独立`，再进入直接编辑。
+Bản Pro sẽ chuyển đến node nguồn của instance để chuyển đổi và chỉnh sửa, do đó mọi instance dùng chung nguồn này đều sẽ cập nhật theo. Khi chỉ muốn sửa một instance riêng lẻ, trước tiên hãy thực hiện `Tách độc lập` trên instance đó, rồi mới vào chỉnh sửa trực tiếp.
 
-### 编辑时点不到其他模型
+### Trong khi chỉnh sửa không thể nhấp chọn được các mô hình khác
 
-这是隔离行为，不是选择失效。`编辑设置 → 隔离模式` 中，`锁定` 让其他对象保持可见但不可作为普通编辑对象，`隐藏` 则只显示当前节点。直接编辑命令只修改当前节点；需要操作另一个节点时先退出编辑。
+Đây là hành vi cách ly có chủ đích, không phải lỗi lựa chọn. Trong `Cài đặt chỉnh sửa → Chế độ cách ly`, tùy chọn `Khóa` giúp các đối tượng khác vẫn hiển thị nhưng không thể thao tác như đối tượng chỉnh sửa thông thường, còn tùy chọn `Ẩn` thì chỉ hiển thị node hiện tại. Các lệnh chỉnh sửa trực tiếp chỉ tác động lên node hiện tại; khi cần thao tác trên node khác hãy thoát phiên chỉnh sửa trước.
 
-### 选中面或边后没有黄色拖拽手柄
+### Chọn mặt hoặc cạnh xong không thấy xuất hiện tay cầm kéo màu vàng
 
-检查所选几何是否受支持：平面拖拽要求明确平面，多选平面需法线平行；边拖拽要求该边连接两个非平行面；现有圆角面的拖拽还需在 `编辑设置` 中开启 `拖拽编辑圆角`。需要调整圆柱或孔壁时改用 `偏移面`，不要等待不支持的拖拽手柄。
+Hãy kiểm tra xem hình học được chọn có được hỗ trợ hay không: Kéo mặt phẳng yêu cầu mặt phẳng rõ ràng, khi chọn nhiều mặt phẳng thì các pháp tuyến phải song song; kéo cạnh yêu cầu cạnh đó nối hai mặt không song song; việc kéo mặt bo góc hiện có còn cần bật `Kéo chỉnh sửa bo góc` trong `Cài đặt chỉnh sửa`. Khi cần điều chỉnh hình trụ hoặc thành lỗ, hãy chuyển sang dùng `Dời mặt song song (Offset face)`, đừng chờ đợi tay cầm kéo không được hỗ trợ.
 
-### 偏移面失败或提示无法保持圆角
+### Dời mặt song song thất bại hoặc báo không thể giữ bán kính bo góc
 
-先减小距离并检查选面，再尝试 `简化`。实体要求、封闭空腔和不可偏移拓扑都会限制该命令；开启 `保持圆角半径` 时，无法按原半径重建邻接圆角会拒绝提交。不要通过反复增大距离强行得到结果，可改用推拉或先移除再重建圆角。各类提示见 [第 13.5 节](13-pro-direct-editing.md#135-工具推拉偏移面圆角与倒角)。
+Trước tiên hãy giảm bớt khoảng cách và kiểm tra các mặt đã chọn, sau đó thử dùng `Đơn giản hóa`. Yêu cầu về khối solid, khoang rỗng khép kín và cấu trúc liên kết không thể dời đều sẽ hạn chế lệnh này; khi bật `Giữ bán kính bo góc`, nếu không thể tái dựng lại góc bo liền kề theo bán kính cũ thì lệnh sẽ từ chối xác nhận. Đừng cố gắng ép lệnh bằng cách tăng khoảng cách liên tục, bạn có thể chuyển sang dùng đẩy-kéo hoặc gỡ bỏ góc bo trước rồi tạo lại sau. Các kiểu thông báo xem tại [Mục 13.5](13-pro-direct-editing.md#135-工具推拉偏移面圆角与倒角).
 
-### 删除一个面后模型出现开口，修复能自动补回吗
+### Sau khi xóa một mặt thì mô hình bị hở lỗ, chức năng sửa chữa có tự động vá lại được không
 
-不能。编辑模式中的 `Delete` 是删除子形状，删面可能直接把封闭壳变成开放壳；`修复` 只能缝合和修复现有几何，不能保证重建缺失面。立即 `Ctrl+Z`，或改用 `特征删除` 尝试移除局部几何并愈合邻面。
+Không thể. Phím `Delete` trong chế độ chỉnh sửa là xóa hình dạng con (sub-shape), việc xóa mặt có thể biến một vỏ kín thành vỏ hở ngay lập tức; lệnh `Sửa chữa` chỉ có thể khâu và vá các hình học hiện có, không đảm bảo tái dựng lại mặt bị mất. Hãy nhấn ngay `Ctrl+Z`, hoặc chuyển sang dùng `Xóa tính năng` để thử loại bỏ hình học cục bộ và hàn lành các mặt lân cận.
 
 ---
 
-下一步：[第 12 章 典型工作流程](12-workflows.md) · 回到 [手册目录](README.md)
+Bước tiếp theo: [Chương 12 Quy trình làm việc điển hình](12-workflows.md) · Quay lại [Mục lục sổ tay](README.md)

@@ -30,7 +30,9 @@ import {
     XYZ,
     type XYZLike,
 } from "@chili3d/core";
+import { recordRuntimeError } from "../diagnostics";
 import type { JsonSchema, Tool } from "../llm/types";
+import { onNodesCreated, onNodesRemoved, onRecentError } from "../memory";
 import {
     type QueryCapability,
     queryCapabilities,
@@ -899,8 +901,24 @@ async function runProgram(ops: Op[]): Promise<string> {
         });
         // Committed: the values this program's registrations replaced are dead for good.
         replacedValues.forEach((value) => value.dispose());
+        onNodesCreated(created.map((c) => ({ id: c.nodeId, name: c.name })));
+        onNodesRemoved(removed.map((r) => r.nodeId));
     } catch (e) {
         restoreRefRegistries(localRefs, nullRefs, refSnapshot, nullSnapshot);
+        const errMsg = e instanceof Error ? e.message : String(e);
+        const opMatch = /op "([^"]+)"/.exec(errMsg);
+        const failedOperation = opMatch ? opMatch[1] : undefined;
+        recordRuntimeError({
+            toolName: "run_program",
+            operation: failedOperation,
+            error: e,
+            args: { ops },
+        });
+        onRecentError({
+            toolName: "run_program",
+            operation: failedOperation,
+            errorMessage: errMsg,
+        });
         throw e;
     } finally {
         pendingRefDisposals = outerPending;

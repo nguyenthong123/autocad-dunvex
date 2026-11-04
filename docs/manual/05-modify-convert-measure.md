@@ -1,206 +1,208 @@
-# 5. 修改、测量与注释
+# 5. Chỉnh sửa, đo lường và chú thích
 
-这一章覆盖 **基本** 标签右半部分的命令：修改、测量、注释、场景，以及材质编辑器。大多数命令都遵循同一套“选对象 → 设参数 → 确认”的流程。
+Chương này bao gồm các lệnh ở nửa bên phải của thẻ **Cơ bản**: Chỉnh sửa, Đo lường, Chú thích, Khung cảnh (Scene), và Trình chỉnh sửa vật liệu. Đa số các lệnh đều tuân theo cùng một quy trình "Chọn đối tượng → Đặt tham số → Xác nhận".
 
-## 5.1 变换：移动、旋转、镜像、阵列
+<a id="51-变换移动旋转镜像阵列"></a>
+## 5.1 Biến đổi: Di chuyển, Xoay, Đối xứng, Mảng (Array)
 
-移动、旋转、镜像时勾选 `复制对象`，以及执行阵列，对参数化体、直接建模生成的参数化形状（如立方体、旋转/扫掠结果）和普通可编辑形状生成的是**关联实例**，不是完全独立的几何副本。实例可以各自摆放，但仍读取源节点的几何；修改源的尺寸、形状或特征，实例会跟随变化。
+Khi di chuyển, xoay, đối xứng mà tích chọn `Sao chép đối tượng`, cũng như khi thực hiện tạo mảng, đối với body tham số, hình dạng tham số tạo bởi dựng hình trực tiếp (như hình hộp, kết quả xoay/quét) và hình dạng chỉnh sửa được thông thường, hệ thống sẽ tạo ra **thực thể liên kết (associated instance)**, chứ không phải bản sao hình học hoàn toàn độc lập. Các instance có thể đặt ở các vị trí khác nhau, nhưng vẫn tham chiếu hình học của node nguồn; khi sửa đổi kích thước, hình dạng hoặc tính năng của nguồn, các instance sẽ tự động thay đổi theo.
 
-只需要编辑某一个副本时，先选中实例，在属性面板的“源节点”区域点 `使独立`，或使用 **参数化 → 节点操作 → 使独立**。若误改源导致多个实例一起变化，立即撤销这次源修改，再对需要单独编辑的实例执行 `使独立`。
+Khi chỉ cần chỉnh sửa một bản sao cụ thể, trước tiên hãy chọn instance đó, trong vùng "Node nguồn" trên bảng thuộc tính nhấp vào `Tách độc lập`, hoặc dùng **Tham số → Thao tác node → Tách độc lập**. Nếu lỡ sửa nguồn khiến nhiều instance cùng đổi theo, hãy hoàn tác (`Ctrl+Z`) ngay thao tác sửa nguồn đó, rồi thực hiện `Tách độc lập` trên instance cần chỉnh sửa riêng.
 
-### 移动（M）
+### Di chuyển (M)
 
-1. 先选中要移动的节点（不选也行，命令会提示你选）。
-2. 点 `移动`，拾取**基点**，再拾取**目标点**。
-3. 两点之间的位移就是移动量。拾取时状态栏会显示距离。
-4. 命令面板的 `复制对象` 勾选后，保留原件并生成一个副本。
+1. Chọn trước các node cần di chuyển (không chọn trước cũng được, lệnh sẽ nhắc bạn chọn).
+2. Nhấp `Di chuyển`, chọn **điểm cơ sở**, sau đó chọn **điểm đích**.
+3. Độ dời giữa hai điểm chính là lượng di chuyển. Khi chọn điểm, thanh trạng thái sẽ hiển thị khoảng cách.
+4. Tích chọn `Sao chép đối tượng` trên bảng lệnh để giữ lại đối tượng gốc và tạo ra một bản sao.
 
-### 旋转（Shift+R）
+### Xoay (Shift+R)
 
-1. 选中对象，点 `旋转`。
-2. 拾取旋转中心 → 拾取决定旋转平面的参考点 → 拾取角度点。
-3. 命令面板同样有 `复制对象`。
+1. Chọn đối tượng, nhấp `Xoay`.
+2. Chọn tâm xoay → chọn điểm tham chiếu xác định mặt phẳng xoay → chọn điểm góc.
+3. Bảng lệnh cũng có tùy chọn `Sao chép đối tượng`.
 
-### 镜像
+### Đối xứng (Mirror)
 
-1. 选中对象，点 `镜像`。
-2. 在视口里拾取**镜像线的两个点**：第一点落在镜像线上，第二点决定镜像线的方向（镜像面垂直于当前工作平面）。
-3. 命令面板的 `复制对象` 决定保留原件还是原地镜像。不勾选时，原对象会被镜像结果替换。
+1. Chọn đối tượng, nhấp `Đối xứng`.
+2. Chọn **hai điểm của đường đối xứng** trong khung nhìn: điểm thứ nhất nằm trên đường đối xứng, điểm thứ hai xác định hướng của đường đối xứng (mặt phẳng đối xứng vuông góc với mặt phẳng làm việc hiện tại).
+3. Tùy chọn `Sao chép đối tượng` trên bảng lệnh quyết định việc giữ lại đối tượng gốc hay đối xứng tại chỗ thay thế gốc. Khi không tích chọn, đối tượng gốc sẽ bị kết quả đối xứng thay thế.
 
-### 阵列（Shift+A）
+### Mảng (Shift+A)
 
-`阵列` 支持四种类型（命令面板的“阵列类型”）：
+Lệnh `Mảng` hỗ trợ bốn kiểu (chọn trong "Kiểu mảng" trên bảng lệnh):
 
-| 类型 | 参数 |
+| Kiểu | Tham số |
 | --- | --- |
-| 线形阵列 | 方向线、数量、总长（间距随拖拽/总长确定） |
-| 环形阵列 | 中心轴、总角度、数量、均布 |
-| 沿曲线阵列 | 路径曲线、数量 |
-| 矩形阵列 | X/Y/Z 方向的数量（间距随拖拽确定） |
+| Mảng thẳng | Đường dẫn hướng, số lượng, tổng chiều dài (khoảng cách xác định theo thao tác kéo/tổng dài) |
+| Mảng xoay vòng | Trục tâm, tổng góc, số lượng, phân bố đều |
+| Mảng theo đường cong | Đường cong dẫn hướng, số lượng |
+| Mảng chữ nhật | Số lượng theo các hướng X/Y/Z (khoảng cách xác định theo thao tác kéo) |
 
-- **数量**：通常包含源对象。对关联实例而言，就是源对象加“数量 − 1”个实例；矩形阵列按 X × Y × Z 个位置计算。不要把数量误解为“额外新增”的副本数。
-- `组`：结果不含关联实例时可以编组；结果含实例时，即使勾选也会提示无法这样编组，并保留为独立节点。提交后以项目树中的实际结果为准。
-- 阵列方向通常通过拾取一条边或轴来确定。
-- 普通独立节点会被阵列结果替换；上述关联实例的源节点会保留，作为实例定义的出处。
+- **Số lượng**: Thông thường đã bao gồm đối tượng nguồn. Đối với instance liên kết, số lượng chính là đối tượng nguồn cộng với "Số lượng − 1" instance; mảng chữ nhật tính theo số vị trí X × Y × Z. Không nên hiểu nhầm số lượng là số bản sao "thêm mới".
+- `Nhóm`: Khi kết quả không chứa instance liên kết, có thể nhóm lại; khi kết quả có chứa instance, dù có tích chọn hệ thống cũng sẽ nhắc nhở không thể nhóm theo cách này, và giữ lại dưới dạng các node độc lập. Sau khi xác nhận, hãy căn cứ vào kết quả thực tế trong cây dự án.
+- Hướng mảng thường được xác định bằng cách chọn một cạnh hoặc một trục.
+- Các node độc lập thông thường sẽ bị kết quả mảng thay thế; còn node nguồn của instance liên kết nêu trên sẽ được giữ lại, làm nguồn định nghĩa cho instance.
 
-提交前检查预览中的数量、间距和方向；结果不符时，`Ctrl+Z` 撤销整次阵列后重新设置，避免逐个清理错误副本。
+Trước khi xác nhận, hãy kiểm tra số lượng, khoảng cách và hướng trong bản xem trước; nếu kết quả không đúng, nhấn `Ctrl+Z` để hoàn tác toàn bộ lệnh mảng rồi thiết lập lại, tránh phải dọn dẹp từng bản sao lỗi.
 
-## 5.2 边角与抽壳
+## 5.2 Bo góc, vát mép và tạo vỏ (Shell)
 
-### 圆角（Shift+F）
+### Bo góc (Shift+F)
 
-1. 点 `圆角`，选择一条或多条**边**。
-2. 命令面板设置 `半径`。
-3. 回车确认。预览会随半径实时更新。
+1. Nhấp `Bo góc`, chọn một hoặc nhiều **cạnh**.
+2. Trên bảng lệnh, nhập `Bán kính`.
+3. Nhấn Enter để xác nhận. Bản xem trước sẽ cập nhật theo thời gian thực theo bán kính.
 
-直接建模的圆角用新的修形结果替换原形状。
+Bo góc trong dựng hình trực tiếp sẽ thay thế hình dạng gốc bằng kết quả chỉnh sửa mới.
 
-### 倒角（Shift+C）
+### Vát mép (Shift+C)
 
-选择边，设置 `长度`，确认。倒角与圆角一样替换原形状。
+Chọn cạnh, thiết lập `Khoảng cách`, rồi xác nhận. Vát mép cũng thay thế hình dạng gốc tương tự như bo góc.
 
-圆角/倒角结果不在属性面板暴露原来的半径、长度和选边列表。若预览消失或提交失败，先确认数值大于零，再尝试减小半径/长度、减少同时选择的边；已提交但结果不符时，`Ctrl+Z` 恢复原形状后重试。需要持续编辑这些尺寸时，应改用参数化体。
+Kết quả bo góc/vát mép không để lộ lại bán kính, khoảng cách và danh sách cạnh ban đầu trên bảng thuộc tính. Nếu bản xem trước biến mất hoặc xác nhận thất bại, trước tiên hãy kiểm tra giá trị có lớn hơn 0 không, sau đó thử giảm bán kính/khoảng cách, hoặc giảm bớt số cạnh chọn cùng lúc; khi đã xác nhận nhưng kết quả không như ý, dùng `Ctrl+Z` để khôi phục hình dạng gốc rồi thử lại. Nếu cần liên tục chỉnh sửa các kích thước này, nên chuyển sang dùng body tham số.
 
-### 抽壳
+### Tạo vỏ rỗng (Shell)
 
-1. 选择实体。
-2. 选择要**开口**的面（可多选，`Enter` 结束）。
-3. 设置 `厚度`；`向外` 决定加厚方向，`连接类型` 决定相邻面如何接合。
-4. 确认。
+1. Chọn khối solid.
+2. Chọn các mặt cần **mở nắp** (có thể chọn nhiều mặt, nhấn `Enter` để hoàn tất chọn).
+3. Thiết lập `Độ dày`; `Hướng ra ngoài` quyết định hướng làm dày, `Kiểu nối` quyết định cách các mặt liền kề tiếp giáp nhau.
+4. Xác nhận.
 
-## 5.3 修剪、延伸、打断、分割
+## 5.3 Cắt tỉa, kéo dài, ngắt và phân tách
 
-### 修剪（T）
+### Cắt tỉa (T)
 
-`修剪` 是一个连续命令：
+`Cắt tỉa` là một lệnh liên tục:
 
-1. 点 `修剪`。
-2. 直接点要**删掉的那一段**边。命令会计算它与其他边的交点，删掉该段，保留其余段。
-3. 可以继续点其他段；`Esc` 结束。
+1. Nhấp `Cắt tỉa`.
+2. Nhấp trực tiếp vào **đoạn cạnh muốn xóa**. Lệnh sẽ tính toán giao điểm của nó với các cạnh khác, xóa đoạn đó đi và giữ lại các đoạn còn lại.
+3. Có thể tiếp tục nhấp vào các đoạn khác; nhấn `Esc` để kết thúc lệnh.
 
-### 延伸
+### Kéo dài (Extend)
 
-1. 点 `延伸`，选择要延伸的边。
-2. 选择延伸到的边界边。
-3. 命令面板的 `同时修改边界` 决定是否把边界一起改短/改长。
+1. Nhấp `Kéo dài`, chọn cạnh cần kéo dài.
+2. Chọn cạnh ranh giới cần kéo dài tới.
+3. Tùy chọn `Đồng thời sửa ranh giới` trên bảng lệnh quyết định có rút ngắn/kéo dài ranh giới cùng lúc hay không.
 
-### 打断
+### Ngắt (Break)
 
-选择一条边，再在边上拾取一个点，边会在该点处断成两段。
+Chọn một cạnh, sau đó chọn một điểm trên cạnh đó, cạnh sẽ bị ngắt thành hai đoạn tại điểm đã chọn.
 
-### 分割
+### Phân tách (Split)
 
-1. 选择要分割的形状。
-2. 选择切割工具：边、线框或面（可多选）。
-3. 确认后，原形状被切成多个节点。
+1. Chọn hình dạng cần phân tách.
+2. Chọn công cụ cắt: cạnh, khung dây hoặc mặt (có thể chọn nhiều).
+3. Sau khi xác nhận, hình dạng gốc được cắt thành nhiều node riêng biệt.
 
-### 缝合 / 简化
+### Khâu / Đơn giản hóa
 
-- **缝合**：把多块面/壳体按 `容差` 缝合成一个整体。
-- **简化**：移除共面/共线的边和面；命令面板可分别勾选 `移除边`、`移除面`。
+- **Khâu**: Khâu nhiều mặt/vỏ lại thành một thể thống nhất theo `Dung sai`.
+- **Đơn giản hóa**: Loại bỏ các cạnh và mặt đồng phẳng/cùng đường thẳng; trên bảng lệnh có thể tích chọn riêng `Loại bỏ cạnh`, `Loại bỏ mặt`.
 
-### 分解
+### Phân rã (Explode)
 
-选择组合体、多形状节点或组件，`分解` 会把它的直接子形状拆成独立节点。
+Chọn khối compound, node chứa nhiều hình dạng hoặc cụm chi tiết, lệnh `Phân rã` sẽ tách các hình con trực tiếp của nó thành các node độc lập.
 
-## 5.4 删除的三种含义
+## 5.4 Ba ý nghĩa khác nhau của việc xóa
 
-这三个命令很容易混：
+Ba lệnh này rất dễ bị nhầm lẫn:
 
-| 命令 | 作用 |
+| Lệnh | Tác dụng |
 | --- | --- |
-| `删除`（Delete / Backspace） | 删除选中的整个节点 |
-| `删除子元素` | 选择形状上的边或面，只删掉这些子元素，并重建节点 |
-| `删除特征` | 选择某个特征生成的面（例如圆角的圆角面），移除该特征并愈合周围几何 |
+| `Xóa` (Delete / Backspace) | Xóa toàn bộ node được chọn |
+| `Xóa phần tử con` | Chọn cạnh hoặc mặt trên hình dạng, chỉ xóa các phần tử con này và tái dựng lại node |
+| `Xóa tính năng` | Chọn các mặt do một tính năng tạo ra (ví dụ các mặt bo của góc bo), loại bỏ tính năng đó và hàn lành hình học xung quanh |
 
-后两个会**替换**节点（结果是一个愈合后的新形状），靠撤销回去。
+Hai lệnh sau sẽ **thay thế** node (kết quả là một hình dạng mới sau khi hàn lành), muốn quay lại phải dựa vào thao tác hoàn tác (`Ctrl+Z`).
 
-## 5.5 画笔与材质
+## 5.5 Cọ vẽ và vật liệu
 
-### 油漆桶
+### Thùng sơn
 
-选中若干节点，点 `油漆桶`，在命令面板选择材质，确认后整个节点换成该材质。若节点上原有逐面材质，会一并清除。
+Chọn một số node, nhấp `Thùng sơn`, chọn vật liệu trên bảng lệnh, sau khi xác nhận toàn bộ node sẽ đổi sang vật liệu đó. Nếu trên node từng có vật liệu gán riêng theo từng mặt, chúng sẽ bị xóa bỏ hoàn toàn.
 
-### 添加画笔 / 删除画笔 / 清除画笔
+### Thêm cọ vẽ / Xóa cọ vẽ / Xóa sạch cọ vẽ
 
-- `添加画笔`：选择面（可多选），命令面板选材质，只给这些面换材质。
-- `删除画笔`：选择面，移除这些面的单独材质，恢复节点材质。
-- `清除画笔`：选择节点，清除它所有逐面材质。
+- `Thêm cọ vẽ`: Chọn mặt (có thể chọn nhiều mặt), chọn vật liệu trên bảng lệnh, chỉ gán vật liệu riêng cho các mặt này.
+- `Xóa cọ vẽ`: Chọn mặt, loại bỏ vật liệu riêng của các mặt này, khôi phục về vật liệu chung của node.
+- `Xóa sạch cọ vẽ`: Chọn node, xóa bỏ toàn bộ vật liệu gán theo từng mặt của nó.
 
-这几个命令在“修改”组的下拉里。
+Các lệnh này nằm trong menu thả xuống của nhóm "Chỉnh sửa".
 
-## 5.6 材质与外观
+<a id="56-材质与外观"></a>
+## 5.6 Vật liệu và ngoại quan
 
-选中对象后，属性面板的“材质”行显示当前材质。点击材质色块打开材质编辑器：
+Sau khi chọn đối tượng, dòng "Vật liệu" trên bảng thuộc tính sẽ hiển thị vật liệu hiện tại. Nhấp vào ô màu vật liệu để mở trình chỉnh sửa vật liệu:
 
-![蓝色法兰的材质编辑器](images/10-material-editor.png)
+![Trình chỉnh sửa vật liệu của mặt bích màu xanh](images/10-material-editor.png)
 
-*材质参数直接对应视口中的外观；图中为自定义蓝色金属材质。*
+*Các tham số vật liệu tương ứng trực tiếp với ngoại quan trong khung nhìn; trong hình là vật liệu kim loại màu xanh tùy chỉnh.*
 
-编辑器包含：
+Trình chỉnh sửa bao gồm:
 
-- **材质列表**：顶部色块，点选切换；`+` 新建（空白材质或预设），复制、删除。
-- **名称、颜色、不透明度**。
-- **反射强度、粗糙度、金属度**：PBR 参数。
-- **法线强度、凹凸强度**。
-- **自发光、自发光强度**。
-- **贴图**：基色贴图、法线贴图、粗糙度贴图、金属度贴图、凹凸贴图、自发光贴图；每张贴图可设置旋转、偏移、重复和环绕方式，图片可直接从文件载入。
+- **Danh sách vật liệu**: Các ô màu ở phía trên, nhấp để chuyển đổi; `+` tạo mới (vật liệu trống hoặc preset), sao chép, xóa.
+- **Tên, Màu sắc, Độ mờ (Opacity)**.
+- **Cường độ phản xạ, Độ nhám (Roughness), Độ kim loại (Metalness)**: Các tham số PBR.
+- **Cường độ pháp tuyến (Normal strength), Cường độ gồ ghề (Bump strength)**.
+- **Tự phát quang (Emissive), Cường độ phát quang**.
+- **Texture (Bản đồ vân bề mặt)**: Base color texture, Normal map, Roughness map, Metalness map, Bump map, Emissive map; mỗi map đều có thể thiết lập xoay, độ lệch (offset), lặp lại (repeat) và kiểu bao bọc (wrap), hình ảnh có thể tải trực tiếp từ tệp tin.
 
-点 `确定` 应用，`取消` 放弃。修改材质是一个撤销步骤。
+Nhấp `Xác nhận` để áp dụng, `Hủy` để bỏ qua. Chỉnh sửa vật liệu được tính là một bước hoàn tác.
 
-## 5.7 测量
+## 5.7 Đo lường
 
-### 长度（D）
+### Chiều dài (D)
 
-拾取两个点，视口浮出两点距离。拾取时可以使用所有捕捉类型。
+Chọn hai điểm, khung nhìn sẽ hiển thị khoảng cách giữa hai điểm. Khi chọn điểm, có thể sử dụng tất cả các kiểu bắt điểm.
 
-### 角度
+### Góc
 
-拾取**顶点** → 第一条边上的点 → 第二条边上的点。视口显示角度（度）。
+Chọn **đỉnh** → điểm trên cạnh thứ nhất → điểm trên cạnh thứ hai. Khung nhìn sẽ hiển thị góc (độ).
 
-### 选择（汇总）
+### Chọn (Tổng hợp)
 
-1. 点 `测量 → 选择`。
-2. 命令面板的 `类型` 选长度 / 面积 / 体积。
-3. 逐个拾取要统计的形状。视口左上角出现浮层，列出每一项的数值和累计值。
-4. `Esc` 退出时浮层消失；需要保留结果可先截图。
+1. Nhấp `Đo lường → Chọn`.
+2. Trong phần `Kiểu` trên bảng lệnh, chọn Chiều dài / Diện tích / Thể tích.
+3. Lần lượt chọn các hình dạng cần thống kê. Ở góc trên bên trái khung nhìn sẽ xuất hiện bảng nổi, liệt kê giá trị của từng mục và giá trị tích lũy.
+4. Nhấn `Esc` để thoát, bảng nổi sẽ biến mất; nếu cần lưu lại kết quả, hãy chụp ảnh màn hình trước.
 
-![蓝色法兰的体积测量结果](images/17-measure-volume.png)
+![Kết quả đo thể tích của mặt bích màu xanh](images/17-measure-volume.png)
 
-*“选择”测量同时列出每项体积与累计体积，图中数值的单位为立方毫米。*
+*Đo lường kiểu "Chọn" đồng thời liệt kê thể tích từng mục và thể tích tích lũy, đơn vị trong hình là milimét khối.*
 
-## 5.8 注释
+## 5.8 Chú thích
 
-注释是**视图内标注**，不改变几何，随文档保存。
+Chú thích là **ký hiệu đo kích thước trong khung nhìn**, không làm thay đổi hình học và được lưu cùng tài liệu.
 
-| 命令 | 步骤 |
+| Lệnh | Các bước |
 | --- | --- |
-| 尺寸 | 拾取两个点 → 拾取标注线位置；拖动时按坐标轴方向推断标注平面 |
-| 半径 | 拾取圆/圆弧边 → 拾取引线位置 |
-| 直径 | 同上，显示直径 |
-| 角度 | 拾取两条直线边 → 拾取标注位置 |
-| 文字 | 拾取引线指向的点 → 拾取文字位置，然后输入文字 |
+| Kích thước | Chọn hai điểm → chọn vị trí đường kích thước; khi kéo chuột, mặt phẳng kích thước được suy ra theo hướng trục tọa độ |
+| Bán kính | Chọn cạnh tròn/cung tròn → chọn vị trí đường dẫn |
+| Đường kính | Tương tự như trên, hiển thị đường kính |
+| Góc | Chọn hai cạnh thẳng → chọn vị trí chú thích |
+| Chữ | Chọn điểm đường dẫn trỏ tới → chọn vị trí chữ, sau đó nhập văn bản |
 
-- 标注命令面板可设置 `文字高度`。
-- 标注引用的几何在重建后找不到时，标注会保留在最后位置，并给出提示。
-- 被标注引用的节点不能直接编组；命令会拒绝并保留独立节点，以免标注失去引用。
+- Bảng lệnh chú thích có thể thiết lập `Chiều cao chữ`.
+- Khi hình học mà chú thích tham chiếu không tìm thấy sau khi tái dựng, chú thích sẽ được giữ ở vị trí cuối cùng và đưa ra cảnh báo.
+- Node được chú thích tham chiếu không thể nhóm trực tiếp; lệnh sẽ từ chối và giữ lại dưới dạng các node độc lập để tránh chú thích bị mất liên kết tham chiếu.
 
-## 5.9 场景（视角书签）
+## 5.9 Khung cảnh (Scene - Dấu trang góc nhìn)
 
-**基本 → 场景 → 从相机创建** 把当前视角保存成一个书签：
+**Cơ bản → Khung cảnh → Tạo từ camera** sẽ lưu góc nhìn hiện tại thành một dấu trang (bookmark):
 
-1. 调整好相机。
-2. 点 `从相机创建`。
-3. 视口底部中央出现书签；点它相机飞回该视角。
-4. 书签右侧齿轮重命名，`×` 删除。
+1. Điều chỉnh góc nhìn camera ưng ý.
+2. Nhấp `Tạo từ camera`.
+3. Ở giữa phía dưới khung nhìn sẽ xuất hiện dấu trang; nhấp vào đó camera sẽ bay về góc nhìn này.
+4. Nhấp vào biểu tượng bánh răng bên phải dấu trang để đổi tên, biểu tượng `×` để xóa.
 
-## 5.10 直接建模改参数 vs 重新命令
+## 5.10 Đổi tham số trong dựng hình trực tiếp vs Thực hiện lại lệnh
 
-- 对单个节点改尺寸：只有属性面板实际列出对应字段时才能直接改，例如立方体尺寸或挤出长度。
-- 对布尔、圆角/倒角等修形结果，以及直接旋转、扫掠、放样/戈登等未暴露原命令输入的结果：只能撤销后重做，或用参数化体重建。
-- 对导入的模型做局部修改：用 `删除子元素`、`删除特征`、`修复形状`、`简化` 等命令；它们不会补回原模型的建模历史。
-- 修改前若不能确定节点是否保留所需字段，先选中它检查属性面板；已经误改时用 `Ctrl+Z` 恢复，再继续下一步。
+- Thay đổi kích thước trên từng node đơn lẻ: Chỉ có thể sửa trực tiếp khi bảng thuộc tính thực sự liệt kê các trường tương ứng, ví dụ kích thước hình hộp hoặc chiều dài đùn.
+- Đối với kết quả Boolean, bo góc/vát mép và các thao tác như xoay trực tiếp, quét, loft/Gordon không hiển thị lại tham số đầu vào ban đầu: Chỉ có thể hoàn tác (`Ctrl+Z`) rồi làm lại, hoặc dùng body tham số để dựng lại.
+- Chỉnh sửa cục bộ trên mô hình nhập vào (import): Sử dụng các lệnh như `Xóa phần tử con`, `Xóa tính năng`, `Sửa chữa hình dạng`, `Đơn giản hóa`; chúng sẽ không khôi phục lại lịch sử dựng hình ban đầu của mô hình.
+- Trước khi sửa đổi, nếu không chắc chắn node có giữ lại các trường tham số cần thiết hay không, hãy chọn node đó trước để kiểm tra bảng thuộc tính; nếu lỡ sửa nhầm, hãy dùng `Ctrl+Z` để khôi phục trước khi tiếp tục bước tiếp theo.
 
 ---
 
-下一步：[第 6 章 参数化建模](06-parametric-modeling.md)
+Bước tiếp theo: [Chương 6 Dựng hình tham số](06-parametric-modeling.md)

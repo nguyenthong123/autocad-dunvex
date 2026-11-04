@@ -1,306 +1,306 @@
-# 附录 A 命令速查表
+# Phụ lục A Bảng tra cứu lệnh nhanh
 
-“键”一列是命令内部键（用于排查、插件开发和 AI 引用）；界面以中文按钮为准。带快捷键的见 [附录 B](appendix-shortcuts.md)。
+Cột "Phím lệnh" là mã định danh nội bộ của lệnh (dùng cho việc điều tra lỗi, phát triển plugin và tham chiếu API của AI); trên giao diện lấy nhãn nút tiếng Việt làm chuẩn. Các lệnh có phím tắt xem tại [Phụ lục B](appendix-shortcuts.md).
 
-> 少数命令没有独立的功能区按钮，入口在别处：
+> Một số ít lệnh không có nút độc lập trên thanh Ribbon mà có lối vào ở vị trí khác:
 >
-> - `feature.reselect` 在参数化体的特征行 `⋯` 菜单里；
-> - `create.thickSolid`（加厚实体）、`create.refSegment`（参考线段）、`feature.sew`（参数化缝合）在 v0.8.0 中已注册，但没有功能区入口，只能通过插件或脚本按命令键调用。
+> - `feature.reselect` nằm trong menu `⋯` của hàng tính năng trong thân tham số;
+> - `create.thickSolid` (Làm dày thân đặc), `create.refSegment` (Đoạn thẳng tham chiếu), `feature.sew` (Khâu tham số) đã được đăng ký trong v0.8.0 nhưng chưa có nút trên Ribbon, chỉ có thể gọi qua plugin hoặc script bằng phím lệnh.
 
-## A.1 基本标签
+## A.1 Thẻ Cơ bản
 
-### 绘制
+### Vẽ hình
 
-| 命令 | 键 | 说明 |
+| Lệnh | Phím lệnh | Giải thích |
 | --- | --- | --- |
-| 直线 | `create.line` | 连续画线；可关闭“相连” |
-| 矩形 | `create.rect` | 两角点；可键入 `宽,高` |
-| 圆形 | `create.circle` | 圆心 + 半径 |
-| 椭圆 | `create.ellipse` | 中心 + 长轴 + 短轴 |
-| 正多边形 | `create.regularPolygon` | 中心 + 半径；默认 6 边 |
-| 圆弧 | `create.arc` | 圆心 + 起点 + 终点 |
-| 两点圆弧 | `create.arc2point` | 起点 + 终点 + 弧高 |
-| 三点圆弧 | `create.arc3point` | 起点 + 中间点 + 终点 |
-| 相切相切半径圆弧 | `create.arcTTR` | 两条边 + 半径 |
-| 立方体 | `create.box` | 底面两角点 + 高度 |
-| 球体 | `create.sphere` | 球心 + 半径 |
-| 圆柱 | `create.cylinder` | 圆心 + 半径 + 高度 |
-| 圆锥 | `create.cone` | 圆心 + 半径 + 高度 |
-| 棱锥 | `create.pyramid` | 底面两角点 + 高度 |
-| 挤出 | `create.extrude` | 拾取面/轮廓 + 距离 |
-| 放样 | `create.loft` | 多截面；实体/直纹/连续性 |
-| 戈登曲面 | `create.gordon` | 轮廓边 + 引导边 |
-| 扫略 | `create.sweep` | 截面 + 路径 |
-| 旋转 | `create.revol` | 截面 + 轴 + 角度 |
-| 点 | `create.point` | 单击放置 |
-| 多段线 | `create.polygon` | 连续点；可闭合 |
-| 贝塞尔曲线 | `create.bezier` | 连续控制点 |
-| 螺旋线 | `create.helix` | 圆心 + 半径 + 高度；螺距 |
-| 管状体 | `create.pipe` | 折线路径 + 半径 |
-| 文字 | `create.text` | 字体/字高/内容/放置方式 + 位置 + 深度 |
+| Đoạn thẳng | `create.line` | Vẽ đường liên tục; có thể tắt tùy chọn "Nối liền" |
+| Hình chữ nhật | `create.rect` | Hai điểm góc đối diện; có thể nhập `rộng,cao` |
+| Đường tròn | `create.circle` | Tâm tròn + Bán kính |
+| Elip | `create.ellipse` | Tâm + Trục lớn + Trục nhỏ |
+| Đa giác đều | `create.regularPolygon` | Tâm + Bán kính; mặc định 6 cạnh |
+| Cung tròn | `create.arc` | Tâm + Điểm bắt đầu + Điểm kết thúc |
+| Cung tròn 2 điểm | `create.arc2point` | Điểm bắt đầu + Điểm kết thúc + Chiều cao cung |
+| Cung tròn 3 điểm | `create.arc3point` | Điểm bắt đầu + Điểm giữa + Điểm kết thúc |
+| Cung tiếp tuyến - tiếp tuyến - bán kính | `create.arcTTR` | Hai cạnh + Bán kính |
+| Hình hộp | `create.box` | Hai điểm góc đáy + Chiều cao |
+| Hình cầu | `create.sphere` | Tâm cầu + Bán kính |
+| Hình trụ | `create.cylinder` | Tâm đáy + Bán kính + Chiều cao |
+| Hình nón | `create.cone` | Tâm đáy + Bán kính + Chiều cao |
+| Hình chóp | `create.pyramid` | Hai điểm góc đáy + Chiều cao |
+| Đùn khối | `create.extrude` | Chọn mặt/biên dạng + Khoảng cách |
+| Vuốt nối (Loft) | `create.loft` | Nhiều tiết diện; Thân đặc/Mặt kẻ/Độ liên tục |
+| Mặt cong Gordon | `create.gordon` | Cạnh biên dạng + Cạnh dẫn hướng |
+| Quét (Sweep) | `create.sweep` | Tiết diện + Đường dẫn |
+| Xoay (Revolve) | `create.revol` | Tiết diện + Trục xoay + Góc xoay |
+| Điểm | `create.point` | Nhấp chuột để đặt điểm |
+| Đường gấp khúc (Polyline) | `create.polygon` | Các điểm liên tiếp; có thể khép kín |
+| Đường cong Bézier | `create.bezier` | Các điểm điều khiển liên tiếp |
+| Đường xoắn ốc | `create.helix` | Tâm + Bán kính + Chiều cao; Bước xoắn |
+| Đường ống (Pipe) | `create.pipe` | Đường dẫn gấp khúc + Bán kính |
+| Chữ | `create.text` | Font/Chiều cao chữ/Nội dung/Cách đặt + Vị trí + Độ sâu |
 
-### 修改
+### Chỉnh sửa
 
-| 命令 | 键 | 说明 |
+| Lệnh | Phím lệnh | Giải thích |
 | --- | --- | --- |
-| 移动 | `modify.move` | 基点 + 目标点；可复制 |
-| 旋转 | `modify.rotate` | 中心 + 参考点 + 角度点；可复制 |
-| 镜像 | `modify.mirror` | 镜像线两点；可复制 |
-| 阵列 | `modify.array` | 线形/环形/沿曲线/矩形；可编组 |
-| 修剪 | `modify.trim` | 点掉要删除的段；连续执行 |
-| 延伸 | `modify.extend` | 目标边 + 边界 |
-| 抽壳 | `modify.shell` | 实体 + 开口面 + 厚度 |
-| 分割 | `modify.split` | 形状 + 切割工具 |
-| 缝合 | `modify.sew` | 面/壳按容差缝合 |
-| 简化 | `modify.simplifyShape` | 移除共面边/面 |
-| 圆角 | `modify.fillet` | 边 + 半径 |
-| 倒角 | `modify.chamfer` | 边 + 长度 |
-| 分解 | `modify.explode` | 拆成直接子形状 |
-| 删除 | `modify.deleteNode` | 删除整个节点 |
-| 删除子元素 | `modify.removeShapes` | 删除选中边/面并重建 |
-| 删除特征 | `modify.removeFeature` | 移除生成某面的特征 |
-| 打断 | `modify.break` | 边 + 打断点 |
-| 油漆桶 | `modify.paintBucket` | 整个节点换材质 |
-| 添加画笔 | `modify.brushAdd` | 给选中面加材质 |
-| 删除画笔 | `modify.brushRemove` | 移除选中面的材质 |
-| 清除画笔 | `modify.brushClear` | 清除节点的逐面材质 |
-| 修复形状 | `modify.repairShape` | ShapeFix 修复 |
-| 检查形状 | `modify.checkShape` | 逐面有效性检查 |
+| Di chuyển | `modify.move` | Điểm cơ sở + Điểm đích; có thể sao chép |
+| Xoay | `modify.rotate` | Tâm xoay + Điểm tham chiếu + Điểm góc; có thể sao chép |
+| Đối xứng | `modify.mirror` | Hai điểm đường đối xứng; có thể sao chép |
+| Mảng | `modify.array` | Mảng thẳng/Xoay vòng/Theo đường cong/Chữ nhật; có thể nhóm |
+| Cắt tỉa | `modify.trim` | Nhấp xóa đoạn muốn bỏ; thực hiện liên tục |
+| Kéo dài | `modify.extend` | Cạnh mục tiêu + Đường ranh giới |
+| Tạo vỏ rỗng (Shell) | `modify.shell` | Khối solid + Các mặt mở nắp + Độ dày |
+| Phân tách | `modify.split` | Hình dạng + Công cụ cắt |
+| Khâu | `modify.sew` | Khâu mặt/vỏ theo dung sai |
+| Đơn giản hóa | `modify.simplifyShape` | Loại bỏ các cạnh/mặt đồng phẳng |
+| Bo góc | `modify.fillet` | Cạnh + Bán kính |
+| Vát mép | `modify.chamfer` | Cạnh + Chiều dài vát |
+| Phân rã | `modify.explode` | Tách thành các hình dạng con trực tiếp |
+| Xóa | `modify.deleteNode` | Xóa toàn bộ node |
+| Xóa phần tử con | `modify.removeShapes` | Xóa các cạnh/mặt được chọn và tái dựng |
+| Xóa tính năng | `modify.removeFeature` | Loại bỏ tính năng tạo ra một mặt nào đó |
+| Ngắt | `modify.break` | Cạnh + Điểm ngắt |
+| Thùng sơn | `modify.paintBucket` | Đổi vật liệu cho toàn bộ node |
+| Thêm cọ vẽ | `modify.brushAdd` | Gán vật liệu riêng cho các mặt được chọn |
+| Xóa cọ vẽ | `modify.brushRemove` | Xóa vật liệu riêng của các mặt được chọn |
+| Xóa sạch cọ vẽ | `modify.brushClear` | Xóa sạch toàn bộ vật liệu gán theo mặt của node |
+| Sửa chữa hình dạng | `modify.repairShape` | Sửa chữa bằng ShapeFix |
+| Kiểm tra hình dạng | `modify.checkShape` | Kiểm tra tính hợp lệ từng mặt |
 
-### 转换 / 布尔 / 工作平面 / 工具
+### Chuyển đổi / Boolean / Mặt phẳng làm việc / Công cụ
 
-| 命令 | 键 | 说明 |
+| Lệnh | Phím lệnh | Giải thích |
 | --- | --- | --- |
-| 转多段线 | `convert.toWire` | 边/线框 → 线框节点 |
-| 转组合体 | `convert.toCompound` | 多形状 → 组合体 |
-| 转为面 | `convert.toFace` | 边/线框围成面 |
-| 转为壳 | `convert.toShell` | 面缝合成壳 |
-| 转为体 | `convert.toSolid` | 闭合壳 → 实体 |
-| 交集 | `boolean.common` | 目标 ∩ 工具 |
-| 减去 | `boolean.cut` | 目标 − 工具 |
-| 合并 | `boolean.join` | 目标 ∪ 工具 |
-| 动态工作平面 | `workingPlane.toggleDynamic` | 开关自动选面 |
-| 设置工作平面 | `workingPlane.set` | XOY / YOZ / ZOX |
-| 对齐到平面 | `workingPlane.alignToPlane` | 拾取平面作为工作平面 |
-| 从截面创建 | `workingPlane.fromSection` | 边 + 点，垂直工作平面 |
-| 曲线投影 | `convert.curveProjection` | 曲线 + 面 + 方向 |
-| 创建组 | `create.group` | 对象移入组件定义；可生成组件节点，不是树文件夹 |
-| 相交曲线 | `create.section` | 两形状求交线 |
-| 偏移 | `create.offset` | 边/线框/面 + 距离；连接类型 |
-| 复制形状 | `create.copyShape` | 复制选中边/面 |
+| Chuyển thành đường gấp khúc | `convert.toWire` | Cạnh/khung dây → Node khung dây |
+| Chuyển thành khối compound | `convert.toCompound` | Nhiều hình dạng → Khối compound |
+| Chuyển thành mặt | `convert.toFace` | Cạnh/khung dây khép kín → Mặt |
+| Chuyển thành vỏ | `convert.toShell` | Khâu các mặt thành vỏ |
+| Chuyển thành thân đặc | `convert.toSolid` | Vỏ khép kín → Thân đặc solid |
+| Giao nhau | `boolean.common` | Mục tiêu ∩ Công cụ |
+| Trừ bớt | `boolean.cut` | Mục tiêu − Công cụ |
+| Hợp nhất | `boolean.join` | Mục tiêu ∪ Công cụ |
+| Mặt phẳng làm việc động | `workingPlane.toggleDynamic` | Bật/tắt tự động chọn mặt |
+| Đặt mặt phẳng làm việc | `workingPlane.set` | XOY / YOZ / ZOX |
+| Căn gióng theo mặt phẳng | `workingPlane.alignToPlane` | Chọn mặt phẳng làm mặt phẳng làm việc |
+| Tạo từ tiết diện | `workingPlane.fromSection` | Cạnh + Điểm, tạo mặt phẳng làm việc vuông góc |
+| Chiếu đường cong | `convert.curveProjection` | Đường cong + Mặt + Phương chiếu |
+| Tạo nhóm (Group) | `create.group` | Đưa đối tượng vào định nghĩa cụm chi tiết; sinh node component, không phải thư mục cây |
+| Giao tuyến | `create.section` | Tìm giao tuyến giữa hai hình dạng |
+| Dời song song (Offset) | `create.offset` | Cạnh/khung dây/mặt + Khoảng cách; Kiểu nối |
+| Sao chép hình dạng | `create.copyShape` | Sao chép cạnh/mặt được chọn |
 
-### 测量 / 注释 / 场景 / 文件 / 其他
+### Đo lường / Chú thích / Khung cảnh / Tệp tin / Khác
 
-| 命令 | 键 | 说明 |
+| Lệnh | Phím lệnh | Giải thích |
 | --- | --- | --- |
-| 长度 | `measure.length` | 两点距离 |
-| 角度 | `measure.angle` | 顶点 + 两点 |
-| 选择 | `measure.select` | 汇总长度/面积/体积 |
-| 尺寸 | `annotate.dimension` | 两点 + 标注位置 |
-| 半径 | `annotate.radius` | 圆/圆弧 + 位置 |
-| 直径 | `annotate.diameter` | 圆/圆弧 + 位置 |
-| 角度 | `annotate.angle` | 两条直线边 + 位置 |
-| 文字 | `annotate.text` | 引线点 + 文字位置 |
-| 从相机创建 | `act.alignCamera` | 保存当前视角为书签 |
-| 导入 | `file.import` | STEP/IGES/BREP/STL |
-| 导出 | `file.export` | STEP/IGES/BREP/STL/PLY/OBJ |
-| 微信群 | `wechat.group` | 二维码 |
-| AI 助手 | `ai.toggleChat` | 开关右侧面板 |
+| Chiều dài | `measure.length` | Khoảng cách giữa hai điểm |
+| Góc | `measure.angle` | Đỉnh + Hai điểm cạnh |
+| Chọn (Tổng hợp) | `measure.select` | Tổng hợp chiều dài/diện tích/thể tích |
+| Kích thước | `annotate.dimension` | Hai điểm + Vị trí đường kích thước |
+| Bán kính | `annotate.radius` | Đường tròn/cung tròn + Vị trí |
+| Đường kính | `annotate.diameter` | Đường tròn/cung tròn + Vị trí |
+| Góc | `annotate.angle` | Hai cạnh thẳng + Vị trí |
+| Chữ | `annotate.text` | Điểm đường dẫn + Vị trí chữ |
+| Tạo từ camera | `act.alignCamera` | Lưu góc nhìn hiện tại làm dấu trang khung cảnh |
+| Nhập tệp | `file.import` | STEP/IGES/BREP/STL |
+| Xuất tệp | `file.export` | STEP/IGES/BREP/STL/PLY/OBJ |
+| Nhóm WeChat | `wechat.group` | Mã QR |
+| Trợ lý AI | `ai.toggleChat` | Bật/tắt bảng điều khiển bên phải |
 
-## A.2 参数化标签
+## A.2 Thẻ Tham số
 
-### 草图与创建
+### Phác thảo và Tạo hình
 
-| 命令 | 键 | 说明 |
+| Lệnh | Phím lệnh | Giải thích |
 | --- | --- | --- |
-| 新建草图 | `sketch.create` | 选基准面/实体平面后进入草图 |
-| 编辑草图 | `sketch.enter` | 选已有草图 |
-| 退出草图 | `sketch.exit` | 结束草图会话 |
-| 基准面 | `feature.plane` | 7 种定义方式 |
-| 立方体 | `feature.primitiveBox` | 长/宽/高；可布尔 |
-| 圆柱 | `feature.primitiveCylinder` | 半径/高度；可布尔 |
-| 球体 | `feature.primitiveSphere` | 半径；可布尔 |
-| 圆锥 | `feature.primitiveCone` | 半径/顶半径/高度；可布尔 |
-| 拉伸 | `feature.extrude` | 操作/四种终止条件/对称/深度 2/起止偏移/拔模；详见 [第 6 章](06-parametric-modeling.md) |
-| 旋转 | `feature.revolve` | 角度/角度 2/对称/操作 |
-| 放样 | `feature.loft` | 实体/直纹/连续性/操作 |
-| 扫掠 | `feature.sweep` | 截面 + 多段路径；路径圆角、三种轮廓控制；详见 [第 6 章](06-parametric-modeling.md) |
-| 加厚 | `feature.thicken` | 厚度/厚度 2/对称/反向 |
-| 筋 | `feature.rib` | 开放边线 + 厚度 + 延伸 |
-| 螺旋线 | `feature.helix` | 半径/长度/螺距 |
+| Tạo phác thảo mới | `sketch.create` | Chọn mặt phẳng chuẩn/mặt phẳng trên thân để vào phác thảo |
+| Sửa phác thảo | `sketch.enter` | Chọn phác thảo đã có |
+| Thoát phác thảo | `sketch.exit` | Kết thúc phiên làm việc phác thảo |
+| Mặt phẳng chuẩn | `feature.plane` | 7 cách định nghĩa mặt phẳng chuẩn |
+| Hình hộp | `feature.primitiveBox` | Dài/Rộng/Cao; có thể kết hợp Boolean |
+| Hình trụ | `feature.primitiveCylinder` | Bán kính/Chiều cao; có thể kết hợp Boolean |
+| Hình cầu | `feature.primitiveSphere` | Bán kính; có thể kết hợp Boolean |
+| Hình nón | `feature.primitiveCone` | Bán kính đáy/Bán kính đỉnh/Chiều cao; có thể kết hợp Boolean |
+| Đùn | `feature.extrude` | Thao tác/4 điều kiện kết thúc/Đối xứng/Độ sâu 2/Lệch bắt đầu-kết thúc/Góc nghiêng; xem [Chương 6](06-parametric-modeling.md) |
+| Xoay | `feature.revolve` | Góc/Góc 2/Đối xứng/Thao tác |
+| Vuốt nối (Loft) | `feature.loft` | Thân đặc/Mặt kẻ/Độ liên tục/Thao tác |
+| Quét (Sweep) | `feature.sweep` | Tiết diện + Nhiều đoạn đường dẫn; Bo góc đường dẫn, 3 kiểu điều khiển biên dạng; xem [Chương 6](06-parametric-modeling.md) |
+| Làm dày | `feature.thicken` | Độ dày/Độ dày 2/Đối xứng/Đảo chiều |
+| Gân tăng cứng | `feature.rib` | Chuỗi cạnh hở + Độ dày + Kéo dài tới chi tiết |
+| Đường xoắn ốc | `feature.helix` | Bán kính/Chiều dài/Bước xoắn |
 
-### 特征
+### Tính năng
 
-| 命令 | 键 | 说明 |
+| Lệnh | Phím lệnh | Giải thích |
 | --- | --- | --- |
-| 推拉 | `feature.pressPull` | 按拾取对象转交拉伸/偏移面/修改圆角/修改倒角 |
-| 圆角 | `feature.fillet` | 边 + 半径（可末端半径） |
-| 倒角 | `feature.chamfer` | 等距离/双距离/距离角度 |
-| 修改圆角 | `feature.modifyFillet` | 选圆角面改半径 |
-| 修改倒角 | `feature.modifyChamfer` | 选倒角面改距离 |
-| 拔模 | `feature.draft` | 中性面 + 面 + 角度 |
-| 抽壳 | `feature.shell` | 开口面 + 厚度/向外 |
-| 偏移面 | `feature.offsetFace` | 面 + 距离；保持圆角 |
-| 分割 | `feature.split` | 工具 + 保留侧 |
-| 孔 | `feature.hole` | 简单/沉孔/锥沉孔、草图点孔心、贯通/盲孔、M 系列预设；详见 [第 6 章](06-parametric-modeling.md) |
-| 移除特征 | `feature.removeFeature` | 选特征面移除 |
-| 线性阵列 | `feature.patternLinear` | 方向/间距/数量/第二方向 |
-| 环形阵列 | `feature.patternCircular` | 轴/角度/数量/均布 |
-| 曲线阵列 | `feature.patternCurve` | 路径/间距/取向 |
-| 镜像 | `feature.mirror` | 镜像平面 + 合并 |
-| 合并 | `feature.fuse` | 布尔并 |
-| 减去 | `feature.cut` | 布尔差 |
-| 交集 | `feature.common` | 布尔交 |
-| 重新选择 | `feature.reselect` | 重拾失效引用；支持范围随特征而异 |
+| Đẩy-Kéo | `feature.pressPull` | Tùy đối tượng chọn chuyển giao sang Đùn/Dời mặt/Sửa bo góc/Sửa vát mép |
+| Bo góc | `feature.fillet` | Cạnh + Bán kính (hỗ trợ bán kính đầu cuối khác nhau) |
+| Vát mép | `feature.chamfer` | Khoảng cách bằng nhau/Hai khoảng cách/Khoảng cách và góc |
+| Sửa bo góc | `feature.modifyFillet` | Chọn mặt bo góc để sửa bán kính |
+| Sửa vát mép | `feature.modifyChamfer` | Chọn mặt vát mép để sửa khoảng cách |
+| Rút góc nghiêng | `feature.draft` | Mặt trung hòa + Mặt nghiêng + Góc |
+| Tạo vỏ rỗng (Shell) | `feature.shell` | Mặt mở nắp + Độ dày/Hướng ra ngoài |
+| Dời mặt song song | `feature.offsetFace` | Mặt + Khoảng cách; Giữ bán kính bo góc |
+| Phân tách | `feature.split` | Công cụ + Phía giữ lại |
+| Tạo lỗ | `feature.hole` | Đơn giản/Lỗ bậc/Lỗ côn, tâm lỗ từ điểm phác thảo, xuyên thủng/lỗ bịt, preset dòng M; xem [Chương 6](06-parametric-modeling.md) |
+| Xóa tính năng | `feature.removeFeature` | Chọn mặt tính năng để loại bỏ |
+| Mảng thẳng | `feature.patternLinear` | Hướng/Khoảng cách/Số lượng/Hướng thứ hai |
+| Mảng xoay vòng | `feature.patternCircular` | Trục/Góc/Số lượng/Phân bố đều |
+| Mảng theo đường cong | `feature.patternCurve` | Đường dẫn/Khoảng cách/Định hướng |
+| Đối xứng | `feature.mirror` | Mặt phẳng đối xứng + Hợp nhất |
+| Hợp nhất | `feature.fuse` | Boolean hợp |
+| Trừ bớt | `feature.cut` | Boolean hiệu |
+| Giao nhau | `feature.common` | Boolean giao |
+| Chọn lại | `feature.reselect` | Chọn lại các tham chiếu bị mất hiệu lực; phạm vi hỗ trợ tùy tính năng |
 
-### 节点操作与其他
+### Thao tác trên node và lệnh khác
 
-| 命令 | 键 | 说明 |
+| Lệnh | Phím lệnh | Giải thích |
 | --- | --- | --- |
-| 移动 | `modify.move` | 对体做整体变换 |
-| 旋转 | `modify.rotate` | 同上 |
-| 镜像 | `modify.mirror` | 同上 |
-| 阵列 | `modify.array` | 同上；数量通常包含源对象 |
-| 使独立 | `modify.detach` | 实例 → 独立副本 |
-| 删除 | `modify.deleteNode` | 删除体 |
-| 油漆桶 | `modify.paintBucket` | 整体换材质 |
-| 变量 | `feature.variable` | 底部空行新增；长度/角度/无量纲表达式 |
-| 注释 | `annotate.*` | 同基本标签 |
-| 导入/导出 | `file.*` | 同基本标签 |
-| AI 助手 | `ai.toggleChat` | 开关面板 |
+| Di chuyển | `modify.move` | Thực hiện biến đổi tổng thể trên thân |
+| Xoay | `modify.rotate` | Tương tự như trên |
+| Đối xứng | `modify.mirror` | Tương tự như trên |
+| Mảng | `modify.array` | Tương tự như trên; số lượng thường đã bao gồm đối tượng nguồn |
+| Tách độc lập | `modify.detach` | Thực thể (instance) → Bản sao độc lập |
+| Xóa | `modify.deleteNode` | Xóa thân |
+| Thùng sơn | `modify.paintBucket` | Đổi vật liệu cho toàn bộ thân |
+| Biến số | `feature.variable` | Thêm mới ở hàng trống dưới đáy; Biểu thức chiều dài/góc/không thứ nguyên |
+| Chú thích | `annotate.*` | Giống như trong thẻ Cơ bản |
+| Nhập/Xuất | `file.*` | Giống như trong thẻ Cơ bản |
+| Trợ lý AI | `ai.toggleChat` | Bật/tắt bảng điều khiển |
 
-## A.3 草图标签
+## A.3 Thẻ Phác thảo
 
-### 绘制
+### Vẽ hình
 
-| 命令 | 键 | 说明 |
+| Lệnh | Phím lệnh | Giải thích |
 | --- | --- | --- |
-| 直线 | `sketch.line` | 连续链；带自动水平/竖直 |
-| 圆 | `sketch.circle` | 圆心 + 半径 |
-| 椭圆 | `sketch.ellipse` | 中心 + 长轴 + 短轴 |
-| 圆弧 | `sketch.arc` | 圆心 + 起点 + 终点（逆时针） |
-| 椭圆弧 | `sketch.ellipseArc` | 椭圆 + 起点 + 终点 |
-| 矩形 | `sketch.rectangle` | 两角点；自动约束 |
-| 多边形 | `sketch.polygon` | 边数 + 内接/外切 |
-| 样条 | `sketch.nurbs` | 控制点样条 |
-| 贝塞尔 | `sketch.bezier` | 四点三次贝塞尔 |
-| 圆锥 | `sketch.conic` | 起点/终点/控制点/肩点（rho） |
-| 点 | `sketch.point` | 放置点 |
-| 文字 | `sketch.text` | 内容/字高/字体 + 位置 + 顶部点 |
+| Đoạn thẳng | `sketch.line` | Chuỗi liên tục; tự động thêm ràng buộc Nằm ngang/Thẳng đứng |
+| Đường tròn | `sketch.circle` | Tâm tròn + Bán kính |
+| Elip | `sketch.ellipse` | Tâm + Trục lớn + Trục nhỏ |
+| Cung tròn | `sketch.arc` | Tâm + Điểm bắt đầu + Điểm kết thúc (ngược chiều kim đồng hồ) |
+| Cung elip | `sketch.ellipseArc` | Elip + Điểm bắt đầu + Điểm kết thúc |
+| Hình chữ nhật | `sketch.rectangle` | Hai điểm góc đối diện; tự động gán ràng buộc |
+| Đa giác | `sketch.polygon` | Số cạnh + Nội tiếp/Ngoại tiếp |
+| Đường cong Spline | `sketch.nurbs` | Spline qua các điểm điều khiển |
+| Đường cong Bézier | `sketch.bezier` | Bézier bậc 3 qua bốn điểm |
+| Đường conic | `sketch.conic` | Điểm bắt đầu/kết thúc/điểm điều khiển/điểm vai (rho) |
+| Điểm | `sketch.point` | Đặt điểm |
+| Chữ | `sketch.text` | Nội dung/Chiều cao chữ/Font + Vị trí + Điểm đỉnh |
 
-### 约束 / 标注
+### Ràng buộc / Kích thước
 
-| 命令 | 键 | 说明 |
+| Lệnh | Phím lệnh | Giải thích |
 | --- | --- | --- |
-| 重合 | `constraint.coincident` | 两点重合 |
-| 固定 | `constraint.fix` | 锁定几何 |
-| 水平 | `constraint.horizontal` | 线水平 |
-| 竖直 | `constraint.vertical` | 线竖直 |
-| 平行 | `constraint.parallel` | 两线平行 |
-| 垂直 | `constraint.perpendicular` | 两线垂直 |
-| 相等 | `constraint.equal` | 等长/等半径 |
-| 相切 | `constraint.tangent` | 曲线相切 |
-| 对称 | `constraint.symmetric` | 关于轴对称 |
-| 中点 | `constraint.midpoint` | 点在线上中点 |
-| 点在线上 | `constraint.pointOn` | 点位于曲线上 |
-| 水平对齐 | `constraint.horizontalAlign` | y 相同 |
-| 竖直对齐 | `constraint.verticalAlign` | x 相同 |
-| 驱动 / 从动 | `constraint.toggleDriven` | 切换尺寸类型 |
-| 尺寸 | `dimension` | 智能尺寸 |
-| 距离 | `dimension.distance` | 两点/两线距离 |
-| 半径 | `dimension.radius` | 半径 |
-| 角度 | `dimension.angle` | 两线夹角 |
-| 点线距离 | `dimension.pointLineDistance` | 点到线 |
-| 水平距离 | `dimension.horizontalDistance` | 水平投影距离 |
-| 竖直距离 | `dimension.verticalDistance` | 竖直投影距离 |
+| Trùng khớp | `constraint.coincident` | Hai điểm trùng khít nhau |
+| Cố định | `constraint.fix` | Khóa cố định hình học |
+| Nằm ngang | `constraint.horizontal` | Đường thẳng nằm ngang |
+| Thẳng đứng | `constraint.vertical` | Đường thẳng thẳng đứng |
+| Song song | `constraint.parallel` | Hai đường thẳng song song |
+| Vuông góc | `constraint.perpendicular` | Hai đường thẳng vuông góc |
+| Bằng nhau | `constraint.equal` | Bằng chiều dài / Bằng bán kính |
+| Tiếp tuyến | `constraint.tangent` | Hai đường cong tiếp tuyến |
+| Đối xứng | `constraint.symmetric` | Đối xứng qua một trục |
+| Trung điểm | `constraint.midpoint` | Điểm nằm ở trung điểm của đường |
+| Điểm trên đường | `constraint.pointOn` | Điểm nằm trên đường cong |
+| Căn ngang | `constraint.horizontalAlign` | Cùng tung độ y |
+| Căn dọc | `constraint.verticalAlign` | Cùng hoành độ x |
+| Chuyển Driving / Driven | `constraint.toggleDriven` | Chuyển đổi kiểu kích thước chính/bị động |
+| Kích thước | `dimension` | Kích thước thông minh |
+| Khoảng cách | `dimension.distance` | Khoảng cách giữa hai điểm / hai đường thẳng |
+| Bán kính | `dimension.radius` | Bán kính |
+| Góc | `dimension.angle` | Góc giữa hai đường thẳng |
+| Khoảng cách điểm-đường | `dimension.pointLineDistance` | Khoảng cách từ điểm đến đường |
+| Khoảng cách ngang | `dimension.horizontalDistance` | Khoảng cách hình chiếu nằm ngang |
+| Khoảng cách dọc | `dimension.verticalDistance` | Khoảng cách hình chiếu thẳng đứng |
 
-### 修改 / 其他
+### Chỉnh sửa / Khác
 
-| 命令 | 键 | 说明 |
+| Lệnh | Phím lệnh | Giải thích |
 | --- | --- | --- |
-| 圆角 | `sketch.fillet` | 两实体 + 半径 |
-| 倒角 | `sketch.chamfer` | 两实体 + 长度 |
-| 偏移 | `sketch.offset` | 实体 + 距离；徽标可改 |
-| 修剪 | `sketch.trim` | 点掉一段 |
-| 延伸 | `sketch.extend` | 实体 + 边界 |
-| 打断 | `sketch.break` | 实体 + 点；封闭曲线两点 |
-| 镜像 | `sketch.mirror` | 实体 + 镜像线 |
-| 变换 | `sketch.transform` | 拖控制柄；Enter 确认 |
-| 阵列 | `sketch.array` | 线形/环形/沿曲线；徽标/解散 |
-| 约束列表 | `sketch.constraints` | 浮层面板 |
-| 投影边线 | `sketch.projectEdges` | 共面边投影 |
-| 切换外部参考 | `sketch.toggleExternal` | 参考 ↔ 轮廓 |
-| 切换构造线 | `sketch.toggleConstruction` | 普通 ↔ 构造 |
-| 退出草图 | `sketch.exit` | 结束会话 |
+| Bo góc | `sketch.fillet` | Hai đối tượng + Bán kính |
+| Vát mép | `sketch.chamfer` | Hai đối tượng + Chiều dài |
+| Dời song song (Offset) | `sketch.offset` | Đối tượng + Khoảng cách; có huy hiệu sửa nhanh |
+| Cắt tỉa | `sketch.trim` | Nhấp xóa đoạn muốn bỏ |
+| Kéo dài | `sketch.extend` | Đối tượng + Đường ranh giới |
+| Ngắt | `sketch.break` | Đối tượng + Điểm ngắt; đường cong kín cần 2 điểm |
+| Đối xứng | `sketch.mirror` | Đối tượng + Đường đối xứng |
+| Biến đổi | `sketch.transform` | Kéo tay cầm; nhấn Enter để xác nhận |
+| Mảng | `sketch.array` | Thẳng/Xoay vòng/Theo đường cong; huy hiệu/Hủy mảng |
+| Danh sách ràng buộc | `sketch.constraints` | Bảng điều khiển nổi |
+| Chiếu cạnh | `sketch.projectEdges` | Chiếu các cạnh đồng phẳng |
+| Chuyển tham chiếu ngoài | `sketch.toggleExternal` | Tham chiếu ↔ Biên dạng |
+| Chuyển đường dựng hình | `sketch.toggleConstruction` | Đường nét liền thông thường ↔ Đường dựng hình |
+| Thoát phác thảo | `sketch.exit` | Kết thúc phiên làm việc phác thảo |
 
-## A.4 文档与系统
+## A.4 Tài liệu và Hệ thống
 
-| 命令 | 键 | 说明 |
+| Lệnh | Phím lệnh | Giải thích |
 | --- | --- | --- |
-| 新建文档 | `doc.new` | 新文档（标题栏 `+`） |
-| 打开文档 | `doc.open` | 读取 `.cd` |
-| 保存文档 | `doc.save` | 存入 IndexedDB |
-| 保存到文件 | `doc.saveToFile` | 下载 `.cd` |
-| 撤销 | `edit.undo` | Ctrl+Z |
-| 重做 | `edit.redo` | Ctrl+Y / Ctrl+Shift+Z |
-| 文件夹 | `create.folder` | 在项目树建文件夹 |
-| 上个命令 | `special.last` | Space / Enter |
-| 性能测试 | `test.performance` | 8000 盒基准测试 |
+| Tạo tài liệu mới | `doc.new` | Tài liệu mới (dấu `+` trên thanh tiêu đề) |
+| Mở tài liệu | `doc.open` | Đọc tệp `.cd` |
+| Lưu tài liệu | `doc.save` | Lưu vào IndexedDB |
+| Lưu thành tệp | `doc.saveToFile` | Tải về tệp `.cd` |
+| Hoàn tác | `edit.undo` | Ctrl+Z |
+| Làm lại | `edit.redo` | Ctrl+Y / Ctrl+Shift+Z |
+| Thư mục | `create.folder` | Tạo thư mục trong cây dự án |
+| Lặp lại lệnh trước | `special.last` | Space / Enter |
+| Kiểm thử hiệu năng | `test.performance` | Bài kiểm thử benchmark 8000 hình hộp |
 
-### 已注册但没有功能区按钮的命令
+### Các lệnh đã đăng ký nhưng chưa có nút trên Ribbon
 
-| 命令 | 键 | 说明 |
+| Lệnh | Phím lệnh | Giải thích |
 | --- | --- | --- |
-| 加厚实体 | `create.thickSolid` | 把面/壳加厚成实体 |
-| 参考线段 | `create.refSegment` | 两点之间的虚线参考线段（注释） |
-| 参数化缝合 | `feature.sew` | 把参数化体的面/壳按容差缝合 |
-| 重新选择 | `feature.reselect` | 从特征行菜单进入 |
+| Làm dày thân đặc | `create.thickSolid` | Làm dày mặt/vỏ thành khối đặc |
+| Đoạn thẳng tham chiếu | `create.refSegment` | Đoạn thẳng nét đứt tham chiếu giữa hai điểm (chú thích) |
+| Khâu tham số | `feature.sew` | Khâu các mặt/vỏ của thân tham số theo dung sai |
+| Chọn lại | `feature.reselect` | Truy cập từ menu hàng tính năng |
 
-## A.5 Pro 编辑标签
+## A.5 Thẻ Chỉnh sửa Pro
 
-仅 **Chili3D Pro** 提供。双击模型进入直接编辑后才会显示该上下文标签；命令只处理当前可编辑节点。操作步骤和转换影响见 [第 13 章](13-pro-direct-editing.md)。
+Chỉ có trên **Chili3D Pro**. Chỉ hiển thị thẻ ngữ cảnh này sau khi nhấp đúp vào mô hình để vào chế độ chỉnh sửa trực tiếp; các lệnh chỉ xử lý node có thể chỉnh sửa hiện tại. Các bước thao tác và ảnh hưởng chuyển đổi xem tại [Chương 13](13-pro-direct-editing.md).
 
-### 分割
+### Phân tách
 
-| 命令 | 键 | 说明 |
+| Lệnh | Phím lệnh | Giải thích |
 | --- | --- | --- |
-| 线 | `edit.lineSplit` | 起点 + 终点；连续绘制并分割 |
-| 圆弧 | `edit.arcSplit` | 圆心 + 起点 + 角度点 |
-| 2点圆弧 | `edit.arc2PointSplit` | 起点 + 终点 + 弧高点 |
-| 3点圆弧 | `edit.arc3PointSplit` | 起点 + 弧上点 + 终点 |
-| 相切相切半径圆弧 | `edit.arcTTRSplit` | 两条边 + 半径 |
-| 圆 | `edit.circleSplit` | 圆心 + 半径点 |
-| 椭圆 | `edit.ellipseSplit` | 中心 + 长轴端点 + 短轴端点 |
-| 矩形 | `edit.rectSplit` | 两角点；可设中心矩形 |
-| 多边形 | `edit.polygonSplit` | 中心 + 半径点 + 边数 |
-| 偏移 | `edit.offsetSplit` | 面外环 + 偏移距离；可设连接类型 |
+| Đoạn thẳng | `edit.lineSplit` | Điểm bắt đầu + Điểm kết thúc; vẽ liên tục và phân tách |
+| Cung tròn | `edit.arcSplit` | Tâm tròn + Điểm bắt đầu + Điểm góc |
+| Cung tròn 2 điểm | `edit.arc2PointSplit` | Điểm bắt đầu + Điểm kết thúc + Điểm chiều cao cung |
+| Cung tròn 3 điểm | `edit.arc3PointSplit` | Điểm bắt đầu + Điểm trên cung + Điểm kết thúc |
+| Cung tiếp tuyến - tiếp tuyến - bán kính | `edit.arcTTRSplit` | Hai cạnh + Bán kính |
+| Đường tròn | `edit.circleSplit` | Tâm tròn + Điểm bán kính |
+| Elip | `edit.ellipseSplit` | Tâm + Điểm mút trục lớn + Điểm mút trục nhỏ |
+| Hình chữ nhật | `edit.rectSplit` | Hai điểm góc đối diện; có thể đặt hình chữ nhật tâm |
+| Đa giác | `edit.polygonSplit` | Tâm + Điểm bán kính + Số cạnh |
+| Dời song song (Offset) | `edit.offsetSplit` | Vòng ngoài của mặt + Khoảng cách offset; có thể đặt kiểu nối |
 
-除 `偏移` 外，上述绘制命令的 `辅助线` 选项把结果保存为不切割实体的虚线参考边。
+Ngoại trừ lệnh `Dời song song (Offset)`, tùy chọn `Đường hỗ trợ` trong các lệnh vẽ trên sẽ lưu kết quả dưới dạng cạnh tham chiếu nét đứt không cắt gọt thân đặc.
 
-### 修改
+### Sửa đổi
 
-| 命令 | 键 | 说明 |
+| Lệnh | Phím lệnh | Giải thích |
 | --- | --- | --- |
-| 移动 | `edit.move` | 同类面或边 + 基点 + 目标点；重建相邻面 |
-| 复制 | `edit.copySplit` | 选边 + 两点；复制分割线，原边保留 |
-| 旋转 | `edit.rotateSplit` | 选边 + 中心 + 参考点 + 角度点 |
-| 镜像 | `edit.mirrorSplit` | 选边 + 镜像线两点 |
-| 阵列 | `edit.arraySplit` | 选边并按阵列复制分割线；矩形阵列仅 X/Y |
+| Di chuyển | `edit.move` | Các mặt hoặc cạnh cùng loại + Điểm cơ sở + Điểm đích; tái dựng lại các mặt lân cận |
+| Sao chép | `edit.copySplit` | Chọn cạnh + Hai điểm; sao chép đường phân tách, giữ nguyên cạnh gốc |
+| Xoay | `edit.rotateSplit` | Chọn cạnh + Tâm xoay + Điểm tham chiếu + Điểm góc |
+| Đối xứng | `edit.mirrorSplit` | Chọn cạnh + Hai điểm trên đường đối xứng |
+| Mảng | `edit.arraySplit` | Chọn cạnh và sao chép đường phân tách theo mảng; mảng chữ nhật chỉ có X/Y |
 
-### 工具与管理
+### Công cụ và Quản lý
 
-| 命令 | 键 | 说明 |
+| Lệnh | Phím lệnh | Giải thích |
 | --- | --- | --- |
-| 推拉 | `edit.pushpull` | 平面 + 法线上的目标点；Alt 切换新面模式 |
-| 偏移面 | `edit.offsetFace` | 一个或多个面 + 带符号距离；可保持圆角半径 |
-| 简化 | `edit.simplify` | 清理小面及可简化的共面/共线几何 |
-| 修复 | `edit.fix` | 缝合、修复形状并清理小面 |
-| 圆角 | `edit.fillet` | 当前节点的边 + 半径 |
-| 倒角 | `edit.chamfer` | 当前节点的边 + 长度 |
-| 特征删除 | `edit.removeFeature` | 选局部特征面并尝试愈合邻面 |
-| 编辑设置 | `edit.settings` | 隔离模式、拖拽编辑圆角 |
-| 退出 | `edit.exit` | 退出直接编辑，不撤销也不自动保存 |
+| Đẩy-Kéo | `edit.pushpull` | Mặt phẳng + Điểm đích trên pháp tuyến; Alt chuyển đổi chế độ mặt mới |
+| Dời mặt song song | `edit.offsetFace` | Một hoặc nhiều mặt + Khoảng cách có dấu; có thể giữ bán kính bo góc |
+| Đơn giản hóa | `edit.simplify` | Dọn dẹp các mặt nhỏ và hình học đồng phẳng/cùng đường thẳng có thể đơn giản hóa |
+| Sửa chữa | `edit.fix` | Khâu, sửa chữa hình dạng và dọn dẹp mặt nhỏ |
+| Bo góc | `edit.fillet` | Cạnh của node hiện tại + Bán kính |
+| Vát mép | `edit.chamfer` | Cạnh của node hiện tại + Chiều dài |
+| Xóa tính năng | `edit.removeFeature` | Chọn mặt tính năng cục bộ và cố gắng hàn lành các mặt lân cận |
+| Cài đặt chỉnh sửa | `edit.settings` | Chế độ cách ly, Kéo chỉnh sửa bo góc |
+| Thoát | `edit.exit` | Thoát chỉnh sửa trực tiếp, không hoàn tác cũng không tự động lưu |
 
 ---
 
-回到 [手册目录](README.md) · 查 [附录 B 快捷键](appendix-shortcuts.md) · [附录 C 术语表](appendix-glossary.md)
+Quay lại [Mục lục sổ tay](README.md) · Tra cứu [Phụ lục B Phím tắt](appendix-shortcuts.md) · [Phụ lục C Bảng thuật ngữ](appendix-glossary.md)

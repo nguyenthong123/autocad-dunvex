@@ -1,6 +1,7 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
+import { formatSessionMemorySummary } from "../memory";
 import { SkillStore } from "../skills";
 import { buildTools } from "../tools";
 import { EDIT_METHODS } from "../tools/capabilityEngine";
@@ -21,8 +22,18 @@ export interface BuildSystemPromptOptions {
 export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): SystemPrompt {
     return {
         stable: [introSection(), toolIndexSection(), policySection(), rulesSection()].join("\n\n"),
-        volatile: [contextSection(), journalSection(options.journal)].filter(Boolean).join("\n\n"),
+        volatile: [contextSection(), sessionMemorySection(), journalSection(options.journal)]
+            .filter(Boolean)
+            .join("\n\n"),
     };
+}
+
+/**
+ * Active structured short-term session memory for keeping track of goals, steps, active nodes,
+ * consumed nodes, and recent errors across turns.
+ */
+function sessionMemorySection(): string {
+    return formatSessionMemorySummary();
 }
 
 /**
@@ -78,7 +89,8 @@ function policySection(): string {
         .map((s) => s.name)
         .join(", ")}) rather than answering from memory.
 - A response may carry several calls at once and they run in the order listed, so independent reads belong together rather than in round trips of their own, and a call may use an id an earlier one returned.
-- When the user does something themselves — how do I, where is, which hotkey: load_skill app-guide for the teaching prose, call get_ribbon for the tabs, groups and buttons as they are right now (their language, their profile's hotkeys), then teach the click path. Don't answer from memory, and don't do the operation for them instead of teaching it unless they ask.
+- When the user asks how to do something or reports a manual operation failing: load_skill command-guide, load_skill app-guide, and call get_ribbon. Explain the exact geometric preconditions and root cause (missing inputs, wrong selection type e.g. open wire vs solid, invalid radius), then teach the step-by-step click path on Ribbon / Viewport / Model Tree with confirmation keys (Enter, Space, Esc, Tab). Do not run commands on their behalf when they only asked how to do it.
+- When requested to create or edit models: preflight check preconditions from command-guide before write tools (profile closed & coplanar for extrude/revol, through-hole cutter overshoots both wall faces, fillet/chamfer radii < adjacent faces, corner vs center origins). If parameters are missing or there is a risk of losing feature history / boundary overflow / affecting source instances, ask via ask_user first — do not draft blindly. After running write ops: verify actual results (created, removed, dimensions/volume) before reporting done.
 - run_program ops run in order; reference only earlier ops by id (refs persist across calls and re-resolve against the live scene). Referencing a node never deletes it, EXCEPT for edit-style methods whose result replaces their inputs: ${[...EDIT_METHODS].join(", ")} — the response's "removed" lists the nodes consumed this way; they no longer exist, so never hide, delete or reference them afterward.
 - After creating or modifying the model, show the result: select_nodes the affected nodes, then fit_content, then capture_screenshot, highlights included. To inspect the geometry itself (proportions, gaps, fillets), clear the selection first (select_nodes []): a highlighted face is an opaque fill, so its shading and edges are not in the picture; re-select afterwards if the user should see it.
 - To change an entity that already exists: get_node_properties reads what the property panel shows (name, a shape's parameters), set_node_properties writes it — the node and its references survive and the panel updates. "Make this box taller" is a property write, NOT delete-then-recreate; transform_node is for placement. set_material styles one node (preset names a surface); list_materials / get_material / set_material_properties edit a material itself, changing every node wearing it.

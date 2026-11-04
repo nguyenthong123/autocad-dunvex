@@ -10,6 +10,12 @@ const vi: Locale = {
     translation: {
         ...en.translation,
 
+        "command.app.manual": "Hướng dẫn",
+        "app.manual.title": "Sổ tay hướng dẫn Chili3D",
+        "app.manual.back": "Quay lại ứng dụng",
+        "app.manual.close": "Đóng",
+        "app.manual.loading": "Đang tải nội dung...",
+
         "option.command.allowSolidFace": "Cho phép chọn mặt khối 3D",
 
         // AI Assistant

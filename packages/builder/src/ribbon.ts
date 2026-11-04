@@ -131,7 +131,7 @@ export const DefaultRibbon: RibbonTabProfile[] = [
         groups: [
             {
                 groupName: "ribbon.group.other",
-                items: ["test.performance"],
+                items: ["test.performance", "app.manual"],
             },
         ],
     },

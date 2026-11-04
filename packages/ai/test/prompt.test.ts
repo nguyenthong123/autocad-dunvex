@@ -31,8 +31,9 @@ describe("buildSystemPrompt", () => {
         // to fit under it. `new_document` is the second: a page opened from scratch has no
         // document, and an external agent has no one to click New for it.
         // Array planning and measurement tools added to registry and index.
+        // TASK-35: diagnostics and session memory tools, preflight policies added.
         const { stable, volatile } = buildSystemPrompt();
-        expect(stable.length + volatile.length).toBeLessThan(9000);
+        expect(stable.length + volatile.length).toBeLessThan(12000);
     });
 
     test("keeps the creation-method catalog out of the resident half", () => {

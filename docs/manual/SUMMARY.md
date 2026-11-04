@@ -1,23 +1,23 @@
-# Summary
+# Mục lục
 
-[手册说明与目录](README.md)
+[Giới thiệu sổ tay và mục lục](README.md)
 
-- [1. 快速开始](01-getting-started.md)
-- [2. 界面总览](02-interface.md)
-- [3. 视图、选择与捕捉](03-view-navigation-selection.md)
-- [4. 直接建模](04-direct-modeling.md)
-- [5. 修改、测量与注释](05-modify-convert-measure.md)
-- [6. 参数化建模](06-parametric-modeling.md)
-- [7. 草图](07-sketch.md)
-- [8. 文档、文件与撤销](08-document-files.md)
-- [9. AI 助手](09-ai-assistant.md)
-- [10. 设置、插件与扩展](10-settings-plugins.md)
-- [11. 常见问题](11-faq.md)
-- [12. 典型工作流程](12-workflows.md)
-- [13. Pro 直接编辑](13-pro-direct-editing.md)
+- [1. Bắt đầu nhanh](01-getting-started.md)
+- [2. Tổng quan giao diện](02-interface.md)
+- [3. Góc nhìn, chọn đối tượng và bắt điểm](03-view-navigation-selection.md)
+- [4. Dựng hình trực tiếp](04-direct-modeling.md)
+- [5. Chỉnh sửa, đo lường và chú thích](05-modify-convert-measure.md)
+- [6. Dựng hình tham số](06-parametric-modeling.md)
+- [7. Phác thảo](07-sketch.md)
+- [8. Tài liệu, tệp và hoàn tác](08-document-files.md)
+- [9. Trợ lý AI](09-ai-assistant.md)
+- [10. Cài đặt, plugin và mở rộng](10-settings-plugins.md)
+- [11. Các câu hỏi thường gặp](11-faq.md)
+- [12. Quy trình làm việc điển hình](12-workflows.md)
+- [13. Pro chỉnh sửa trực tiếp](13-pro-direct-editing.md)
 
 ---
 
-- [附录 A 命令速查表](appendix-commands.md)
-- [附录 B 快捷键与鼠标操作](appendix-shortcuts.md)
-- [附录 C 术语表](appendix-glossary.md)
+- [Phụ lục A Bảng tra nhanh lệnh](appendix-commands.md)
+- [Phụ lục B Phím tắt và thao tác chuột](appendix-shortcuts.md)
+- [Phụ lục C Bảng thuật ngữ](appendix-glossary.md)

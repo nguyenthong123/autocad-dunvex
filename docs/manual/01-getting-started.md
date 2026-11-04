@@ -1,132 +1,133 @@
-# 1. 快速开始
+# 1. Bắt đầu nhanh
 
-这一章带你从零做出一个带孔的板件，并保存成浏览器内的文档。全程只需要鼠标和键盘，不需要安装任何东西。
+Chương này sẽ hướng dẫn bạn từng bước tạo một chi tiết dạng tấm có lỗ rỗng từ con số 0, sau đó lưu thành một tài liệu ngay trong trình duyệt. Toàn bộ quá trình chỉ cần chuột và bàn phím, hoàn toàn không cần cài đặt bất kỳ phần mềm nào.
 
-## 1.1 打开应用
+## 1.1 Mở ứng dụng
 
-在浏览器中访问 [chili3d.com](https://chili3d.com)（或备用镜像 [chili3d.pages.dev](https://chili3d.pages.dev)）。本地开发时运行 `npm run dev` 后访问 `http://localhost:8080`。
+Truy cập [chili3d.com](https://chili3d.com) (hoặc trang dự phòng [chili3d.pages.dev](https://chili3d.pages.dev)) trên trình duyệt web. Khi phát triển cục bộ, chạy lệnh `npm run dev` rồi truy cập `http://localhost:8080`.
 
-浏览器需要支持 **WebAssembly** 和 **WebGL 2**。首次打开时，加载画面会下载并初始化 OCCT 内核，通常几秒到十几秒；内核初始化完成后才会出现首页。
+Trình duyệt cần hỗ trợ **WebAssembly** và **WebGL 2**. Lần mở đầu tiên, màn hình tải sẽ tải về và khởi tạo nhân dựng hình OCCT, thường mất từ vài giây đến mười mấy giây; sau khi nhân khởi tạo hoàn tất thì trang chủ mới xuất hiện.
 
-## 1.2 首页
+## 1.2 Trang chủ
 
-![首页](images/01-home.png)
+![Trang chủ](images/01-home.png)
 
-首页分三块：
+Trang chủ chia làm ba khu vực:
 
-- **左侧**：`新建文档`、`打开文档`；下方是语言、主题、3D 导航、环绕方式四个设置项。
-- **中间**：`最近项目`。保存过的文档会在这里出现，点击卡片即可打开。卡片上的 `×` 不是“只移除入口”：确认后会同时删除浏览器中的文档本体和最近记录，删除前请先导出 `.cd` 备份。
-- **右侧**：社区视频（更新记录与案例展示），点击缩略图会在新标签页打开视频。
+- **Bên trái**: Nút `Tạo tài liệu mới`, `Mở bản vẽ`; phía dưới là 4 mục cài đặt: ngôn ngữ, giao diện (theme), kiểu điều hướng 3D và chế độ xoay vùng nhìn.
+- **Ở giữa**: `Dự án gần đây`. Các tài liệu đã từng lưu sẽ xuất hiện ở đây, nhấp vào thẻ để mở. Dấu `×` trên thẻ không phải là "chỉ xóa lối tắt": sau khi xác nhận, hệ thống sẽ xóa vĩnh viễn cả tài liệu trong trình duyệt lẫn bản ghi gần đây, vì vậy hãy xuất bản sao lưu `.cd` trước khi xóa.
+- **Bên phải**: Video cộng đồng (nhật ký cập nhật và các bài mẫu thực hành), nhấp vào hình thu nhỏ để mở video trong tab mới.
 
-设置项在浏览器本地保存，下次打开仍然生效。各项含义见 [第 10 章](10-settings-plugins.md)。文档和设置按浏览器源隔离，官网、镜像和不同本地端口之间不会自动同步。
+Các mục cài đặt được lưu cục bộ trên trình duyệt và vẫn có hiệu lực ở lần mở tiếp theo. Ý nghĩa của từng mục xem tại [Chương 10](10-settings-plugins.md). Tài liệu và cài đặt được cách ly theo nguồn trình duyệt (browser origin), nên trang chính thức, trang dự phòng và các cổng cục bộ khác nhau sẽ không tự động đồng bộ hóa với nhau.
 
-> 如果只想快速试一下：点 `新建文档`，直接跳到 1.4。
+> Nếu chỉ muốn dùng thử nhanh: Nhấp vào `Tạo tài liệu mới` và chuyển thẳng đến mục 1.4.
 
-## 1.3 新建文档
+## 1.3 Tạo tài liệu mới
 
-点 `新建文档`。应用会创建一个新文档、打开它的视图，并在右侧显示 AI 助手面板。
+Nhấp vào `Tạo tài liệu mới`. Ứng dụng sẽ tạo một tài liệu mới, mở khung nhìn của nó và hiển thị bảng điều khiển Trợ lý AI ở bên phải.
 
-第一次使用 AI 助手时会自动弹出“AI 助手设置”。暂时不用 AI 的话，点右下角 `取消` 即可关闭；需要时再点面板右上角的齿轮图标打开。设置方法见 [第 9 章](09-ai-assistant.md)。
+Lần đầu sử dụng Trợ lý AI, cửa sổ "Cài đặt Trợ lý AI" sẽ tự động bật lên. Nếu tạm thời chưa dùng AI, bạn có thể nhấp vào `Hủy bỏ` ở góc dưới bên phải để đóng; khi cần thì nhấp lại vào biểu tượng bánh răng ở góc trên bên phải của bảng điều khiển để mở. Cách cấu hình xem tại [Chương 9](09-ai-assistant.md).
 
-新文档默认叫 `undefined 1`。保存前请改成有意义的名字：
+Tài liệu mới mặc định có tên là `undefined 1`. Trước khi lưu, hãy đổi thành một cái tên có ý nghĩa:
 
-1. 在左侧项目树中点击根节点（文档名）。
-2. 在下方的“属性”面板里，把“名称”改为例如 `法兰支架`，按回车。
+1. Trên cây dự án ở bên trái, nhấp vào nút gốc (tên tài liệu).
+2. Ở bảng "Thuộc tính" phía dưới, đổi mục "Tên đối tượng" thành tên mong muốn, ví dụ `Giá đỡ mặt bích`, rồi nhấn Enter.
 
-文档标签和项目树会同步更新。
+Tab tài liệu và cây dự án sẽ đồng thời được cập nhật.
 
-## 1.4 做第一个零件
+## 1.4 Tạo chi tiết đầu tiên
 
-我们要做一块约 240 × 160 × 40 的板：草图里画一个内孔轮廓（拉伸时直接成为通孔），之后再添加一个标准孔特征。
+Chúng ta sẽ tạo một tấm có kích thước khoảng 240 × 160 × 40: trong phác thảo vẽ một đường bao lỗ bên trong (khi đùn khối sẽ trực tiếp trở thành lỗ xuyên suốt), sau đó thêm một tính năng lỗ tiêu chuẩn.
 
-### 第一步：画草图
+### Bước 1: Vẽ phác thảo
 
-1. 切到 **参数化** 功能区，点 `新建草图`。
-   也可以在 **基本** 功能区的 `绘制` 组里点 `矩形` 直接画，但那样得到的是直接建模图形；这里走参数化路线。
+1. Chuyển sang thanh công cụ **Tham số**, nhấp vào `Tạo phác thảo mới`.
+   Bạn cũng có thể vào nhóm `Vẽ` trong thanh công cụ **Cơ bản** rồi nhấp vào `Hình chữ nhật` để vẽ trực tiếp, nhưng cách đó sẽ tạo ra hình học dựng hình trực tiếp; ở đây chúng ta đi theo hướng dựng hình tham số.
 
-   ![选择草图基准面](images/02-sketch-plane-pick.png)
+   ![Chọn mặt phẳng chuẩn phác thảo](images/02-sketch-plane-pick.png)
 
-2. 视口中央会出现三个半透明的基准面方块：红色是 YZ 面、绿色是 ZX 面、蓝色是 XY 面。点蓝色方块（XY 面）的任意位置。
-   默认的“动态工作平面”会让你点在哪个面上就落在哪个面，所以点方块本身即可。
+2. Giữa khung nhìn sẽ xuất hiện 3 khối vuông mặt phẳng chuẩn bán trong suốt: màu đỏ là mặt YZ, màu xanh lá là mặt ZX, màu xanh dương là mặt XY. Nhấp vào bất kỳ vị trí nào trên khối vuông màu xanh dương (mặt XY).
+   Mặc định "Mặt phẳng làm việc động" sẽ lấy đúng mặt phẳng mà bạn nhấp vào, do đó chỉ cần nhấp vào chính khối vuông đó.
 
-3. 草图编辑器随即打开：视口转到正对草图平面，功能区切换到 **草图** 标签（这是上下文标签，只在草图会话中出现）。
+3. Trình biên tập phác thảo ngay lập tức mở ra: khung nhìn xoay vuông góc trực diện với mặt phẳng phác thảo, thanh công cụ chuyển sang tab ngữ cảnh **Phác thảo** (tab này chỉ hiển thị trong phiên phác thảo).
 
-   ![草图会话](images/03-sketch-session.png)
+   ![Phiên phác thảo](images/03-sketch-session.png)
 
-4. 点 `矩形`，在视口里点一下作为第一个角，再点一下作为对角。拖动时状态栏会实时显示 `宽, 高`。
-   也可以在第一点之后直接键入 `240,160` 再回车，得到精确尺寸；截图中的拾取结果只是接近这个尺寸。
+4. Nhấp vào `Hình chữ nhật`, nhấp một điểm trong khung nhìn làm góc thứ nhất, rồi nhấp điểm thứ hai làm góc đối diện. Trong lúc kéo chuột, thanh trạng thái sẽ hiển thị thời gian thực `Rộng, Cao`.
+   Bạn cũng có thể gõ trực tiếp `240,160` sau điểm thứ nhất rồi nhấn Enter để có kích thước chính xác; việc nhấp chọn trên ảnh minh họa chỉ mang tính xấp xỉ kích thước này.
 
-5. 点 `圆`，在矩形中心附近点一下作为圆心，再点一下确定半径（或直接键入半径值）。
+5. Nhấp vào `Đường tròn`, nhấp một điểm gần tâm hình chữ nhật làm tâm đường tròn, nhấp tiếp điểm thứ hai để xác định bán kính (hoặc gõ trực tiếp giá trị bán kính).
 
-6. 按 `Esc` 退出当前绘图工具。如果工具链还在继续，第一次 `Esc` 结束当前链，第二次才退出工具。
+6. Nhấn `Esc` để thoát công cụ vẽ hiện tại. Nếu công cụ đang vẽ theo chuỗi, phím `Esc` lần đầu sẽ kết thúc chuỗi hiện tại, lần thứ hai mới thoát hẳn công cụ.
 
-   这个快速示例先用拾取位置确定几何，因此草图不一定完全约束。正式设计建议再用 `尺寸`、`重合` 等约束明确宽度、高度、圆心和半径；需要随变量更新的孔位，可使用独立点和尺寸表达式。完整做法见 [第 12.1 节](12-workflows.md#121-参数化安装板从变量到交付)。
+   Ví dụ nhanh này tạm dùng tọa độ nhấp chuột để xác định hình học, do đó phác thảo có thể chưa được ràng buộc đầy đủ. Khi thiết kế thực tế, bạn nên dùng các ràng buộc như `Kích thước`, `Trùng khớp` để cố định chiều rộng, chiều cao, tâm và bán kính; các vị trí lỗ cần cập nhật theo biến số có thể dùng điểm độc lập và biểu thức kích thước. Quy trình hoàn chỉnh xem tại [Mục 12.1](12-workflows.md#121-参数化安装板从变量到交付).
 
-7. 点功能区的 `退出草图`，或再次按 `Esc` 直到回到文档。
+7. Nhấp vào `Thoát phác thảo` trên thanh công cụ, hoặc nhấn `Esc` liên tục cho đến khi quay về tài liệu.
 
-### 第二步：拉伸
+### Bước 2: Đùn khối (Extrude)
 
-1. 在项目树里点击刚创建的 `草图1`（如果草图已被选中则跳过）。
-2. 切到 **参数化** 功能区，点 `拉伸`。
-3. 视口里出现拉伸预览和一个蓝色箭头。命令面板同时出现：
+1. Trên cây dự án, nhấp vào `Phác thảo 1` vừa tạo (nếu phác thảo đang được chọn sẵn thì bỏ qua).
+2. Chuyển sang thanh công cụ **Tham số**, nhấp vào `Đùn khối`.
+3. Trong khung nhìn sẽ xuất hiện bản xem trước đùn khối cùng một mũi tên màu xanh dương. Bảng điều khiển lệnh đồng thời xuất hiện:
 
-   ![拉伸命令面板](images/05-extrude-panel.png)
+   ![Bảng lệnh đùn khối](images/05-extrude-panel.png)
 
-   - `操作`：新建 / 加入 / 移除 / 相交
-   - `终止条件`：给定深度 / 完全贯穿 / 到面 / 到点
-   - `对称`、`反向`、`起始偏移`、`拔模角度`、`深度`
-4. 在 `深度` 输入框里键入 `40` 后按回车。也可以拖动蓝色箭头设置深度。
-5. 再按一次回车，或点命令面板右侧的绿色对勾，提交特征。
+   - `Thao tác`: Tạo mới / Thêm vào / Cắt bỏ / Giao nhau
+   - `Điều kiện kết thúc`: Theo độ sâu / Xuyên suốt / Đến mặt / Đến điểm
+   - `Đối xứng`, `Đảo hướng`, `Khoảng lệch bắt đầu`, `Góc vát thoát khuôn`, `Độ sâu`
+4. Trong ô nhập liệu `Độ sâu`, gõ `40` rồi nhấn Enter. Bạn cũng có thể kéo mũi tên xanh để điều chỉnh độ sâu.
+5. Nhấn Enter thêm một lần nữa, hoặc nhấp vào dấu tích màu xanh lá bên phải bảng lệnh để áp dụng tính năng.
 
-   结果是一个参数化实体，项目树里出现 `参数化实体1`，属性面板下方出现“特征”列表。
+   Kết quả tạo ra một khối rắn tham số, trên cây dự án xuất hiện `Khối tham số 1`, và phía dưới bảng thuộc tính xuất hiện danh sách "Tính năng".
 
-### 第三步：加一个孔
+### Bước 3: Thêm một lỗ
 
-1. 选中 `参数化实体1`，点 **参数化** 功能区的 `孔`。
-2. 命令面板里把 `直径` 改为 `24`，`深度` 留空表示贯通。
-3. 在板的上表面点一下，确定钻孔面。
-4. 在面上点一下孔中心（可点多处），按回车结束。
+1. Chọn `Khối tham số 1`, nhấp vào `Tạo lỗ` trên thanh công cụ **Tham số**.
+2. Trong bảng lệnh, đổi `Đường kính` thành `24`, để trống `Độ sâu` để tạo lỗ xuyên suốt.
+3. Nhấp một điểm lên mặt trên của tấm để xác định mặt khoan lỗ.
+4. Nhấp chọn tâm lỗ trên mặt đó (có thể nhấp nhiều điểm), nhấn Enter để kết thúc.
 
-### 第四步：查看成果
+### Bước 4: Kiểm tra thành quả
 
-1. 选中 `参数化实体1`，属性面板会显示它的特征列表：
+1. Chọn `Khối tham số 1`, bảng thuộc tính sẽ hiển thị danh sách tính năng của nó:
 
-   ![特征列表](images/06-feature-list.png)
+   ![Danh sách tính năng](images/06-feature-list.png)
 
-2. 点任一特征行（行尾的 `›` 会变成 `⌄`）即可展开，在行内修改参数；按回车或点走即提交。修改后整条特征链会从头重建。行尾的 `⋯` 是重命名、重新选择、抑制、删除的菜单。
-3. 用视口右上角的 `适应内容` 按钮（方框图标）把模型框满视口。
+2. Nhấp vào hàng tính năng bất kỳ (dấu `›` ở cuối hàng chuyển thành `⌄`) để mở rộng và sửa đổi trực tiếp các tham số; nhấn Enter hoặc nhấp ra ngoài để xác nhận. Sau khi sửa đổi, toàn bộ chuỗi tính năng sẽ được tái tạo lại từ đầu. Ký hiệu `⋯` ở cuối hàng là menu để đổi tên, chọn lại tham chiếu, ẩn/nén hoặc xóa tính năng.
+3. Sử dụng nút `Khớp nội dung` (biểu tượng hình vuông) ở góc trên bên phải khung nhìn để đưa toàn bộ mô hình vừa vặn vào màn hình.
 
-## 1.5 保存
+## 1.5 Lưu tài liệu
 
-两种保存方式，区别很重要：
+Có hai phương thức lưu, sự khác biệt giữa chúng là rất quan trọng:
 
-| 方式 | 位置 | 用途 |
+| Phương thức | Vị trí lưu | Mục đích sử dụng |
 | --- | --- | --- |
-| `保存`（Ctrl+S；macOS 也可用 Cmd+S） | 浏览器 IndexedDB | 日常保存；文档出现在首页“最近项目” |
-| `保存到文件` | 下载一个 `.cd` 文件 | 备份、换浏览器/换电脑、发给别人 |
+| `Lưu bản vẽ` (Ctrl+S; trên macOS có thể dùng Cmd+S) | IndexedDB của trình duyệt | Lưu hàng ngày; tài liệu sẽ xuất hiện trong "Dự án gần đây" ở trang chủ |
+| `Tải tệp xuống (.chili3d)` | Tải về tệp `.cd` | Sao lưu, đổi trình duyệt/máy tính khác, gửi cho người khác |
 
-- 标题栏左上的图标依次是 `首页`、`保存`、`保存到文件`、`撤销`、`重做`；`打开文档` 用 Ctrl+O、首页的“打开文档”，或直接把 `.cd` 拖进窗口。
-- **应用不会自动保存。** 关闭标签页或文档前请先手动保存；重要工作同时保留 `.cd` 和 STEP 备份。
-- 点文档标签的 `×` 时，确认框的 `确定` 表示保存到 IndexedDB 后关闭，`取消` 表示**不保存并继续关闭**，不是返回文档。这个原生确认框没有“取消关闭”的第三选项；如果目的是保留修改，应选择 `确定`，并在关闭前养成手动保存的习惯。
-- `.cd` 文件可以用 `打开文档` 重新载入，也可以直接拖进窗口。它会保留原文档 ID，不等同于创建一个全新 ID 的“另存为”副本。
-- 首页最近项目卡片的 `×` 会删除文档本体，不只是移除卡片。不要把它当作清理列表的快捷方式。
+- Các biểu tượng góc trên bên trái thanh tiêu đề lần lượt là `Trang chủ`, `Lưu bản vẽ`, `Tải tệp xuống`, `Hoàn tác`, `Làm lại`; để `Mở bản vẽ`, dùng Ctrl+O, nút "Mở bản vẽ" trên trang chủ hoặc kéo thả trực tiếp tệp `.cd` vào cửa sổ.
+- **Ứng dụng không tự động lưu.** Hãy chủ động lưu thủ công trước khi đóng tab hoặc đóng tài liệu; các công việc quan trọng nên giữ đồng thời cả tệp `.cd` lẫn bản xuất STEP dự phòng.
+- Khi nhấp vào dấu `×` trên tab tài liệu, nút `Đồng ý` trên hộp thoại xác nhận có nghĩa là lưu vào IndexedDB rồi mới đóng, còn nút `Hủy bỏ` có nghĩa là **không lưu và tiếp tục đóng**, chứ không phải quay lại tài liệu. Hộp thoại gốc này không có tùy chọn thứ ba "Hủy thao tác đóng"; nếu muốn giữ lại các chỉnh sửa, hãy chọn `Đồng ý`, và hãy tạo thói quen lưu thủ công trước khi đóng.
+- Tệp `.cd` có thể nạp lại bằng `Mở bản vẽ` hoặc kéo thả vào cửa sổ. Nó giữ nguyên ID tài liệu gốc, không tương đương với một bản sao tạo mới ID theo kiểu "Save As".
+- Dấu `×` trên thẻ dự án gần đây ở trang chủ sẽ xóa hẳn bản thể tài liệu, không chỉ đơn thuần là gỡ thẻ khỏi danh sách. Tuyệt đối không dùng nó như một phím tắt dọn dẹp danh sách.
 
-版本、文档 ID 和跨浏览器备份详见 [第 8 章](08-document-files.md)。
+Chi tiết về phiên bản, ID tài liệu và sao lưu liên trình duyệt xem tại [Chương 8](08-document-files.md).
 
-## 1.6 三种建模方式怎么选
+<a id="16-三种建模方式怎么选"></a>
+## 1.6 Chọn lựa giữa ba phương pháp dựng hình
 
-| 方式 | 入口 | 特点 | 适合 |
+| Phương pháp | Lối vào | Đặc điểm | Phù hợp với |
 | --- | --- | --- | --- |
-| 直接建模 | **基本** 功能区 | 每个命令直接生成/替换一个形状节点，没有历史 | 一次性形状、导入模型的修补 |
-| 参数化建模 | **参数化** 功能区 + 草图 | 实体只存特征列表，改上游会自动重建下游 | 需要反复改尺寸、要保留设计意图 |
-| AI 建模 | 右侧 AI 助手 | 自然语言描述，应用内调用你自己的模型 API | 快速起草、批量修改、查询/测量 |
+| Dựng hình trực tiếp | Thanh công cụ **Cơ bản** | Mỗi lệnh trực tiếp tạo/thay thế một nút hình dạng, không lưu lịch sử | Hình khối dùng một lần, sửa chữa mô hình nhập vào |
+| Dựng hình tham số | Thanh công cụ **Tham số** + Phác thảo | Khối đặc chỉ lưu danh sách tính năng, sửa đổi phía trên sẽ tự động tái tạo phía dưới | Cần chỉnh sửa kích thước nhiều lần, cần giữ nguyên ý đồ thiết kế |
+| Dựng hình bằng AI | Trợ lý AI ở cạnh phải | Mô tả bằng ngôn ngữ tự nhiên, gọi trực tiếp API mô hình của bạn ngay trong ứng dụng | Phác thảo nhanh ý tưởng, chỉnh sửa hàng loạt, truy vấn/đo lường |
 
-三者可以混用：同一个文档里既能放直接建模的盒子，也能放参数化实体；AI 的操作同样落在同一个撤销栈里。混用前仍需确认命令会不会消耗源节点，以及 AI 是否在原来的参数化体上继续操作。
+Cả ba phương pháp có thể kết hợp cùng nhau: trong cùng một tài liệu vừa có thể đặt khối hộp dựng hình trực tiếp, vừa có thể đặt khối rắn tham số; các thao tác của AI cũng được ghi nhận trong cùng một ngăn xếp hoàn tác. Trước khi kết hợp, cần lưu ý xem lệnh có tiêu thụ nút nguồn hay không, và AI có đang tiếp tục thao tác trên chính khối tham số ban đầu hay không.
 
-**Pro 的直接编辑**是另一种修改现有几何的方式：双击模型进入编辑模式，直接拖拽或修改边、面，入口和命令见 [第 13 章](13-pro-direct-editing.md)。它不是参数化历史编辑器；参数化节点转为可编辑节点后会丢失特征列表，实例则会转到源节点修改。
+**Chỉnh sửa trực tiếp trên bản Pro** là một phương thức khác để sửa đổi hình học hiện có: nhấp đúp vào mô hình để vào chế độ chỉnh sửa, trực tiếp kéo rê hoặc sửa đổi cạnh, mặt; cách truy cập và câu lệnh xem tại [Chương 13](13-pro-direct-editing.md). Đây không phải là trình biên tập lịch sử tham số; nút tham số sau khi chuyển thành nút có thể chỉnh sửa sẽ mất danh sách tính năng, còn thực thể (instance) sẽ được chuyển về nút nguồn để chỉnh sửa.
 
-想继续做完整练习，可跳到 [第 12 章 典型工作流程](12-workflows.md)。
+Nếu muốn tiếp tục làm bài thực hành đầy đủ, bạn có thể xem tiếp tại [Chương 12 Quy trình làm việc điển hình](12-workflows.md).
 
 ---
 
-下一步：[第 2 章 界面总览](02-interface.md)
+Bước tiếp theo: [Chương 2 Tổng quan giao diện](02-interface.md)

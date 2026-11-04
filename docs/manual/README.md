@@ -1,89 +1,89 @@
-# Chili3D / Chili3D Pro 操作手册
+# Sổ tay hướng dẫn Chili3D / Chili3D Pro
 
-适用于 **Chili3D v0.8.0**（文档格式版本 **0.7.1**），并包含 **Chili3D Pro v0.8** 的直接编辑说明。操作说明以简体中文界面为主，部分功能示例保留英文界面。
+Áp dụng cho **Chili3D v0.8.0** (phiên bản định dạng tài liệu **0.7.1**), bao gồm các hướng dẫn chỉnh sửa trực tiếp (direct editing) cho **Chili3D Pro v0.8**. Hướng dẫn vận hành chủ yếu dựa trên giao diện tiếng Trung giản thể, một số ví dụ chức năng giữ nguyên giao diện tiếng Anh.
 
-Chili3D 是一款运行在浏览器里的 3D CAD：建模内核 OpenCascade（OCCT）编译为 WebAssembly，视口由 Three.js 渲染。它把**直接建模**、**参数化建模**和 **AI 建模**放在同一个文档、同一个视口和同一个撤销栈里，因此三种方式可以随时切换。
+Chili3D là phần mềm 3D CAD hoạt động hoàn toàn trên trình duyệt web: nhân dựng hình OpenCascade (OCCT) được biên dịch sang WebAssembly, khung nhìn được kết xuất bởi Three.js. Phần mềm tích hợp **dựng hình trực tiếp (direct modeling)**, **dựng hình tham số (parametric modeling)** và **dựng hình bằng AI (AI modeling)** trong cùng một tài liệu, cùng một khung nhìn và cùng một ngăn xếp hoàn tác (undo stack), cho phép chuyển đổi linh hoạt giữa ba phương pháp bất kỳ lúc nào.
 
-Chili3D Pro 在此基础上增加**直接编辑**：双击模型进入编辑模式，直接修改可编辑节点的边、面和局部几何。入口、转换影响和完整命令流程见 [第 13 章](13-pro-direct-editing.md)。
+Chili3D Pro phát triển thêm khả năng **chỉnh sửa trực tiếp (direct editing)**: nhấp đúp vào mô hình để vào chế độ chỉnh sửa, trực tiếp sửa đổi các cạnh, mặt và hình học cục bộ của nút có thể chỉnh sửa (editable node). Cách thức truy cập, ảnh hưởng của việc chuyển đổi và quy trình lệnh đầy đủ xem tại [Chương 13](13-pro-direct-editing.md).
 
-![参数化机械零件与特征列表（英文界面）](images/00-overview.png)
+![Chi tiết cơ khí tham số và danh sách tính năng (giao diện tiếng Anh)](images/00-overview.png)
 
-*参数化机械零件：几何、项目树与特征列表位于同一文档（英文界面）。*
+*Chi tiết cơ khí tham số: hình học, cây dự án và danh sách tính năng (feature list) nằm trong cùng một tài liệu (giao diện tiếng Anh).*
 
-## 怎么读这本手册
+## Cách đọc cuốn sổ tay này
 
-- **第一次使用**：从 [第 1 章 快速开始](01-getting-started.md) 开始，跟着做一个零件。
-- **想完成一个完整任务**：直接看 [第 12 章 典型工作流程](12-workflows.md)，包括参数化安装板、导入模型修补、AI 协作和交付检查。
-- **想用 Pro 直接编辑**：读 [第 13 章 Pro 直接编辑](13-pro-direct-editing.md)，先确认可编辑节点转换和实例源修改的影响。
-- **想用参数化/草图**：读 [第 6 章 参数化建模](06-parametric-modeling.md) 与 [第 7 章 草图](07-sketch.md)。
-- **想处理导入模型**：读 [第 4 章](04-direct-modeling.md)、[第 5 章](05-modify-convert-measure.md) 和 [第 12.2 节](12-workflows.md#122-导入模型检查修补与重新导出)；Pro 用户还可参考 [第 13.9 节](13-pro-direct-editing.md#139-一个完整的-pro-修形流程)。
-- **想用 AI 助手**：读 [第 9 章 AI 助手](09-ai-assistant.md)，特别注意对话与参考图片的保存和分享规则。
-- **需要查命令或名词**：使用 [附录 A 命令速查表](appendix-commands.md)、[附录 B 快捷键](appendix-shortcuts.md) 和 [附录 C 术语表](appendix-glossary.md)。
-- **遇到问题**：先在 [第 11 章 常见问题](11-faq.md) 按类别排查。
+- **Lần đầu sử dụng**: Bắt đầu từ [Chương 1 Bắt đầu nhanh](01-getting-started.md), từng bước thực hành tạo chi tiết đầu tiên.
+- **Muốn hoàn thành một tác vụ trọn vẹn**: Xem trực tiếp [Chương 12 Quy trình làm việc điển hình](12-workflows.md), bao gồm tấm gá lắp tham số, kiểm tra/sửa chữa mô hình nhập vào, cộng tác cùng AI và kiểm tra bàn giao.
+- **Muốn dùng tính năng Pro chỉnh sửa trực tiếp**: Đọc [Chương 13 Pro chỉnh sửa trực tiếp](13-pro-direct-editing.md), trước tiên hãy xác nhận tác động khi chuyển đổi sang nút có thể chỉnh sửa và sửa đổi nguồn thực thể (instance source).
+- **Muốn dùng mô hình tham số / phác thảo**: Đọc [Chương 6 Dựng hình tham số](06-parametric-modeling.md) và [Chương 7 Phác thảo](07-sketch.md).
+- **Muốn xử lý mô hình nhập vào (import)**: Đọc [Chương 4](04-direct-modeling.md), [Chương 5](05-modify-convert-measure.md) và [Mục 12.2](12-workflows.md#122-导入模型检查修补与重新导出); người dùng Pro cũng có thể tham khảo [Mục 13.9](13-pro-direct-editing.md#139-一个完整的-pro-修形流程).
+- **Muốn dùng trợ lý AI**: Đọc [Chương 9 Trợ lý AI](09-ai-assistant.md), đặc biệt lưu ý các quy tắc lưu trữ và chia sẻ lịch sử hội thoại cùng ảnh tham chiếu.
+- **Cần tra cứu lệnh hoặc thuật ngữ**: Sử dụng [Phụ lục A Bảng tra nhanh lệnh](appendix-commands.md), [Phụ lục B Phím tắt](appendix-shortcuts.md) và [Phụ lục C Bảng thuật ngữ](appendix-glossary.md).
+- **Gặp sự cố**: Tra cứu và khắc phục sự cố theo danh mục tại [Chương 11 Các câu hỏi thường gặp](11-faq.md).
 
-插图均为真实应用的静态画面；快速上手示例文档名为“法兰支架 / 法兰底板”。
+Các hình minh họa đều là ảnh tĩnh chụp từ ứng dụng thực tế; tài liệu mẫu thực hành nhanh có tên là “Giá đỡ mặt bích / Tấm đáy mặt bích”.
 
-## 使用前记住五件事
+## Năm điều cần nhớ trước khi sử dụng
 
-1. **单位固定**：长度为毫米，角度为度；表达式不要再写 `mm` 等单位后缀。
-2. **没有自动保存**：日常用 `Ctrl+S`，重要节点再用 `保存到文件` 留下 `.cd` 备份。
-3. **关闭文档前先保存**：关闭确认框的“取消”表示不保存并继续关闭，不是返回文档。
-4. **参数化与直接建模不同**：前者可以编辑特征链，后者主要修改当前几何；选择方式见 [第 1.6 节](01-getting-started.md#16-三种建模方式怎么选)。
-5. **Pro 转换和实例编辑要先确认影响**：参数化节点转为可编辑节点会丢失特征列表；双击实例会修改其源节点并影响共享实例。见 [第 13.2 节](13-pro-direct-editing.md#132-进入转换与退出)。
+1. **Đơn vị cố định**: Chiều dài tính bằng milimét (mm), góc tính bằng độ (°); trong biểu thức không cần viết thêm hậu tố đơn vị như `mm`.
+2. **Không có tính năng tự động lưu**: Hàng ngày dùng `Ctrl+S`, tại các mốc quan trọng dùng `Lưu thành tệp` để tạo bản sao lưu `.cd`.
+3. **Lưu trước khi đóng tài liệu**: Nút "Hủy" (Cancel) trong hộp thoại xác nhận đóng có nghĩa là không lưu và tiếp tục đóng, chứ không phải quay lại tài liệu.
+4. **Dựng hình tham số khác với dựng hình trực tiếp**: Cách trước cho phép chỉnh sửa chuỗi tính năng (feature chain), cách sau chủ yếu sửa đổi hình học hiện tại; cách chọn phương pháp xem tại [Mục 1.6](01-getting-started.md#16-三种建模方式怎么选).
+5. **Cần xác nhận trước ảnh hưởng khi chuyển đổi Pro và chỉnh sửa thực thể (instance)**: Chuyển nút tham số thành nút có thể chỉnh sửa sẽ làm mất danh sách tính năng; nhấp đúp vào một thực thể (instance) sẽ sửa đổi nút nguồn của nó và ảnh hưởng đến tất cả các thực thể dùng chung. Xem tại [Mục 13.2](13-pro-direct-editing.md#132-进入转换与退出).
 
-## 目录
+## Mục lục
 
-1. [快速开始](01-getting-started.md) — 打开应用、新建文档、做出第一个零件、保存
-2. [界面总览](02-interface.md) — 标题栏、功能区、视口、项目树、属性面板、状态栏、命令面板
-3. [视图、选择与捕捉](03-view-navigation-selection.md) — 相机操作、显示模式、选择、捕捉、工作平面
-4. [直接建模](04-direct-modeling.md) — 绘图、基本体、挤出/旋转/放样/扫掠、布尔、转换
-5. [修改、测量与注释](05-modify-convert-measure.md) — 圆角倒角、移动阵列、修剪延伸、测量、尺寸标注、场景
-6. [参数化建模](06-parametric-modeling.md) — 特征列表、拉伸与孔、重建恢复、变量表达式
-7. [草图](07-sketch.md) — 草图会话、完全约束、尺寸、冲突恢复、构造线、外部参考
-8. [文档、文件与撤销](08-document-files.md) — 保存与备份、导入导出、文档版本、撤销重做
-9. [AI 助手](09-ai-assistant.md) — 配置模型、提示词、两种建模路径、上下文与隐私
-10. [设置、插件与快捷键](10-settings-plugins.md) — 语言、主题、导航、插件安全、性能测试
-11. [常见问题](11-faq.md) — 视图、草图、特征、文件、AI 与插件故障排查
-12. [典型工作流程](12-workflows.md) — 参数化安装板、导入修补、AI 协作、交付清单
-13. [Pro 直接编辑](13-pro-direct-editing.md) — 双击编辑、可编辑节点转换、拖拽、推拉/偏移、分割、辅助线、子形状修改与修复
+1. [Bắt đầu nhanh](01-getting-started.md) — Mở ứng dụng, tạo tài liệu mới, tạo chi tiết đầu tiên, lưu
+2. [Tổng quan giao diện](02-interface.md) — Thanh tiêu đề, thanh công cụ Ribbon, khung nhìn, cây dự án, bảng thuộc tính, thanh trạng thái, bảng lệnh
+3. [Góc nhìn, chọn đối tượng và bắt điểm](03-view-navigation-selection.md) — Thao tác camera, chế độ hiển thị, chọn đối tượng, bắt điểm (snap), mặt phẳng làm việc
+4. [Dựng hình trực tiếp](04-direct-modeling.md) — Vẽ hình, hình khối cơ bản, đùn/xoay/loft/quét dẫn (sweep), Boolean, chuyển đổi
+5. [Chỉnh sửa, đo lường và chú thích](05-modify-convert-measure.md) — Bo góc/vát mép, di chuyển/mảng, cắt tỉa/kéo dài, đo lường, đo kích thước, khung cảnh
+6. [Dựng hình tham số](06-parametric-modeling.md) — Danh sách tính năng, đùn khối và tạo lỗ, tái tạo khôi phục (rebuild), biến số và biểu thức
+7. [Phác thảo (Sketch)](07-sketch.md) — Phiên phác thảo, ràng buộc đầy đủ, kích thước, khôi phục xung đột, đường dựng, tham chiếu ngoài
+8. [Tài liệu, tệp và hoàn tác](08-document-files.md) — Lưu và sao lưu, nhập/xuất, phiên bản tài liệu, hoàn tác/làm lại
+9. [Trợ lý AI](09-ai-assistant.md) — Cấu hình mô hình, prompt, hai luồng dựng hình, ngữ cảnh và quyền riêng tư
+10. [Cài đặt, plugin và phím tắt](10-settings-plugins.md) — Ngôn ngữ, giao diện (theme), điều hướng, an toàn plugin, kiểm thử hiệu năng
+11. [Các câu hỏi thường gặp (FAQ)](11-faq.md) — Khắc phục sự cố góc nhìn, phác thảo, tính năng, tệp tin, AI và plugin
+12. [Quy trình làm việc điển hình](12-workflows.md) — Tấm gá lắp tham số, sửa chữa mô hình nhập vào, cộng tác AI, danh mục kiểm tra bàn giao
+13. [Pro chỉnh sửa trực tiếp](13-pro-direct-editing.md) — Nhấp đúp chỉnh sửa, chuyển đổi nút có thể chỉnh sửa, kéo rê, đẩy-kéo/offset, phân tách, đường hỗ trợ, sửa đổi và sửa chữa hình con (sub-shape)
 
-附录：
+Phụ lục:
 
-- [附录 A 命令速查表](appendix-commands.md)
-- [附录 B 快捷键与鼠标操作](appendix-shortcuts.md)
-- [附录 C 术语表](appendix-glossary.md)
+- [Phụ lục A Bảng tra nhanh lệnh](appendix-commands.md)
+- [Phụ lục B Phím tắt và thao tác chuột](appendix-shortcuts.md)
+- [Phụ lục C Bảng thuật ngữ](appendix-glossary.md)
 
-## 功能覆盖
+## Phạm vi tính năng
 
-| 功能域 | 覆盖章节 |
+| Phân hệ chức năng | Các chương bao phủ |
 | --- | --- |
-| 应用启动、首页、最近文档、语言/主题/导航设置 | 1、2、10 |
-| 文档标签、项目树、属性面板、命令面板、状态栏、AI 面板 | 2 |
-| 相机导航（5 套配置）、正交/透视、显示模式、视角书签 | 3 |
-| 选择、框选、捕捉、追踪、动态工作平面 | 3 |
-| 直接建模绘图与构造、布尔、转换、曲线投影、复制子形状 | 4 |
-| 修改、阵列与实例、修剪、圆角/倒角、抽壳、修复、材质 | 5 |
-| 测量、尺寸标注、文字注释、场景 | 5 |
-| 参数化体、特征链、回滚条、抑制、重命名、重新选择、参数编辑 | 6 |
-| 参数化特征（拉伸、旋转、放样、扫掠、螺旋、孔、筋、拔模、抽壳、加厚、圆角/倒角及修改、偏移面、分割、阵列、镜像、布尔、推拉） | 6 |
-| 文档变量、量纲表达式、按变量抑制 | 6 |
-| 草图绘图、13 种约束、7 种尺寸、驱动/从动、自由度与冲突恢复 | 7 |
-| 草图修改、构造线、投影边、外部参考 | 7 |
-| 文档保存、格式版本、导入导出、拖放、URL 参数、撤销/重做 | 8 |
-| AI 配置、提示词、两种运行路径、图片参考、对话历史、隐私 | 9、12 |
-| 插件加载与安全、宏管理器、可视化编程、性能测试 | 10 |
-| 参数化安装板、导入修补、AI 协作、交付检查 | 12 |
-| Pro 双击编辑、可编辑节点转换、实例源修改、编辑标签与隔离 | 2、13 |
-| Pro 拖拽、推拉/偏移面、圆角/倒角、分割、辅助线、移动与修复 | 13 |
-| 全部命令键、快捷键和常用术语 | 附录 A、B、C |
+| Khởi động ứng dụng, trang chủ, tài liệu gần đây, cài đặt ngôn ngữ/giao diện/điều hướng | 1, 2, 10 |
+| Tab tài liệu, cây dự án, bảng thuộc tính, bảng lệnh, thanh trạng thái, bảng AI | 2 |
+| Điều hướng camera (5 bộ cấu hình), trực diện/phối cảnh, chế độ hiển thị, đánh dấu góc nhìn (bookmark) | 3 |
+| Chọn đối tượng, chọn theo khung, bắt điểm, dò gióng (tracking), mặt phẳng làm việc động | 3 |
+| Dựng hình trực tiếp: vẽ đường và hình khối cơ sở, Boolean, biến đổi, chiếu đường cong, sao chép hình con | 4 |
+| Chỉnh sửa, mảng và thực thể (instance), cắt tỉa, bo góc/vát mép, làm rỗng (shell), sửa chữa, vật liệu | 5 |
+| Đo lường, đo kích thước, ghi chú văn bản, khung cảnh | 5 |
+| Thân tham số (parametric body), chuỗi tính năng, thanh cuộn lui (rollback), ẩn/nén (suppress), đổi tên, chọn lại tham chiếu, sửa tham số | 6 |
+| Tính năng tham số (đùn, xoay, loft, quét dẫn, xoắn ốc, lỗ, gân tăng cứng, góc vát thoát khuôn, làm rỗng, làm dày, bo góc/vát mép và sửa đổi, offset mặt, phân tách, mảng, đối xứng gương, Boolean, đẩy-kéo) | 6 |
+| Biến số tài liệu, biểu thức thứ nguyên/đơn vị, nén tính năng theo biến số | 6 |
+| Vẽ phác thảo, 13 loại ràng buộc, 7 loại kích thước, kích thước chủ động/bị động, bậc tự do và khôi phục xung đột | 7 |
+| Chỉnh sửa phác thảo, đường dựng (construction line), chiếu cạnh, tham chiếu ngoài | 7 |
+| Lưu tài liệu, phiên bản định dạng, nhập/xuất, kéo thả tệp, tham số URL, hoàn tác/làm lại | 8 |
+| Cấu hình AI, câu lệnh prompt, hai luồng thực thi, hình ảnh tham chiếu, lịch sử hội thoại, quyền riêng tư | 9, 12 |
+| Tải plugin và bảo mật, trình quản lý macro, lập trình trực quan (visual programming), kiểm thử hiệu năng | 10 |
+| Tấm gá lắp tham số, sửa chữa mô hình nhập vào, cộng tác AI, danh mục kiểm tra bàn giao | 12 |
+| Pro nhấp đúp chỉnh sửa, chuyển đổi nút có thể chỉnh sửa, sửa đổi nguồn thực thể, thẻ chỉnh sửa và cô lập | 2, 13 |
+| Pro kéo rê, đẩy-kéo/offset mặt, bo góc/vát mép, phân tách, đường hỗ trợ, di chuyển và sửa chữa | 13 |
+| Toàn bộ command key, phím tắt và thuật ngữ thường dùng | Phụ lục A, B, C |
 
-## 已知限制
+## Giới hạn đã biết
 
-- **应用不会自动保存**：不保存就关闭标签页，修改会丢失。见 [第 8 章](08-document-files.md)。
-- 最近项目的删除会删除文档本体；不同浏览器源之间也不会自动同步文档。
-- `.cd` 严格匹配独立的文档格式版本，不是应用版本号；跨版本交付优先另备 STEP/BREP。
-- 新建文档的默认名称目前显示为 `undefined 1`、`undefined 2`……保存前建议选中项目树根节点，在属性面板里改为有意义的名字。
-- 文档变量名必须是 ASCII 标识符（`[A-Za-z_][A-Za-z0-9_]*`），不能使用中文或空格。
-- 视口里没有右键菜单（草图中右键可取消当前拾取）。模型树也没有右键菜单，重命名请在属性面板进行。
-- 模型树的**可见性眼睛**、文件夹、拖放是树里仅有的直接操作；重命名、删除等走属性面板或功能区命令。
-- **Pro 直接编辑不恢复参数化历史**：转换后的修改只改变当前几何；删除面可能留下开放壳，修复不能保证补回缺失面。见 [第 13 章](13-pro-direct-editing.md)。
+- **Ứng dụng không tự động lưu**: Nếu đóng tab mà chưa lưu, mọi thay đổi sẽ bị mất. Xem [Chương 8](08-document-files.md).
+- Thao tác xóa trong mục "Dự án gần đây" sẽ xóa hẳn tệp tài liệu; giữa các nguồn trình duyệt (browser origin) khác nhau cũng không tự động đồng bộ tài liệu.
+- Định dạng `.cd` đối sánh nghiêm ngặt với phiên bản định dạng tài liệu độc lập, không phải số phiên bản phát hành của ứng dụng; khi bàn giao khác phiên bản, nên ưu tiên xuất thêm tệp STEP/BREP dự phòng.
+- Tên mặc định của tài liệu mới hiện hiển thị là `undefined 1`, `undefined 2`... Trước khi lưu, bạn nên chọn nút gốc trên cây dự án và đổi thành tên có ý nghĩa trong bảng thuộc tính.
+- Tên biến số tài liệu phải là định danh ASCII hợp lệ (`[A-Za-z_][A-Za-z0-9_]*`), không được dùng tiếng Việt có dấu, chữ Hán hoặc dấu cách.
+- Trong khung nhìn không có menu chuột phải (trong phác thảo, nhấp chuột phải có thể hủy thao tác chọn hiện tại). Cây mô hình cũng không có menu chuột phải; để đổi tên, vui lòng thực hiện trong bảng thuộc tính.
+- Biểu tượng **mắt hiển thị**, thư mục, kéo thả là những thao tác trực tiếp duy nhất trên cây mô hình; các thao tác như đổi tên, xóa... được thực hiện qua bảng thuộc tính hoặc lệnh trên thanh Ribbon.
+- **Pro chỉnh sửa trực tiếp không khôi phục lịch sử tham số**: Sau khi chuyển đổi, các thao tác chỉnh sửa chỉ thay đổi hình học hiện tại; việc xóa mặt có thể để lại vỏ hở (open shell), và chức năng sửa chữa không đảm bảo bù đắp lại các mặt bị thiếu. Xem [Chương 13](13-pro-direct-editing.md).

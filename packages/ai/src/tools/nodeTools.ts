@@ -12,6 +12,7 @@ import {
     Transaction,
 } from "@chili3d/core";
 import type { Tool } from "../llm/types";
+import { onNodesRemoved } from "../memory";
 import { findNode, requireDocument, requireNode } from "./documentContext";
 import { buildTransformMatrix, TRANSFORM_ARG_DOC, TRANSFORM_ORDER, VEC3_SCHEMA } from "./transformMatrix";
 
@@ -76,6 +77,7 @@ function deleteNodeTool(): Tool {
                 node.parent?.remove(node);
                 doc.visual.update();
             });
+            onNodesRemoved([id]);
             return JSON.stringify({ deleted: id });
         },
     };
