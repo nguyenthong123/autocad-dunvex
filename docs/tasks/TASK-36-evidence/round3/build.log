@@ -1,6 +1,6 @@
 CMD: npm run build
-COMMIT: f10debe17f493f92aa324bbb60debdd82dce4fd9
-TIME: 2026-11-04T06:46:38Z
+COMMIT: 4facbdb08cdc5f09a8aa977e4dfb4907ee4a1583
+TIME: 2026-11-04T07:25:16Z
 
 > chili3d@0.8.0 build
 > rspack build && node scripts/build-plugins.mjs
@@ -16,7 +16,7 @@ WARNING in ⚠ asset size limit: The following asset(s) exceed the recommended s
   │   manual/images/18-ai-modeling-result.png (355.723 KiB)
   │   vendor-three.js (593.541 KiB)
   │   manual/images/00-overview.png (453.188 KiB)
-  │   576.js (452.697 KiB)
+  │   576.js (455.940 KiB)
 
 WARNING in ⚠ entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (500.000 KiB). This can impact web performance.
   │ Entrypoints:
@@ -24,13 +24,13 @@ WARNING in ⚠ entrypoint size limit: The following entrypoint(s) combined asset
   │       main.js
   │       main.css
 
-Rspack compiled with 2 warnings in 27.46 s
+Rspack compiled with 2 warnings in 22.96 s
 [build-plugins] Plugins source: /Volumes/DATA_SSD/Projects/autocad-dunvex/plugins
 [build-plugins] Output target:  /Volumes/DATA_SSD/Projects/autocad-dunvex/dist/plugins
 [build-plugins] Building plugins...
 
 [build-plugins] Building plugin: macro
-Rspack compiled successfully in 36.42 s
+Rspack compiled successfully in 19.45 s
 [build-plugins] Copying /Volumes/DATA_SSD/Projects/autocad-dunvex/plugins/macro → /Volumes/DATA_SSD/Projects/autocad-dunvex/dist/plugins/macro
 [build-plugins] ✅ macro built and copied
 
@@ -49,7 +49,7 @@ WARNING in ⚠ Rspack performance recommendations:
   │ You can limit the size of your bundles by using import() to lazy load some parts of your application.
   │ For more info visit https://rspack.rs/guide/optimization/code-splitting
 
-Rspack compiled with 3 warnings in 34.16 s
+Rspack compiled with 3 warnings in 19.45 s
 [build-plugins] Copying /Volumes/DATA_SSD/Projects/autocad-dunvex/plugins/visual-programming → /Volumes/DATA_SSD/Projects/autocad-dunvex/dist/plugins/visual-programming
 [build-plugins] ✅ visual-programming built and copied
 

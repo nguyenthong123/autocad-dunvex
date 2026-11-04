@@ -1,8 +1,8 @@
 # TASK-37: Bằng chứng Thực tế trên App Thật cho AI run_command và Parity BOM
 
-> **Trạng thái:** `[?] WAITING_REVIEW`  
-> **Người thực hiện:** AI Thợ (Executor)  
-> **Môi trường kiểm thử:** Trình duyệt Headless Chrome (CDP WebSocket) kết nối ứng dụng Chili3D thật chạy tại `http://localhost:8080/` (dev server active, kernel WebAssembly OCCT v8.0.0 khởi tạo đầy đủ).  
+> **Trạng thái:** `[?] WAITING_REVIEW`
+> **Người thực hiện:** AI Thợ (Executor)
+> **Môi trường kiểm thử:** Trình duyệt Headless Chrome (CDP WebSocket) kết nối ứng dụng Chili3D thật chạy tại `http://localhost:8080/` (dev server active, kernel WebAssembly OCCT v8.0.0 khởi tạo đầy đủ).
 > **Bằng chứng thực thi:** Lưu tại `docs/tasks/TASK-37-evidence/`.
 
 ---
@@ -67,6 +67,10 @@ Các ảnh màn hình được chụp trực tiếp từ trình duyệt headless
    - Đường dẫn: `docs/tasks/TASK-37-evidence/screens/screen-2-memory-unverified.png`.
 3. **Screen 3 (`screen-3-ai-error-diagnostics.png`):** Nút lỗi runtime `⚠️ Lỗi AI (1)` trên thanh trạng thái kích hoạt mở giao diện Chẩn đoán lỗi AI / ManualReader hiển thị chi tiết mã lỗi, operation và ngữ cảnh.
    - Đường dẫn: `docs/tasks/TASK-37-evidence/screens/screen-3-ai-error-diagnostics.png`.
+4. **Screen Regression 1 (`screen-regression-measuring-other-unverified.png`):** Đo đối tượng khác (Tạo Box A, sau đó đo Box B) -> Cổng hậu kiểm tiếp tục yêu cầu kiểm chứng, giao diện giữ nguyên trạng thái `⚠️ Chưa kiểm chứng: Box A`.
+   - Đường dẫn: `docs/tasks/TASK-37-evidence/screens/screen-regression-measuring-other-unverified.png`.
+5. **Screen Regression 2 (`screen-regression-measuring-target-verified.png`):** Đo đúng đối tượng vừa tạo (Tạo Box A, đo Box A) với kết quả đo hợp lệ -> Cổng hậu kiểm xác nhận hoàn tất, giao diện chuyển trạng thái `✅ Đã kiểm chứng: measure_nodes`.
+   - Đường dẫn: `docs/tasks/TASK-37-evidence/screens/screen-regression-measuring-target-verified.png`.
 
 ---
 
@@ -95,8 +99,8 @@ Các ảnh màn hình được chụp trực tiếp từ trình duyệt headless
 ### 6.1. Bằng chứng Thực thi Round 3
 - **Lệnh thực thi:** `node scripts/verifyTask37Round3.mjs`
 - **File nhật ký gốc:** `docs/tasks/TASK-37-evidence/task37-round3-execution.log`
-- **Thời gian chạy:** `2026-11-04T06:42:07Z`
-- **Commit SHA đối chiếu:** `f10debe17f493f92aa324bbb60debdd82dce4fd9`
+- **Thời gian chạy:** `2026-11-04T07:21:06Z`
+- **Commit SHA đối chiếu:** `4facbdb08cdc5f09a8aa977e4dfb4907ee4a1583`
 - **Mã thoát (Exit Code):** `EXIT=0`
 
 ### 6.2. Danh mục Bằng chứng Lưu trữ
@@ -106,6 +110,8 @@ Các ảnh màn hình được chụp trực tiếp từ trình duyệt headless
 - `docs/tasks/TASK-37-evidence/screens/screen-1-chatpanel-memory-bar.png`: Ảnh chụp thanh trạng thái bộ nhớ.
 - `docs/tasks/TASK-37-evidence/screens/screen-2-memory-unverified.png`: Ảnh chụp cảnh báo Chưa kiểm chứng.
 - `docs/tasks/TASK-37-evidence/screens/screen-3-ai-error-diagnostics.png`: Ảnh chụp giao diện Chẩn đoán lỗi AI.
+- `docs/tasks/TASK-37-evidence/screens/screen-regression-measuring-other-unverified.png`: Ảnh chụp trạng thái hồi quy: Đo đối tượng khác vẫn chưa kiểm chứng.
+- `docs/tasks/TASK-37-evidence/screens/screen-regression-measuring-target-verified.png`: Ảnh chụp trạng thái hồi quy: Đo đúng đối tượng hoàn tất kiểm chứng.
 - `docs/tasks/TASK-37-evidence/task37-round3-execution.log`: Toàn bộ nhật ký kiểm thử Round 3 với `EXIT=0`.
 - `docs/tasks/TASK-37-evidence/prod-build-dead-code-check.log`: Bằng chứng loại bỏ mã test khỏi bản build production.
 

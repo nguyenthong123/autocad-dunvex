@@ -1,6 +1,6 @@
 CMD: npx rstest packages/ai/test/agentLoopOfflineHarness.test.ts
-COMMIT: f10debe17f493f92aa324bbb60debdd82dce4fd9
-TIME: 2026-11-04T06:42:40Z
+COMMIT: 4facbdb08cdc5f09a8aa977e4dfb4907ee4a1583
+TIME: 2026-11-04T07:21:25Z
   Rstest v0.10.0
 
 
@@ -59,14 +59,52 @@ warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent
 debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 4: run_program errors -> flag NOT set, NO nudges
 [ai] tokens: usage=none stop=end_turn 0s
 
- ✓ packages/ai/test/agentLoopOfflineHarness.test.ts (4)
-  ✓ TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 1: run_program creates box -> model attempts stop -> nudged exactly 2 times -> finishes unverified (6ms)
+
+log | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
+history added change name property
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 2: creating node A then measuring node A with valid result confirms verification
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 2: creating node A then measuring node A with valid result confirms verification
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 2: creating node A then measuring node A with valid result confirms verification
+[ai] tokens: usage=none stop=end_turn 0s
+
+ ✓ packages/ai/test/agentLoopOfflineHarness.test.ts (6)
+  ✓ TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 1: run_program creates box -> model attempts stop -> nudged exactly 2 times -> finishes unverified (7ms)
   ✓ TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 2: run_program creates box -> model calls measure_nodes -> NO nudges (1ms)
   ✓ TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag) (1ms)
   ✓ TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 4: run_program errors -> flag NOT set, NO nudges (105ms)
+  ✓ TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified) (2ms)
+  ✓ TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 2: creating node A then measuring node A with valid result confirms verification (0ms)
 
  Test Files 1 passed
-      Tests 4 passed
-   Duration 2.15s (build 1.28s, tests 874ms)
+      Tests 6 passed
+   Duration 2.01s (build 1.16s, tests 854ms)
 
 EXIT=0

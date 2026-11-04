@@ -1,10 +1,10 @@
 # TASK-38: Kiểm thử Offline Agent Loop & Cổng Hậu kiểm (Harness & Scripted Provider)
 
-> **Trạng thái:** `[?] WAITING_REVIEW`  
-> **Người thực hiện:** AI Thợ (Executor)  
-> **Phạm vi mã nguồn:**  
-> - `packages/ai/test/_helpers/scriptedProvider.ts`: Triển khai `ScriptedProvider` hiện thực hóa `LLMProvider` với kịch bản trả về xác định.  
-> - `packages/ai/test/agentLoopOfflineHarness.test.ts`: 4 kịch bản kiểm thử tích hợp vòng lặp agent và cổng hậu kiểm.  
+> **Trạng thái:** `[?] WAITING_REVIEW`
+> **Người thực hiện:** AI Thợ (Executor)
+> **Phạm vi mã nguồn:**
+> - `packages/ai/test/_helpers/scriptedProvider.ts`: Triển khai `ScriptedProvider` hiện thực hóa `LLMProvider` với kịch bản trả về xác định.
+> - `packages/ai/test/agentLoopOfflineHarness.test.ts`: 4 kịch bản kiểm thử tích hợp vòng lặp agent và cổng hậu kiểm.
 > **Bằng chứng thực thi:** `docs/tasks/TASK-38-evidence/agent-loop-offline-harness.log`.
 
 ---
@@ -31,7 +31,7 @@ Hàm `runAgent(opts)` trong `packages/ai/src/llm/agent.ts` hỗ trợ nhận pro
 
 ---
 
-## 3. 4 Kịch bản Kiểm thử Tích hợp
+## 3. 6 Kịch bản Kiểm thử Tích hợp (4 Cơ bản + 2 Hồi quy Đối tượng Cụ thể)
 
 | Kịch bản | Mô tả Luồng Thực thi | Kết quả Kiểm chứng | Đánh giá |
 |:---|:---|:---|:---:|
@@ -39,6 +39,8 @@ Hàm `runAgent(opts)` trong `packages/ai/src/llm/agent.ts` hỗ trợ nhận pro
 | **Kịch bản 2: Hậu kiểm Thành công (Verified Write)** | 1. Model gọi `run_program` tạo khối hộp.<br>2. Ở lượt tiếp theo, Model gọi `measure_nodes` đo kích thước chi tiết.<br>3. Agent ghi nhận tool thuộc `VERIFY_TOOLS`, xóa cờ `needsVerification`.<br>4. Model kết thúc lượt bình thường. | - Số lần nhắc nhở = 0.<br>- `lastVerification.verified === true`.<br>- `lastVerification.toolName === "measure_nodes"`. | **PASSED** |
 | **Kịch bản 3: Tool Không Đủ Điều kiện (Excluded Tool)** | 1. Model gọi `run_program` tạo khối hộp.<br>2. Model gọi `get_document_state` (đọc trạng thái cây thư mục, không đo đạc hình học).<br>3. Cờ `needsVerification` KHÔNG được xóa.<br>4. Model cố tình dừng -> Agent vẫn chèn nudge nhắc nhở. | - Khẳng định `get_document_state` không thể giải phóng cờ kiểm chứng.<br>- Model vẫn bị nhắc nhở đúng quy tắc. | **PASSED** |
 | **Kịch bản 4: Lệnh Ghi Thất bại (Write Error)** | 1. Model gọi `run_program` với câu lệnh lỗi cú pháp hoặc vi phạm ràng buộc.<br>2. Tool trả về lỗi (`error !== undefined`).<br>3. Không có đối tượng hình học nào được tạo thành công. | - Cờ `needsVerification` giữ nguyên `false`.<br>- Không kích hoạt bộ đếm nudge.<br>- Model kết thúc mà không bị chèn tin nhắn giả lập. | **PASSED** |
+| **Regression Case 1: Tạo A rồi đo B (Khác đối tượng)** | 1. Model gọi `run_program` tạo khối `Box A`.<br>2. Ở lượt tiếp theo, Model gọi `measure_nodes` đo `Box B` (đối tượng khác, không phải đối tượng vừa tạo).<br>3. Cổng hậu kiểm kiểm tra tập targets đang chờ: `pendingVerificationTargets` vẫn còn `Box A`.<br>4. Model cố tình kết thúc lượt -> Agent vẫn chèn 2 tin nhắn nudge và phiên kết thúc ở trạng thái `UNVERIFIED`. | - Phép đo trên đối tượng khác không thể giải phóng cờ kiểm chứng.<br>- Model bị nhắc nhở 2 lần.<br>- `lastVerification.verified === false`. | **PASSED** |
+| **Regression Case 2: Tạo A rồi đo A (Đúng đối tượng)** | 1. Model gọi `run_program` tạo khối `Box A`.<br>2. Ở lượt tiếp theo, Model gọi `measure_nodes` đo chính xác `Box A` với kết quả đo hợp lệ.<br>3. Cổng hậu kiểm đối chiếu target: `Box A` đã được đo hợp lệ -> xóa sạch `pendingVerificationTargets`.<br>4. Cờ `needsVerification` được hạ xuống `false`.<br>5. Model kết thúc lượt bình thường mà không bị nhắc nhở. | - Số lần nhắc nhở = 0.<br>- `lastVerification.verified === true`.<br>- `lastVerification.toolName === "measure_nodes"`. | **PASSED** |
 
 ---
 
@@ -60,13 +62,13 @@ Hàm `runAgent(opts)` trong `packages/ai/src/llm/agent.ts` hỗ trợ nhận pro
 ### 5.1. Bằng chứng Thực thi
 - **Lệnh thực thi:** `npx rstest packages/ai/test/agentLoopOfflineHarness.test.ts`
 - **File nhật ký gốc:** `docs/tasks/TASK-38-evidence/agent-loop-offline-harness.log`
-- **Thời gian chạy:** `2026-11-04T06:42:40Z`
-- **Commit SHA đối chiếu:** `f10debe17f493f92aa324bbb60debdd82dce4fd9`
-- **Mã thoát (Exit Code):** `EXIT=0` (4/4 tests passed)
+- **Thời gian chạy:** `2026-11-04T07:21:25Z`
+- **Commit SHA đối chiếu:** `4facbdb08cdc5f09a8aa977e4dfb4907ee4a1583`
+- **Mã thoát (Exit Code):** `EXIT=0` (6/6 tests passed: 4 kịch bản cơ bản + 2 kịch bản hồi quy đối tượng)
 
 ### 5.2. Danh mục Bằng chứng Lưu trữ
 - `packages/ai/test/_helpers/scriptedProvider.ts`: Module trợ giúp giả lập LLM có kịch bản.
-- `packages/ai/test/agentLoopOfflineHarness.test.ts`: Bộ kiểm thử 4 kịch bản Verification Gate.
+- `packages/ai/test/agentLoopOfflineHarness.test.ts`: Bộ kiểm thử 6 kịch bản Verification Gate (kèm 2 kịch bản hồi quy).
 - `docs/tasks/TASK-38-evidence/agent-loop-offline-harness.log`: Nhật ký chạy test harness với mã thoát `EXIT=0`.
 
 ### 5.3. Trạng thái Triển khai

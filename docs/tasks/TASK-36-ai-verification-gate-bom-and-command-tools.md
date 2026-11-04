@@ -190,4 +190,15 @@ Tạo file `packages/ai/src/tools/commandTools.ts` và đăng ký vào cuối `b
   - `docs/tasks/TASK-36-evidence/diff-check.log`: `git diff --check` (`EXIT=0`).
   - `docs/tasks/TASK-36-evidence/check.log`: `npm run check` (0 errors, `EXIT=0`).
 - **CHƯA KIỂM:** Kiểm thử tương tác trực tiếp với live LLM endpoint bên ngoài (do môi trường chưa có API key trực tiếp).
+
+### 5.8. Cập nhật Bằng chứng Round 3 (Cổng Hậu kiểm Theo Đối tượng Cụ thể)
+- **Commit SHA đối chiếu:** `4facbdb08cdc5f09a8aa977e4dfb4907ee4a1583`
+- **Thay đổi kỹ thuật:** Nâng cấp cổng hậu kiểm `agent.ts` theo dõi chính xác tập danh sách target (`pendingVerificationTargets`) sinh ra từ các tool ghi hình học. Phép đo trên đối tượng khác (ví dụ: tạo Box A rồi đo Box B) không thể giải phóng cờ kiểm chứng (`needsVerification` vẫn `true`). Chỉ khi đo đúng đối tượng mục tiêu với kết quả hợp lệ mới được xác nhận (`needsVerification = false`, `lastVerification.verified = true`).
+- **Danh mục Bằng chứng Round 3:**
+  - `docs/tasks/TASK-36-evidence/round3/rstest-ai.log`: `npx rstest packages/ai` (44 files pass, 656 tests pass, `EXIT=0`).
+  - `docs/tasks/TASK-36-evidence/round3/test-all.log`: `npm run test` (602 files pass, 10,139 tests pass + 2 server suites pass, `EXIT=0`).
+  - `docs/tasks/TASK-36-evidence/round3/tsc.log`: `npx tsc --noEmit -p .` (`EXIT=0`).
+  - `docs/tasks/TASK-36-evidence/round3/check.log`: `npm run check` (0 errors, `EXIT=0`).
+  - `docs/tasks/TASK-36-evidence/round3/build.log`: `npm run build` (Rspack + plugins build thành công, `EXIT=0`).
+  - `docs/tasks/TASK-38-evidence/agent-loop-offline-harness.log`: 6/6 tests pass (kèm 2 test hồi quy đối tượng).
 - **Trạng thái Triển khai:** `CHƯA DEPLOY` (Tuân thủ nghiêm ngặt quy tắc không tự ý deploy VPS và không git push).
