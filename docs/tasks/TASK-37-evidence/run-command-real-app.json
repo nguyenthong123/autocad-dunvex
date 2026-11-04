@@ -1,0 +1,59 @@
+[
+    {
+        "step": 1,
+        "name": "HIDE with empty selection",
+        "expected": "Blocked with precondition check",
+        "result": {
+            "success": false,
+            "executed": false,
+            "commandKey": "modify.hideSelected",
+            "preconditionFailed": true,
+            "error": "Lệnh 'modify.hideSelected' yêu cầu phải có đối tượng đang được chọn (selected) trước khi thực thi. Hãy chọn đối tượng trên bản vẽ trước hoặc dùng select_nodes."
+        },
+        "passed": true
+    },
+    {
+        "step": 2,
+        "name": "HIDE selected box",
+        "targetNode": "Box 100x50x20",
+        "visibleAfter": false,
+        "result": {
+            "success": true,
+            "executed": true,
+            "dispatched": true,
+            "completed": true,
+            "commandKey": "modify.hideSelected",
+            "message": "Lệnh 'modify.hideSelected' đã được thực thi hoàn tất."
+        },
+        "passed": true
+    },
+    {
+        "step": 3,
+        "name": "SHOWALL",
+        "targetNode": "Box 100x50x20",
+        "visibleAfter": true,
+        "result": {
+            "success": true,
+            "executed": true,
+            "dispatched": true,
+            "completed": true,
+            "commandKey": "modify.showAll",
+            "message": "Lệnh 'modify.showAll' đã được thực thi hoàn tất."
+        },
+        "passed": true
+    },
+    {
+        "step": 4,
+        "name": "Command 'U' (undo duplicate)",
+        "expected": "Refused with isDuplicateTool: true and suggested dedicated undo tool",
+        "result": {
+            "success": false,
+            "executed": false,
+            "commandKey": "edit.undo",
+            "aliasMatched": "u",
+            "isDuplicateTool": true,
+            "error": "Lệnh 'edit.undo' trùng với công cụ có sẵn. Hãy sử dụng tool 'undo' để hoàn tác thay đổi một cách an toàn."
+        },
+        "passed": true
+    }
+]

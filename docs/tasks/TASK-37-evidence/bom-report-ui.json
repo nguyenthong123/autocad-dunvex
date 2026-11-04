@@ -1,0 +1,44 @@
+[
+    {
+        "id": "LightGray___#dedede___100 × 50 × 20 mm",
+        "materialName": "LightGray",
+        "materialColor": "#dedede",
+        "dimensions": "100 × 50 × 20 mm",
+        "lengthMm": 100,
+        "widthMm": 50,
+        "thicknessMm": 20,
+        "count": 1,
+        "totalLengthM": 0.1,
+        "totalAreaM2": 0.01,
+        "unit": "piece",
+        "unitPrice": 0
+    },
+    {
+        "id": "LightGray___#dedede___200 × 50 × 50 mm",
+        "materialName": "LightGray",
+        "materialColor": "#dedede",
+        "dimensions": "200 × 50 × 50 mm",
+        "lengthMm": 200,
+        "widthMm": 50,
+        "thicknessMm": 50,
+        "count": 1,
+        "totalLengthM": 0.2,
+        "totalAreaM2": 0.01,
+        "unit": "piece",
+        "unitPrice": 0
+    },
+    {
+        "id": "LightGray___#dedede___500 × 300 × 18 mm",
+        "materialName": "LightGray",
+        "materialColor": "#dedede",
+        "dimensions": "500 × 300 × 18 mm",
+        "lengthMm": 500,
+        "widthMm": 300,
+        "thicknessMm": 18,
+        "count": 1,
+        "totalLengthM": 0.5,
+        "totalAreaM2": 0.15,
+        "unit": "piece",
+        "unitPrice": 0
+    }
+]

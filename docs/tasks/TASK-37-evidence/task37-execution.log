@@ -1,0 +1,36 @@
+CMD: node scripts/verifyTask37RealApp.mjs
+COMMIT: 511de32046c7c61d4d19a664e1cbfe108415a400
+TIME: 2026-11-04T05:30:25Z
+=== BẮT ĐẦU KIỂM THỬ THỰC TẾ TRÊN APP THẬT (TASK-37) ===
+URL: http://localhost:8080
+Thư mục lưu evidence: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence
+
+[1/5] Khởi động trình duyệt headless và chờ Chili3D sẵn sàng...
+      Chili3D đã sẵn sàng (đã nạp kernel WASM + __chiliTest).
+[2/5] Mở tài liệu mới (doc.new)...
+      Tài liệu đã mở, viewport canvas đã sẵn sàng.
+
+[3/5] C1: Kiểm tra Parity giữa bom_report (AI) và computeBomReport (UI)...
+      Đã lưu UI BOM: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence/bom-report-ui.json
+      Đã lưu AI BOM: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence/bom-report-ai.json
+      Số dòng UI BOM: 3, Số dòng AI BOM: 3
+      ✅ Khớp 100% dòng 1 (100 × 50 × 20 mm): count=1, L=100, W=50, T=20, M=0.1, M2=0.01, unit=piece
+      ✅ Khớp 100% dòng 2 (200 × 50 × 50 mm): count=1, L=200, W=50, T=50, M=0.2, M2=0.01, unit=piece
+      ✅ Khớp 100% dòng 3 (500 × 300 × 18 mm): count=1, L=500, W=300, T=18, M=0.5, M2=0.15, unit=piece
+      => KẾT QUẢ C1: PARITY TUYỆT ĐỐI (100% các trường khớp nhau).
+
+[4/5] C2: Kiểm tra run_command trên app thật...
+      Đã lưu kết quả run_command: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence/run-command-real-app.json
+      Bước 1 [HIDE with empty selection]: ✅ PASSED
+      Bước 2 [HIDE selected box]: ✅ PASSED
+      Bước 3 [SHOWALL]: ✅ PASSED
+      Bước 4 [Command 'U' (undo duplicate)]: ✅ PASSED
+      => KẾT QUẢ C2: TẤT CẢ 4 BƯỚC run_command ĐẠT CHUẨN TRÊN APP THẬT.
+
+[5/5] C3: Kiểm tra Agent simulation & Cổng hậu kiểm...
+      ⚠️  CHƯA KIỂM — thiếu khóa LLM (không giả lập kết quả thành công).
+      Ghi chú: Môi trường chưa cấu hình API key mô hình ngôn ngữ trực tiếp.
+      Cổng hậu kiểm Verification Gate đã được kiểm thử 100% qua unit test (packages/ai/test/agent.test.ts).
+
+=== HOÀN TẤT KIỂM THỬ TASK-37 TRÊN APP THẬT THÀNH CÔNG ===
+EXIT=0

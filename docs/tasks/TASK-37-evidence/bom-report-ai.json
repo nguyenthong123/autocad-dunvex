@@ -1,0 +1,59 @@
+{
+    "summary": {
+        "totalTypes": 3,
+        "totalPieces": 3,
+        "totalLengthM": 0.8,
+        "totalAreaM2": 0.17
+    },
+    "items": [
+        {
+            "id": "LightGray___#dedede___100 × 50 × 20 mm",
+            "materialName": "LightGray",
+            "materialColor": "#dedede",
+            "dimensions": "100 × 50 × 20 mm",
+            "lengthMm": 100,
+            "widthMm": 50,
+            "thicknessMm": 20,
+            "form": "block",
+            "unit": "piece",
+            "count": 1,
+            "totalLengthM": 0.1,
+            "totalAreaM2": 0.01,
+            "nodeIds": ["GbO7tCF8Dr87eHn0D5xOD"],
+            "hiddenCount": 0
+        },
+        {
+            "id": "LightGray___#dedede___200 × 50 × 50 mm",
+            "materialName": "LightGray",
+            "materialColor": "#dedede",
+            "dimensions": "200 × 50 × 50 mm",
+            "lengthMm": 200,
+            "widthMm": 50,
+            "thicknessMm": 50,
+            "form": "bar",
+            "unit": "piece",
+            "count": 1,
+            "totalLengthM": 0.2,
+            "totalAreaM2": 0.01,
+            "nodeIds": ["z6BDY8xihYJcAKi99R_3p"],
+            "hiddenCount": 0
+        },
+        {
+            "id": "LightGray___#dedede___500 × 300 × 18 mm",
+            "materialName": "LightGray",
+            "materialColor": "#dedede",
+            "dimensions": "500 × 300 × 18 mm",
+            "lengthMm": 500,
+            "widthMm": 300,
+            "thicknessMm": 18,
+            "form": "sheet",
+            "unit": "piece",
+            "count": 1,
+            "totalLengthM": 0.5,
+            "totalAreaM2": 0.15,
+            "nodeIds": ["pycUPVkNZGffSSN-1h7c_"],
+            "hiddenCount": 0
+        }
+    ],
+    "markdownTable": "| STT | Tên vật tư / Mô tả | Quy cách (L×W×T mm) | Dạng | SL (cái) | Mét dài (m) | Diện tích (m²) |\n| :---: | :--- | :--- | :---: | :---: | :---: | :---: |\n| 1 | LightGray | 100 × 50 × 20 mm | block | 1 | 0.10 | 0.01 |\n| 2 | LightGray | 200 × 50 × 50 mm | bar | 1 | 0.20 | 0.01 |\n| 3 | LightGray | 500 × 300 × 18 mm | sheet | 1 | 0.50 | 0.15 |\n| **Tổng** | **3 quy cách** | - | - | **3** | **0.80** | **0.17** |"
+}

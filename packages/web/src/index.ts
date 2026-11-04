@@ -29,6 +29,34 @@ function exposeTestSurface(): void {
             // rather than hunting for the button, so re-arranging the ribbon cannot break
             // a scenario that was not about the ribbon.
             dispatch: (commandName: string) => PubSub.default.pub("executeCommand", commandName as never),
+            getAiTools: async () => {
+                const ai = await import("@chili3d/ai");
+                return {
+                    bomTools: ai.buildBomTools(),
+                    commandTools: ai.buildCommandTools(),
+                };
+            },
+            getComputeBomReport: async () => {
+                const appMod = await import("@chili3d/app");
+                return appMod.computeBomReport;
+            },
+            createTestModel: async (doc: any) => {
+                const { BoxNode } = await import("@chili3d/app");
+                const { FolderNode, Plane, XYZ } = await import("@chili3d/core");
+                const plane = new Plane({ origin: XYZ.zero, normal: XYZ.unitZ, xvec: XYZ.unitX });
+                const box1 = new BoxNode({ document: doc, plane, dx: 100, dy: 50, dz: 20 });
+                box1.name = "Box 100x50x20";
+                const box2 = new BoxNode({ document: doc, plane, dx: 200, dy: 50, dz: 50 });
+                box2.name = "Box 200x50x50";
+                const box3 = new BoxNode({ document: doc, plane, dx: 500, dy: 300, dz: 18 });
+                box3.name = "Box 500x300x18";
+                const folder = new FolderNode({ document: doc, name: "TestFolder" });
+                doc.modelManager.addNode(box1);
+                doc.modelManager.addNode(box2);
+                doc.modelManager.addNode(box3);
+                doc.modelManager.addNode(folder);
+                return { box1, box2, box3, folder };
+            },
         },
         configurable: true,
     });
