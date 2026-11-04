@@ -646,21 +646,24 @@ describe("TASK-38: Offline Agent Loop & Verification Gate Harness", () => {
                 text: "I measured ChiTietHop (via box-B-id) so I am done.",
                 stopReason: "end_turn",
             },
-            // Turn 4: Agent nudges (1/2) because nodeA (box-A-id) is still waiting for verification!
-            // In response, model measures the correct ID of nodeA ("box-A-id")
-            {
-                type: "tool_calls",
-                calls: [
-                    {
-                        name: "measure_nodes",
-                        args: { nodeIds: ["box-A-id"] },
-                    },
-                ],
+            // Turn 4: Agent nudges (1/2) because nodeA is still waiting for verification!
+            // In response, model measures the correct real system-generated nodeId of nodeA
+            (_opts) => {
+                const nodeA = nodes.find((n) => n.id !== "box-B-id");
+                return {
+                    type: "tool_calls",
+                    calls: [
+                        {
+                            name: "measure_nodes",
+                            args: { nodeIds: [nodeA!.id] },
+                        },
+                    ],
+                };
             },
             // Turn 5: Model concludes after measuring exact ID of nodeA
             {
                 type: "text",
-                text: "Now measured box-A-id specifically. Done!",
+                text: "Now measured nodeA specifically by real nodeId. Done!",
                 stopReason: "end_turn",
             },
         ]);
@@ -681,7 +684,137 @@ describe("TASK-38: Offline Agent Loop & Verification Gate Harness", () => {
         );
         expect(nudges.length).toBe(1);
 
-        // After measuring box-A-id, verification succeeded
+        // After measuring real nodeId of nodeA, verification succeeded
+        const mem = getSessionMemory();
+        expect(mem.lastVerification?.verified).toBe(true);
+        expect(mem.lastVerification?.toolName).toBe("measure_nodes");
+    });
+
+    test("Regression Case 6: calling run_program twice with identical op.id -> creates distinct nodeIds, measuring old node does NOT verify new node", async () => {
+        const { doc, nodes } = setupTestEnvironment();
+
+        let firstNodeId = "";
+        let secondNodeId = "";
+
+        const provider = new ScriptedLLMProvider([
+            // Turn 1: Model creates first object with op.id = "shared-op-id"
+            {
+                type: "tool_calls",
+                calls: [
+                    {
+                        name: "run_program",
+                        args: {
+                            ops: [
+                                {
+                                    id: "shared-op-id",
+                                    name: "Part-One",
+                                    method: "box",
+                                    args: { dx: 50, dy: 50, dz: 50 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+            // Turn 2: Model measures the first object by its real nodeId
+            (_opts) => {
+                const node1 = nodes[0];
+                firstNodeId = node1.id;
+                return {
+                    type: "tool_calls",
+                    calls: [
+                        {
+                            name: "measure_nodes",
+                            args: { nodeIds: [firstNodeId] },
+                        },
+                    ],
+                };
+            },
+            // Turn 3: Model creates second object in the same drawing with the SAME op.id = "shared-op-id"
+            {
+                type: "tool_calls",
+                calls: [
+                    {
+                        name: "run_program",
+                        args: {
+                            ops: [
+                                {
+                                    id: "shared-op-id",
+                                    name: "Part-Two",
+                                    method: "box",
+                                    args: { dx: 60, dy: 60, dz: 60 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+            // Turn 4: Model attempts to verify by measuring the OLD object (firstNodeId)
+            (_opts) => ({
+                type: "tool_calls",
+                calls: [
+                    {
+                        name: "measure_nodes",
+                        args: { nodeIds: [firstNodeId] }, // measuring old object's nodeId!
+                    },
+                ],
+            }),
+            // Turn 5: Model attempts to stop claiming verification is done
+            {
+                type: "text",
+                text: "I measured part (using old nodeId) so I am done.",
+                stopReason: "end_turn",
+            },
+            // Turn 6: Agent nudges (1/2) because newly created object (secondNodeId) is NOT verified!
+            // In response, model measures the correct real nodeId of the second object
+            (_opts) => {
+                const node2 = nodes.find((n) => n.id !== firstNodeId);
+                secondNodeId = node2!.id;
+                return {
+                    type: "tool_calls",
+                    calls: [
+                        {
+                            name: "measure_nodes",
+                            args: { nodeIds: [secondNodeId] },
+                        },
+                    ],
+                };
+            },
+            // Turn 7: Conclude after measuring secondNodeId
+            {
+                type: "text",
+                text: "Now measured second part by its real nodeId. Done!",
+                stopReason: "end_turn",
+            },
+        ]);
+
+        const messages: ChatMessage[] = [
+            { role: "user", content: "Create two parts using same op.id and verify" },
+        ];
+        await runAgent({
+            provider,
+            config: { model: "scripted" } as any,
+            system: { stable: "system-test", volatile: "" },
+            messages,
+            tools: buildTools(),
+            callbacks: nullCallbacks,
+        });
+
+        // 1. Confirm both objects exist in the drawing and have distinct system-generated IDs
+        expect(nodes.length).toBe(2);
+        expect(firstNodeId).toBeTruthy();
+        expect(secondNodeId).toBeTruthy();
+        expect(firstNodeId).not.toBe(secondNodeId);
+        expect(firstNodeId).not.toBe("shared-op-id");
+        expect(secondNodeId).not.toBe("shared-op-id");
+
+        // 2. Exactly 1 nudge occurred after measuring the old node: measuring old node did NOT verify newly created node!
+        const nudges = messages.filter(
+            (m) => m.role === "user" && m.content === NUDGE_AFTER_UNVERIFIED_WRITE,
+        );
+        expect(nudges.length).toBe(1);
+
+        // 3. After measuring the real nodeId of the second object, verification succeeded
         const mem = getSessionMemory();
         expect(mem.lastVerification?.verified).toBe(true);
         expect(mem.lastVerification?.toolName).toBe("measure_nodes");

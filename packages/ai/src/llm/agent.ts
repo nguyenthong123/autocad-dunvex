@@ -553,17 +553,11 @@ function extractVerifiedEvidence(
 }
 
 function isTargetVerified(target: VerificationTarget, evidence: VerifiedEvidence): boolean {
-    // If target has an ID, IT MUST MATCH BY ID ONLY!
-    // Display name cannot be used to verify an object with a known ID (avoids name collisions).
+    // If target has an ID (the real CAD nodeId), IT MUST MATCH BY ID ONLY!
+    // Display name cannot be used to verify an object with a real nodeId (avoids name collisions).
     if (target.id && target.id.trim()) {
         const targetId = target.id.trim();
-        const matchesId =
-            evidence.ids.has(targetId) ||
-            evidence.ids.has(targetId.toLowerCase()) ||
-            (target.opId
-                ? evidence.ids.has(target.opId) || evidence.ids.has(target.opId.toLowerCase())
-                : false);
-        return matchesId;
+        return evidence.ids.has(targetId) || evidence.ids.has(targetId.toLowerCase());
     }
 
     // Only if target has NO ID at all, fall back to matching by name

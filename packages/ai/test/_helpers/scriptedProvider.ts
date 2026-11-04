@@ -10,30 +10,34 @@ export type ScriptedTurnAction =
       }
     | { type: "text"; text: string; stopReason?: string };
 
+export type ScriptedTurn = ScriptedTurnAction | ((opts: StreamChatOptions) => ScriptedTurnAction);
+
 /**
  * Scripted LLM provider for deterministic offline testing of agent loops,
  * tool registries, and verification gates without live LLM network calls.
  */
 export class ScriptedLLMProvider implements LLMProvider {
     readonly id = "scripted-offline";
-    private readonly script: ScriptedTurnAction[];
+    private readonly script: ScriptedTurn[];
     private turnIndex = 0;
     readonly recordedTurns: StreamChatOptions[] = [];
 
-    constructor(script: ScriptedTurnAction[]) {
+    constructor(script: ScriptedTurn[]) {
         this.script = script;
     }
 
     async *streamChat(opts: StreamChatOptions): AsyncIterable<StreamEvent> {
         this.recordedTurns.push(opts);
-        const action = this.script[this.turnIndex];
+        const rawAction = this.script[this.turnIndex];
         this.turnIndex++;
 
-        if (!action) {
+        if (!rawAction) {
             yield { type: "text", text: "Offline test turn completed." };
             yield { type: "done", stopReason: "end_turn" };
             return;
         }
+
+        const action: ScriptedTurnAction = typeof rawAction === "function" ? rawAction(opts) : rawAction;
 
         if (action.type === "tool_calls") {
             for (let i = 0; i < action.calls.length; i++) {
