@@ -1627,8 +1627,10 @@ function runBooleanOp(
                 }
 
                 // Both bounding boxes exist and overlap.
-                // Only confirm an opening already exists when an explicit geometric test supports that conclusion.
-                let geometricProofOfOpening = false;
+                // Note: a point test on overlap center only indicates whether that specific sample is inside/outside
+                // the solid; it does not prove an opening or hollow already exists. Keep the diagnosis as
+                // "cause undetermined", providing the probe result so the agent can inspect alignment.
+                let probeDetail = "";
                 const overlapMin = new XYZ(
                     Math.max(targetBox.min.x, toolBox.min.x),
                     Math.max(targetBox.min.y, toolBox.min.y),
@@ -1650,24 +1652,15 @@ function runBooleanOp(
                         (overlapMin.y + overlapMax.y) / 2,
                         (overlapMin.z + overlapMax.z) / 2,
                     );
-                    if (
-                        primaryTargetShape &&
-                        typeof primaryTargetShape.containsPoint === "function" &&
-                        primaryTargetShape.containsPoint(overlapCenter, false) === false
-                    ) {
-                        geometricProofOfOpening = true;
+                    if (primaryTargetShape && typeof primaryTargetShape.containsPoint === "function") {
+                        const inside = primaryTargetShape.containsPoint(overlapCenter, false);
+                        probeDetail = ` Overlap center point [${overlapCenter.x.toFixed(2)}, ${overlapCenter.y.toFixed(2)}, ${overlapCenter.z.toFixed(2)}] lies ${inside ? "inside" : "outside"} the target solid.`;
                     }
                 }
 
-                if (geometricProofOfOpening) {
-                    throw new Error(
-                        `booleanCut did not remove any volume from target "${primaryTargetName}" (volume before: ${totalTargetVolume.toFixed(6)}, volume after: ${resultVolume.toFixed(6)}). Geometric test confirmed the region is already hollow (an opening or cut was already performed here). Check if an opening was already made, or adjust cutter position/depth.`,
-                    );
-                } else {
-                    throw new Error(
-                        `booleanCut did not remove any volume from target "${primaryTargetName}" (volume before: ${totalTargetVolume.toFixed(6)}, volume after: ${resultVolume.toFixed(6)}). Cause undetermined: cutter bounding box overlaps target footprint but removed zero volume. Inspect actual 3D geometry and model tree to verify cutter alignment or target solids.`,
-                    );
-                }
+                throw new Error(
+                    `booleanCut did not remove any volume from target "${primaryTargetName}" (volume before: ${totalTargetVolume.toFixed(6)}, volume after: ${resultVolume.toFixed(6)}). Cause undetermined: cutter bounding box overlaps target footprint but removed zero volume.${probeDetail} Inspect actual 3D geometry, cutter position, depth, and orientation.`,
+                );
             }
 
             if (op.args?.["throughCut"] === true || op.args?.["verifyThrough"] === true) {

@@ -472,15 +472,16 @@ describe("Door Modeling Errors & Recovery Regression", () => {
             expect(doc.modelManager.findNodes((n) => n.id === cutterNode.id)[0]).toBe(cutterNode);
         });
 
-        test("re-cutting an already hollow region throws actionable error and preserves document pristine state", async () => {
+        test("booleanCut overlapping bounding box when overlap center lies outside solid does NOT claim opening already exists, reports cause undetermined and preserves document pristine state", async () => {
             const wallBox = new BoundingBox(new XYZ(0, 0, 0), new XYZ(100, 20, 100));
-            const wallShape = createFakeSolid(wallBox, 200000);
+            // containsPoint returns false: point probe lies outside solid
+            const wallShape = createFakeSolid(wallBox, 200000, () => false);
 
             // Cutter overlaps wall AABB (X[20, 40], Y[-5, 25], Z[0, 40])
             const cutterBox = new BoundingBox(new XYZ(20, -5, 0), new XYZ(40, 25, 40));
             const cutterShape = createFakeSolid(cutterBox, 24000);
 
-            // Volume before and after are identical (opening already existed)
+            // Volume before and after are identical (0 volume removed)
             const unchangedResult = createFakeSolid(wallBox, 200000);
             const booleanCut = rs.fn((_shapes: any[], _tools: any[]) => Result.ok(unchangedResult));
             (globalThis.app as any).shapeProvider.factory.booleanCut = booleanCut;
@@ -502,8 +503,9 @@ describe("Door Modeling Errors & Recovery Regression", () => {
             const initialCount = doc.modelManager.findNodes(() => true).length;
             const runProgram = buildCapabilityTools().find((t) => t.name === "run_program")!;
 
-            await expect(
-                runProgram.handler({
+            let thrownError: any = null;
+            try {
+                await runProgram.handler({
                     ops: [
                         {
                             method: "booleanCut",
@@ -514,10 +516,23 @@ describe("Door Modeling Errors & Recovery Regression", () => {
                             },
                         },
                     ],
-                }),
-            ).rejects.toThrow(
-                /Geometric test confirmed the region is already hollow \(an opening or cut was already performed here\)/,
+                });
+            } catch (err: any) {
+                thrownError = err;
+            }
+
+            expect(thrownError).not.toBeNull();
+            // Proves diagnosis remains "Cause undetermined" with probe detail
+            expect(thrownError.message).toContain(
+                "Cause undetermined: cutter bounding box overlaps target footprint but removed zero volume.",
             );
+            expect(thrownError.message).toContain("lies outside the target solid");
+            expect(thrownError.message).toContain(
+                "Inspect actual 3D geometry, cutter position, depth, and orientation",
+            );
+            // Crucially: MUST NOT claim that an opening or hollow already exists based on a single point!
+            expect(thrownError.message).not.toContain("already hollow");
+            expect(thrownError.message).not.toContain("opening or cut was already performed");
 
             // Document remains completely pristine
             expect(doc.modelManager.findNodes(() => true).length).toBe(initialCount);
@@ -631,7 +646,7 @@ describe("Door Modeling Errors & Recovery Regression", () => {
                     ],
                 }),
             ).rejects.toThrow(
-                /Cause undetermined: cutter bounding box overlaps target footprint but removed zero volume\. Inspect actual 3D geometry and model tree/,
+                /Cause undetermined: cutter bounding box overlaps target footprint but removed zero volume.*Overlap center point \[.*\] lies inside the target solid.*Inspect actual 3D geometry, cutter position, depth, and orientation/,
             );
 
             // Document remains completely pristine
