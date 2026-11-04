@@ -32,7 +32,7 @@ import {
 } from "@chili3d/core";
 import { recordRuntimeError } from "../diagnostics";
 import type { JsonSchema, Tool } from "../llm/types";
-import { onNodesCreated, onNodesRemoved, onRecentError } from "../memory";
+import { getSessionMemory, onNodesCreated, onNodesRemoved, onRecentError } from "../memory";
 import {
     type QueryCapability,
     queryCapabilities,
@@ -298,9 +298,28 @@ function resolveRefEntry(
         throw new Error(I18n.translate("ai.error.nullRef", id));
     }
     const node = findNode(doc, id);
-    if (node instanceof ShapeNode && node.shape.isOk) {
-        consumed.add(node.id);
-        return { nodeId: node.id, kind: "shape", value: node.shape.value };
+    if (node) {
+        if (node instanceof ShapeNode) {
+            if (node.shape.isOk) {
+                consumed.add(node.id);
+                return { nodeId: node.id, kind: "shape", value: node.shape.value };
+            }
+            throw new Error(`Node "${id}" has no valid shape: ${String(node.shape.error)}`);
+        }
+        throw new Error(
+            `Node "${id}" is a ${node.constructor.name} ("${node.name}"). It cannot be directly referenced as a 3D shape in run_program ops. If this is a sketch, use run_parametric to extrude or resolve its profile.`,
+        );
+    }
+
+    try {
+        const mem = getSessionMemory();
+        if (mem.removedNodeIds.includes(id)) {
+            throw new Error(
+                `Unknown ref "${id}". Node "${id}" was consumed or removed by a previous operation (found in sessionMemory.removedNodeIds). It no longer exists in the document model. Call get_document_state to view current active nodes, and target the newly created node instead.`,
+            );
+        }
+    } catch (e: unknown) {
+        if (e instanceof Error && e.message.startsWith("Unknown ref")) throw e;
     }
 
     const matchingSubRefs = [...localRefs.keys()].filter((k) => k.startsWith(`${id}#`));
@@ -587,8 +606,15 @@ function coerceRefParam(
     switch (p.kind) {
         case "ref":
             return resolveShape(v, doc, localRefs, consumed);
-        case "refArray":
+        case "refArray": {
+            if (!Array.isArray(v)) {
+                const sample = typeof v === "string" ? `["${v}"]` : `["<refId>"]`;
+                throw new Error(
+                    `parameter "${p.name}" requires an array of refs, got ${typeof v}. Valid syntax example: "${p.name}": ${sample}`,
+                );
+            }
             return (v as unknown[]).map((r) => resolveShape(r, doc, localRefs, consumed));
+        }
         case "curveRef":
         case "surfaceRef": {
             const entry = resolveRefEntry(v, doc, localRefs, consumed);
@@ -658,9 +684,13 @@ function checkQueryOwner(cap: QueryCapability, entry: LocalRef): void {
             // so name the query that does fit it whenever one exists, rather than leaving the
             // mismatch to be guessed at. Silence when there is none: the owner is the only answer.
             const fits = queryCapabilities.some((q) => q.owner === name && q.name === cap.name);
+            const subshapeHint = entry.parent
+                ? `. If this target came from shape.findSubShapes, ensure shape.findSubShapes was called with subshapeType: "${cap.owner}" (got ${name})`
+                : "";
             throw new Error(
                 `${cap.method} requires a ${cap.owner} target, got ${name}` +
-                    (fits ? ` — ${name}.${cap.name} is the one that answers a ${name}` : ""),
+                    (fits ? ` — ${name}.${cap.name} is the one that answers a ${name}` : "") +
+                    subshapeHint,
             );
         }
     }
@@ -1210,6 +1240,47 @@ function normalizeOpArgs(op: Op): Record<string, unknown> {
         }
     }
 
+    // findSubShapes aliases: subshapeType (type, shapeType, subShapeType, subshape, kind)
+    if (op.method === "findSubShapes" || op.method === "shape.findSubShapes") {
+        if (args["subshapeType"] === undefined) {
+            args["subshapeType"] =
+                args["type"] ??
+                args["shapeType"] ??
+                args["subShapeType"] ??
+                args["subshape"] ??
+                args["subShape"] ??
+                args["kind"];
+        }
+        if (args["subshapeType"] === undefined && op.id) {
+            if (/face/i.test(op.id)) args["subshapeType"] = "face";
+            else if (/wire/i.test(op.id)) args["subshapeType"] = "wire";
+            else if (/edge/i.test(op.id)) args["subshapeType"] = "edge";
+            else if (/vertex|vertices/i.test(op.id)) args["subshapeType"] = "vertex";
+            else if (/solid/i.test(op.id)) args["subshapeType"] = "solid";
+            else if (/shell/i.test(op.id)) args["subshapeType"] = "shell";
+        }
+    }
+
+    // Face aliases: wire (wires) -> ensure array
+    if (op.method === "face") {
+        if (args["wire"] === undefined && args["wires"] !== undefined) {
+            args["wire"] = args["wires"];
+        }
+        if (args["wire"] !== undefined && !Array.isArray(args["wire"])) {
+            args["wire"] = [args["wire"]];
+        }
+    }
+
+    // Solid aliases: shells (shell, shape, wire, face) -> ensure array
+    if (op.method === "solid") {
+        if (args["shells"] === undefined) {
+            const single = args["shell"] ?? args["shape"] ?? args["wire"] ?? args["face"];
+            if (single !== undefined) {
+                args["shells"] = Array.isArray(single) ? single : [single];
+            }
+        }
+    }
+
     return args;
 }
 
@@ -1284,21 +1355,51 @@ function closeProfileParam(cap: ShapeCapability, op: Op, params: unknown[], fact
     if (index < 0) return;
 
     const profile = params[index] as IShape;
-    if (profile.shapeType !== ShapeTypes.wire && profile.shapeType !== ShapeTypes.edge) return;
-    if (!profile.isClosed()) return;
-
     const f = factory as {
         wire(edges: IEdge[]): Result<IWire>;
         face(wires: IWire[]): Result<IFace>;
     };
-    let wire = profile as IWire;
-    if (profile.shapeType === ShapeTypes.edge) {
-        const built = f.wire([profile as IEdge]);
-        if (!built.isOk) return;
-        wire = built.value;
+
+    if (profile.shapeType === ShapeTypes.wire || profile.shapeType === ShapeTypes.edge) {
+        if (!profile.isClosed()) return;
+        let wire = profile as IWire;
+        if (profile.shapeType === ShapeTypes.edge) {
+            const built = f.wire([profile as IEdge]);
+            if (!built.isOk) return;
+            wire = built.value;
+        }
+        const face = f.face([wire]);
+        if (face.isOk) params[index] = face.value;
+        return;
     }
-    const face = f.face([wire]);
-    if (face.isOk) params[index] = face.value;
+
+    if (profile.shapeType === ShapeTypes.compound) {
+        const wires = (
+            typeof profile.findSubShapes === "function"
+                ? (profile.findSubShapes(ShapeTypes.wire) as IWire[])
+                : []
+        ).filter((w) => w.isClosed?.());
+        if (wires.length > 0) {
+            const face = f.face(wires);
+            if (face.isOk) {
+                params[index] = face.value;
+                return;
+            }
+        }
+        const edges =
+            typeof profile.findSubShapes === "function"
+                ? (profile.findSubShapes(ShapeTypes.edge) as IEdge[])
+                : [];
+        if (edges.length >= 3) {
+            const builtWire = f.wire(edges);
+            if (builtWire.isOk && builtWire.value.isClosed?.()) {
+                const face = f.face([builtWire.value]);
+                if (face.isOk) {
+                    params[index] = face.value;
+                }
+            }
+        }
+    }
 }
 
 const BOOLEAN_OPS: Record<string, "cut" | "fuse" | "common"> = {
@@ -1512,8 +1613,12 @@ function resolveBooleanOperand(
     }
     if (!isSolidVolume(shape)) {
         const typeStr = ShapeTypeUtils.stringValue(shape.shapeType);
+        let guidance = "";
+        if (shape.shapeType === ShapeTypes.compound) {
+            guidance = ` Open sketches or wireframe extrusions produce non-solid compounds. To create a solid wall, ensure the profile forms a closed face before extruding with prism, or use run_parametric (extrude with operation: "new" or "cut") on a ParametricBodyNode.`;
+        }
         throw new Error(
-            `${role} "${name}" is a ${typeStr}, not a solid body. Boolean ${booleanType} requires solid bodies.`,
+            `${role} "${name}" is a ${typeStr}, not a solid body. Boolean ${booleanType} requires solid bodies.${guidance}`,
         );
     }
 

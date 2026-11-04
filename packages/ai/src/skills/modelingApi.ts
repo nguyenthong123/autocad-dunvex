@@ -26,6 +26,18 @@ has a size: ${catalogue()}. Glyphs a font does not have are logged and left out 
 The line starts at the plane's origin and runs along the plane's x axis.
 `;
 
+const usageNotes = `## Additional Creation & Transform Ops
+
+- "transformedMul": { "method": "transformedMul", "args": { "shape": "<refOrNodeId>", "translate"?: {x,y,z}, "rotate"?: {axis,angle,center}, "scale"?: number|{x,y,z} } }
+  Creates a new transformed copy of the shape. It does NOT delete or move the source node in-place, and translating by {0,0,0} does NOT delete. To delete nodes, use the delete_node tool.
+
+- "face": { "method": "face", "args": { "wire": ["<outerWireRef>", "<innerHoleWireRef>"] } }
+  "wire" accepts an array of closed wire refs.
+
+- "solid": { "method": "solid", "args": { "shells": ["<closedShellRef>"] } }
+  "shells" accepts an array of closed shell refs.
+`;
+
 /** The catalogue, as families with what each costs to fetch. */
 function catalogue(): string {
     return FontCatalog.map((font) => `${font.family} (${(font.size / 1024 / 1024).toFixed(1)} MB)`).join(
@@ -42,5 +54,5 @@ export const modelingApi: Skill = {
     name: "modeling-api",
     description:
         "The IShapeFactory catalog behind run_program creation ops: every method's signature, parameter kinds and return type — load it before composing run_program ops",
-    content: `${capabilitiesSource}\n\n${textOp}`,
+    content: `${capabilitiesSource}\n\n${textOp}\n\n${usageNotes}`,
 };

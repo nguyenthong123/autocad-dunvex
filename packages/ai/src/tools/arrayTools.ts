@@ -31,8 +31,27 @@ export interface NodeMeasurement {
 }
 
 export function measureNode(node: INode): NodeMeasurement | undefined {
-    if (!("boundingBox" in node) || typeof (node as any).boundingBox !== "function") return undefined;
-    const box = (node as any).boundingBox() as BoundingBox | undefined;
+    let box: BoundingBox | undefined;
+    if ("boundingBox" in node && typeof (node as any).boundingBox === "function") {
+        box = (node as any).boundingBox() as BoundingBox | undefined;
+    }
+    // Fallback: If node mesh is not tessellated or empty, try B-rep shape bounding box
+    if (!box && "shape" in node) {
+        const shapeRes = (node as any).shape;
+        if (shapeRes && (shapeRes.isOk ?? true)) {
+            const sh = shapeRes.value ?? shapeRes;
+            if (typeof sh?.boundingBox === "function") {
+                const bRepBox = sh.boundingBox() as BoundingBox | undefined;
+                if (bRepBox) {
+                    const nodeTransform =
+                        "transform" in node && (node as any).transform instanceof Matrix4
+                            ? ((node as any).transform as Matrix4)
+                            : Matrix4.identity();
+                    box = BoundingBox.transformed(bRepBox, nodeTransform);
+                }
+            }
+        }
+    }
     if (!box) return undefined;
 
     // Core contract: node.boundingBox() already incorporates node.transform (GeometryNode, MeshNode, SketchNode).
@@ -331,7 +350,9 @@ function measureNodesTool(): Tool {
                 }
                 const m = measureNode(node);
                 if (!m) {
-                    return JSON.stringify({ error: `Node cannot be measured (no bounding box): ${id}` });
+                    return JSON.stringify({
+                        error: `Node cannot be measured (no bounding box): ${id}. The node "${node.name}" (${node.constructor.name}) does not contain valid measurable 3D geometric bounds or mesh. If this node is an empty sketch or non-geometric node, call get_document_state to inspect the active hierarchy or target a valid solid body. Verification status: unverified.`,
+                    });
                 }
                 measurements.push(m);
             }

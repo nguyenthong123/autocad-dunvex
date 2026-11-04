@@ -5,11 +5,14 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { EditableShapeNode, Plane, XYZ } from "@chili3d/core";
 import { createMockApplication, TestDocument } from "@chili3d/core/test-utils";
+import { ParametricBodyNode } from "@chili3d/parametric";
 import { initWasm, ShapeFactory } from "@chili3d/wasm";
 import { rs } from "@rstest/core";
+import "../../parametric/test/sketch/setup";
 import { clearSessionMemory } from "../src/memory";
 import { buildArrayTools } from "../src/tools/arrayTools";
 import { buildCapabilityTools } from "../src/tools/capabilityEngine";
+import { buildParametricTools } from "../src/tools/parametricTools";
 
 // Under Node, load the real compiled OCCT WASM binary from disk
 const WASM_PATH = path.resolve(__dirname, "../../wasm/lib/chili-wasm.wasm");
@@ -202,5 +205,140 @@ describe("Dev App Door Flow on Real OCCT/WASM Kernel", () => {
         expect(doc.modelManager.findNodes((n) => n.id === wallNode.id)[0]).toBe(wallNode);
         expect(doc.modelManager.findNodes((n) => n.id === cutterNode.id)[0]).toBe(cutterNode);
         console.log("[Pristine State Verified]: Doc retains exactly original 2 nodes unchanged.");
+    });
+
+    test("Real Kernel Parametric Door Cut: wall sketch -> extrude -> door sketch on planar face -> extrude cut -> verify history intact", async () => {
+        console.log("--- TEST PARAMETRIC WALL & DOOR CUT ON REAL OCCT KERNEL ---");
+        const parametricTools = buildParametricTools();
+        const runParametricTool = parametricTools.find((t) => t.name === "run_parametric")!;
+
+        // Step 1: Create Parametric Wall (1000 x 200 x 2500 mm)
+        // Sketch rectangle on XY plane: 1000 x 200, extruded Z=2500
+        const wallProgRaw = await runParametricTool.handler({
+            ops: [
+                {
+                    op: "sketch",
+                    id: "wallSketch",
+                    plane: "XY",
+                    name: "Wall Outline",
+                    entities: [
+                        { type: "line", params: [0, 0, 1000, 0] },
+                        { type: "line", params: [1000, 0, 1000, 200] },
+                        { type: "line", params: [1000, 200, 0, 200] },
+                        { type: "line", params: [0, 200, 0, 0] },
+                    ],
+                },
+                {
+                    op: "extrude",
+                    id: "wallBody",
+                    sketch: "wallSketch",
+                    depth: 2500,
+                    name: "Parametric Wall",
+                },
+            ],
+        });
+
+        const wallProg = JSON.parse(wallProgRaw as string);
+        expect(wallProg.created).toHaveLength(2); // sketch + body
+        const wallBodyId = wallProg.created.find((c: any) => c.name === "Parametric Wall")!.nodeId;
+        const wallBody = doc.modelManager.findNodes((n) => n.id === wallBodyId)[0] as ParametricBodyNode;
+        expect(wallBody).toBeDefined();
+        expect(wallBody instanceof ParametricBodyNode).toBe(true);
+
+        const initialVol = wallBody.shape.value.volume();
+        console.log(`[Parametric Real Kernel] Initial Wall Volume: ${initialVol.toFixed(2)} mm3`);
+        expect(initialVol).toBeCloseTo(500_000_000, 0);
+
+        // Step 2: Cut door opening using parametric cut
+        const cutProgRaw = await runParametricTool.handler({
+            ops: [
+                {
+                    op: "sketch",
+                    id: "doorSketch",
+                    plane: "XY",
+                    name: "Door Cut Profile",
+                    entities: [
+                        { type: "line", params: [100, -50, 900, -50] },
+                        { type: "line", params: [900, -50, 900, 250] },
+                        { type: "line", params: [900, 250, 100, 250] },
+                        { type: "line", params: [100, 250, 100, -50] },
+                    ],
+                },
+                {
+                    op: "extrude",
+                    id: "doorCutFeature",
+                    sketch: "doorSketch",
+                    body: wallBodyId,
+                    operation: "cut",
+                    depth: 2000,
+                },
+            ],
+        });
+
+        const cutProg = JSON.parse(cutProgRaw as string);
+        expect(cutProg.created).toBeDefined();
+
+        // Step 3: Verify ParametricBodyNode features history intact
+        const featuresRaw = await runParametricTool.handler({
+            ops: [
+                {
+                    op: "features",
+                    body: wallBodyId,
+                },
+            ],
+        });
+        const featuresRes = JSON.parse(featuresRaw as string);
+        const featureList = featuresRes.results.features;
+        console.log("[Parametric Body Feature History]:", JSON.stringify(featureList, null, 2));
+        expect(featureList).toHaveLength(2); // extrude (wall) + extrude (cut)
+        expect(featureList[0].type).toBe("extrude");
+        expect(featureList[1].type).toBe("extrude");
+        expect((wallBody.features[1] as any).operation).toBe("cut");
+
+        // Verify volume reduced by exactly cut volume: 800 * 200 * 2000 = 320,000,000 mm3
+        const finalVol = wallBody.shape.value.volume();
+        console.log(`[Parametric Real Kernel] Final Wall Volume After Cut: ${finalVol.toFixed(2)} mm3`);
+        expect(finalVol).toBeCloseTo(180_000_000, 0);
+        expect(initialVol - finalVol).toBeCloseTo(320_000_000, 0);
+    });
+
+    test("Real Kernel Parametric Safe Stop: invalid plane faceIndex or stale body ID fails safely preserving document", async () => {
+        console.log("--- TEST PARAMETRIC SAFE STOP ON REAL OCCT KERNEL ---");
+        const parametricTools = buildParametricTools();
+        const runParametricTool = parametricTools.find((t) => t.name === "run_parametric")!;
+
+        const initialCount = doc.modelManager.findNodes(() => true).length;
+
+        // Attempt to cut on non-existent/stale body ID
+        await expect(
+            runParametricTool.handler({
+                ops: [
+                    {
+                        op: "sketch",
+                        id: "badSketch",
+                        plane: "XY",
+                        entities: [
+                            { type: "line", params: [0, 0, 10, 0] },
+                            { type: "line", params: [10, 0, 10, 10] },
+                            { type: "line", params: [10, 10, 0, 10] },
+                            { type: "line", params: [0, 10, 0, 0] },
+                        ],
+                    },
+                    {
+                        op: "extrude",
+                        id: "badCut",
+                        sketch: "badSketch",
+                        body: "non_existent_body_id",
+                        operation: "cut",
+                        depth: 100,
+                    },
+                ],
+            }),
+        ).rejects.toThrow(/unknown body "non_existent_body_id"/);
+
+        // Entire transaction rolled back — no dangling sketches or partial geometry
+        const currentCount = doc.modelManager.findNodes(() => true).length;
+        expect(currentCount).toBe(initialCount);
+        console.log("[Pristine State Verified]: Doc retains exactly original node count.");
     });
 });

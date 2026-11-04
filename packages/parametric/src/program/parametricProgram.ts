@@ -321,15 +321,32 @@ function resolveSketchPlane(
     if (picked === "YZ") return { plane: Plane.YZ };
     if (picked === "ZX") return { plane: Plane.ZX };
 
+    if (typeof picked !== "object" || picked === null) {
+        throw new Error(
+            `Invalid sketch plane configuration. "plane" must be one of "XY", "YZ", "ZX", or an object specifying a planar face: { nodeId: string, faceIndex: number }.`,
+        );
+    }
+
+    if (!("nodeId" in picked) || !picked.nodeId) {
+        throw new Error(
+            `Invalid sketch plane configuration. "plane" must be "XY", "YZ", "ZX", or an object specifying a planar face on an existing solid node: { nodeId: string, faceIndex: number }. Arbitrary { origin, normal } coordinate systems are not supported as sketch plane hosts; query the host solid's planar faces and pick a face index.`,
+        );
+    }
+
     const host = resolveNode(state, picked.nodeId, "plane host");
     if (!(host instanceof ShapeNode) || !host.shape.isOk) {
         throw new Error(`node "${picked.nodeId}" has no valid shape to build a sketch plane on`);
     }
     const faces = host.shape.value.findSubShapes(ShapeTypes.face) as IFace[];
+    if (faces.length === 0) {
+        throw new Error(
+            `host node "${picked.nodeId}" has no faces to place a sketch on (faces count: 0). Ensure the host is a 3D solid with planar faces before attaching a sketch.`,
+        );
+    }
     const local = faces[picked.faceIndex];
     if (local === undefined) {
         throw new Error(
-            `faceIndex ${picked.faceIndex} is out of range on "${picked.nodeId}" (0..${faces.length - 1})`,
+            `faceIndex ${picked.faceIndex} is out of range on "${picked.nodeId}" (valid range: 0..${faces.length - 1})`,
         );
     }
     if (!local.surface().isPlanar()) {

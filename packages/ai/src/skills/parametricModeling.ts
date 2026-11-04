@@ -98,6 +98,8 @@ Coincident endpoints, Horizontal/Vertical and a few dimensions are enough for a 
 an under-constrained sketch still works, it just has free degrees of freedom.
 
 Limits and recovery:
+- Placing sketches on faces: use plane: { nodeId: wallId, faceIndex: faceIdx } on a planar face of an existing solid. Query planar faces and normal orientations first to select the correct faceIndex. Do NOT pass arbitrary { origin, normal } objects as sketch planes.
+- Cutting openings (doors/windows) in parametric walls: use run_parametric extrude with body: wallId, operation: "cut", and sufficient depth to penetrate both wall faces. This keeps the feature history intact on the ParametricBodyNode. Do NOT use run_program.booleanCut directly on a ParametricBodyNode, and do NOT attempt to delete consumed boolean tool nodes with delete_node.
 - Never pass a SketchNode ID to "body" in editFeature or features ops: sketches are 2D inputs and do NOT
   hold a 3D feature list. To edit a 3D feature, pass the ParametricBodyNode ID. To create 3D geometry from
   a sketch, pass its ID to "sketch" in an "extrude" or "revolve" op.

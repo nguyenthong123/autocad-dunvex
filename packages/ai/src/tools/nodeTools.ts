@@ -60,8 +60,10 @@ function deleteNodeTool(): Tool {
             const node = requireNode(doc, id);
             if (typeof node === "string") return node;
             if (isConsumedTool(node)) {
+                const ownerName = node.parent?.name ? `"${node.parent.name}"` : "a parametric body";
+                const ownerId = node.parent?.id ? ` (id: "${node.parent.id}")` : "";
                 return JSON.stringify({
-                    error: `node is a consumed boolean tool owned by a parametric body: ${id}`,
+                    error: `Cannot delete node "${id}": it is a consumed boolean tool owned by parametric body ${ownerName}${ownerId}. Consumed tools belong to the feature history and cannot be deleted directly. To modify or remove this cut/fuse, edit or delete the boolean feature on the parent body using run_parametric (features or editFeature op). Do not retry deleting this node.`,
                 });
             }
             const subtree = NodeUtils.isLinkedListNode(node) ? [node, ...NodeUtils.children(node)] : [node];
@@ -129,8 +131,10 @@ const transformNodeHandler: Tool["handler"] = async (args) => {
         return JSON.stringify({ error: `node has no transform: ${id}` });
     }
     if (isConsumedTool(node)) {
+        const ownerName = node.parent?.name ? `"${node.parent.name}"` : "a parametric body";
+        const ownerId = node.parent?.id ? ` (id: "${node.parent.id}")` : "";
         return JSON.stringify({
-            error: `node is a consumed boolean tool owned by a parametric body: ${id}`,
+            error: `Cannot transform node "${id}": it is a consumed boolean tool owned by parametric body ${ownerName}${ownerId}. Consumed tools belong to the feature history and cannot be transformed directly. Modify the feature or tool shape through run_parametric instead.`,
         });
     }
     const transformMode = (node as { transformMode?: string }).transformMode ?? "direct";

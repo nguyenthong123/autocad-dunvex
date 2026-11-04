@@ -23,6 +23,16 @@ export const errorRecovery: Skill = {
 
 "ref "x" is no longer valid: its source node was removed" — the node behind the ref was consumed by an edit-style op or deleted. Use the id of the op that replaced it, or re-run the query that produced the ref against the new node.
 
+'parameter "wire" / "shells" requires an array of refs, got string' — face and solid require an array of refs. Use array syntax, e.g. "wire": ["wireId"] or "shells": ["shellId"].
+
+"wire.toFace requires a wire target, got edge" / "face.area requires a face target, got edge" — shape.findSubShapes defaults to subshapeType: "edge" if omitted. Always specify subshapeType explicitly: args: { subshapeType: "wire" } for wires or args: { subshapeType: "face" } for faces.
+
+'Cannot delete node "x": it is a consumed boolean tool owned by parametric body' — the object was consumed by a boolean feature on a ParametricBodyNode. It belongs to the body's feature history and cannot be deleted directly with delete_node. Do NOT retry delete_node. To modify or remove the cut, use run_parametric (features or editFeature op) on the parent body.
+
+transformedMul with zero translation is NOT a delete operation — transformedMul creates a new transformed node copy, never deletes. To remove a node, call delete_node (unless consumed by a parametric body).
+
+'Invalid sketch plane configuration' / 'plane host is required' — run_parametric.sketch "plane" only accepts "XY", "YZ", "ZX", or an object specifying a planar face on an existing solid node: { nodeId: string, faceIndex: number }. Do NOT pass arbitrary { origin, normal } coordinate systems. If the host has 0 faces, ensure it is a valid 3D solid with planar faces before attaching a sketch.
+
 "Node cannot be measured (no bounding box): <id>" — the node has no physical 3D bounds (e.g. an empty sketch with no entities). Check that geometry exists before measuring. Missing measurement data keeps the verification status unverified.
 
 '"x" is a SketchNode (...), not a ParametricBodyNode' — editFeature and features ops require a 3D ParametricBodyNode id, not a 2D sketch. To modify a feature, pass the body id. To create geometry from a sketch, use extrude/revolve.
