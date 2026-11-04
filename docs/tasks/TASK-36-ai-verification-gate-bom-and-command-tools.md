@@ -191,17 +191,19 @@ Tạo file `packages/ai/src/tools/commandTools.ts` và đăng ký vào cuối `b
   - `docs/tasks/TASK-36-evidence/check.log`: `npm run check` (0 errors, `EXIT=0`).
 - **CHƯA KIỂM:** Kiểm thử tương tác trực tiếp với live LLM endpoint bên ngoài (do môi trường chưa có API key trực tiếp).
 
-### 5.8. Cập nhật Bằng chứng Round 3 (Cổng Hậu kiểm Theo Đối tượng Cụ thể & Bằng chứng Thực)
-- **Commit SHA đối chiếu:** `41999efd9be933c37420842468cf6ba83e66f180`
+### 5.8. Cập nhật Bằng chứng Round 3 (Cổng Hậu kiểm Theo Đối tượng Cụ thể, Bằng chứng Thực & Tách ID khỏi Display Name)
+- **Commit SHA đối chiếu:** `5361a727b8fc978d1639bda3833406083c74ea0d`
 - **Thay đổi kỹ thuật:**
   1. Nâng cấp cổng hậu kiểm `agent.ts`: Chỉ xác nhận các ID thực sự có bằng chứng trong kết quả trả về của công cụ (`parsedContent.items`, `parsedContent.nodes`), loại bỏ hoàn toàn việc lấy danh sách ID từ tham số yêu cầu (`args.nodeIds`, `args.ids`). Nếu yêu cầu BOM cho cả A và B nhưng kết quả chỉ có B, thì A phải tiếp tục chờ hậu kiểm.
   2. Xử lý mục tiêu ghi chưa xác định: Khi lệnh ghi không thể xác định cụ thể danh tính đối tượng (`*`), phép đo/kiểm tra một đối tượng bất kỳ không thể giải phóng cờ kiểm chứng (`matchesTarget` trả về `false`), trạng thái phiên tiếp tục giữ nguyên là Chưa kiểm chứng.
+  3. **Tách biệt tuyệt đối ID và Display Name:** Định nghĩa cấu trúc `VerificationTarget { id?: string; opId?: string; name?: string; }`. Khi một đối tượng có ID xác định, cổng hậu kiểm BẮT BUỘC chỉ so khớp theo ID chính xác (`evidence.ids.has(targetId)`), cấm tuyệt đối việc dùng Display Name để gán chéo kết quả kiểm chứng. Khi hai đối tượng có cùng tên hiển thị (ví dụ cùng tên `"ChiTietHop"`), việc đo đối tượng B sẽ giữ nguyên đối tượng A ở trạng thái chờ hậu kiểm; chỉ khi đo đúng ID của đối tượng A thì đối tượng A mới được xác nhận.
+  4. Đảm bảo bảo toàn ID trong `capabilityEngine.ts`: truyền `id: op.id` vào `new EditableShapeNode({ document: doc, name, shape, id: op.id })` để node được tạo trên CAD giữ nguyên ID của thao tác.
 - **Danh mục Bằng chứng Round 3:**
-  - `docs/tasks/TASK-36-evidence/round3/rstest-ai.log`: `npx rstest packages/ai` (44 files pass, 658 tests pass, `EXIT=0`).
-  - `docs/tasks/TASK-36-evidence/round3/test-all.log`: `npm run test` (602 files pass, 10,141 tests pass + 2 server suites pass, `EXIT=0`).
+  - `docs/tasks/TASK-36-evidence/round3/rstest-ai.log`: `npx rstest packages/ai` (44 files pass, 659 tests pass, `EXIT=0`).
+  - `docs/tasks/TASK-36-evidence/round3/test-all.log`: `npm run test` (602 files pass, 10,142 tests pass + 2 server suites pass, `EXIT=0`).
   - `docs/tasks/TASK-36-evidence/round3/tsc.log`: `npx tsc --noEmit -p .` (`EXIT=0`).
   - `docs/tasks/TASK-36-evidence/round3/check.log`: `npm run check` (0 errors, `EXIT=0`).
   - `docs/tasks/TASK-36-evidence/round3/build.log`: `npm run build` (Rspack + plugins build thành công, `EXIT=0`).
   - `docs/tasks/TASK-36-evidence/round3/diff-check.log`: `git diff --check` (`EXIT=0`).
-  - `docs/tasks/TASK-38-evidence/agent-loop-offline-harness.log`: 8/8 tests pass (kèm 4 test hồi quy đối tượng và bằng chứng thực).
+  - `docs/tasks/TASK-38-evidence/agent-loop-offline-harness.log`: 9/9 tests pass (kèm 5 test hồi quy đối tượng, bằng chứng thực và đối tượng trùng tên).
 - **Trạng thái Triển khai:** `CHƯA DEPLOY` (Tuân thủ nghiêm ngặt quy tắc không tự ý deploy VPS và không git push).

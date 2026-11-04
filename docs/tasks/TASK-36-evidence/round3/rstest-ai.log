@@ -1,10 +1,8 @@
 CMD: npx rstest packages/ai
-COMMIT: 41999efd9be933c37420842468cf6ba83e66f180
-TIME: 2026-11-04T07:44:41Z
+COMMIT: 5361a727b8fc978d1639bda3833406083c74ea0d
+TIME: 2026-11-04T08:09:43Z
   Rstest v0.10.0
 
- ✓ packages/ai/test/askUser.test.ts (4)
- ✓ packages/ai/test/appGuide.test.ts (6)
 
 log | packages/ai/test/arrayTools.test.ts > arrayTools > measure_nodes tool > measures bounding box, dimensions, and approximate volume accurately
 history added change node
@@ -41,8 +39,6 @@ history added change node
 log | packages/ai/test/arrayTools.test.ts > arrayTools > apply_array tool & preflight enforcement > mock unit benchmark 50 items: clones 49 copies in memory in a single transaction in under 50ms
 history added change node
 
- ✓ packages/ai/test/bomTools.test.ts (3)
- ✓ packages/ai/test/anthropicProvider.test.ts (13)
 
 log | packages/ai/test/arrayTools.test.ts > arrayTools > apply_array tool & preflight enforcement > mock unit benchmark 50 items: clones 49 copies in memory in a single transaction in under 50ms
 history added AI Array
@@ -56,6 +52,62 @@ log | packages/ai/test/arrayTools.test.ts > arrayTools > apply_array tool & pref
 history added AI Array
 
  ✓ packages/ai/test/arrayTools.test.ts (14)
+ ✓ packages/ai/test/anthropicProvider.test.ts (13)
+ ✓ packages/ai/test/appGuide.test.ts (6)
+ ✓ packages/ai/test/bomTools.test.ts (3)
+ ✓ packages/ai/test/askUser.test.ts (4)
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 1: run_program creates box -> model attempts stop -> nudged exactly 2 times -> finishes unverified
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 1: run_program creates box -> model attempts stop -> nudged exactly 2 times -> finishes unverified
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 1: run_program creates box -> model attempts stop -> nudged exactly 2 times -> finishes unverified
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 1: run_program creates box -> model attempts stop -> nudged exactly 2 times -> finishes unverified
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 2: run_program creates box -> model calls measure_nodes -> NO nudges
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 2: run_program creates box -> model calls measure_nodes -> NO nudges
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 2: run_program creates box -> model calls measure_nodes -> NO nudges
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag)
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag)
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag)
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag)
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag)
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 4: run_program errors -> flag NOT set, NO nudges
+[ai] tokens: usage=none stop=tool_use 0s
+
 
 warn | packages/ai/test/agent.test.ts > runAgent > runs tool calls and accumulates normalized messages
 [ai] tokens: usage=none stop=tool_use 0s
@@ -725,7 +777,163 @@ warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit e
 [ai] tokens: usage=none stop=tool_use 0s
 
 
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 4: run_program errors -> flag NOT set, NO nudges
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+log | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
+history added change name property
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 2: creating node A then measuring node A with valid result confirms verification
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 2: creating node A then measuring node A with valid result confirms verification
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 2: creating node A then measuring node A with valid result confirms verification
+[ai] tokens: usage=none stop=end_turn 0s
+
+
 warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 3: BOM requested for nodeA and nodeB but output only has nodeB -> nodeA must continue waiting for verification
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 3: BOM requested for nodeA and nodeB but output only has nodeB -> nodeA must continue waiting for verification
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 3: BOM requested for nodeA and nodeB but output only has nodeB -> nodeA must continue waiting for verification
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 3: BOM requested for nodeA and nodeB but output only has nodeB -> nodeA must continue waiting for verification
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 3: BOM requested for nodeA and nodeB but output only has nodeB -> nodeA must continue waiting for verification
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 4: unknown write target followed by inspecting arbitrary object -> status must remain unverified
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 4: unknown write target followed by inspecting arbitrary object -> status must remain unverified
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 4: unknown write target followed by inspecting arbitrary object -> status must remain unverified
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 4: unknown write target followed by inspecting arbitrary object -> status must remain unverified
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 4: unknown write target followed by inspecting arbitrary object -> status must remain unverified
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 5: two objects with identical display names -> measuring B keeps A waiting, measuring exact ID of A confirms A
 [ai] tokens: usage=none stop=tool_use 0s
 
 
@@ -805,65 +1013,22 @@ warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit e
 [ai] tokens: usage=none stop=tool_use 0s
 
 
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 5: two objects with identical display names -> measuring B keeps A waiting, measuring exact ID of A confirms A
 [ai] tokens: usage=none stop=tool_use 0s
 
 
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 5: two objects with identical display names -> measuring B keeps A waiting, measuring exact ID of A confirms A
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 5: two objects with identical display names -> measuring B keeps A waiting, measuring exact ID of A confirms A
 [ai] tokens: usage=none stop=tool_use 0s
 
 
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 5: two objects with identical display names -> measuring B keeps A waiting, measuring exact ID of A confirms A
+[ai] tokens: usage=none stop=end_turn 0s
 
-
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
-
+ ✓ packages/ai/test/agentLoopOfflineHarness.test.ts (9)
 
 warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
 [ai] tokens: usage=none stop=tool_use 0s
@@ -906,22 +1071,6 @@ warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit e
 
 
 warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 1: run_program creates box -> model attempts stop -> nudged exactly 2 times -> finishes unverified
 [ai] tokens: usage=none stop=tool_use 0s
 
 
@@ -1053,10 +1202,6 @@ warn | packages/ai/test/agent.test.ts > runAgent > replays the turn in flight's 
 [ai] tokens: usage=none stop=tool_use 0s
 
 
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 1: run_program creates box -> model attempts stop -> nudged exactly 2 times -> finishes unverified
-[ai] tokens: usage=none stop=end_turn 0s
-
-
 debug | packages/ai/test/agent.test.ts > runAgent > replays the turn in flight's thinking while its tool loop is open
 [ai] tokens: usage=none stop=end_turn 0s
 
@@ -1133,26 +1278,6 @@ warn | packages/ai/test/agent.test.ts > runAgent > nudges the model to verify af
 [ai] tokens: usage=none stop=tool_use 0s
 
 
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 1: run_program creates box -> model attempts stop -> nudged exactly 2 times -> finishes unverified
-[ai] tokens: usage=none stop=end_turn 0s
-
-
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 1: run_program creates box -> model attempts stop -> nudged exactly 2 times -> finishes unverified
-[ai] tokens: usage=none stop=end_turn 0s
-
-
-warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 2: run_program creates box -> model calls measure_nodes -> NO nudges
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 2: run_program creates box -> model calls measure_nodes -> NO nudges
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 2: run_program creates box -> model calls measure_nodes -> NO nudges
-[ai] tokens: usage=none stop=end_turn 0s
-
-
 debug | packages/ai/test/agent.test.ts > runAgent > nudges the model to verify after geometry writes before ending turn
 [ai] tokens: usage=none stop=end_turn 0s
 
@@ -1172,118 +1297,8 @@ debug | packages/ai/test/agent.test.ts > runAgent > caps verification nudges at 
 debug | packages/ai/test/agent.test.ts > runAgent > caps verification nudges at MAX_VERIFY_NUDGES if model refuses to verify
 [ai] tokens: usage=none stop=end_turn 0s
 
-
-warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag)
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag)
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag)
-[ai] tokens: usage=none stop=end_turn 0s
-
-
-warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag)
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag)
-[ai] tokens: usage=none stop=end_turn 0s
-
-
-warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 4: run_program errors -> flag NOT set, NO nudges
-[ai] tokens: usage=none stop=tool_use 0s
-
  ✓ packages/ai/test/agent.test.ts (73)
-
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 4: run_program errors -> flag NOT set, NO nudges
-[ai] tokens: usage=none stop=end_turn 0s
-
-
-log | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
-history added change name property
-
-
-warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
-[ai] tokens: usage=none stop=end_turn 0s
-
-
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
-[ai] tokens: usage=none stop=end_turn 0s
-
-
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)
-[ai] tokens: usage=none stop=end_turn 0s
-
-
-warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 2: creating node A then measuring node A with valid result confirms verification
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 2: creating node A then measuring node A with valid result confirms verification
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 2: creating node A then measuring node A with valid result confirms verification
-[ai] tokens: usage=none stop=end_turn 0s
-
-
-warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 3: BOM requested for nodeA and nodeB but output only has nodeB -> nodeA must continue waiting for verification
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 3: BOM requested for nodeA and nodeB but output only has nodeB -> nodeA must continue waiting for verification
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 3: BOM requested for nodeA and nodeB but output only has nodeB -> nodeA must continue waiting for verification
-[ai] tokens: usage=none stop=end_turn 0s
-
-
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 3: BOM requested for nodeA and nodeB but output only has nodeB -> nodeA must continue waiting for verification
-[ai] tokens: usage=none stop=end_turn 0s
-
-
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 3: BOM requested for nodeA and nodeB but output only has nodeB -> nodeA must continue waiting for verification
-[ai] tokens: usage=none stop=end_turn 0s
-
-
-log | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 4: unknown write target followed by inspecting arbitrary object -> status must remain unverified
-history added change name property
-
-
-warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 4: unknown write target followed by inspecting arbitrary object -> status must remain unverified
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 4: unknown write target followed by inspecting arbitrary object -> status must remain unverified
-[ai] tokens: usage=none stop=tool_use 0s
-
-
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 4: unknown write target followed by inspecting arbitrary object -> status must remain unverified
-[ai] tokens: usage=none stop=end_turn 0s
-
-
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 4: unknown write target followed by inspecting arbitrary object -> status must remain unverified
-[ai] tokens: usage=none stop=end_turn 0s
-
-
-debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Regression Case 4: unknown write target followed by inspecting arbitrary object -> status must remain unverified
-[ai] tokens: usage=none stop=end_turn 0s
-
- ✓ packages/ai/test/agentLoopOfflineHarness.test.ts (8)
  ✓ packages/ai/test/bridge.test.ts (11)
- ✓ packages/ai/test/commandTools.test.ts (7)
 
 log | packages/ai/test/capabilityEngine.test.ts > capabilityEngine > boolean operations > booleanCut transforms node with non-identity worldTransform into world space
 history added change transform property
@@ -1296,19 +1311,20 @@ history added change transform property
 log | packages/ai/test/capabilityEngine.test.ts > capabilityEngine > boolean operations > disposes temporary shapes and uncommitted result on volume check failure
 history added change transform property
 
- ✓ packages/ai/test/commandGuide.test.ts (8)
  ✓ packages/ai/test/capabilityEngine.test.ts (77)
+ ✓ packages/ai/test/commandTools.test.ts (7)
+ ✓ packages/ai/test/commandGuide.test.ts (8)
  ✓ packages/ai/test/discovery.test.ts (13)
  ✓ packages/ai/test/documentTools.test.ts (3)
  ✓ packages/ai/test/fileTools.test.ts (3)
  ✓ packages/ai/test/history.test.ts (7)
  ✓ packages/ai/test/bridgeClient.test.ts (7)
-  ✓ bridge client > does not retry a close that means another page took over (702ms)
-  ✓ bridge client > does not retry a refused handshake and reports it (705ms)
-  ✓ bridge client > retries a transport close (519ms)
- ✓ packages/ai/test/journal.test.ts (30)
- ✓ packages/ai/test/host.test.ts (2)
+  ✓ bridge client > does not retry a close that means another page took over (704ms)
+  ✓ bridge client > does not retry a refused handshake and reports it (703ms)
+  ✓ bridge client > retries a transport close (503ms)
  ✓ packages/ai/test/imageData.test.ts (4)
+ ✓ packages/ai/test/host.test.ts (2)
+ ✓ packages/ai/test/journal.test.ts (30)
 
 log | packages/ai/test/materialTools.test.ts > material tools > list_materials > lists the document's materials with the values that shape them
 history added change roughness property
@@ -1360,6 +1376,8 @@ history added AI set material properties
  ✓ packages/ai/test/materialTools.test.ts (13)
  ✓ packages/ai/test/chatPanel.test.ts (114)
  ✓ packages/ai/test/modelPicker.test.ts (8)
+ ✓ packages/ai/test/openaiCompatProvider.test.ts (10)
+ ✓ packages/ai/test/parametricTools.test.ts (4)
 
 log | packages/ai/test/nodeTools.test.ts > create_folder tool > creates a folder at the root and moves the given nodes into it
 history added change node
@@ -1429,11 +1447,6 @@ log | packages/ai/test/nodeTools.test.ts > move_nodes tool > refuses to move a f
 history added AI move nodes
 
  ✓ packages/ai/test/nodeTools.test.ts (26)
- ✓ packages/ai/test/capabilitiesFreshness.test.ts (1)
-  ✓ capabilities.generated.ts is what the generator produces from the current core sources (5.13s)
- ✓ packages/ai/test/prompt.test.ts (8)
- ✓ packages/ai/test/openaiCompatProvider.test.ts (10)
- ✓ packages/ai/test/parametricTools.test.ts (4)
 
 log | packages/ai/test/propertyTools.test.ts > set_node_properties > writes a shape parameter and reports the new value
 history added AI set node properties
@@ -1452,27 +1465,27 @@ history added AI set node properties
 
  ✓ packages/ai/test/propertyTools.test.ts (13)
  ✓ packages/ai/test/providerRegistry.test.ts (3)
+ ✓ packages/ai/test/prompt.test.ts (8)
+ ✓ packages/ai/test/redact.test.ts (2)
+ ✓ packages/ai/test/readTools.test.ts (6)
 
 debug | packages/ai/test/responsesProvider.test.ts > responses convertEvent > splits cached input out of the reported usage
 [ai] responses: status=completed text=none calls=0 reasoning=none tokens=0 reasoning
 
- ✓ packages/ai/test/redact.test.ts (2)
- ✓ packages/ai/test/readTools.test.ts (6)
 
 warn | packages/ai/test/responsesProvider.test.ts > a response that stopped short > an incomplete response ends the turn and names the reason
 [ai] responses: status=incomplete (max_output_tokens) text=none calls=0 reasoning=none tokens=0 reasoning
 
- ✓ packages/ai/test/ribbonTools.test.ts (5)
  ✓ packages/ai/test/responsesProvider.test.ts (13)
  ✓ packages/ai/test/referenceReader.test.ts (4)
+ ✓ packages/ai/test/ribbonTools.test.ts (5)
  ✓ packages/ai/test/selectionTools.test.ts (7)
- ✓ packages/ai/test/runtimeErrorReporter.test.ts (9)
- ✓ packages/ai/test/textureImage.test.ts (7)
- ✓ packages/ai/test/skillTool.test.ts (15)
- ✓ packages/ai/test/settings.test.ts (8)
  ✓ packages/ai/test/sessionMemory.test.ts (8)
+ ✓ packages/ai/test/runtimeErrorReporter.test.ts (9)
+ ✓ packages/ai/test/settings.test.ts (8)
+ ✓ packages/ai/test/skillTool.test.ts (15)
+ ✓ packages/ai/test/textureImage.test.ts (7)
  ✓ packages/ai/test/transformMatrix.test.ts (5)
- ✓ packages/ai/test/urlUtils.test.ts (12)
 
 log | packages/ai/test/variableTools.test.ts > variableTools > set writes a variable and reports what it resolves to
 history added AI variables: set
@@ -1587,9 +1600,12 @@ log | packages/ai/test/viewTools.test.ts > set_material tool > removes a texture
 history added change image property
 
  ✓ packages/ai/test/viewTools.test.ts (54)
+ ✓ packages/ai/test/urlUtils.test.ts (12)
+ ✓ packages/ai/test/capabilitiesFreshness.test.ts (1)
+  ✓ capabilities.generated.ts is what the generator produces from the current core sources (11.2s)
 
  Test Files 44 passed
-      Tests 658 passed
-   Duration 12.4s (build 766ms, tests 11.7s)
+      Tests 659 passed
+   Duration 14.8s (build 1.24s, tests 13.6s)
 
 EXIT=0

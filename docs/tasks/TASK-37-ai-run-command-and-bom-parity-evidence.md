@@ -99,9 +99,11 @@ Các ảnh màn hình được chụp trực tiếp từ trình duyệt headless
 ### 6.1. Bằng chứng Thực thi Round 3
 - **Lệnh thực thi:** `node scripts/verifyTask37Round3.mjs`
 - **File nhật ký gốc:** `docs/tasks/TASK-37-evidence/task37-round3-execution.log`
-- **Thời gian chạy:** `2026-11-04T07:44:11Z`
-- **Commit SHA đối chiếu:** `41999efd9be933c37420842468cf6ba83e66f180`
+- **Thời gian chạy:** `2026-11-04T08:09:20Z`
+- **Commit SHA đối chiếu:** `5361a727b8fc978d1639bda3833406083c74ea0d`
 - **Mã thoát (Exit Code):** `EXIT=0`
+- **Ghi chú Dữ liệu Giả lập (Synthetic Data Scope):**
+  - Do `ChatPanel` chưa có cổng DI runtime cho custom provider và môi trường chưa có live LLM key, trạng thái hiển thị của thanh trạng thái (`memoryStatusBar`) trong kiểm thử trình duyệt được cập nhật bằng dữ liệu phiên mô phỏng kết quả của agent (`updateSessionMemory` với payload chuẩn theo hợp đồng của `SessionMemory`).
 - **Quy trình kiểm tra DOM:** Script đã kiểm tra và đối chiếu trực tiếp chuỗi văn bản DOM trên thanh trạng thái `memoryStatusBar` trước khi gọi lệnh chụp từng ảnh màn hình CDP:
   - Screen 1: `[DOM Verify Screen 1] Nội dung thanh trạng thái: "🧠 Phiên AI⚠️ Lỗi AI (0)"`
   - Screen 2: `[DOM Verify Screen 2] Đã xác nhận "Chưa kiểm chứng": "🧠 Thiết kế chi tiết máy | ⚠️ Chưa kiểm chứng⚠️ Lỗi AI (0)"`
