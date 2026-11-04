@@ -1,0 +1,58 @@
+[
+    {
+        "id": "Gỗ sồi___#8b5a2b___200 × 60 × 30 mm",
+        "materialName": "Gỗ sồi",
+        "materialColor": "#8b5a2b",
+        "dimensions": "200 × 60 × 30 mm",
+        "lengthMm": 200,
+        "widthMm": 60,
+        "thicknessMm": 30,
+        "count": 1,
+        "totalLengthM": 0.2,
+        "totalAreaM2": 0.01,
+        "unit": "piece",
+        "unitPrice": 0
+    },
+    {
+        "id": "LightGray___#dedede___100 × 50 × 20 mm",
+        "materialName": "LightGray",
+        "materialColor": "#dedede",
+        "dimensions": "100 × 50 × 20 mm",
+        "lengthMm": 100,
+        "widthMm": 50,
+        "thicknessMm": 20,
+        "count": 2,
+        "totalLengthM": 0.2,
+        "totalAreaM2": 0.01,
+        "unit": "piece",
+        "unitPrice": 0
+    },
+    {
+        "id": "LightGray___#dedede___500 × 300 × 18 mm",
+        "materialName": "LightGray",
+        "materialColor": "#dedede",
+        "dimensions": "500 × 300 × 18 mm",
+        "lengthMm": 500,
+        "widthMm": 300,
+        "thicknessMm": 18,
+        "count": 1,
+        "totalLengthM": 0.5,
+        "totalAreaM2": 0.15,
+        "unit": "piece",
+        "unitPrice": 0
+    },
+    {
+        "id": "Thép hộp___#4682b4___200 × 60 × 30 mm",
+        "materialName": "Thép hộp",
+        "materialColor": "#4682b4",
+        "dimensions": "200 × 60 × 30 mm",
+        "lengthMm": 200,
+        "widthMm": 60,
+        "thicknessMm": 30,
+        "count": 1,
+        "totalLengthM": 0.2,
+        "totalAreaM2": 0.01,
+        "unit": "piece",
+        "unitPrice": 0
+    }
+]

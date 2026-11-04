@@ -1,0 +1,57 @@
+CMD: npm run build
+COMMIT: f10debe17f493f92aa324bbb60debdd82dce4fd9
+TIME: 2026-11-04T06:46:38Z
+
+> chili3d@0.8.0 build
+> rspack build && node scripts/build-plugins.mjs
+
+WARNING in ⚠ asset size limit: The following asset(s) exceed the recommended size limit (300.000 KiB). This can impact web performance.
+  │ Assets:
+  │   manual/images/01-home.png (732.555 KiB)
+  │   865411b872d20239.wasm (851.732 KiB)
+  │   575.js (535.382 KiB)
+  │   main.js (593.924 KiB)
+  │   67.js (886.888 KiB)
+  │   dbdfd306f73db9ae.wasm (10.184 MiB)
+  │   manual/images/18-ai-modeling-result.png (355.723 KiB)
+  │   vendor-three.js (593.541 KiB)
+  │   manual/images/00-overview.png (453.188 KiB)
+  │   576.js (452.697 KiB)
+
+WARNING in ⚠ entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (500.000 KiB). This can impact web performance.
+  │ Entrypoints:
+  │   main (600.047 KiB)
+  │       main.js
+  │       main.css
+
+Rspack compiled with 2 warnings in 27.46 s
+[build-plugins] Plugins source: /Volumes/DATA_SSD/Projects/autocad-dunvex/plugins
+[build-plugins] Output target:  /Volumes/DATA_SSD/Projects/autocad-dunvex/dist/plugins
+[build-plugins] Building plugins...
+
+[build-plugins] Building plugin: macro
+Rspack compiled successfully in 36.42 s
+[build-plugins] Copying /Volumes/DATA_SSD/Projects/autocad-dunvex/plugins/macro → /Volumes/DATA_SSD/Projects/autocad-dunvex/dist/plugins/macro
+[build-plugins] ✅ macro built and copied
+
+[build-plugins] Building plugin: visual-programming
+WARNING in ⚠ asset size limit: The following asset(s) exceed the recommended size limit (300.000 KiB). This can impact web performance.
+  │ Assets:
+  │   main.js (3.039 MiB)
+
+WARNING in ⚠ entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (500.000 KiB). This can impact web performance.
+  │ Entrypoints:
+  │   main (3.043 MiB)
+  │       main.js
+  │       main.css
+
+WARNING in ⚠ Rspack performance recommendations:
+  │ You can limit the size of your bundles by using import() to lazy load some parts of your application.
+  │ For more info visit https://rspack.rs/guide/optimization/code-splitting
+
+Rspack compiled with 3 warnings in 34.16 s
+[build-plugins] Copying /Volumes/DATA_SSD/Projects/autocad-dunvex/plugins/visual-programming → /Volumes/DATA_SSD/Projects/autocad-dunvex/dist/plugins/visual-programming
+[build-plugins] ✅ visual-programming built and copied
+
+[build-plugins] All plugins built successfully.
+EXIT=0

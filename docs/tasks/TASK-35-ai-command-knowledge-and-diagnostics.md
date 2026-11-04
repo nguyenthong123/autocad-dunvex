@@ -141,7 +141,7 @@ Yêu cầu:
 
 - **Ngày thực hiện:** 2026-11-04
 - **Trạng thái:** `[?] WAITING_REVIEW`
-- **Mã Commit SHA:** `PENDING_COMMIT`
+- **Mã Commit SHA:** `6166bc50e9323efda1a7a0bbf3dc1d798a7ea391`
 - **Trạng thái Deploy:** `CHƯA DEPLOY` (Tuân thủ quy tắc: Không tự ý deploy lên VPS khi chưa có lệnh của Reviewer/Chủ dự án)
 - **CHƯA KIỂM:**
   - Chưa kiểm tra tương tác thực tế của người dùng trên trình duyệt thật (end-to-end browser click); toàn bộ kiểm tra được thực thi qua unit tests tự động (Rstest + Happy-DOM mock và headless chrome scenarios).

@@ -1,0 +1,72 @@
+CMD: npx rstest packages/ai/test/agentLoopOfflineHarness.test.ts
+COMMIT: f10debe17f493f92aa324bbb60debdd82dce4fd9
+TIME: 2026-11-04T06:42:40Z
+  Rstest v0.10.0
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 1: run_program creates box -> model attempts stop -> nudged exactly 2 times -> finishes unverified
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 1: run_program creates box -> model attempts stop -> nudged exactly 2 times -> finishes unverified
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 1: run_program creates box -> model attempts stop -> nudged exactly 2 times -> finishes unverified
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 1: run_program creates box -> model attempts stop -> nudged exactly 2 times -> finishes unverified
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 2: run_program creates box -> model calls measure_nodes -> NO nudges
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 2: run_program creates box -> model calls measure_nodes -> NO nudges
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 2: run_program creates box -> model calls measure_nodes -> NO nudges
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag)
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag)
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag)
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag)
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag)
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 4: run_program errors -> flag NOT set, NO nudges
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agentLoopOfflineHarness.test.ts > TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 4: run_program errors -> flag NOT set, NO nudges
+[ai] tokens: usage=none stop=end_turn 0s
+
+ ✓ packages/ai/test/agentLoopOfflineHarness.test.ts (4)
+  ✓ TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 1: run_program creates box -> model attempts stop -> nudged exactly 2 times -> finishes unverified (6ms)
+  ✓ TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 2: run_program creates box -> model calls measure_nodes -> NO nudges (1ms)
+  ✓ TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 3: run_program -> get_document_state -> STILL nudged (confirms get_document_state does NOT clear flag) (1ms)
+  ✓ TASK-38: Offline Agent Loop & Verification Gate Harness > Scenario 4: run_program errors -> flag NOT set, NO nudges (105ms)
+
+ Test Files 1 passed
+      Tests 4 passed
+   Duration 2.15s (build 1.28s, tests 874ms)
+
+EXIT=0

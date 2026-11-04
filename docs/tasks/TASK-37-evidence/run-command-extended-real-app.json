@@ -1,0 +1,101 @@
+[
+    {
+        "step": 1,
+        "command": "ISOLATE",
+        "result": {
+            "success": true,
+            "executed": true,
+            "dispatched": true,
+            "completed": true,
+            "commandKey": "modify.isolateSelected",
+            "message": "Lệnh 'modify.isolateSelected' đã được thực thi hoàn tất."
+        },
+        "passed": true,
+        "details": {
+            "targetVisAfterIso": true,
+            "othersInvisible": true
+        }
+    },
+    {
+        "step": 2,
+        "command": "SHOWALL",
+        "result": {
+            "success": true,
+            "executed": true,
+            "dispatched": true,
+            "completed": true,
+            "commandKey": "modify.showAll",
+            "message": "Lệnh 'modify.showAll' đã được thực thi hoàn tất."
+        },
+        "passed": true,
+        "details": {
+            "allVisibleAfterShow": true
+        }
+    },
+    {
+        "step": 3,
+        "command": "create.folder",
+        "result": {
+            "success": true,
+            "executed": true,
+            "dispatched": true,
+            "completed": true,
+            "commandKey": "create.folder",
+            "message": "Lệnh 'create.folder' đã được thực thi hoàn tất."
+        },
+        "passed": true,
+        "details": {
+            "folderCountBefore": 2,
+            "folderCountAfter": 3
+        }
+    },
+    {
+        "step": 4,
+        "command": "modify.autoOrganizeTree",
+        "result": {
+            "success": true,
+            "executed": true,
+            "dispatched": true,
+            "completed": true,
+            "commandKey": "modify.autoOrganizeTree",
+            "message": "Lệnh 'modify.autoOrganizeTree' đã được thực thi hoàn tất."
+        },
+        "passed": true,
+        "details": {
+            "executed": true
+        }
+    },
+    {
+        "step": 5,
+        "command": "HIDE",
+        "result": {
+            "success": true,
+            "executed": true,
+            "dispatched": true,
+            "completed": true,
+            "commandKey": "modify.hideSelected",
+            "message": "Lệnh 'modify.hideSelected' đã được thực thi hoàn tất."
+        },
+        "passed": true,
+        "details": {
+            "targetVisAfterHide": false
+        }
+    },
+    {
+        "step": 6,
+        "command": "undo (guard + dispatch edit.undo)",
+        "result": {
+            "success": false,
+            "executed": false,
+            "commandKey": "edit.undo",
+            "aliasMatched": "u",
+            "isDuplicateTool": true,
+            "error": "Lệnh 'edit.undo' trùng với công cụ có sẵn. Hãy sử dụng tool 'undo' để hoàn tác thay đổi một cách an toàn."
+        },
+        "passed": true,
+        "details": {
+            "isDuplicateTool": true,
+            "targetVisAfterUndo": true
+        }
+    }
+]

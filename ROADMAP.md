@@ -81,6 +81,8 @@ packages/web ──> packages/builder ──> packages/app ───────
 | **TASK-35** | Xây dựng bộ tri thức lệnh và quy trình thao tác cho AI: hiểu precondition/ràng buộc hình học từ Sổ tay đã Việt hóa, hướng dẫn người dùng, kiểm chứng sau lệnh, báo cáo lỗi runtime vào file và bộ nhớ ngắn hạn | `[?] WAITING_REVIEW` | [docs/tasks/TASK-35-ai-command-knowledge-and-diagnostics.md](./docs/tasks/TASK-35-ai-command-knowledge-and-diagnostics.md) |
 | **TASK-36** | Cổng Hậu kiểm Bắt buộc sau khi Ghi (`Verification Gate`), Bổ sung Tool `bom_report` / `classify_material` / `run_command` (có Precheck từ `command-guide`) & Thanh trạng thái Bộ nhớ / Báo lỗi trên `ChatPanel` | `[?] WAITING_REVIEW` | [docs/tasks/TASK-36-ai-verification-gate-bom-and-command-tools.md](./docs/tasks/TASK-36-ai-verification-gate-bom-and-command-tools.md) |
 | **TASK-37** | Bằng chứng thực tế trên app thật: Parity 100% giữa bom_report (AI) và computeBomReport (UI), kiểm thử an toàn run_command và đánh giá Cổng hậu kiểm | `[?] WAITING_REVIEW` | [docs/tasks/TASK-37-ai-run-command-and-bom-parity-evidence.md](./docs/tasks/TASK-37-ai-run-command-and-bom-parity-evidence.md) |
+| **TASK-38** | Kiểm thử Offline Agent Loop & Cổng Hậu kiểm: Test Harness với Scripted Provider không cần mạng/khóa LLM, đo lường xác minh và giới hạn thực thi | `[?] WAITING_REVIEW` | [docs/tasks/TASK-38-ai-agent-loop-offline-harness.md](./docs/tasks/TASK-38-ai-agent-loop-offline-harness.md) |
+| **TASK-39** | Đổi thương hiệu hiển thị Chili3D → ZBuild và logo quả ớt đỏ → chữ Z màu vàng (chỉ phần người dùng thấy; giữ nguyên tên nội bộ, khóa lưu trữ, đuôi file, giấy phép) | `[ ] TODO` | [docs/tasks/TASK-39-rebrand-chili3d-to-zbuild.md](./docs/tasks/TASK-39-rebrand-chili3d-to-zbuild.md) |
 
 ---
 

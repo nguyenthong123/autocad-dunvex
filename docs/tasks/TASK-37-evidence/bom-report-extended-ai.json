@@ -1,0 +1,75 @@
+{
+    "summary": {
+        "totalTypes": 4,
+        "totalPieces": 5,
+        "totalLengthM": 1.1,
+        "totalAreaM2": 0.18
+    },
+    "items": [
+        {
+            "id": "Gỗ sồi___#8b5a2b___200 × 60 × 30 mm",
+            "materialName": "Gỗ sồi",
+            "materialColor": "#8b5a2b",
+            "dimensions": "200 × 60 × 30 mm",
+            "lengthMm": 200,
+            "widthMm": 60,
+            "thicknessMm": 30,
+            "form": "bar",
+            "unit": "piece",
+            "count": 1,
+            "totalLengthM": 0.2,
+            "totalAreaM2": 0.01,
+            "nodeIds": ["060U037T2mkxTFRlzml-J"],
+            "hiddenCount": 0
+        },
+        {
+            "id": "LightGray___#dedede___100 × 50 × 20 mm",
+            "materialName": "LightGray",
+            "materialColor": "#dedede",
+            "dimensions": "100 × 50 × 20 mm",
+            "lengthMm": 100,
+            "widthMm": 50,
+            "thicknessMm": 20,
+            "form": "block",
+            "unit": "piece",
+            "count": 2,
+            "totalLengthM": 0.2,
+            "totalAreaM2": 0.01,
+            "nodeIds": ["cPXWmlnfjka8FA9nL5mDa", "yJbUAA_DTuiAb4gFH7uJw"],
+            "hiddenCount": 0
+        },
+        {
+            "id": "LightGray___#dedede___500 × 300 × 18 mm",
+            "materialName": "LightGray",
+            "materialColor": "#dedede",
+            "dimensions": "500 × 300 × 18 mm",
+            "lengthMm": 500,
+            "widthMm": 300,
+            "thicknessMm": 18,
+            "form": "sheet",
+            "unit": "piece",
+            "count": 1,
+            "totalLengthM": 0.5,
+            "totalAreaM2": 0.15,
+            "nodeIds": ["6qhtQoCIAwp3cBzSi7jVI"],
+            "hiddenCount": 0
+        },
+        {
+            "id": "Thép hộp___#4682b4___200 × 60 × 30 mm",
+            "materialName": "Thép hộp",
+            "materialColor": "#4682b4",
+            "dimensions": "200 × 60 × 30 mm",
+            "lengthMm": 200,
+            "widthMm": 60,
+            "thicknessMm": 30,
+            "form": "bar",
+            "unit": "piece",
+            "count": 1,
+            "totalLengthM": 0.2,
+            "totalAreaM2": 0.01,
+            "nodeIds": ["ukJ-GsLRvc5B43UeZGhq9"],
+            "hiddenCount": 0
+        }
+    ],
+    "markdownTable": "| STT | Tên vật tư / Mô tả | Quy cách (L×W×T mm) | Dạng | SL (cái) | Mét dài (m) | Diện tích (m²) |\n| :---: | :--- | :--- | :---: | :---: | :---: | :---: |\n| 1 | Gỗ sồi | 200 × 60 × 30 mm | bar | 1 | 0.20 | 0.01 |\n| 2 | LightGray | 100 × 50 × 20 mm | block | 2 | 0.20 | 0.01 |\n| 3 | LightGray | 500 × 300 × 18 mm | sheet | 1 | 0.50 | 0.15 |\n| 4 | Thép hộp | 200 × 60 × 30 mm | bar | 1 | 0.20 | 0.01 |\n| **Tổng** | **4 quy cách** | - | - | **5** | **1.10** | **0.18** |"
+}

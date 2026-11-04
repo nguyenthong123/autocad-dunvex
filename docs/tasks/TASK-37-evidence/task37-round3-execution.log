@@ -1,0 +1,48 @@
+CMD: node scripts/verifyTask37Round3.mjs
+COMMIT: f10debe17f493f92aa324bbb60debdd82dce4fd9
+TIME: 2026-11-04T06:42:07Z
+=== BẮT ĐẦU KIỂM THỬ THỰC TẾ ROUND 3 TRÊN APP THẬT (TASK-37) ===
+URL: http://localhost:8080
+Thư mục lưu evidence: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence
+Thư mục lưu ảnh chụp: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence/screens
+
+[1/6] Khởi động trình duyệt headless và chờ Chili3D sẵn sàng...
+      Chili3D đã sẵn sàng (đã nạp kernel WASM + __chiliTest).
+[2/6] Mở tài liệu mới (doc.new)...
+      Tài liệu đã mở, viewport canvas đã sẵn sàng.
+
+[3/6] B1: Kiểm tra Parity Mở rộng giữa bom_report (AI) và computeBomReport (UI)...
+      Đã lưu Extended UI BOM: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence/bom-report-extended-ui.json
+      Đã lưu Extended AI BOM: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence/bom-report-extended-ai.json
+      Số dòng UI BOM: 4, Số dòng AI BOM: 4
+      ✅ Hai khối hộp cùng cỡ (100x50x20) gom nhóm chuẩn xác: count = 2
+      ✅ Hai khối cùng cỡ nhưng khác vật liệu tách thành 2 dòng riêng: Gỗ sồi (#8b5a2b) và Thép hộp (#4682b4)
+      ✅ Đối tượng ẩn (boxHidden) và trong folder ẩn (boxInFolder) đã được lọc bỏ an toàn
+      ✅ Khi chỉ định target nodeIds, đối tượng ẩn được tính và đánh dấu hiddenCount = 1 chuẩn xác
+      => KẾT QUẢ B1: PARITY MỞ RỘNG ĐẠT CHUẨN 100%.
+
+[4/6] B2: Kiểm tra Bộ Lệnh Mở rộng với run_command trên app thật...
+      Đã lưu kết quả Extended run_command: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence/run-command-extended-real-app.json
+      Bước 1 [ISOLATE]: ✅ PASSED
+      Bước 2 [SHOWALL]: ✅ PASSED
+      Bước 3 [create.folder]: ✅ PASSED
+      Bước 4 [modify.autoOrganizeTree]: ✅ PASSED
+      Bước 5 [HIDE]: ✅ PASSED
+      Bước 6 [undo (guard + dispatch edit.undo)]: ✅ PASSED
+      => KẾT QUẢ B2: TOÀN BỘ 6 LỆNH THỰC THI CHUẨN XÁC TRÊN APP THẬT.
+
+[5/6] B3: Chụp ảnh màn hình thực tế (CDP Page.captureScreenshot)...
+      ✅ Đã chụp Screen 1: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence/screens/screen-1-chatpanel-memory-bar.png
+      ✅ Đã chụp Screen 2: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence/screens/screen-2-memory-unverified.png
+      ✅ Đã chụp Screen 3: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence/screens/screen-3-ai-error-diagnostics.png
+      => KẾT QUẢ B3: ĐÃ CHỤP ĐẦY ĐỦ 3 ẢNH MÀN HÌNH THỰC TẾ.
+
+[6/6] B4: Trạng thái Khóa LLM & Cổng Injection ChatPanel:
+      ⚠️  Live LLM Endpoint: CHƯA KIỂM — thiếu khóa LLM (không giả lập kết quả thành công).
+      ⚠️  ChatPanel Custom Provider Injection: CHƯA KIỂM trên app thật.
+          Lý do kỹ thuật: ChatPanel khởi tạo config trực tiếp từ form UI, chưa có cổng injection runtime
+          cho custom LLMProvider. Đã được kiểm chứng offline 100% qua test harness độc lập
+          (packages/ai/test/agentLoopOfflineHarness.test.ts) với ScriptedProvider.
+
+=== HOÀN TẤT KIỂM THỬ ROUND 3 TRÊN APP THẬT THÀNH CÔNG ===
+EXIT=0
