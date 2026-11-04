@@ -456,13 +456,6 @@ function extractVerifiedTargets(
         return verified;
     }
 
-    let args: WriteToolArgs | undefined;
-    try {
-        args = JSON.parse(rawArgs) as WriteToolArgs;
-    } catch {
-        // non json
-    }
-
     if (toolName === "measure_nodes") {
         const nodeList = Array.isArray(parsedContent.nodes)
             ? parsedContent.nodes
@@ -478,9 +471,6 @@ function extractVerifiedTargets(
                     if (typeof node.name === "string") verified.push(node.name);
                 }
             }
-            if (args && Array.isArray(args.nodeIds)) {
-                for (const id of args.nodeIds) if (typeof id === "string") verified.push(id);
-            }
         }
     } else if (toolName === "get_node_properties") {
         const nodeList = Array.isArray(parsedContent.nodes) ? parsedContent.nodes : [];
@@ -493,9 +483,6 @@ function extractVerifiedTargets(
                     if (typeof node.name === "string") verified.push(node.name);
                 }
             }
-            if (args && Array.isArray(args.ids)) {
-                for (const id of args.ids) if (typeof id === "string") verified.push(id);
-            }
         }
     } else if (toolName === "bom_report") {
         const items = Array.isArray(parsedContent.items) ? parsedContent.items : [];
@@ -504,9 +491,8 @@ function extractVerifiedTargets(
                 if (Array.isArray(item.nodeIds)) {
                     for (const id of item.nodeIds) if (typeof id === "string") verified.push(id);
                 }
-            }
-            if (args && Array.isArray(args.nodeIds)) {
-                for (const id of args.nodeIds) if (typeof id === "string") verified.push(id);
+                if (typeof item.nodeId === "string") verified.push(item.nodeId);
+                if (typeof item.name === "string") verified.push(item.name);
             }
         }
     } else if (toolName === "classify_material") {
@@ -516,18 +502,13 @@ function extractVerifiedTargets(
                 if (typeof item.nodeId === "string") verified.push(item.nodeId);
                 if (typeof item.name === "string") verified.push(item.name);
             }
-            if (args && Array.isArray(args.nodeIds)) {
-                for (const id of args.nodeIds) if (typeof id === "string") verified.push(id);
-            }
         }
     } else if (toolName === "run_program") {
         if (parsedContent.results && typeof parsedContent.results === "object") {
-            if (args && Array.isArray(args.ops)) {
-                for (const op of args.ops) {
-                    if (op && typeof op === "object") {
-                        if (typeof op.id === "string") verified.push(op.id);
-                        if (typeof op.name === "string") verified.push(op.name);
-                    }
+            const resObj = parsedContent.results as Record<string, unknown>;
+            for (const [key, val] of Object.entries(resObj)) {
+                if (val !== undefined && val !== null) {
+                    verified.push(key);
                 }
             }
         }
@@ -537,7 +518,7 @@ function extractVerifiedTargets(
 }
 
 function matchesTarget(target: string, verifiedList: string[]): boolean {
-    if (target === "*") return verifiedList.length > 0;
+    if (target === "*") return false;
     const targetLower = target.toLowerCase();
     return verifiedList.some((v) => v === target || v.toLowerCase() === targetLower);
 }

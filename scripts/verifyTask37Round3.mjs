@@ -476,17 +476,20 @@ async function runVerification() {
 
         // 1. Screen 1: ChatPanel với thanh memoryStatusBar
         const screen1Path = join(SCREENS_DIR, "screen-1-chatpanel-memory-bar.png");
-        await page.evaluate(`(() => {
+        const bar1Text = await page.evaluate(`(() => {
             const chat = document.querySelector("chili-ai-chat");
             if (chat && chat.updateMemoryStatusBar) chat.updateMemoryStatusBar();
+            const bar = chat?.querySelector("div[class*='memoryStatusBar']");
+            return bar ? bar.textContent.trim() : "";
         })()`);
         await page.settled();
+        console.log(`      [DOM Verify Screen 1] Nội dung thanh trạng thái: "${bar1Text}"`);
         await page.captureScreenshot(screen1Path);
         console.log(`      ✅ Đã chụp Screen 1: ${screen1Path}`);
 
         // 2. Screen 2: Cập nhật lastVerification unverified -> hiển thị "⚠️ Chưa kiểm chứng"
         const screen2Path = join(SCREENS_DIR, "screen-2-memory-unverified.png");
-        await page.evaluate(`(async () => {
+        const bar2Text = await page.evaluate(`(async () => {
             const api = await globalThis.__chiliTest.getSessionMemoryApi();
             api.updateSessionMemory({
                 goal: "Thiết kế chi tiết máy",
@@ -499,14 +502,20 @@ async function runVerification() {
             });
             const chat = document.querySelector("chili-ai-chat");
             if (chat && chat.updateMemoryStatusBar) chat.updateMemoryStatusBar();
+            const bar = chat?.querySelector("div[class*='memoryStatusBar']");
+            return bar ? bar.textContent.trim() : "";
         })()`);
         await page.settled();
+        if (!bar2Text.includes("Chưa kiểm chứng")) {
+            throw new Error(`Screen 2 DOM check failed: expected "Chưa kiểm chứng", got "${bar2Text}"`);
+        }
+        console.log(`      [DOM Verify Screen 2] Đã xác nhận "Chưa kiểm chứng": "${bar2Text}"`);
         await page.captureScreenshot(screen2Path);
         console.log(`      ✅ Đã chụp Screen 2: ${screen2Path}`);
 
         // 3. Screen 3: Ghi nhận lỗi runtime error -> hiển thị nút "⚠️ Lỗi AI (1)", click mở tab Chẩn đoán lỗi
         const screen3Path = join(SCREENS_DIR, "screen-3-ai-error-diagnostics.png");
-        await page.evaluate(`(async () => {
+        const bar3Text = await page.evaluate(`(async () => {
             const api = await globalThis.__chiliTest.getSessionMemoryApi();
             api.recordRuntimeError({
                 source: "agent_loop",
@@ -521,22 +530,25 @@ async function runVerification() {
             if (chat && chat.updateMemoryStatusBar) chat.updateMemoryStatusBar();
             // Click vào nút lỗi để mở cửa sổ Chẩn đoán lỗi
             const errBtn = chat?.querySelector("button[class*='memoryErrorBtn']");
+            const btnText = errBtn ? errBtn.textContent.trim() : "";
             if (errBtn) {
                 errBtn.click();
             } else {
                 // Dispatch event thủ công nếu nút ẩn
                 globalThis.PubSub.default.pub("showManual", "diagnostics");
             }
+            return btnText;
         })()`);
         await page.settled();
         // Chờ modal/tab chẩn đoán hiển thị
         await new Promise((r) => setTimeout(r, 600));
+        console.log(`      [DOM Verify Screen 3] Đã kiểm tra nút lỗi AI: "${bar3Text}"`);
         await page.captureScreenshot(screen3Path);
         console.log(`      ✅ Đã chụp Screen 3: ${screen3Path}`);
 
         // 4. Screen 4: Ca hồi quy 1: Tạo A rồi đo B -> vẫn chờ hậu kiểm ("⚠️ Chưa kiểm chứng")
         const screenRegUnverifiedPath = join(SCREENS_DIR, "screen-regression-measuring-other-unverified.png");
-        await page.evaluate(`(async () => {
+        const barReg1Text = await page.evaluate(`(async () => {
             const api = await globalThis.__chiliTest.getSessionMemoryApi();
             api.updateSessionMemory({
                 goal: "Tạo chi tiết A và kiểm tra",
@@ -549,8 +561,16 @@ async function runVerification() {
             });
             const chat = document.querySelector("chili-ai-chat");
             if (chat && chat.updateMemoryStatusBar) chat.updateMemoryStatusBar();
+            const bar = chat?.querySelector("div[class*='memoryStatusBar']");
+            return bar ? bar.textContent.trim() : "";
         })()`);
         await page.settled();
+        if (!barReg1Text.includes("Chưa kiểm chứng")) {
+            throw new Error(
+                `Screen Regression 1 DOM check failed: expected "Chưa kiểm chứng", got "${barReg1Text}"`,
+            );
+        }
+        console.log(`      [DOM Verify Screen Regression 1] Đã xác nhận "Chưa kiểm chứng": "${barReg1Text}"`);
         await page.captureScreenshot(screenRegUnverifiedPath);
         console.log(
             `      ✅ Đã chụp Screen Regression 1 (Đo đối tượng khác -> Chưa kiểm chứng): ${screenRegUnverifiedPath}`,
@@ -558,7 +578,7 @@ async function runVerification() {
 
         // 5. Screen 5: Ca hồi quy 2: Tạo A rồi đo A với kết quả hợp lệ -> xác nhận thành công ("Đã kiểm chứng: measure_nodes")
         const screenRegVerifiedPath = join(SCREENS_DIR, "screen-regression-measuring-target-verified.png");
-        await page.evaluate(`(async () => {
+        const barReg2Text = await page.evaluate(`(async () => {
             const api = await globalThis.__chiliTest.getSessionMemoryApi();
             api.updateSessionMemory({
                 goal: "Tạo chi tiết A và kiểm tra",
@@ -571,8 +591,16 @@ async function runVerification() {
             });
             const chat = document.querySelector("chili-ai-chat");
             if (chat && chat.updateMemoryStatusBar) chat.updateMemoryStatusBar();
+            const bar = chat?.querySelector("div[class*='memoryStatusBar']");
+            return bar ? bar.textContent.trim() : "";
         })()`);
         await page.settled();
+        if (!barReg2Text.includes("Đã kiểm chứng") || !barReg2Text.includes("measure_nodes")) {
+            throw new Error(
+                `Screen Regression 2 DOM check failed: expected "Đã kiểm chứng", got "${barReg2Text}"`,
+            );
+        }
+        console.log(`      [DOM Verify Screen Regression 2] Đã xác nhận "Đã kiểm chứng": "${barReg2Text}"`);
         await page.captureScreenshot(screenRegVerifiedPath);
         console.log(
             `      ✅ Đã chụp Screen Regression 2 (Đo đúng đối tượng -> Đã kiểm chứng): ${screenRegVerifiedPath}`,

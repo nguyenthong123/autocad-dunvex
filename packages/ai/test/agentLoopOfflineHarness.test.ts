@@ -418,4 +418,180 @@ describe("TASK-38: Offline Agent Loop & Verification Gate Harness", () => {
         expect(mem.lastVerification?.verified).toBe(true);
         expect(mem.lastVerification?.toolName).toBe("measure_nodes");
     });
+
+    test("Regression Case 3: BOM requested for nodeA and nodeB but output only has nodeB -> nodeA must continue waiting for verification", async () => {
+        const { doc, nodes } = setupTestEnvironment();
+
+        const provider = new ScriptedLLMProvider([
+            // Turn 1: Write op modifies/creates nodeA and nodeB
+            {
+                type: "tool_calls",
+                calls: [
+                    {
+                        name: "run_program",
+                        args: {
+                            ops: [
+                                {
+                                    id: "nodeA",
+                                    name: "nodeA",
+                                    method: "box",
+                                    args: { dx: 100, dy: 50, dz: 20 },
+                                },
+                                {
+                                    id: "nodeB",
+                                    name: "nodeB",
+                                    method: "box",
+                                    args: { dx: 100, dy: 50, dz: 20 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+            // Turn 2: Model requests BOM for both nodeA and nodeB, but nodeA has been removed / omitted from results
+            {
+                type: "tool_calls",
+                calls: [
+                    {
+                        name: "bom_report",
+                        args: { nodeIds: ["nodeA", "nodeB"] },
+                    },
+                ],
+            },
+            // Turn 3: Model tries to conclude, but nodeA was not in BOM evidence
+            {
+                type: "text",
+                text: "Requested BOM for nodeA and nodeB, I am done.",
+                stopReason: "end_turn",
+            },
+            // Turn 4: Nudge 1
+            {
+                type: "text",
+                text: "Trying to stop again without nodeA verified.",
+                stopReason: "end_turn",
+            },
+            // Turn 5: Nudge 2 -> finish unverified
+            {
+                type: "text",
+                text: "Stopping now.",
+                stopReason: "end_turn",
+            },
+        ]);
+
+        // Wrap addNode so after nodeA is created, we simulate nodeA missing from document before BOM
+        const origAdd = (doc.modelManager as any).addNode;
+        (doc.modelManager as any).addNode = (n: any) => {
+            origAdd(n);
+            if (n.name === "nodeA" || (n as any).id === "nodeA") {
+                // Remove nodeA from active nodes so collectLeafNodes will only find nodeB
+                setTimeout(() => {
+                    const idx = nodes.indexOf(n);
+                    if (idx >= 0) nodes.splice(idx, 1);
+                }, 0);
+            }
+        };
+
+        const messages: ChatMessage[] = [
+            { role: "user", content: "Create nodeA and nodeB, then BOM report" },
+        ];
+        await runAgent({
+            provider,
+            config: { model: "scripted" } as any,
+            system: { stable: "system-test", volatile: "" },
+            messages,
+            tools: buildTools(),
+            callbacks: nullCallbacks,
+        });
+
+        // nodeA was not verified, so model must be nudged
+        const nudges = messages.filter(
+            (m) => m.role === "user" && m.content === NUDGE_AFTER_UNVERIFIED_WRITE,
+        );
+        expect(nudges.length).toBe(2);
+
+        const mem = getSessionMemory();
+        expect(mem.lastVerification?.verified).toBe(false);
+        expect(mem.lastVerification?.summary).toBe("UNVERIFIED");
+    });
+
+    test("Regression Case 4: unknown write target followed by inspecting arbitrary object -> status must remain unverified", async () => {
+        const { doc, nodes } = setupTestEnvironment();
+        const arbitraryBox = new EditableShapeNode({ document: doc });
+        (arbitraryBox as any).id = "arbitrary-box";
+        arbitraryBox.name = "arbitrary-box";
+        arbitraryBox.boundingBox = () =>
+            new BoundingBox(new XYZ({ x: 0, y: 0, z: 0 }), new XYZ({ x: 80, y: 80, z: 80 }));
+        nodes.push(arbitraryBox);
+
+        // Custom write tool with unknown target (name is in WRITE_TOOLS, but returns no targets in output or args)
+        const mockWriteTool = {
+            name: "run_parametric",
+            description: "Parametric op",
+            parameters: { type: "object", properties: {} },
+            handler: async () => JSON.stringify({ success: true, count: 1 }),
+        };
+
+        const provider = new ScriptedLLMProvider([
+            // Turn 1: Write op with unknown targets
+            {
+                type: "tool_calls",
+                calls: [
+                    {
+                        name: "run_parametric",
+                        args: {},
+                    },
+                ],
+            },
+            // Turn 2: Model measures an arbitrary object (arbitrary-box)
+            {
+                type: "tool_calls",
+                calls: [
+                    {
+                        name: "measure_nodes",
+                        args: { nodeIds: ["arbitrary-box"] },
+                    },
+                ],
+            },
+            // Turn 3: Model tries to conclude claiming arbitrary inspection verified the write
+            {
+                type: "text",
+                text: "I checked an arbitrary object so I am done.",
+                stopReason: "end_turn",
+            },
+            // Turn 4: Nudge 1
+            {
+                type: "text",
+                text: "Still trying to finish.",
+                stopReason: "end_turn",
+            },
+            // Turn 5: Nudge 2 -> finish unverified
+            {
+                type: "text",
+                text: "Finishing unverified.",
+                stopReason: "end_turn",
+            },
+        ]);
+
+        const tools = [...buildTools().filter((t) => t.name !== "run_parametric"), mockWriteTool];
+        const messages: ChatMessage[] = [
+            { role: "user", content: "Do unknown modification and measure arbitrary" },
+        ];
+        await runAgent({
+            provider,
+            config: { model: "scripted" } as any,
+            system: { stable: "system-test", volatile: "" },
+            messages,
+            tools,
+            callbacks: nullCallbacks,
+        });
+
+        const nudges = messages.filter(
+            (m) => m.role === "user" && m.content === NUDGE_AFTER_UNVERIFIED_WRITE,
+        );
+        expect(nudges.length).toBe(2);
+
+        const mem = getSessionMemory();
+        expect(mem.lastVerification?.verified).toBe(false);
+        expect(mem.lastVerification?.summary).toBe("UNVERIFIED");
+    });
 });
