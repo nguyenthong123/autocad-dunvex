@@ -325,7 +325,7 @@ function resolveRefEntry(
     const matchingSubRefs = [...localRefs.keys()].filter((k) => k.startsWith(`${id}#`));
     if (matchingSubRefs.length > 0) {
         throw new Error(
-            `"${id}" is a query ref list group (holding ${matchingSubRefs.length} items: ${matchingSubRefs.slice(0, 5).join(", ")}${matchingSubRefs.length > 5 ? ", ..." : ""}), not an individual subshape ref. Target an individual indexed ref like "${matchingSubRefs[0]}" from the query results.`,
+            `"${id}" is a query ref list group (holding ${matchingSubRefs.length} items: ${matchingSubRefs.slice(0, 5).join(", ")}${matchingSubRefs.length > 5 ? ", ..." : ""}), not an individual subshape ref. Target an individual indexed ref like "${matchingSubRefs[0]}" from the query results. Do not pass the group name as a single ref; inspect results[opId].refs to choose specific subshapes.`,
         );
     }
 
@@ -341,7 +341,7 @@ function resolveRefEntry(
         const requestedIdx = Number(id.slice(hashIndex + 1));
         if (!Number.isNaN(requestedIdx) && requestedIdx >= subRefs.length) {
             throw new Error(
-                `Unknown ref "${id}". The query op "${prefix}" only produced ${subRefs.length} sub-shapes (${subRefs.join(", ")}). Index ${requestedIdx} is out of range.`,
+                `Unknown ref "${id}". The query op "${prefix}" only produced ${subRefs.length} sub-shapes (${subRefs.join(", ")}). Index ${requestedIdx} is out of range. Do not batch assumptions about sub-shape counts in the same turn as shape.findSubShapes. First run shape.findSubShapes alone, read results[opId].refs to inspect actual sub-shapes, then query only the returned refs.`,
             );
         }
     }
@@ -524,7 +524,7 @@ function coerceMissing(p: ShapeCapabilityParam): unknown {
     }
     if (p.name === "u" || p.name === "v") {
         throw new Error(
-            `Missing required parameter "${p.name}". Both "u" and "v" surface parametric coordinates are required for face.normal. Query surface bounds with face.surface -> surface.uvBounds, or use u=0, v=0 / midpoint for planar faces.`,
+            `Missing required parameter "${p.name}". Both "u" and "v" surface parametric coordinates are required for face.normal. Query surface bounds with face.surface -> surface.bounds, or use u=0, v=0 / midpoint for planar faces.`,
         );
     }
     throw new Error(I18n.translate("ai.error.missingParam", p.name));
@@ -576,23 +576,43 @@ function coerceGeometry(p: ShapeCapabilityParam, v: unknown): unknown {
 }
 
 /**
- * Inline plane literal: { origin?, normal?, xvec? }. Without a normal it is an XY-oriented
- * plane through origin (default: the world XY plane); with a normal, xvec defaults to unitX
- * (unitY when the normal is parallel to unitX).
+ * Inline plane literal: "XY" | "YZ" | "ZX" | { origin?, normal?, xvec? }. Without a normal
+ * it is an XY-oriented plane through origin (default: the world XY plane); with a normal,
+ * xvec defaults to a horizontal perpendicular vector ensuring in-plane yvec (normal.cross(xvec))
+ * points along World Up (+Z) for vertical/inclined walls.
  */
 function coercePlane(label: string, v: unknown): Plane {
+    if (typeof v === "string") {
+        const upper = v.trim().toUpperCase();
+        if (upper === "XY") return Plane.XY;
+        if (upper === "YZ") return Plane.YZ;
+        if (upper === "ZX") return Plane.ZX;
+    }
     const p = v as { origin?: unknown; normal?: unknown; xvec?: unknown } | null;
     const origin = p?.origin !== undefined ? coerceXYZ(p.origin, `${label}.origin`) : XYZ.zero;
     if (p?.normal === undefined) {
         return Plane.XY.translateTo(origin);
     }
-    const normal = coerceXYZ(p.normal, `${label}.normal`);
-    // The Plane constructor rejects an xvec parallel to the normal — fall back to unitY then.
-    const fallbackX = normal.isParallelTo(XYZ.unitX) ? XYZ.unitY : XYZ.unitX;
+    const normal = coerceXYZ(p.normal, `${label}.normal`).normalize();
+    if (!normal || normal.isEqualTo(XYZ.zero)) {
+        throw new Error(`${label}.normal cannot be zero`);
+    }
+
+    let xvec: XYZ;
+    if (p?.xvec !== undefined) {
+        xvec = coerceXYZ(p.xvec, `${label}.xvec`);
+    } else if (normal.isParallelTo(XYZ.unitZ)) {
+        xvec = normal.z > 0 ? XYZ.unitX : XYZ.unitNX;
+    } else {
+        // Vertical or inclined wall: choose xvec so that in-plane yvec (normal.cross(xvec)) points UP (+Z)
+        const cross = XYZ.unitZ.cross(normal).normalize();
+        xvec = cross && !cross.isEqualTo(XYZ.zero) ? cross : XYZ.unitX;
+    }
+
     return new Plane({
         origin,
         normal,
-        xvec: p.xvec !== undefined ? coerceXYZ(p.xvec, `${label}.xvec`) : fallbackX,
+        xvec,
     });
 }
 

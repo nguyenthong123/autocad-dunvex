@@ -37,8 +37,15 @@ left half-built.
   Always starts a new body — there is no join/cut revolve. angle is in degrees, default 360.
 - { op: "fillet", id, body, edgeIndexes, radius }  /  { op: "chamfer", id, body, edgeIndexes, distance }
 - { op: "boolean", id, body, operation, tools }   // operation: fuse | cut | common
-  "tools" are node ids (or op ids). They are HIDDEN UNDER the body, never deleted — they stop
-  rendering but stay reachable from the body's feature list.
+  "tools" are node ids (or op ids). They must refer to an existing solid node in the document or an op id in the same program. They are HIDDEN UNDER the body, never deleted — they stop rendering but stay reachable from the body's feature list. Do not delete them with delete_node.
+
+- Cutting doors/windows on a parametric wall:
+  Route 1 (Recommended): Place a sketch directly on the planar wall face:
+    { op: "sketch", id: "doorSketch", plane: { nodeId: wallBodyId, faceIndex: frontFaceIndex }, entities: [ ...4 lines forming perimeter... ] }
+    { op: "extrude", id: "doorCut", sketch: "doorSketch", depth: wallThickness + 50, body: wallBodyId, operation: "cut" }
+    This keeps full parametric history and avoids separate cutter bodies.
+  Route 2: Parametric boolean cut:
+    Ensure the cutter body exists in the document first. Pass the cutter body id in "tools": ["cutterBodyId"].
 - { op: "editFeature", body, featureId, action, ... }
   action: "setParameter" (key, value) | "rename" (value) | "suppress" (value) | "moveTo" (index) | "remove"
 - { op: "features", body }   // reads the feature list: ids, names, parameters, errors

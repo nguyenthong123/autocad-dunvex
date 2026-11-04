@@ -36,6 +36,18 @@ const usageNotes = `## Additional Creation & Transform Ops
 
 - "solid": { "method": "solid", "args": { "shells": ["<closedShellRef>"] } }
   "shells" accepts an array of closed shell refs.
+
+- "box": { "method": "box", "args": { "plane": planeLiteral, "dx": number, "dy": number, "dz": number } }
+  "plane" can be "XY", "YZ", "ZX", or an object: { "origin": {x,y,z}, "normal": {x,y,z}, "xvec"?: {x,y,z} }.
+  For vertical planes (e.g. wall normal (0,1,0)):
+  - "dy" is along World Up (+Z): height from floor upward (e.g. 2100mm).
+  - "dz" is along normal: thickness piercing through the wall.
+  - "dx" is along the horizontal wall face.
+  Ensure cutter bounds intersect target wall in all 3 axes (X, Y, Z) before calling booleanCut.
+
+- Surface bounds & face normal:
+  Use "surface.bounds" (NOT surface.uvBounds) to query UV bounds:
+  face.surface -> surface.bounds -> face.normal.
 `;
 
 /** The catalogue, as families with what each costs to fetch. */

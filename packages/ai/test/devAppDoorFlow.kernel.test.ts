@@ -341,4 +341,162 @@ describe("Dev App Door Flow on Real OCCT/WASM Kernel", () => {
         expect(currentCount).toBe(initialCount);
         console.log("[Pristine State Verified]: Doc retains exactly original node count.");
     });
+
+    test("Real Kernel Door Cut on Facade at Negative Coordinates (Y = -157): query faces -> locate front facade -> cut through-door -> verify physical aperture", async () => {
+        console.log("--- TEST NEGATIVE COORDINATE FACADE DOOR CUT ON REAL OCCT KERNEL ---");
+        const capabilityTools = buildCapabilityTools();
+        const runProgramTool = capabilityTools.find((t) => t.name === "run_program")!;
+
+        // 1. Create real OCCT Wall Solid matching report model footprint:
+        // X in [-426, 4673] (width = 5099 mm)
+        // Y in [-357, -157] (front facade at Y = -157, thickness = 200 mm)
+        // Z in [0, 3400] (height = 3400 mm)
+        const wallPlane = Plane.XY.translateTo(new XYZ(-426, -357, 0));
+        const wallRes = factory.box(wallPlane, 5099, 200, 3400);
+        expect(wallRes.isOk).toBe(true);
+        const wallShape = wallRes.value;
+
+        const wallNode = new EditableShapeNode({
+            document: doc,
+            name: "Main Wall (Negative Y)",
+            shape: wallRes,
+        });
+        doc.modelManager.addNode(wallNode);
+        const initialVol = wallShape.volume();
+        console.log(`[OCCT Real Kernel] Wall Volume Before: ${initialVol.toFixed(2)} mm3`);
+        expect(initialVol).toBeCloseTo(3_467_320_000, 0);
+
+        // 2. Query faces via shape.findSubShapes (Step 1 of two-step workflow)
+        const findFacesRaw = await runProgramTool.handler({
+            ops: [
+                {
+                    method: "shape.findSubShapes",
+                    id: "wallFaces",
+                    target: wallNode.id,
+                    args: { subshapeType: "face" },
+                },
+            ],
+        });
+        const findFacesRes = JSON.parse(findFacesRaw as string);
+        const faceRefs = findFacesRes.results.wallFaces.refs as string[];
+        expect(faceRefs).toHaveLength(6);
+        console.log(`[OCCT Real Kernel] Found ${faceRefs.length} faces:`, faceRefs);
+
+        // 3. Inspect faces to locate front facade (normal +Y and max Y = -157)
+        // Never rely on fixed index or normal alone
+        const faceQueries = [];
+        for (let i = 0; i < faceRefs.length; i++) {
+            faceQueries.push({ method: "face.surface", target: faceRefs[i], id: `s_${i}` });
+            faceQueries.push({ method: "surface.bounds", target: `s_${i}`, id: `b_${i}` });
+        }
+        const geomResRaw = await runProgramTool.handler({ ops: faceQueries });
+        const geomRes = JSON.parse(geomResRaw as string);
+
+        let frontFaceRef: string | undefined;
+        for (let i = 0; i < faceRefs.length; i++) {
+            const bounds = geomRes.results[`b_${i}`];
+            const uMid = (bounds.u1 + bounds.u2) / 2;
+            const vMid = (bounds.v1 + bounds.v2) / 2;
+            const normRaw = await runProgramTool.handler({
+                ops: [
+                    {
+                        method: "face.normal",
+                        target: faceRefs[i],
+                        id: "fn",
+                        args: { u: uMid, v: vMid },
+                    },
+                ],
+            });
+            const normRes = JSON.parse(normRaw as string);
+            const [pt, normal] = normRes.results.fn;
+            // Front facade has normal facing +Y (outward) and is located at max Y (-157)
+            if (normal.y > 0.99 && Math.abs(pt.y - -157) < 1.0) {
+                frontFaceRef = faceRefs[i];
+                console.log(
+                    `[OCCT Real Kernel] Front Facade identified: ${frontFaceRef} at Y=${pt.y.toFixed(2)}, normal=[${normal.x}, ${normal.y}, ${normal.z}]`,
+                );
+                break;
+            }
+        }
+        expect(frontFaceRef).toBeDefined();
+
+        // 4. Create Cutter Box piercing through the wall:
+        // Door opening: width 1000 mm (X in [1000, 2000]), height 2200 mm (Z in [0, 2200])
+        // Depth: from Y = -100 to Y = -400 (spanning across Y=-157 to Y=-357)
+        const cutterPlane = Plane.XY.translateTo(new XYZ(1000, -400, 0));
+        const cutterRes = factory.box(cutterPlane, 1000, 300, 2200);
+        expect(cutterRes.isOk).toBe(true);
+
+        const cutterNode = new EditableShapeNode({
+            document: doc,
+            name: "Door Cutter Through",
+            shape: cutterRes,
+        });
+        doc.modelManager.addNode(cutterNode);
+
+        // 5. Execute Boolean Cut via run_program
+        const cutRaw = await runProgramTool.handler({
+            ops: [
+                {
+                    method: "booleanCut",
+                    id: "doorCutAperture",
+                    args: {
+                        target: wallNode.id,
+                        tool: cutterNode.id,
+                        throughCut: true,
+                    },
+                    name: "Wall with Front Door Aperture",
+                },
+            ],
+        });
+        const cutRes = JSON.parse(cutRaw as string);
+        expect(cutRes.created).toHaveLength(1);
+        expect(cutRes.removed).toHaveLength(2); // old wall and cutter consumed
+
+        const newWallId = cutRes.created[0].nodeId;
+        const newWallNode = doc.modelManager.findNodes((n) => n.id === newWallId)[0] as EditableShapeNode;
+        expect(newWallNode).toBeDefined();
+        const newWallShape = newWallNode.shape.value;
+
+        // 6. Geometry & Physical Hollow Verification:
+        // Material volume reduction = 1000 * 200 * 2200 = 440,000,000 mm3
+        const finalVol = newWallShape.volume();
+        console.log(`[OCCT Real Kernel] Wall Volume After Door Cut: ${finalVol.toFixed(2)} mm3`);
+        expect(finalVol).toBeCloseTo(3_027_320_000, 0);
+        expect(initialVol - finalVol).toBeCloseTo(440_000_000, 0);
+
+        // Physical aperture verification: point inside door opening is NOT in solid
+        const doorOpeningCenter = new XYZ(1500, -257, 1100);
+        expect(newWallShape.containsPoint(doorOpeningCenter, false)).toBe(false);
+        console.log(
+            "[Verification Evidence] Door opening center (1500, -257, 1100) is hollow (containsPoint: false).",
+        );
+
+        // Points in remaining wall and lintel ARE in solid
+        const wallBesideDoor = new XYZ(500, -257, 1100);
+        expect(newWallShape.containsPoint(wallBesideDoor, false)).toBe(true);
+        console.log(
+            "[Verification Evidence] Adjacent wall (500, -257, 1100) contains material (containsPoint: true).",
+        );
+
+        const lintelAboveDoor = new XYZ(1500, -257, 2800);
+        expect(newWallShape.containsPoint(lintelAboveDoor, false)).toBe(true);
+        console.log(
+            "[Verification Evidence] Lintel above door (1500, -257, 2800) contains material (containsPoint: true).",
+        );
+
+        // Camera viewpoint metadata for facade & oblique perspectives
+        const frontFacadeView = {
+            eye: new XYZ(2123, 2000, 1700),
+            target: new XYZ(2123, -257, 1700),
+            up: XYZ.unitZ,
+        };
+        const obliqueIsometricView = {
+            eye: new XYZ(6000, 2000, 5000),
+            target: new XYZ(2123, -257, 1700),
+            up: XYZ.unitZ,
+        };
+        console.log("[Evidence Viewpoints] Front view:", frontFacadeView);
+        console.log("[Evidence Viewpoints] Oblique isometric view:", obliqueIsometricView);
+    });
 });

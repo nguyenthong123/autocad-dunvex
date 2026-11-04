@@ -1,7 +1,16 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
-import { BoundingBox, EditableShapeNode, Matrix4, Plane, Result, ShapeTypes, XYZ } from "@chili3d/core";
+import {
+    BoundingBox,
+    EditableShapeNode,
+    Matrix4,
+    Plane,
+    Result,
+    type ShapeType,
+    ShapeTypes,
+    XYZ,
+} from "@chili3d/core";
 import { createMockApplication, TestDocument } from "@chili3d/core/test-utils";
 import { SketchNode } from "@chili3d/parametric";
 import { rs } from "@rstest/core";
@@ -11,6 +20,7 @@ import { buildArrayTools } from "../src/tools/arrayTools";
 import { buildCapabilityTools } from "../src/tools/capabilityEngine";
 import { buildNodeTools } from "../src/tools/nodeTools";
 import { buildParametricTools } from "../src/tools/parametricTools";
+import { ScriptedLLMProvider } from "./_helpers/scriptedProvider";
 
 function createFakeEdge(start: XYZ, end: XYZ) {
     return {
@@ -1267,6 +1277,478 @@ describe("Door Modeling Errors & Recovery Regression", () => {
             ).rejects.toThrow(
                 /Node "MoeRXPNj7nkVfKJkGxdod" was consumed or removed by a previous operation.*Call get_document_state/,
             );
+        });
+    });
+
+    describe("8. Session 3 Errors: Face Queries, UV Bounds, Negative Coordinates & Ownership", () => {
+        test("shape.findSubShapes producing 8 faces: querying #8 throws explicit out-of-range guidance", async () => {
+            const capabilityTools = buildCapabilityTools();
+            const runProgramTool = capabilityTools.find((t) => t.name === "run_program")!;
+
+            const faces8 = Array.from({ length: 8 }, (_, i) => ({
+                shapeType: ShapeTypes.face,
+                isEqual: () => false,
+                area: () => 100 + i,
+            }));
+            const fakeSolid = {
+                shapeType: ShapeTypes.solid,
+                isEqual: () => false,
+                findSubShapes: rs.fn((type: ShapeType) => (type === ShapeTypes.face ? faces8 : [])),
+            };
+            const solidNode = new EditableShapeNode({
+                document: doc,
+                name: "WallsBase8",
+                shape: Result.ok(fakeSolid as any),
+            });
+            doc.modelManager.addNode(solidNode);
+
+            // Attempting to batch shape.findSubShapes and blindly query wallFacesFinal#8
+            await expect(
+                runProgramTool.handler({
+                    ops: [
+                        {
+                            method: "shape.findSubShapes",
+                            id: "wallFacesFinal",
+                            target: solidNode.id,
+                            args: { subshapeType: "face" },
+                        },
+                        {
+                            method: "face.area",
+                            id: "fa8",
+                            target: "wallFacesFinal#8",
+                        },
+                    ],
+                }),
+            ).rejects.toThrow(
+                /Unknown ref "wallFacesFinal#8"\. The query op "wallFacesFinal" only produced 8 sub-shapes.*Index 8 is out of range.*Do not batch assumptions about sub-shape counts/,
+            );
+        });
+
+        test("targeting query ref list group 'wallFacesFinal' throws explicit ref list group error", async () => {
+            const capabilityTools = buildCapabilityTools();
+            const runProgramTool = capabilityTools.find((t) => t.name === "run_program")!;
+
+            const faces8 = Array.from({ length: 8 }, (_, i) => ({
+                shapeType: ShapeTypes.face,
+                isEqual: () => false,
+                area: () => 100 + i,
+            }));
+            const fakeSolid = {
+                shapeType: ShapeTypes.solid,
+                isEqual: () => false,
+                findSubShapes: rs.fn((type: ShapeType) => (type === ShapeTypes.face ? faces8 : [])),
+            };
+            const solidNode = new EditableShapeNode({
+                document: doc,
+                name: "WallsBase8",
+                shape: Result.ok(fakeSolid as any),
+            });
+            doc.modelManager.addNode(solidNode);
+
+            await expect(
+                runProgramTool.handler({
+                    ops: [
+                        {
+                            method: "shape.findSubShapes",
+                            id: "wallFacesFinal",
+                            target: solidNode.id,
+                            args: { subshapeType: "face" },
+                        },
+                        {
+                            method: "face.area",
+                            id: "groupArea",
+                            target: "wallFacesFinal", // Group name, not indexed
+                        },
+                    ],
+                }),
+            ).rejects.toThrow(
+                /"wallFacesFinal" is a query ref list group \(holding 8 items: .*\), not an individual subshape ref.*Do not pass the group name as a single ref/,
+            );
+        });
+
+        test("two-step workflow: query shape.findSubShapes alone, read refs, then query returned refs", async () => {
+            const capabilityTools = buildCapabilityTools();
+            const runProgramTool = capabilityTools.find((t) => t.name === "run_program")!;
+
+            const faces8 = Array.from({ length: 8 }, (_, i) => ({
+                shapeType: ShapeTypes.face,
+                isEqual: () => false,
+                area: () => 200 + i * 10,
+            }));
+            const fakeSolid = {
+                shapeType: ShapeTypes.solid,
+                isEqual: () => false,
+                findSubShapes: rs.fn((type: ShapeType) => (type === ShapeTypes.face ? faces8 : [])),
+            };
+            const solidNode = new EditableShapeNode({
+                document: doc,
+                name: "WallsBase8",
+                shape: Result.ok(fakeSolid as any),
+            });
+            doc.modelManager.addNode(solidNode);
+
+            // Step 1: Query subshapes
+            const step1Raw = await runProgramTool.handler({
+                ops: [
+                    {
+                        method: "shape.findSubShapes",
+                        id: "wf",
+                        target: solidNode.id,
+                        args: { subshapeType: "face" },
+                    },
+                ],
+            });
+            const step1 = JSON.parse(step1Raw as string);
+            expect(step1.results.wf.count).toBe(8);
+            expect(step1.results.wf.refs).toHaveLength(8);
+            expect(step1.results.wf.refs).toContain("wf#0");
+            expect(step1.results.wf.refs).toContain("wf#7");
+            expect(step1.results.wf.refs).not.toContain("wf#8");
+
+            // Step 2: Query only the returned refs
+            const step2Raw = await runProgramTool.handler({
+                ops: step1.results.wf.refs.map((ref: string, i: number) => ({
+                    method: "face.area",
+                    id: `fa_${i}`,
+                    target: ref,
+                })),
+            });
+            const step2 = JSON.parse(step2Raw as string);
+            expect(step2.results.fa_0).toBe(200);
+            expect(step2.results.fa_7).toBe(270);
+        });
+
+        test("face.normal missing coordinates mentions surface.bounds (not surface.uvBounds)", async () => {
+            const capabilityTools = buildCapabilityTools();
+            const runProgramTool = capabilityTools.find((t) => t.name === "run_program")!;
+
+            const fakeFace = {
+                shapeType: ShapeTypes.face,
+                isEqual: () => false,
+                normal: rs.fn(() => [XYZ.zero, XYZ.unitZ]),
+            };
+            const faceNode = new EditableShapeNode({
+                document: doc,
+                name: "FaceNode",
+                shape: Result.ok(fakeFace as any),
+            });
+            doc.modelManager.addNode(faceNode);
+
+            await expect(
+                runProgramTool.handler({
+                    ops: [
+                        {
+                            method: "face.normal",
+                            target: faceNode.id,
+                            id: "fn",
+                            args: {},
+                        },
+                    ],
+                }),
+            ).rejects.toThrow(
+                /Missing required parameter "u"\. Both "u" and "v" surface parametric coordinates are required for face\.normal\. Query surface bounds with face\.surface -> surface\.bounds/,
+            );
+        });
+
+        test("surface.bounds -> face.normal workflow executes cleanly with valid midpoint", async () => {
+            const capabilityTools = buildCapabilityTools();
+            const runProgramTool = capabilityTools.find((t) => t.name === "run_program")!;
+
+            const fakeSurface = {
+                bounds: () => ({ u1: 0, u2: 10, v1: 0, v2: 20 }),
+            };
+            const fakeFace = {
+                shapeType: ShapeTypes.face,
+                isEqual: () => false,
+                surface: () => fakeSurface,
+                normal: rs.fn((u: number, v: number) => [new XYZ(u, v, 0), new XYZ(0, 1, 0)]),
+            };
+            const faceNode = new EditableShapeNode({
+                document: doc,
+                name: "FaceNode",
+                shape: Result.ok(fakeFace as any),
+            });
+            doc.modelManager.addNode(faceNode);
+
+            const resRaw = await runProgramTool.handler({
+                ops: [
+                    { method: "face.surface", target: faceNode.id, id: "surf" },
+                    { method: "surface.bounds", target: "surf", id: "b" },
+                    {
+                        method: "face.normal",
+                        target: faceNode.id,
+                        id: "norm",
+                        args: { u: 5, v: 10 },
+                    },
+                ],
+            });
+            const res = JSON.parse(resRaw as string);
+            expect(res.results.b).toEqual({ u1: 0, u2: 10, v1: 0, v2: 20 });
+            expect(res.results.norm[1]).toEqual({ x: 0, y: 1, z: 0 });
+        });
+
+        test("coercePlane on vertical facade with normal (0,1,0) aligns yvec along +Z (World Up)", async () => {
+            const capabilityTools = buildCapabilityTools();
+            const runProgramTool = capabilityTools.find((t) => t.name === "run_program")!;
+
+            let receivedPlane: Plane | undefined;
+            const mockFactory = {
+                box: rs.fn((plane: Plane, dx: number, dy: number, dz: number) => {
+                    receivedPlane = plane;
+                    return Result.ok({
+                        shapeType: ShapeTypes.solid,
+                        isEqual: () => false,
+                        boundingBox: () =>
+                            new BoundingBox(
+                                new XYZ(plane.origin.x, plane.origin.y, plane.origin.z),
+                                new XYZ(plane.origin.x + dx, plane.origin.y + dz, plane.origin.z + dy),
+                            ),
+                    });
+                }),
+            };
+            const app = (globalThis as any).app;
+            app.shapeProvider.factory = mockFactory;
+
+            await runProgramTool.handler({
+                ops: [
+                    {
+                        method: "box",
+                        id: "doorCutter",
+                        args: {
+                            plane: {
+                                origin: { x: 500, y: -157, z: 0 },
+                                normal: { x: 0, y: 1, z: 0 },
+                            },
+                            dx: 900,
+                            dy: 2100,
+                            dz: 400,
+                        },
+                    },
+                ],
+            });
+
+            expect(receivedPlane).toBeDefined();
+            // Normal is +Y
+            expect(receivedPlane!.normal.y).toBeCloseTo(1, 5);
+            // In-plane yvec points along +Z (World Up, height from floor)
+            expect(receivedPlane!.yvec.z).toBeCloseTo(1, 5);
+            expect(receivedPlane!.yvec.y).toBeCloseTo(0, 5);
+        });
+
+        test("misaligned cutter with negative Y target wall fails with clear bounds diagnostic and preserves doc", async () => {
+            const capabilityTools = buildCapabilityTools();
+            const runProgramTool = capabilityTools.find((t) => t.name === "run_program")!;
+
+            // Target wall at negative coordinates: X[-426, 4673], Y[-10757, -157], Z[0, 3400]
+            const wallShape = {
+                shapeType: ShapeTypes.solid,
+                isEqual: () => false,
+                volume: () => 100_000,
+                boundingBox: () => new BoundingBox(new XYZ(-426, -10757, 0), new XYZ(4673, -157, 3400)),
+            };
+            const wallNode = new EditableShapeNode({
+                document: doc,
+                name: "Door Cut Correct",
+                id: "wall-neg-1",
+                shape: Result.ok(wallShape as any),
+            });
+            doc.modelManager.addNode(wallNode);
+            const initialCount = doc.modelManager.findNodes(() => true).length;
+
+            // Cutter at disjoint coordinates: Y[-100, 500] and Z[-3050, 100] (from Error 6 in log)
+            const cutterShape = {
+                shapeType: ShapeTypes.solid,
+                isEqual: () => false,
+                volume: () => 5000,
+                boundingBox: () => new BoundingBox(new XYZ(683, -100, -3050), new XYZ(3563, 500, 100)),
+            };
+            const mockFactory = {
+                booleanCut: rs.fn(() => Result.ok(wallShape)), // Returns unchanged wall shape (0 volume removed)
+            };
+            const app = (globalThis as any).app;
+            app.shapeProvider.factory = mockFactory;
+
+            const cutterNode = new EditableShapeNode({
+                document: doc,
+                name: "CutterMisaligned",
+                id: "cutter-misaligned-1",
+                shape: Result.ok(cutterShape as any),
+            });
+            doc.modelManager.addNode(cutterNode);
+
+            await expect(
+                runProgramTool.handler({
+                    ops: [
+                        {
+                            method: "booleanCut",
+                            id: "cutFail",
+                            args: {
+                                target: "wall-neg-1",
+                                tool: "cutter-misaligned-1",
+                            },
+                        },
+                    ],
+                }),
+            ).rejects.toThrow(
+                /booleanCut did not remove any volume from target "Door Cut Correct".*Cutter does not intersect the target: cutter is completely outside target bounds.*Target bounds: X\[-426\.00, 4673\.00\], Y\[-10757\.00, -157\.00\], Z\[0\.00, 3400\.00\]\. Cutter bounds: X\[683\.00, 3563\.00\], Y\[-100\.00, 500\.00\], Z\[-3050\.00, 100\.00\]/,
+            );
+
+            // Document preserves state: cutterNode was manually added before run_program, neither wall nor cutter deleted
+            expect(doc.modelManager.findNodes((n) => n.id === "wall-neg-1")).toHaveLength(1);
+        });
+
+        test("unconsumed independent cutter node can be safely deleted or inspected", async () => {
+            const nodeTools = buildNodeTools().find((t) => t.name === "delete_node")!;
+
+            const independentCutter = new EditableShapeNode({
+                document: doc,
+                name: "Door Cutter Fixed v3",
+                shape: Result.ok({
+                    shapeType: ShapeTypes.solid,
+                    isEqual: () => false,
+                } as any),
+            });
+            doc.modelManager.addNode(independentCutter);
+
+            expect(doc.modelManager.findNodes((n) => n.id === independentCutter.id)).toHaveLength(1);
+
+            // Since it is NOT a consumed boolean tool owned by a parametric body, deletion succeeds
+            const resRaw = await nodeTools.handler({ id: independentCutter.id });
+            const res = resRaw ? JSON.parse(resRaw as string) : {};
+            expect(res.error).toBeUndefined();
+            expect(doc.modelManager.findNodes((n) => n.id === independentCutter.id)).toHaveLength(0);
+        });
+
+        test("agent receiving out-of-range ref error changes step to read real results and succeeds", async () => {
+            const faces8 = Array.from({ length: 8 }, (_, i) => ({
+                shapeType: ShapeTypes.face,
+                isEqual: () => false,
+                findSubShapes: () => [],
+                area: () => 150 + i * 10,
+            }));
+            const fakeSolid = {
+                shapeType: ShapeTypes.solid,
+                isEqual: () => false,
+                findSubShapes: rs.fn((type: ShapeType) => (type === ShapeTypes.face ? faces8 : [])),
+            };
+            const solidNode = new EditableShapeNode({
+                document: doc,
+                name: "WallsRecoveryTest",
+                shape: Result.ok(fakeSolid as any),
+            });
+            doc.modelManager.addNode(solidNode);
+
+            // Scripted Agent:
+            // Turn 1: Tries to guess face index #8 in batch and fails with out-of-range error
+            // Turn 2: Reads error, changes step: runs shape.findSubShapes alone to inspect real returned count and refs
+            // Turn 3: Reads returned 8 refs and queries face.area on actual returned faces, completing successfully
+            const allTools = [
+                ...buildCapabilityTools(),
+                ...buildNodeTools(),
+                ...buildArrayTools(),
+                ...buildParametricTools(),
+            ];
+
+            const turnIndex = 0;
+            const scriptedProvider = new ScriptedLLMProvider([
+                // Turn 1
+                {
+                    type: "tool_calls",
+                    calls: [
+                        {
+                            id: "call-1",
+                            name: "run_program",
+                            args: {
+                                ops: [
+                                    {
+                                        method: "shape.findSubShapes",
+                                        id: "wf",
+                                        target: solidNode.id,
+                                        args: { subshapeType: "face" },
+                                    },
+                                    {
+                                        method: "face.area",
+                                        id: "fa8",
+                                        target: "wf#8",
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+                // Turn 2
+                (opts) => {
+                    const lastMsg = opts.messages[opts.messages.length - 1];
+                    expect((lastMsg as any).content).toContain("Index 8 is out of range");
+                    return {
+                        type: "tool_calls",
+                        calls: [
+                            {
+                                id: "call-2",
+                                name: "run_program",
+                                args: {
+                                    ops: [
+                                        {
+                                            method: "shape.findSubShapes",
+                                            id: "realFaces",
+                                            target: solidNode.id,
+                                            args: { subshapeType: "face" },
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                    };
+                },
+                // Turn 3
+                (opts) => {
+                    const lastMsg = opts.messages[opts.messages.length - 1];
+                    expect((lastMsg as any).content).toContain('"count":8');
+                    return {
+                        type: "tool_calls",
+                        calls: [
+                            {
+                                id: "call-3",
+                                name: "run_program",
+                                args: {
+                                    ops: [
+                                        {
+                                            method: "face.area",
+                                            id: "frontArea",
+                                            target: "realFaces#0",
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                    };
+                },
+                // Final turn
+                {
+                    type: "text",
+                    text: "Successfully queried real face area on valid subshape ref.",
+                },
+            ]);
+
+            const messages: any[] = [{ role: "user", content: "Inspect walls and query face areas." }];
+            const callbacks = {
+                onTextDelta: () => {},
+                onThinkingDelta: () => {},
+                onToolCall: () => {},
+                onUsage: () => {},
+            };
+
+            await runAgent({
+                provider: scriptedProvider,
+                config: { model: "mock-model" } as any,
+                system: { stable: "system-test", volatile: "" },
+                messages,
+                tools: allTools,
+                callbacks,
+            });
+
+            const finalMsg = messages[messages.length - 1];
+            expect(finalMsg.content).toContain("Successfully queried real face area on valid subshape ref.");
         });
     });
 });

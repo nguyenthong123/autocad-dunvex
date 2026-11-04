@@ -41,9 +41,13 @@ transformedMul with zero translation is NOT a delete operation — transformedMu
 
 'unknown constraint kind "Coincident"' — the solver expects "P2PCoincident" with refs [{ entity: i, point: p1 }, { entity: j, point: p2 }].
 
-'"x" is a query ref list group' / 'query op "x" produced 0 sub-shapes' — do not pass the query id (e.g. "wallFaces") to face.area or face.normal; read results[id].refs and use individual indexed refs like "wallFaces#0". Never assume refs like "sketchEdges#0" exist when the query found 0 sub-shapes.
+'"x" is a query ref list group' / 'Index n is out of range' — Never batch shape.findSubShapes together with assumed indexed refs (like "#0", "#8") in the same run_program call. You do not know how many faces exist beforehand. First run shape.findSubShapes alone, read results[opId].refs (e.g. 8 faces -> ["#0".."#7"]), and only query those exact returned refs. Never use the group name (e.g. "wallFaces") as a single ref.
 
-'Missing required parameter "u"' / 'face.normal requires parameters "u" and "v"' — face.normal needs both surface parametric coordinates. Query UV bounds with face.surface -> surface.uvBounds or use midpoint coordinates (e.g. u=0, v=0 for planar faces).
+'Missing required parameter "u"' / 'face.normal requires parameters "u" and "v"' — face.normal needs both surface parametric coordinates. Query UV bounds with face.surface -> surface.bounds or use midpoint coordinates (e.g. u=0, v=0 for planar faces).
+
+'Cutter does not intersect the target: cutter is completely outside target bounds' — The cutter box does not overlap the wall. Check world coordinates: on vertical walls facing Y (normal (0,1,0)), ensure depth dz pierces through wall thickness (e.g. from outer to inner Y) and dy extends along +Z (height, from floor upward, e.g. Z 0 to 2100). Do not use negative Z for door heights, and verify cutter bounds overlap wall bounds before booleanCut.
+
+'unknown boolean tool "x"' in run_parametric — In run_parametric boolean cuts, "tools" must refer to an existing solid node id in the document or an op id in the same program. Verify the cutter exists before running boolean cut.
 
 "node not found: <id>" (delete_node / set_node_visible / transform_node / create_folder / move_nodes) — the node is gone, most likely consumed by an edit-style op: run_program's response "removed" lists those nodes. Do NOT retry or hide consumed nodes; call get_document_state if you need the current node list.
 
