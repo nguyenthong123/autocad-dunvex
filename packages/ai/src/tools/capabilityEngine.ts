@@ -302,6 +302,31 @@ function resolveRefEntry(
         consumed.add(node.id);
         return { nodeId: node.id, kind: "shape", value: node.shape.value };
     }
+
+    const matchingSubRefs = [...localRefs.keys()].filter((k) => k.startsWith(`${id}#`));
+    if (matchingSubRefs.length > 0) {
+        throw new Error(
+            `"${id}" is a query ref list group (holding ${matchingSubRefs.length} items: ${matchingSubRefs.slice(0, 5).join(", ")}${matchingSubRefs.length > 5 ? ", ..." : ""}), not an individual subshape ref. Target an individual indexed ref like "${matchingSubRefs[0]}" from the query results.`,
+        );
+    }
+
+    const hashIndex = id.indexOf("#");
+    if (hashIndex > 0) {
+        const prefix = id.slice(0, hashIndex);
+        const subRefs = [...localRefs.keys()].filter((k) => k.startsWith(`${prefix}#`));
+        if (subRefs.length === 0) {
+            throw new Error(
+                `Unknown ref "${id}". The query op "${prefix}" produced 0 sub-shapes (refs: []), so no indexed ref "${id}" exists. Always inspect the returned "count" and "refs" array from the query before referencing indexed sub-shapes; do not guess refs.`,
+            );
+        }
+        const requestedIdx = Number(id.slice(hashIndex + 1));
+        if (!Number.isNaN(requestedIdx) && requestedIdx >= subRefs.length) {
+            throw new Error(
+                `Unknown ref "${id}". The query op "${prefix}" only produced ${subRefs.length} sub-shapes (${subRefs.join(", ")}). Index ${requestedIdx} is out of range.`,
+            );
+        }
+    }
+
     throw new Error(I18n.translate("ai.error.unknownRef", id, summarizeRefIds(localRefs)));
 }
 
@@ -478,6 +503,11 @@ function coerceMissing(p: ShapeCapabilityParam): unknown {
     if (d !== undefined) return d;
     // Optional params fall through as undefined so the factory's own default applies.
     if (p.required === false) return undefined;
+    if (p.name === "u" || p.name === "v") {
+        throw new Error(
+            `Missing required parameter "${p.name}". Both "u" and "v" surface parametric coordinates are required for face.normal. Query surface bounds with face.surface -> surface.uvBounds, or use u=0, v=0 / midpoint for planar faces.`,
+        );
+    }
     throw new Error(I18n.translate("ai.error.missingParam", p.name));
 }
 
@@ -746,7 +776,20 @@ function runQuery(
     results: Record<string, unknown>,
 ) {
     if (!op.id) throw new Error(`query op "${op.method}" requires an id to report its result`);
-    if (op.target === undefined) throw new Error(`query op "${op.method}" requires a target`);
+    if (op.target === undefined) {
+        const candidate =
+            (op.args as any)?.target ??
+            (op.args as any)?.shape ??
+            (op.args as any)?.nodeId ??
+            (op.args as any)?.body;
+        if (candidate !== undefined) {
+            op.target = candidate;
+        } else {
+            throw new Error(
+                `query op "${op.method}" requires a target — specify { "method": "${op.method}", "target": "<nodeId or ref>", "id": "${op.id}" }`,
+            );
+        }
+    }
 
     const entry = resolveQueryTarget(cap, op.target, doc, localRefs);
     const target = entry.value as Record<string, unknown>;

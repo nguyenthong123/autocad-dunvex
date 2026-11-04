@@ -2,6 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 import {
+    BoundingBox,
     contourEdges,
     type EdgeMeshData,
     type I18nKeys,
@@ -28,7 +29,7 @@ import {
     ViewUtils,
     VisualConfig,
     type VisualItemConfig,
-    type XYZ,
+    XYZ,
 } from "@chili3d/core";
 import { allProfiles, sketchProfiles } from "../features/profileBuilder";
 import { syncNodeWatches } from "../nodeWatch";
@@ -120,6 +121,95 @@ export class SketchNode extends ParameterShapeNode {
 
     override applyTransform(): boolean {
         return false;
+    }
+
+    override boundingBox(): BoundingBox | undefined {
+        try {
+            const fromMesh = super.boundingBox();
+            if (fromMesh !== undefined) return fromMesh;
+        } catch {
+            // When mesh creation is not available (e.g. headless/mock tests), fallback to entity bounds
+        }
+        return this.computeEntityBoundingBox();
+    }
+
+    /**
+     * Fallback world-space bounding box derived directly from sketch entities
+     * when the 3D mesh is not yet populated or represents 2D wire geometry.
+     * Returns undefined if the sketch is empty or contains no measurable geometry.
+     */
+    private computeEntityBoundingBox(): BoundingBox | undefined {
+        let data: SketchData | undefined;
+        try {
+            data = this.data;
+        } catch {
+            return undefined;
+        }
+        if (!data || !Array.isArray(data.entities) || data.entities.length === 0) {
+            return undefined;
+        }
+
+        const points: XYZ[] = [];
+        const plane = this.plane;
+
+        for (const entity of data.entities) {
+            const p = entity.params;
+            if (!Array.isArray(p) || p.some((n) => typeof n !== "number" || !Number.isFinite(n))) {
+                continue;
+            }
+            switch (entity.type) {
+                case "line": {
+                    if (p.length >= 4) {
+                        points.push(toWorld(plane, p[0], p[1]));
+                        points.push(toWorld(plane, p[2], p[3]));
+                    }
+                    break;
+                }
+                case "circle": {
+                    if (p.length >= 3 && p[2] > 0) {
+                        const [cx, cy, r] = p;
+                        const center = toWorld(plane, cx, cy);
+                        const rx = r * Math.sqrt(plane.xvec.x * plane.xvec.x + plane.yvec.x * plane.yvec.x);
+                        const ry = r * Math.sqrt(plane.xvec.y * plane.xvec.y + plane.yvec.y * plane.yvec.y);
+                        const rz = r * Math.sqrt(plane.xvec.z * plane.xvec.z + plane.yvec.z * plane.yvec.z);
+                        points.push(new XYZ(center.x - rx, center.y - ry, center.z - rz));
+                        points.push(new XYZ(center.x + rx, center.y + ry, center.z + rz));
+                    }
+                    break;
+                }
+                case "arc": {
+                    if (p.length >= 6) {
+                        const [cx, cy, sx, sy, ex, ey] = p;
+                        points.push(toWorld(plane, sx, sy));
+                        points.push(toWorld(plane, ex, ey));
+                        const r = Math.hypot(sx - cx, sy - cy);
+                        const startAngle = Math.atan2(sy - cy, sx - cx);
+                        let sweep = Math.atan2(ey - cy, ex - cx) - startAngle;
+                        if (sweep <= 0) sweep += 2 * Math.PI;
+                        const steps = Math.min(16, Math.max(4, Math.ceil(sweep / (Math.PI / 4))));
+                        for (let i = 1; i < steps; i++) {
+                            const theta = startAngle + (sweep * i) / steps;
+                            points.push(toWorld(plane, cx + r * Math.cos(theta), cy + r * Math.sin(theta)));
+                        }
+                    }
+                    break;
+                }
+                case "ellipse":
+                case "ellipseArc":
+                case "conic":
+                case "bezier":
+                case "nurbs": {
+                    for (let i = 0; i + 1 < p.length; i += 2) {
+                        points.push(toWorld(plane, p[i], p[i + 1]));
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (points.length === 0) return undefined;
+        const box = BoundingBox.fromPoints(points);
+        return this.transform.equals(Matrix4.identity()) ? box : BoundingBox.transformed(box, this.transform);
     }
 
     @serialize()

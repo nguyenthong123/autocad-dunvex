@@ -69,9 +69,27 @@ solvable. "entity" is the 1-based position of the entity in "entities"; "point" 
 type (line: 0=start 1=end; circle: 0=center; arc: 0=center 1=start 2=end; ellipse: 0=center
 1=major-axis point 2=minor-axis point; ellipseArc: an ellipse's 0-2 plus 3=start 4=end;
 conic: 0=start 1=control 2=end; bezier and nurbs: the control point index).
+For coincident points, use "P2PCoincident" (NEVER "Coincident"):
   { kind: "P2PCoincident", refs: [{entity:1,point:1},{entity:2,point:0}] }   // join two endpoints
   { kind: "Horizontal", refs: [{entity:1,point:0},{entity:1,point:1}] }
   { kind: "P2PDistance", refs: [{entity:1,point:0},{entity:2,point:0}], datum: 40 }
+
+Example — Constrained rectangle (e.g. 800x2000 door opening) formed by 4 lines and P2PCoincident corners:
+  { op: "sketch", id: "doorSketch", plane: "XY", name: "Door Outline",
+    entities: [
+      { type: "line", params: [0, 0, 800, 0] },         // Entity 1: bottom (0,0)->(800,0)
+      { type: "line", params: [800, 0, 800, 2000] },    // Entity 2: right  (800,0)->(800,2000)
+      { type: "line", params: [800, 2000, 0, 2000] },   // Entity 3: top    (800,2000)->(0,2000)
+      { type: "line", params: [0, 2000, 0, 0] }         // Entity 4: left   (0,2000)->(0,0)
+    ],
+    constraints: [
+      { kind: "P2PCoincident", refs: [{ entity: 1, point: 1 }, { entity: 2, point: 0 }] }, // corner (800,0)
+      { kind: "P2PCoincident", refs: [{ entity: 2, point: 1 }, { entity: 3, point: 0 }] }, // corner (800,2000)
+      { kind: "P2PCoincident", refs: [{ entity: 3, point: 1 }, { entity: 4, point: 0 }] }, // corner (0,2000)
+      { kind: "P2PCoincident", refs: [{ entity: 4, point: 1 }, { entity: 1, point: 0 }] }  // corner (0,0)
+    ]
+  }
+
 Dimension kinds take a "datum" — a number or an expression, as above. A conic's shape is driven with
 { kind: "ConicRho", refs: [{entity:1,point:0}], datum: 0.5 }, and tangency between curves uses the
 Tangent* kinds (TangentLineEllipse, TangentCircleBezier, TangentConicConic, ... — one per pair of
@@ -80,6 +98,11 @@ Coincident endpoints, Horizontal/Vertical and a few dimensions are enough for a 
 an under-constrained sketch still works, it just has free degrees of freedom.
 
 Limits and recovery:
+- Never pass a SketchNode ID to "body" in editFeature or features ops: sketches are 2D inputs and do NOT
+  hold a 3D feature list. To edit a 3D feature, pass the ParametricBodyNode ID. To create 3D geometry from
+  a sketch, pass its ID to "sketch" in an "extrude" or "revolve" op.
+- No primitive "rect" entity exists in sketch schema: construct rectangles with 4 closed "line" entities.
+- For coincident point constraints, always use "P2PCoincident" (never "Coincident").
 - Only whole sketches are extruded; individual profiles of a sketch cannot be selected (a hole in a
   sketch is a hole, not a separate extrusion). To cut a pocket, extrude a second sketch with
   operation "cut", or cut with a separate body via the boolean op.

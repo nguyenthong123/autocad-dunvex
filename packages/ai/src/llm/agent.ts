@@ -486,7 +486,7 @@ function extractWriteTargets(
     return targets;
 }
 
-function extractVerifiedEvidence(
+export function extractVerifiedEvidence(
     toolName: string,
     rawArgs: string,
     parsedContent: ToolOutputShape | undefined,

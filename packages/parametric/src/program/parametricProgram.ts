@@ -255,7 +255,12 @@ function runOp(state: State, op: ParametricOp): void {
 /** Resolves an op id (or a plain node id) to a node. */
 function resolveNode(state: State, ref: unknown, what: string): INode {
     const key = String(ref ?? "");
-    if (key === "") throw new Error(`${what} is required`);
+    if (key === "") {
+        if (what === "body") {
+            throw new Error("body is required — pass the ParametricBodyNode id (or body op id)");
+        }
+        throw new Error(`${what} is required`);
+    }
     const id = state.refs.get(key) ?? key;
     const node = state.document.modelManager.findNodes((n) => n.id === id)[0];
     if (node === undefined) {
@@ -278,6 +283,11 @@ function resolveSketch(state: State, ref: unknown): SketchNode {
 function resolveBody(state: State, ref: unknown): ParametricBodyNode {
     const node = resolveNode(state, ref, "body");
     if (!(node instanceof ParametricBodyNode)) {
+        if (node instanceof SketchNode) {
+            throw new Error(
+                `"${ref}" is a SketchNode ("${node.name}"), not a ParametricBodyNode. Sketches do not hold 3D features. To edit a 3D feature, pass the ParametricBodyNode id. To create geometry from this sketch, use an "extrude" or "revolve" op referencing sketch: "${ref}".`,
+            );
+        }
         throw new Error(`"${ref}" is a ${node.constructor.name}, not a parametric body`);
     }
     return node;

@@ -42,7 +42,7 @@ const OPS_SCHEMA = {
         entities: {
             type: "array",
             description:
-                "Sketch geometry in sketch (u, v) coordinates: line params [x1,y1,x2,y2]; circle params [cx,cy,r]; arc params [cx,cy,sx,sy,ex,ey] (center, start, end; counter-clockwise); ellipse params [cx,cy,mx,my,nx,ny] (center, a point of the major axis, a point of the minor axis); ellipseArc params [cx,cy,mx,my,nx,ny,sx,sy,ex,ey] (an ellipse's frame, then the arc's start and end, counter-clockwise); conic params [sx,sy,cx,cy,ex,ey,rho] (start, control pole, end, and the shoulder ratio 0<rho<1: <0.5 an ellipse piece, 0.5 a parabola, >0.5 a hyperbola); bezier params [cp0x,cp0y,cp1x,cp1y,cp2x,cp2y,cp3x,cp3y] (the four control points of a cubic); nurbs params [cp0x,cp0y,...] (two or more control points of a spline: cubic where there are points enough for it, with unit weights). A closed profile needs its points in perimeter order, first point repeated as the last. Set construction: true on reference geometry (e.g. a symmetry or revolve axis) — it stays usable in constraints but is excluded from profiles and features.",
+                "Sketch geometry in sketch (u, v) coordinates: line params [x1,y1,x2,y2]; circle params [cx,cy,r]; arc params [cx,cy,sx,sy,ex,ey] (center, start, end; counter-clockwise); ellipse params [cx,cy,mx,my,nx,ny] (center, a point of the major axis, a point of the minor axis); ellipseArc params [cx,cy,mx,my,nx,ny,sx,sy,ex,ey] (an ellipse's frame, then the arc's start and end, counter-clockwise); conic params [sx,sy,cx,cy,ex,ey,rho] (start, control pole, end, and the shoulder ratio 0<rho<1: <0.5 an ellipse piece, 0.5 a parabola, >0.5 a hyperbola); bezier params [cp0x,cp0y,cp1x,cp1y,cp2x,cp2y,cp3x,cp3y] (the four control points of a cubic); nurbs params [cp0x,cp0y,...] (two or more control points of a spline: cubic where there are points enough for it, with unit weights). NOTE: There is no primitive 'rect' entity — draw rectangles with 4 closed 'line' entities in perimeter order (first point repeated as the last). Set construction: true on reference geometry (e.g. a symmetry or revolve axis) — it stays usable in constraints but is excluded from profiles and features.",
             items: {
                 type: "object",
                 properties: {
@@ -63,7 +63,7 @@ const OPS_SCHEMA = {
         constraints: {
             type: "array",
             description:
-                "Optional sketch constraints. Omit entirely for a plain sketch of fixed coordinates — constraints are what makes the sketch re-solvable when a dimension changes. Entity ids are the 1-based index of the entity in `entities`; point indexes follow the entity type (line: 0=start 1=end; circle: 0=center; arc: 0=center 1=start 2=end; ellipse: 0=center 1=major-axis point 2=minor-axis point; ellipseArc: an ellipse's 0-2 plus 3=start 4=end; conic: 0=start 1=control 2=end; bezier and nurbs: the control point index).",
+                "Optional sketch constraints. Omit entirely for a plain sketch of fixed coordinates — constraints are what makes the sketch re-solvable when a dimension changes. For coincident points use kind 'P2PCoincident' (not 'Coincident') with refs: [{ entity: 1, point: 1 }, { entity: 2, point: 0 }]. Entity ids are the 1-based index of the entity in `entities`; point indexes follow the entity type (line: 0=start 1=end; circle: 0=center; arc: 0=center 1=start 2=end; ellipse: 0=center 1=major-axis point 2=minor-axis point; ellipseArc: an ellipse's 0-2 plus 3=start 4=end; conic: 0=start 1=control 2=end; bezier and nurbs: the control point index).",
             items: {
                 type: "object",
                 properties: {
@@ -106,7 +106,11 @@ const OPS_SCHEMA = {
             required: ["point", "direction"],
         },
         angle: { description: "Revolve angle in degrees (default 360)" },
-        body: { type: "string", description: "The body op id (or an existing body's node id)" },
+        body: {
+            type: "string",
+            description:
+                "The target 3D body: a ParametricBodyNode id (or earlier body op id). Required for editFeature, features, fillet, chamfer, boolean, and extrude cut/fuse/common. Do NOT pass a SketchNode id (sketches do not hold 3D features).",
+        },
         operation: {
             type: "string",
             enum: ["fuse", "cut", "common"],
@@ -131,7 +135,8 @@ const OPS_SCHEMA = {
         action: {
             type: "string",
             enum: ["setParameter", "rename", "suppress", "moveTo", "remove"],
-            description: "editFeature: what to do with the feature",
+            description:
+                "editFeature: what to do with the feature. Requires 'body' (ParametricBodyNode id) and 'featureId'.",
         },
         featureId: { type: "string", description: "The feature's id, as reported by the `features` op" },
         key: { type: "string", description: 'setParameter: the parameter name, e.g. "depth"' },

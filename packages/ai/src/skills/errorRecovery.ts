@@ -23,6 +23,18 @@ export const errorRecovery: Skill = {
 
 "ref "x" is no longer valid: its source node was removed" — the node behind the ref was consumed by an edit-style op or deleted. Use the id of the op that replaced it, or re-run the query that produced the ref against the new node.
 
+"Node cannot be measured (no bounding box): <id>" — the node has no physical 3D bounds (e.g. an empty sketch with no entities). Check that geometry exists before measuring. Missing measurement data keeps the verification status unverified.
+
+'"x" is a SketchNode (...), not a ParametricBodyNode' — editFeature and features ops require a 3D ParametricBodyNode id, not a 2D sketch. To modify a feature, pass the body id. To create geometry from a sketch, use extrude/revolve.
+
+'unknown entity type "rect"' — no rect entity exists in sketch schema. Create rectangles using 4 closed "line" entities in perimeter order.
+
+'unknown constraint kind "Coincident"' — the solver expects "P2PCoincident" with refs [{ entity: i, point: p1 }, { entity: j, point: p2 }].
+
+'"x" is a query ref list group' / 'query op "x" produced 0 sub-shapes' — do not pass the query id (e.g. "wallFaces") to face.area or face.normal; read results[id].refs and use individual indexed refs like "wallFaces#0". Never assume refs like "sketchEdges#0" exist when the query found 0 sub-shapes.
+
+'Missing required parameter "u"' / 'face.normal requires parameters "u" and "v"' — face.normal needs both surface parametric coordinates. Query UV bounds with face.surface -> surface.uvBounds or use midpoint coordinates (e.g. u=0, v=0 for planar faces).
+
 "node not found: <id>" (delete_node / set_node_visible / transform_node / create_folder / move_nodes) — the node is gone, most likely consumed by an edit-style op: run_program's response "removed" lists those nodes. Do NOT retry or hide consumed nodes; call get_document_state if you need the current node list.
 
 "folder not found: <id>" / "<id> is a <Type>, not a folder" / "cannot move <id>: …" / "cannot move <id> into itself or one of its own descendants" (create_folder / move_nodes) — the grouping target is wrong: the id is not a folder (a shape node or a body), or the node belongs to a parametric body that rebuilds it, or the move would nest a folder inside itself. get_document_state lists the FolderNode ids and every node's parentId — re-issue the move against a real folder id.
