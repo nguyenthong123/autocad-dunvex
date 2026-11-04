@@ -354,15 +354,31 @@ const WRITE_TOOLS = new Set([
     "set_node_properties",
 ]);
 
+interface NodeIdNameItem {
+    nodeId?: string;
+    id?: string;
+    name?: string;
+    body?: string;
+}
+
+interface WriteToolArgs {
+    ops?: NodeIdNameItem[];
+    nodeId?: string;
+    sourceNodeId?: string;
+    id?: string;
+    nodeIds?: string[];
+    ids?: string[];
+}
+
 interface ToolOutputShape {
     error?: string;
-    created?: unknown[];
-    removed?: unknown[];
-    results?: unknown[];
-    nodes?: unknown[];
-    measurements?: unknown[];
-    items?: unknown[];
-    createdNodeIds?: unknown[];
+    created?: (NodeIdNameItem | string)[];
+    removed?: (NodeIdNameItem | string)[];
+    results?: unknown;
+    nodes?: (NodeIdNameItem | string)[];
+    measurements?: (NodeIdNameItem | string)[];
+    items?: { nodeIds?: string[]; nodeId?: string; name?: string }[];
+    createdNodeIds?: string[];
 }
 
 function extractWriteTargets(
@@ -371,9 +387,9 @@ function extractWriteTargets(
     parsedContent: ToolOutputShape | undefined,
 ): string[] {
     const targets: string[] = [];
-    let args: Record<string, unknown> | undefined;
+    let args: WriteToolArgs | undefined;
     try {
-        args = JSON.parse(rawArgs) as Record<string, unknown>;
+        args = JSON.parse(rawArgs) as WriteToolArgs;
     } catch {
         // raw argument
     }
@@ -383,10 +399,9 @@ function extractWriteTargets(
             for (const item of parsedContent.created) {
                 if (typeof item === "string") targets.push(item);
                 else if (item && typeof item === "object") {
-                    const obj = item as Record<string, unknown>;
-                    if (typeof obj.nodeId === "string") targets.push(obj.nodeId);
-                    if (typeof obj.id === "string") targets.push(obj.id);
-                    if (typeof obj.name === "string") targets.push(obj.name);
+                    if (typeof item.nodeId === "string") targets.push(item.nodeId);
+                    if (typeof item.id === "string") targets.push(item.id);
+                    if (typeof item.name === "string") targets.push(item.name);
                 }
             }
         }
@@ -394,10 +409,9 @@ function extractWriteTargets(
             for (const item of parsedContent.removed) {
                 if (typeof item === "string") targets.push(item);
                 else if (item && typeof item === "object") {
-                    const obj = item as Record<string, unknown>;
-                    if (typeof obj.nodeId === "string") targets.push(obj.nodeId);
-                    if (typeof obj.id === "string") targets.push(obj.id);
-                    if (typeof obj.name === "string") targets.push(obj.name);
+                    if (typeof item.nodeId === "string") targets.push(item.nodeId);
+                    if (typeof item.id === "string") targets.push(item.id);
+                    if (typeof item.name === "string") targets.push(item.name);
                 }
             }
         }
@@ -412,10 +426,9 @@ function extractWriteTargets(
         if (Array.isArray(args.ops)) {
             for (const op of args.ops) {
                 if (op && typeof op === "object") {
-                    const o = op as Record<string, unknown>;
-                    if (typeof o.id === "string") targets.push(o.id);
-                    if (typeof o.name === "string") targets.push(o.name);
-                    if (typeof o.body === "string") targets.push(o.body);
+                    if (typeof op.id === "string") targets.push(op.id);
+                    if (typeof op.name === "string") targets.push(op.name);
+                    if (typeof op.body === "string") targets.push(op.body);
                 }
             }
         }
@@ -443,18 +456,18 @@ function extractVerifiedTargets(
         return verified;
     }
 
-    let args: Record<string, unknown> | undefined;
+    let args: WriteToolArgs | undefined;
     try {
-        args = JSON.parse(rawArgs) as Record<string, unknown>;
+        args = JSON.parse(rawArgs) as WriteToolArgs;
     } catch {
         // non json
     }
 
     if (toolName === "measure_nodes") {
         const nodeList = Array.isArray(parsedContent.nodes)
-            ? (parsedContent.nodes as Array<Record<string, unknown>>)
+            ? parsedContent.nodes
             : Array.isArray(parsedContent.measurements)
-              ? (parsedContent.measurements as Array<Record<string, unknown>>)
+              ? parsedContent.measurements
               : [];
         if (nodeList.length > 0) {
             for (const node of nodeList) {
@@ -470,9 +483,7 @@ function extractVerifiedTargets(
             }
         }
     } else if (toolName === "get_node_properties") {
-        const nodeList = Array.isArray(parsedContent.nodes)
-            ? (parsedContent.nodes as Array<Record<string, unknown>>)
-            : [];
+        const nodeList = Array.isArray(parsedContent.nodes) ? parsedContent.nodes : [];
         if (nodeList.length > 0) {
             for (const node of nodeList) {
                 if (typeof node === "string") {
@@ -487,9 +498,7 @@ function extractVerifiedTargets(
             }
         }
     } else if (toolName === "bom_report") {
-        const items = Array.isArray(parsedContent.items)
-            ? (parsedContent.items as Array<Record<string, unknown>>)
-            : [];
+        const items = Array.isArray(parsedContent.items) ? parsedContent.items : [];
         if (items.length > 0) {
             for (const item of items) {
                 if (Array.isArray(item.nodeIds)) {
@@ -501,9 +510,7 @@ function extractVerifiedTargets(
             }
         }
     } else if (toolName === "classify_material") {
-        const items = Array.isArray(parsedContent.items)
-            ? (parsedContent.items as Array<Record<string, unknown>>)
-            : [];
+        const items = Array.isArray(parsedContent.items) ? parsedContent.items : [];
         if (items.length > 0) {
             for (const item of items) {
                 if (typeof item.nodeId === "string") verified.push(item.nodeId);
@@ -518,9 +525,8 @@ function extractVerifiedTargets(
             if (args && Array.isArray(args.ops)) {
                 for (const op of args.ops) {
                     if (op && typeof op === "object") {
-                        const o = op as Record<string, unknown>;
-                        if (typeof o.id === "string") verified.push(o.id);
-                        if (typeof o.name === "string") verified.push(o.name);
+                        if (typeof op.id === "string") verified.push(op.id);
+                        if (typeof op.name === "string") verified.push(op.name);
                     }
                 }
             }
