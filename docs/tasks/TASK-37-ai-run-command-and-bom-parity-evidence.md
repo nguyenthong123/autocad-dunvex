@@ -99,8 +99,8 @@ Các ảnh màn hình được chụp trực tiếp từ trình duyệt headless
 ### 6.1. Bằng chứng Thực thi Round 3
 - **Lệnh thực thi:** `node scripts/verifyTask37Round3.mjs`
 - **File nhật ký gốc:** `docs/tasks/TASK-37-evidence/task37-round3-execution.log`
-- **Thời gian chạy:** `2026-11-04T08:09:20Z`
-- **Commit SHA đối chiếu:** `5361a727b8fc978d1639bda3833406083c74ea0d`
+- **Thời gian chạy:** `2026-11-04T08:44:57Z`
+- **Commit SHA đối chiếu:** `e9b0389300badcae057dc20c7535a37b7aae38d4`
 - **Mã thoát (Exit Code):** `EXIT=0`
 - **Ghi chú Dữ liệu Giả lập (Synthetic Data Scope):**
   - Do `ChatPanel` chưa có cổng DI runtime cho custom provider và môi trường chưa có live LLM key, trạng thái hiển thị của thanh trạng thái (`memoryStatusBar`) trong kiểm thử trình duyệt được cập nhật bằng dữ liệu phiên mô phỏng kết quả của agent (`updateSessionMemory` với payload chuẩn theo hợp đồng của `SessionMemory`).

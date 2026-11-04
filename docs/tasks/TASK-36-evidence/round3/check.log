@@ -1,20 +1,92 @@
 CMD: npm run check
-COMMIT: 5361a727b8fc978d1639bda3833406083c74ea0d
-TIME: 2026-11-04T08:10:12Z
+COMMIT: e9b0389300badcae057dc20c7535a37b7aae38d4
+TIME: 2026-11-04T08:46:47Z
 
 > chili3d@0.8.0 check
 > biome check --write
 
-packages/ai/src/llm/anthropic.ts:163:35 lint/style/noNonNullAssertion ━━━━━━━━━━
+packages/ai/eval/runner.ts:25:36 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━
 
-  i Forbidden non-null assertion.
+  ! Unexpected any. Specify a different type.
 
-    161 │         if (event) yield event;
-    162 │     } else if (e.type === "content_block_stop") {
-  > 163 │         const event = finishBlock(e.index!, state);
-        │                                   ^^^^^^^^
-    164 │         if (event) yield event;
-    165 │     } else if (e.type === "message_start") {
+    23 │ const REPORTS_DIR = resolve(EVAL_DIR, "reports");
+    24 │
+  > 25 │ function createEvalShapeFactory(): any {
+       │                                    ^^^
+    26 │     return new Proxy(
+    27 │         {},
+
+  i any disables many type checking rules. Its use should be avoided.
+
+
+packages/ai/eval/runner.ts:30:35 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+
+    28 │         {
+    29 │             get(_target, prop: string) {
+  > 30 │                 return (..._args: any[]) => {
+       │                                   ^^^
+    31 │                     const mockShape = new MockShape({
+    32 │                         shapeType: ShapeTypes.solid,
+
+  i any disables many type checking rules. Its use should be avoided.
+
+
+packages/ai/eval/runner.ts:35:35 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+
+    33 │                         id: `shape-${prop}-${Id.generate()}`,
+    34 │                     });
+  > 35 │                     (mockShape as any).transformedMul = () => new MockShape({ shapeType: ShapeTypes.solid });
+       │                                   ^^^
+    36 │                     return Result.ok(mockShape);
+    37 │                 };
+
+  i any disables many type checking rules. Its use should be avoided.
+
+
+packages/ai/eval/runner.ts:43:16 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+
+    41 │ }
+    42 │
+  > 43 │ let sharedApp: any = null;
+       │                ^^^
+    44 │
+    45 │ function setupApplicationForDoc(doc: TestDocument) {
+
+  i any disables many type checking rules. Its use should be avoided.
+
+
+packages/ai/eval/runner.ts:50:34 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+
+    48 │             shapeProvider: {
+    49 │                 factory: createEvalShapeFactory(),
+  > 50 │                 converter: {} as any,
+       │                                  ^^^
+    51 │             },
+    52 │         });
+
+  i any disables many type checking rules. Its use should be avoided.
+
+
+packages/ai/eval/runner.ts:60:13 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━
+
+  ! Unexpected any. Specify a different type.
+
+    58 │     }
+    59 │     sharedApp.activeView = { document: doc };
+  > 60 │     (doc as any).application = sharedApp;
+       │             ^^^
+    61 │     return sharedApp;
+    62 │ }
+
+  i any disables many type checking rules. Its use should be avoided.
 
 
 packages/ai/eval/setupGlobals.ts:10:43 lint/suspicious/noExplicitAny ━━━━━━━━━━━
@@ -209,82 +281,12 @@ packages/ai/eval/setupGlobals.ts:40:47 lint/suspicious/noExplicitAny ━━━�
   i any disables many type checking rules. Its use should be avoided.
 
 
-packages/ai/src/llm/anthropic.ts:29:21 lint/suspicious/noExplicitAny ━━━━━━━━━━━
-
-  ! Unexpected any. Specify a different type.
-
-    27 │     type: string;
-    28 │     index?: number;
-  > 29 │     content_block?: any;
-       │                     ^^^
-    30 │     delta?: any;
-    31 │     message?: { usage?: RawUsage };
-
-  i any disables many type checking rules. Its use should be avoided.
-
-
-packages/ai/src/llm/anthropic.ts:30:13 lint/suspicious/noExplicitAny ━━━━━━━━━━━
-
-  ! Unexpected any. Specify a different type.
-
-    28 │     index?: number;
-    29 │     content_block?: any;
-  > 30 │     delta?: any;
-       │             ^^^
-    31 │     message?: { usage?: RawUsage };
-    32 │     usage?: RawUsage;
-
-  i any disables many type checking rules. Its use should be avoided.
-
-
-packages/ai/src/llm/anthropic.ts:73:39 lint/suspicious/noExplicitAny ━━━━━━━━━━━
-
-  ! Unexpected any. Specify a different type.
-
-    71 │                 ...(opts.effort ? { output_config: { effort: opts.effort } } : {}),
-    72 │                 system: systemBlocks(opts.system),
-  > 73 │                 messages: messages as any,
-       │                                       ^^^
-    74 │                 tools: opts.tools.map(toTool) as any,
-    75 │                 // Parallel tool use is left on. A model that wants the document and a skill reads
-
-  i any disables many type checking rules. Its use should be avoided.
-
-
-packages/ai/src/llm/anthropic.ts:74:50 lint/suspicious/noExplicitAny ━━━━━━━━━━━
-
-  ! Unexpected any. Specify a different type.
-
-    72 │                 system: systemBlocks(opts.system),
-    73 │                 messages: messages as any,
-  > 74 │                 tools: opts.tools.map(toTool) as any,
-       │                                                  ^^^
-    75 │                 // Parallel tool use is left on. A model that wants the document and a skill reads
-    76 │                 // them in one round trip instead of two, and round trips are what the run's step
-
-  i any disables many type checking rules. Its use should be avoided.
-
-
-packages/ai/src/llm/anthropic.ts:142:36 lint/suspicious/noExplicitAny ━━━━━━━━━━
-
-  ! Unexpected any. Specify a different type.
-
-    140 │     }
-    141 │
-  > 142 │     const blocks = last.content as any[] | undefined;
-        │                                    ^^^
-    143 │     if (!Array.isArray(blocks) || blocks.length === 0) return;
-    144 │     blocks[blocks.length - 1] = { ...blocks[blocks.length - 1], cache_control: TAIL_CACHE_CONTROL };
-
-  i any disables many type checking rules. Its use should be avoided.
-
-
-Skipped 2810 suggested fixes.
+Skipped 2812 suggested fixes.
 If you wish to apply the suggested (unsafe) fixes, use the command biome check --write --unsafe
 
 The number of diagnostics exceeds the limit allowed. Use --max-diagnostics to increase it.
-Diagnostics not shown: 10552.
-Checked 1598 files in 6s. Fixed 3 files.
-Found 6672 warnings.
-Found 3900 infos.
+Diagnostics not shown: 10556.
+Checked 1598 files in 5s. Fixed 3 files.
+Found 6674 warnings.
+Found 3902 infos.
 EXIT=0
