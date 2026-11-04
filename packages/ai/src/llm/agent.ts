@@ -266,13 +266,27 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                     const createdCount = Array.isArray(parsedContent?.created)
                         ? parsedContent.created.length
                         : 0;
-                    const removedCount = Array.isArray(parsedContent?.removed)
-                        ? parsedContent.removed.length
-                        : 0;
-                    if (createdCount > 0 || removedCount > 0) {
-                        needsVerification = true;
+                    const removedList = Array.isArray(parsedContent?.removed) ? parsedContent.removed : [];
+                    const createdNodeIds = Array.isArray(parsedContent?.createdNodeIds)
+                        ? parsedContent.createdNodeIds
+                        : [];
+
+                    // When Boolean or edit ops succeed, evict consumed/removed IDs from pending targets
+                    if (removedList.length > 0) {
+                        const removedIds = new Set<string>();
+                        for (const r of removedList) {
+                            const rId = (typeof r === "string" ? r : (r.nodeId ?? r.id))?.trim();
+                            if (rId) removedIds.add(rId);
+                        }
+                        pendingVerificationTargets = pendingVerificationTargets.filter(
+                            (p) => !p.id || !removedIds.has(p.id),
+                        );
+                    }
+
+                    if (createdCount > 0 || createdNodeIds.length > 0 || removedList.length > 0) {
                         const targets = extractWriteTargets(res.name, rawArgs, parsedContent);
                         if (targets.length > 0) {
+                            needsVerification = true;
                             for (const t of targets) {
                                 if (
                                     !pendingVerificationTargets.some(
@@ -282,8 +296,10 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                                     pendingVerificationTargets.push(t);
                                 }
                             }
+                        } else if (pendingVerificationTargets.length > 0) {
+                            needsVerification = true;
                         } else {
-                            pendingVerificationTargets.push({});
+                            needsVerification = false;
                         }
                     } else if (parsedContent?.results) {
                         // Query-only run_program can serve as verification
@@ -421,25 +437,14 @@ function extractWriteTargets(
     }
 
     const hasReportedCreated = Array.isArray(parsedContent?.created) && parsedContent.created.length > 0;
-    const hasReportedRemoved = Array.isArray(parsedContent?.removed) && parsedContent.removed.length > 0;
     const hasReportedIds =
         Array.isArray(parsedContent?.createdNodeIds) && parsedContent.createdNodeIds.length > 0;
 
-    if (hasReportedCreated || hasReportedRemoved || hasReportedIds) {
+    // Write verification targets are exclusively the created/active nodes resulting from the operation.
+    // Consumed/removed nodes are evicted from verification targets, never added.
+    if (hasReportedCreated || hasReportedIds) {
         if (Array.isArray(parsedContent?.created)) {
             for (const item of parsedContent.created) {
-                if (typeof item === "string" && item.trim()) {
-                    targets.push({ id: item.trim() });
-                } else if (item && typeof item === "object") {
-                    const id = (item.nodeId ?? item.id)?.trim();
-                    const opId = item.id && item.id !== item.nodeId ? item.id.trim() : undefined;
-                    const name = item.name?.trim();
-                    if (id || opId || name) targets.push({ id, opId, name });
-                }
-            }
-        }
-        if (Array.isArray(parsedContent?.removed)) {
-            for (const item of parsedContent.removed) {
                 if (typeof item === "string" && item.trim()) {
                     targets.push({ id: item.trim() });
                 } else if (item && typeof item === "object") {

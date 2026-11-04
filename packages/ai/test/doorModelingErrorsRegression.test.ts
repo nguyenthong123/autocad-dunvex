@@ -5,7 +5,8 @@ import { BoundingBox, EditableShapeNode, Matrix4, Plane, Result, ShapeTypes, XYZ
 import { createMockApplication, TestDocument } from "@chili3d/core/test-utils";
 import { SketchNode } from "@chili3d/parametric";
 import { rs } from "@rstest/core";
-import { extractVerifiedEvidence } from "../src/llm/agent";
+import { extractVerifiedEvidence, runAgent } from "../src/llm/agent";
+import { clearSessionMemory, getSessionMemory, onNodesRemoved } from "../src/memory";
 import { buildArrayTools } from "../src/tools/arrayTools";
 import { buildCapabilityTools } from "../src/tools/capabilityEngine";
 import { buildParametricTools } from "../src/tools/parametricTools";
@@ -333,6 +334,521 @@ describe("Door Modeling Errors & Recovery Regression", () => {
             ).rejects.toThrow(
                 /Missing required parameter "u"\. Both "u" and "v" surface parametric coordinates are required/,
             );
+        });
+    });
+
+    describe("4. Door Cut Boolean Operations & Pristine State Preservation", () => {
+        function createFakeSolid(box: BoundingBox, volumeVal: number, containsPtFn?: (pt: any) => boolean) {
+            return {
+                shapeType: ShapeTypes.solid,
+                isEqual: () => false,
+                findSubShapes: () => [],
+                matrix: Matrix4.identity(),
+                mesh: { faces: undefined, edges: undefined, vertexs: undefined },
+                boundingBox: () => box,
+                volume: () => volumeVal,
+                checkShape: () => true,
+                setTolerance: rs.fn(),
+                containsPoint: containsPtFn ?? (() => false),
+                transformedMul: (m: Matrix4) => {
+                    const transformedBox = BoundingBox.transformed(box, m);
+                    return createFakeSolid(transformedBox, volumeVal, containsPtFn);
+                },
+                dispose: rs.fn(),
+            } as any;
+        }
+
+        test("successful through-cut reduces volume and passes throughCut verification", async () => {
+            // Wall solid: X[0, 100], Y[0, 20], Z[0, 100] (thickness = 20 along Y)
+            const wallBox = new BoundingBox(new XYZ(0, 0, 0), new XYZ(100, 20, 100));
+            const wallShape = createFakeSolid(wallBox, 200000);
+
+            // Cutter solid: X[20, 40], Y[-5, 25], Z[0, 40] (penetrates Y[0, 20])
+            const cutterBox = new BoundingBox(new XYZ(20, -5, 0), new XYZ(40, 25, 40));
+            const cutterShape = createFakeSolid(cutterBox, 24000);
+
+            // Result solid: volume reduced by 16000, containsPoint = false in opening
+            const resultShape = createFakeSolid(wallBox, 184000, () => false);
+
+            const booleanCut = rs.fn((_shapes: any[], _tools: any[]) => Result.ok(resultShape));
+            (globalThis.app as any).shapeProvider.factory.booleanCut = booleanCut;
+
+            const wallNode = new EditableShapeNode({
+                document: doc,
+                name: "Wall",
+                shape: Result.ok(wallShape),
+            });
+            doc.modelManager.addNode(wallNode);
+
+            const cutterNode = new EditableShapeNode({
+                document: doc,
+                name: "DoorCutter",
+                shape: Result.ok(cutterShape),
+            });
+            doc.modelManager.addNode(cutterNode);
+
+            const runProgram = buildCapabilityTools().find((t) => t.name === "run_program")!;
+            const resRaw = await runProgram.handler({
+                ops: [
+                    {
+                        method: "booleanCut",
+                        id: "doorCut1",
+                        name: "Wall With Door",
+                        args: {
+                            shape1: wallNode.id,
+                            shape2: cutterNode.id,
+                            throughCut: true,
+                        },
+                    },
+                ],
+            });
+
+            const res = JSON.parse(resRaw as string);
+            expect(res.created.length).toBe(1);
+            expect(res.created[0].id).toBe("doorCut1");
+            expect(res.created[0].name).toBe("Wall With Door");
+            expect(res.removed.length).toBe(2);
+            expect(res.results.doorCut1).toEqual(
+                expect.objectContaining({
+                    throughVerified: true,
+                    status: "verified",
+                    penetrationAxis: "y",
+                }),
+            );
+        });
+
+        test("cutter completely missing wall throws clear bounds error and preserves document pristine state", async () => {
+            const wallBox = new BoundingBox(new XYZ(0, 0, 0), new XYZ(100, 20, 100));
+            const wallShape = createFakeSolid(wallBox, 200000);
+
+            // Cutter is positioned outside the wall (X[200, 250])
+            const cutterBox = new BoundingBox(new XYZ(200, 0, 0), new XYZ(250, 20, 50));
+            const cutterShape = createFakeSolid(cutterBox, 20000);
+
+            // Kernel boolean cut returns identical shape with unchanged volume
+            const uncutResult = createFakeSolid(wallBox, 200000);
+            const booleanCut = rs.fn((_shapes: any[], _tools: any[]) => Result.ok(uncutResult));
+            (globalThis.app as any).shapeProvider.factory.booleanCut = booleanCut;
+
+            const wallNode = new EditableShapeNode({
+                document: doc,
+                name: "Wall",
+                shape: Result.ok(wallShape),
+            });
+            doc.modelManager.addNode(wallNode);
+
+            const cutterNode = new EditableShapeNode({
+                document: doc,
+                name: "MisalignedCutter",
+                shape: Result.ok(cutterShape),
+            });
+            doc.modelManager.addNode(cutterNode);
+
+            const initialNodes = doc.modelManager.findNodes(() => true);
+            const initialCount = initialNodes.length;
+
+            const runProgram = buildCapabilityTools().find((t) => t.name === "run_program")!;
+            await expect(
+                runProgram.handler({
+                    ops: [
+                        {
+                            method: "booleanCut",
+                            id: "doorCutMiss",
+                            args: {
+                                shape1: wallNode.id,
+                                shape2: cutterNode.id,
+                            },
+                        },
+                    ],
+                }),
+            ).rejects.toThrow(
+                /booleanCut did not remove any volume from target "Wall".*Cutter does not intersect the target: cutter bounding box is completely outside the target solid/,
+            );
+
+            // Document remains completely pristine (no nodes removed, no nodes created)
+            const afterNodes = doc.modelManager.findNodes(() => true);
+            expect(afterNodes.length).toBe(initialCount);
+            expect(doc.modelManager.findNodes((n) => n.id === wallNode.id)[0]).toBe(wallNode);
+            expect(doc.modelManager.findNodes((n) => n.id === cutterNode.id)[0]).toBe(cutterNode);
+        });
+
+        test("re-cutting an already hollow region throws actionable error and preserves document pristine state", async () => {
+            const wallBox = new BoundingBox(new XYZ(0, 0, 0), new XYZ(100, 20, 100));
+            const wallShape = createFakeSolid(wallBox, 200000);
+
+            // Cutter overlaps wall AABB (X[20, 40], Y[-5, 25], Z[0, 40])
+            const cutterBox = new BoundingBox(new XYZ(20, -5, 0), new XYZ(40, 25, 40));
+            const cutterShape = createFakeSolid(cutterBox, 24000);
+
+            // Volume before and after are identical (opening already existed)
+            const unchangedResult = createFakeSolid(wallBox, 200000);
+            const booleanCut = rs.fn((_shapes: any[], _tools: any[]) => Result.ok(unchangedResult));
+            (globalThis.app as any).shapeProvider.factory.booleanCut = booleanCut;
+
+            const wallNode = new EditableShapeNode({
+                document: doc,
+                name: "Wall",
+                shape: Result.ok(wallShape),
+            });
+            doc.modelManager.addNode(wallNode);
+
+            const cutterNode = new EditableShapeNode({
+                document: doc,
+                name: "DuplicateDoorCutter",
+                shape: Result.ok(cutterShape),
+            });
+            doc.modelManager.addNode(cutterNode);
+
+            const initialCount = doc.modelManager.findNodes(() => true).length;
+            const runProgram = buildCapabilityTools().find((t) => t.name === "run_program")!;
+
+            await expect(
+                runProgram.handler({
+                    ops: [
+                        {
+                            method: "booleanCut",
+                            id: "doorCut2",
+                            args: {
+                                shape1: wallNode.id,
+                                shape2: cutterNode.id,
+                            },
+                        },
+                    ],
+                }),
+            ).rejects.toThrow(
+                /Cutter bounding box overlaps the target region but removed zero volume: the region is already hollow/,
+            );
+
+            // Document remains completely pristine
+            expect(doc.modelManager.findNodes(() => true).length).toBe(initialCount);
+            expect(doc.modelManager.findNodes((n) => n.id === wallNode.id)[0]).toBe(wallNode);
+            expect(doc.modelManager.findNodes((n) => n.id === cutterNode.id)[0]).toBe(cutterNode);
+        });
+    });
+
+    describe("5. Consumed Node Tracking & Boolean Post-Verification", () => {
+        test("measure_nodes reports consumed node guidance when querying removedNodeIds", async () => {
+            const consumedId = "OnVBBDN2gEBfU3pwRPnWD";
+            onNodesRemoved([consumedId]);
+
+            const measureTool = buildArrayTools().find((t) => t.name === "measure_nodes")!;
+            const rawRes = await measureTool.handler({ nodeIds: [consumedId] });
+            const parsed = JSON.parse(rawRes as string);
+
+            expect(parsed.error).toContain(
+                `Node "${consumedId}" was consumed or removed by a previous edit operation (found in sessionMemory.removedNodeIds)`,
+            );
+            expect(parsed.error).toContain("Call get_document_state to view current active nodes");
+        });
+
+        test("measure_nodes reports not found guidance for arbitrary missing node", async () => {
+            const missingId = "completely-unknown-node-id";
+            const measureTool = buildArrayTools().find((t) => t.name === "measure_nodes")!;
+            const rawRes = await measureTool.handler({ nodeIds: [missingId] });
+            const parsed = JSON.parse(rawRes as string);
+
+            expect(parsed.error).toContain(`Node not found: ${missingId}`);
+            expect(parsed.error).toContain("Call get_document_state to view the active model tree");
+        });
+
+        test("post-verification after Boolean: measuring old consumed ID cannot verify newly created node", async () => {
+            clearSessionMemory();
+            const consumedId = "OnVBBDN2gEBfU3pwRPnWD";
+            const newCreatedId = "newNode-wall-cut-789";
+
+            let turnIndex = 0;
+            const fakeProvider = {
+                id: "fake",
+                streamChat: async function* () {
+                    turnIndex++;
+                    if (turnIndex === 1) {
+                        yield {
+                            type: "tool_call",
+                            id: "call-1",
+                            name: "run_program",
+                            arguments: JSON.stringify({
+                                ops: [
+                                    {
+                                        method: "booleanCut",
+                                        id: "doorCut",
+                                        args: { shape1: consumedId, shape2: "cutter-1" },
+                                    },
+                                ],
+                            }),
+                        };
+                        yield { type: "done", stopReason: "tool_use" };
+                    } else if (turnIndex === 2) {
+                        yield {
+                            type: "tool_call",
+                            id: "call-2",
+                            name: "measure_nodes",
+                            arguments: JSON.stringify({ nodeIds: [consumedId] }),
+                        };
+                        yield { type: "done", stopReason: "tool_use" };
+                    } else {
+                        yield { type: "text", text: "Done without valid verification." };
+                        yield { type: "done", stopReason: "end_turn" };
+                    }
+                },
+            };
+
+            const tools = [
+                {
+                    name: "run_program",
+                    parameters: {},
+                    handler: async () =>
+                        JSON.stringify({
+                            created: [{ id: "doorCut", nodeId: newCreatedId, name: "Wall" }],
+                            removed: [{ nodeId: consumedId, name: "Wall" }],
+                            results: {},
+                        }),
+                },
+                {
+                    name: "measure_nodes",
+                    parameters: {},
+                    handler: async () =>
+                        JSON.stringify({
+                            nodes: [
+                                {
+                                    id: consumedId,
+                                    name: "Wall",
+                                    bounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 100, y: 20, z: 100 } },
+                                    dimensions: { x: 100, y: 20, z: 100 },
+                                    approxVolumeMm3: 200000,
+                                },
+                            ],
+                        }),
+                },
+            ];
+
+            const messages: any[] = [{ role: "user", content: "Cut door in wall" }];
+            await runAgent({
+                config: { provider: "mock", apiKey: "x" } as any,
+                provider: fakeProvider as any,
+                system: "sys" as any,
+                messages,
+                tools: tools as any,
+                callbacks: {
+                    onTextDelta: () => {},
+                    onToolCall: () => {},
+                    onThinkingDelta: () => {},
+                    onUsage: () => {},
+                },
+            });
+
+            // Even though measure_nodes returned data for consumedId, it MUST NOT verify newCreatedId!
+            const memory = getSessionMemory();
+            expect(memory.lastVerification?.verified).toBe(false);
+            expect(memory.lastVerification?.summary).toBe("UNVERIFIED");
+        });
+
+        test("post-verification after Boolean: measuring new created ID successfully verifies change", async () => {
+            clearSessionMemory();
+            const consumedId = "OnVBBDN2gEBfU3pwRPnWD";
+            const newCreatedId = "newNode-wall-cut-789";
+
+            let turnIndex = 0;
+            const fakeProvider = {
+                id: "fake",
+                streamChat: async function* () {
+                    turnIndex++;
+                    if (turnIndex === 1) {
+                        yield {
+                            type: "tool_call",
+                            id: "call-1",
+                            name: "run_program",
+                            arguments: JSON.stringify({
+                                ops: [
+                                    {
+                                        method: "booleanCut",
+                                        id: "doorCut",
+                                        args: { shape1: consumedId, shape2: "cutter-1" },
+                                    },
+                                ],
+                            }),
+                        };
+                        yield { type: "done", stopReason: "tool_use" };
+                    } else if (turnIndex === 2) {
+                        yield {
+                            type: "tool_call",
+                            id: "call-2",
+                            name: "measure_nodes",
+                            arguments: JSON.stringify({ nodeIds: [newCreatedId] }),
+                        };
+                        yield { type: "done", stopReason: "tool_use" };
+                    } else {
+                        yield { type: "text", text: "Verified and finished." };
+                        yield { type: "done", stopReason: "end_turn" };
+                    }
+                },
+            };
+
+            const tools = [
+                {
+                    name: "run_program",
+                    parameters: {},
+                    handler: async () =>
+                        JSON.stringify({
+                            created: [{ id: "doorCut", nodeId: newCreatedId, name: "Wall" }],
+                            removed: [{ nodeId: consumedId, name: "Wall" }],
+                            results: {},
+                        }),
+                },
+                {
+                    name: "measure_nodes",
+                    parameters: {},
+                    handler: async () =>
+                        JSON.stringify({
+                            nodes: [
+                                {
+                                    id: newCreatedId,
+                                    name: "Wall",
+                                    bounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 100, y: 20, z: 100 } },
+                                    dimensions: { x: 100, y: 20, z: 100 },
+                                    approxVolumeMm3: 184000,
+                                },
+                            ],
+                        }),
+                },
+            ];
+
+            const messages: any[] = [{ role: "user", content: "Cut door in wall" }];
+            await runAgent({
+                config: { provider: "mock", apiKey: "x" } as any,
+                provider: fakeProvider as any,
+                system: "sys" as any,
+                messages,
+                tools: tools as any,
+                callbacks: {
+                    onTextDelta: () => {},
+                    onToolCall: () => {},
+                    onThinkingDelta: () => {},
+                    onUsage: () => {},
+                },
+            });
+
+            const memory = getSessionMemory();
+            expect(memory.lastVerification?.verified).toBe(true);
+            expect(memory.lastVerification?.toolName).toBe("measure_nodes");
+        });
+    });
+
+    describe("6. Sketch Coordinate Measurement Contract & Curves", () => {
+        test("sketch on offset plane measures accurate position and dimensions without double transformation", async () => {
+            // Plane offset at (100, 200, 300)
+            const plane = Plane.XY.translateTo(new XYZ(100, 200, 300));
+            const sketch = new SketchNode({
+                document: doc,
+                plane,
+                data: {
+                    entities: [
+                        { id: 1, type: "line", params: [0, 0, 800, 0] },
+                        { id: 2, type: "line", params: [800, 0, 800, 2000] },
+                        { id: 3, type: "line", params: [800, 2000, 0, 2000] },
+                        { id: 4, type: "line", params: [0, 2000, 0, 0] },
+                    ],
+                    constraints: [],
+                },
+            });
+            sketch.name = "OffsetDoorSketch";
+            doc.modelManager.addNode(sketch);
+
+            const measureTool = buildArrayTools().find((t) => t.name === "measure_nodes")!;
+            const resRaw = await measureTool.handler({ nodeIds: [sketch.id] });
+            const res = JSON.parse(resRaw as string);
+
+            expect(res.error).toBeUndefined();
+            const m = res.nodes[0];
+            expect(m.bounds.min).toEqual({ x: 100, y: 200, z: 300 });
+            expect(m.bounds.max).toEqual({ x: 900, y: 2200, z: 300 });
+            expect(m.dimensions).toEqual({ x: 800, y: 2000, z: 0 });
+        });
+
+        test("sketch with non-identity transform applies transformation exactly once", async () => {
+            const plane = Plane.XY;
+            const sketch = new SketchNode({
+                document: doc,
+                plane,
+                data: {
+                    entities: [{ id: 1, type: "line", params: [0, 0, 100, 200] }],
+                    constraints: [],
+                },
+            });
+            // Apply node translation transform (50, 60, 70)
+            sketch.transform = Matrix4.fromTranslation(50, 60, 70);
+            sketch.name = "TransformedSketch";
+            doc.modelManager.addNode(sketch);
+
+            const measureTool = buildArrayTools().find((t) => t.name === "measure_nodes")!;
+            const resRaw = await measureTool.handler({ nodeIds: [sketch.id] });
+            const res = JSON.parse(resRaw as string);
+
+            expect(res.error).toBeUndefined();
+            const m = res.nodes[0];
+            // Transformation must be applied once:
+            // x: 0 + 50 = 50 to 100 + 50 = 150
+            // y: 0 + 60 = 60 to 200 + 60 = 260
+            // z: 0 + 70 = 70 to 0 + 70 = 70
+            expect(m.bounds.min).toEqual({ x: 50, y: 60, z: 70 });
+            expect(m.bounds.max).toEqual({ x: 150, y: 260, z: 70 });
+            expect(m.dimensions).toEqual({ x: 100, y: 200, z: 0 });
+        });
+
+        test("sketch with circle calculates exact geometric axis-aligned bounding box", async () => {
+            // Circle center (100, 100), radius 50 on plane Z = 500
+            const plane = Plane.XY.translateTo(new XYZ(0, 0, 500));
+            const sketch = new SketchNode({
+                document: doc,
+                plane,
+                data: {
+                    entities: [{ id: 1, type: "circle", params: [100, 100, 50] }],
+                    constraints: [],
+                },
+            });
+            doc.modelManager.addNode(sketch);
+
+            const measureTool = buildArrayTools().find((t) => t.name === "measure_nodes")!;
+            const resRaw = await measureTool.handler({ nodeIds: [sketch.id] });
+            const res = JSON.parse(resRaw as string);
+
+            const m = res.nodes[0];
+            expect(m.bounds.min.x).toBeCloseTo(50, 1);
+            expect(m.bounds.max.x).toBeCloseTo(150, 1);
+            expect(m.bounds.min.y).toBeCloseTo(50, 1);
+            expect(m.bounds.max.y).toBeCloseTo(150, 1);
+            expect(m.bounds.min.z).toBeCloseTo(500, 1);
+            expect(m.bounds.max.z).toBeCloseTo(500, 1);
+            expect(m.dimensions.x).toBeCloseTo(100, 1);
+            expect(m.dimensions.y).toBeCloseTo(100, 1);
+        });
+
+        test("sketch with arc and bezier calculates valid geometric bounding bounds", async () => {
+            // Arc center (0, 0), from (50, 0) to (0, 50) on plane XY
+            // Bezier control points: (0, 0), (50, 100), (100, 0)
+            const sketch = new SketchNode({
+                document: doc,
+                plane: Plane.XY,
+                data: {
+                    entities: [
+                        { id: 1, type: "arc", params: [0, 0, 50, 0, 0, 50] },
+                        { id: 2, type: "bezier", params: [0, 0, 50, 100, 100, 0] },
+                    ],
+                    constraints: [],
+                },
+            });
+            doc.modelManager.addNode(sketch);
+
+            const measureTool = buildArrayTools().find((t) => t.name === "measure_nodes")!;
+            const resRaw = await measureTool.handler({ nodeIds: [sketch.id] });
+            const res = JSON.parse(resRaw as string);
+
+            const m = res.nodes[0];
+            expect(m.bounds.min.x).toBeCloseTo(0, 1);
+            expect(m.bounds.max.x).toBeCloseTo(100, 1);
+            expect(m.bounds.min.y).toBeCloseTo(0, 1);
+            expect(m.bounds.max.y).toBeCloseTo(100, 1);
+            expect(m.dimensions.x).toBeCloseTo(100, 1);
+            expect(m.dimensions.y).toBeCloseTo(100, 1);
         });
     });
 });

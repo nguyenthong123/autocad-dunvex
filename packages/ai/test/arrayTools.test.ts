@@ -30,7 +30,8 @@ class MockVisualBox extends VisualNode {
     }
 
     override boundingBox(): BoundingBox | undefined {
-        return new BoundingBox(this.boxMin, this.boxMax);
+        const box = new BoundingBox(this.boxMin, this.boxMax);
+        return this.transform.equals(Matrix4.identity()) ? box : BoundingBox.transformed(box, this.transform);
     }
 
     override clone(): this {

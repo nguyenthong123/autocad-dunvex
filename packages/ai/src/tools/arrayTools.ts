@@ -14,7 +14,7 @@ import {
     XYZ,
 } from "@chili3d/core";
 import type { Tool } from "../llm/types";
-import { onNodesCreated } from "../memory";
+import { getSessionMemory, onNodesCreated } from "../memory";
 import { findNode, requireDocument, requireNode } from "./documentContext";
 
 export const MAX_ARRAY_COUNT = 200;
@@ -32,21 +32,34 @@ export interface NodeMeasurement {
 
 export function measureNode(node: INode): NodeMeasurement | undefined {
     if (!("boundingBox" in node) || typeof (node as any).boundingBox !== "function") return undefined;
-    const localBox = (node as any).boundingBox() as BoundingBox | undefined;
-    if (!localBox) return undefined;
-    let worldTransform = Matrix4.identity();
+    const box = (node as any).boundingBox() as BoundingBox | undefined;
+    if (!box) return undefined;
+
+    // Core contract: node.boundingBox() already incorporates node.transform (GeometryNode, MeshNode, SketchNode).
+    // If the node resides in an ancestor visual hierarchy where worldTransform() differs from node.transform,
+    // apply only the ancestor transformation (worldTransform * node.transform^-1).
+    // If worldTransform equals node.transform (or no parent hierarchy), box is already in world coordinates.
+    let worldBox = box;
     try {
-        if (typeof (node as any).worldTransform === "function") {
-            worldTransform = (node as any).worldTransform();
-        } else if ("transform" in node && (node as any).transform instanceof Matrix4) {
-            worldTransform = (node as any).transform;
+        if (
+            typeof (node as any).worldTransform === "function" &&
+            "transform" in node &&
+            (node as any).transform instanceof Matrix4
+        ) {
+            const worldTransform = (node as any).worldTransform() as Matrix4;
+            const nodeTransform = (node as any).transform as Matrix4;
+            if (!worldTransform.equals(nodeTransform)) {
+                const inv = nodeTransform.clone().invert();
+                if (inv) {
+                    const parentTransform = worldTransform.multiply(inv);
+                    worldBox = BoundingBox.transformed(box, parentTransform);
+                }
+            }
         }
     } catch {
-        if ("transform" in node && (node as any).transform instanceof Matrix4) {
-            worldTransform = (node as any).transform;
-        }
+        worldBox = box;
     }
-    const worldBox = BoundingBox.transformed(localBox, worldTransform);
+
     const dx = Math.abs(worldBox.max.x - worldBox.min.x);
     const dy = Math.abs(worldBox.max.y - worldBox.min.y);
     const dz = Math.abs(worldBox.max.z - worldBox.min.z);
@@ -302,7 +315,19 @@ function measureNodesTool(): Tool {
             for (const id of nodeIds) {
                 const node = findNode(doc, id);
                 if (!node) {
-                    return JSON.stringify({ error: `Node not found: ${id}` });
+                    try {
+                        const mem = getSessionMemory();
+                        if (mem.removedNodeIds.includes(id)) {
+                            return JSON.stringify({
+                                error: `Node "${id}" was consumed or removed by a previous edit operation (found in sessionMemory.removedNodeIds). It no longer exists in the document model. Call get_document_state to view current active nodes, or measure the newly created node instead.`,
+                            });
+                        }
+                    } catch {
+                        // ignore
+                    }
+                    return JSON.stringify({
+                        error: `Node not found: ${id}. The node does not exist in the document. Call get_document_state to view the active model tree before measuring.`,
+                    });
                 }
                 const m = measureNode(node);
                 if (!m) {

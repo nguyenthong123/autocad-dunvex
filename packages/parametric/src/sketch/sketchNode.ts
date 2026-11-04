@@ -134,8 +134,17 @@ export class SketchNode extends ParameterShapeNode {
     }
 
     /**
-     * Fallback world-space bounding box derived directly from sketch entities
-     * when the 3D mesh is not yet populated or represents 2D wire geometry.
+     * Bounding box derived directly from sketch entities when the 3D mesh is not yet populated
+     * or represents 2D wire geometry.
+     * Incorporates `this.plane` to map 2D entity coordinates into 3D space, and applies
+     * `this.transform` (per Core's GeometryNode boundingBox contract).
+     *
+     * Precision and scope for post-verification:
+     * - `line`: Exact bounds from end points.
+     * - `circle`: Exact analytic extrema on projected 3D axes (rx, ry, rz).
+     * - `arc`: Exact endpoints, quadrant extrema points within the swept angle, and fine sampling.
+     * - `bezier`, `nurbs`, `ellipseArc`, `conic`: Conservative bounding box derived from the convex hull
+     *   of control points / poles (safe upper-bound approximation for clearance and collision checks).
      * Returns undefined if the sketch is empty or contains no measurable geometry.
      */
     private computeEntityBoundingBox(): BoundingBox | undefined {
@@ -186,6 +195,22 @@ export class SketchNode extends ParameterShapeNode {
                         const startAngle = Math.atan2(sy - cy, sx - cx);
                         let sweep = Math.atan2(ey - cy, ex - cx) - startAngle;
                         if (sweep <= 0) sweep += 2 * Math.PI;
+                        // Include quadrant extrema points (0, PI/2, PI, 3PI/2) lying within the arc span
+                        for (let k = 0; k < 4; k++) {
+                            const quadAngle = (k * Math.PI) / 2;
+                            let delta = quadAngle - startAngle;
+                            while (delta < 0) delta += 2 * Math.PI;
+                            while (delta >= 2 * Math.PI) delta -= 2 * Math.PI;
+                            if (delta > 0 && delta < sweep) {
+                                points.push(
+                                    toWorld(
+                                        plane,
+                                        cx + r * Math.cos(quadAngle),
+                                        cy + r * Math.sin(quadAngle),
+                                    ),
+                                );
+                            }
+                        }
                         const steps = Math.min(16, Math.max(4, Math.ceil(sweep / (Math.PI / 4))));
                         for (let i = 1; i < steps; i++) {
                             const theta = startAngle + (sweep * i) / steps;
