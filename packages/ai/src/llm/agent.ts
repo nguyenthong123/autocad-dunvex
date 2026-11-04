@@ -143,6 +143,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
 
     const state: RecoveryState = { continues: 0, lostCalls: 0, idleNudges: 0, verifyNudges: 0 };
     let needsVerification = false;
+    const pendingVerificationTargets = new Set<string>();
     // Whether the attempt in flight has already put text on screen. A retry after a context
     // overflow would replay that text, so the retry is only allowed before the first delta.
     let emittedText = false;
@@ -242,12 +243,6 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
             // Update verification state based on tool outputs
             for (const res of results) {
                 let isError = false;
-                interface ToolOutputShape {
-                    error?: string;
-                    created?: unknown[];
-                    removed?: unknown[];
-                    results?: unknown[];
-                }
                 let parsedContent: ToolOutputShape | undefined;
                 try {
                     parsedContent = JSON.parse(res.content) as ToolOutputShape;
@@ -263,6 +258,9 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                 }
                 if (isError) continue;
 
+                const tc = turn.toolCalls.find((c) => c.id === res.toolCallId);
+                const rawArgs = tc?.arguments ?? "{}";
+
                 if (res.name === "run_program") {
                     const createdCount = Array.isArray(parsedContent?.created)
                         ? parsedContent.created.length
@@ -272,18 +270,48 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                         : 0;
                     if (createdCount > 0 || removedCount > 0) {
                         needsVerification = true;
+                        const targets = extractWriteTargets(res.name, rawArgs, parsedContent);
+                        if (targets.length > 0) {
+                            for (const t of targets) pendingVerificationTargets.add(t);
+                        } else {
+                            pendingVerificationTargets.add("*");
+                        }
                     } else if (parsedContent?.results) {
                         // Query-only run_program can serve as verification
-                        needsVerification = false;
-                        onVerificationCompleted(res.name, "verified via query ops");
+                        const verified = extractVerifiedTargets(res.name, rawArgs, parsedContent);
+                        for (const t of Array.from(pendingVerificationTargets)) {
+                            if (matchesTarget(t, verified)) {
+                                pendingVerificationTargets.delete(t);
+                            }
+                        }
+                        if (pendingVerificationTargets.size === 0) {
+                            needsVerification = false;
+                            onVerificationCompleted(res.name, "verified via query ops");
+                        }
                     }
                 } else if (WRITE_TOOLS.has(res.name)) {
                     needsVerification = true;
+                    const targets = extractWriteTargets(res.name, rawArgs, parsedContent);
+                    if (targets.length > 0) {
+                        for (const t of targets) pendingVerificationTargets.add(t);
+                    } else {
+                        pendingVerificationTargets.add("*");
+                    }
                 }
 
                 if (VERIFY_TOOLS.has(res.name)) {
-                    needsVerification = false;
-                    onVerificationCompleted(res.name, "verified post-write state");
+                    const verified = extractVerifiedTargets(res.name, rawArgs, parsedContent);
+                    if (verified.length > 0) {
+                        for (const t of Array.from(pendingVerificationTargets)) {
+                            if (matchesTarget(t, verified)) {
+                                pendingVerificationTargets.delete(t);
+                            }
+                        }
+                        if (pendingVerificationTargets.size === 0) {
+                            needsVerification = false;
+                            onVerificationCompleted(res.name, "verified post-write state");
+                        }
+                    }
                 }
             }
         }
@@ -325,6 +353,188 @@ const WRITE_TOOLS = new Set([
     "transform_node",
     "set_node_properties",
 ]);
+
+interface ToolOutputShape {
+    error?: string;
+    created?: unknown[];
+    removed?: unknown[];
+    results?: unknown[];
+    nodes?: unknown[];
+    measurements?: unknown[];
+    items?: unknown[];
+    createdNodeIds?: unknown[];
+}
+
+function extractWriteTargets(
+    toolName: string,
+    rawArgs: string,
+    parsedContent: ToolOutputShape | undefined,
+): string[] {
+    const targets: string[] = [];
+    let args: Record<string, unknown> | undefined;
+    try {
+        args = JSON.parse(rawArgs) as Record<string, unknown>;
+    } catch {
+        // raw argument
+    }
+
+    if (parsedContent) {
+        if (Array.isArray(parsedContent.created)) {
+            for (const item of parsedContent.created) {
+                if (typeof item === "string") targets.push(item);
+                else if (item && typeof item === "object") {
+                    const obj = item as Record<string, unknown>;
+                    if (typeof obj.nodeId === "string") targets.push(obj.nodeId);
+                    if (typeof obj.id === "string") targets.push(obj.id);
+                    if (typeof obj.name === "string") targets.push(obj.name);
+                }
+            }
+        }
+        if (Array.isArray(parsedContent.removed)) {
+            for (const item of parsedContent.removed) {
+                if (typeof item === "string") targets.push(item);
+                else if (item && typeof item === "object") {
+                    const obj = item as Record<string, unknown>;
+                    if (typeof obj.nodeId === "string") targets.push(obj.nodeId);
+                    if (typeof obj.id === "string") targets.push(obj.id);
+                    if (typeof obj.name === "string") targets.push(obj.name);
+                }
+            }
+        }
+        if (Array.isArray(parsedContent.createdNodeIds)) {
+            for (const id of parsedContent.createdNodeIds) {
+                if (typeof id === "string") targets.push(id);
+            }
+        }
+    }
+
+    if (args) {
+        if (Array.isArray(args.ops)) {
+            for (const op of args.ops) {
+                if (op && typeof op === "object") {
+                    const o = op as Record<string, unknown>;
+                    if (typeof o.id === "string") targets.push(o.id);
+                    if (typeof o.name === "string") targets.push(o.name);
+                    if (typeof o.body === "string") targets.push(o.body);
+                }
+            }
+        }
+        if (typeof args.nodeId === "string") targets.push(args.nodeId);
+        if (typeof args.sourceNodeId === "string") targets.push(args.sourceNodeId);
+        if (typeof args.id === "string") targets.push(args.id);
+        if (Array.isArray(args.nodeIds)) {
+            for (const id of args.nodeIds) if (typeof id === "string") targets.push(id);
+        }
+        if (Array.isArray(args.ids)) {
+            for (const id of args.ids) if (typeof id === "string") targets.push(id);
+        }
+    }
+
+    return targets;
+}
+
+function extractVerifiedTargets(
+    toolName: string,
+    rawArgs: string,
+    parsedContent: ToolOutputShape | undefined,
+): string[] {
+    const verified: string[] = [];
+    if (!parsedContent || typeof parsedContent !== "object" || typeof parsedContent.error === "string") {
+        return verified;
+    }
+
+    let args: Record<string, unknown> | undefined;
+    try {
+        args = JSON.parse(rawArgs) as Record<string, unknown>;
+    } catch {
+        // non json
+    }
+
+    if (toolName === "measure_nodes") {
+        const nodeList = Array.isArray(parsedContent.nodes)
+            ? (parsedContent.nodes as Array<Record<string, unknown>>)
+            : Array.isArray(parsedContent.measurements)
+              ? (parsedContent.measurements as Array<Record<string, unknown>>)
+              : [];
+        if (nodeList.length > 0) {
+            for (const node of nodeList) {
+                if (typeof node === "string") {
+                    verified.push(node);
+                } else if (node && typeof node === "object") {
+                    if (typeof node.id === "string") verified.push(node.id);
+                    if (typeof node.name === "string") verified.push(node.name);
+                }
+            }
+            if (args && Array.isArray(args.nodeIds)) {
+                for (const id of args.nodeIds) if (typeof id === "string") verified.push(id);
+            }
+        }
+    } else if (toolName === "get_node_properties") {
+        const nodeList = Array.isArray(parsedContent.nodes)
+            ? (parsedContent.nodes as Array<Record<string, unknown>>)
+            : [];
+        if (nodeList.length > 0) {
+            for (const node of nodeList) {
+                if (typeof node === "string") {
+                    verified.push(node);
+                } else if (node && typeof node === "object") {
+                    if (typeof node.id === "string") verified.push(node.id);
+                    if (typeof node.name === "string") verified.push(node.name);
+                }
+            }
+            if (args && Array.isArray(args.ids)) {
+                for (const id of args.ids) if (typeof id === "string") verified.push(id);
+            }
+        }
+    } else if (toolName === "bom_report") {
+        const items = Array.isArray(parsedContent.items)
+            ? (parsedContent.items as Array<Record<string, unknown>>)
+            : [];
+        if (items.length > 0) {
+            for (const item of items) {
+                if (Array.isArray(item.nodeIds)) {
+                    for (const id of item.nodeIds) if (typeof id === "string") verified.push(id);
+                }
+            }
+            if (args && Array.isArray(args.nodeIds)) {
+                for (const id of args.nodeIds) if (typeof id === "string") verified.push(id);
+            }
+        }
+    } else if (toolName === "classify_material") {
+        const items = Array.isArray(parsedContent.items)
+            ? (parsedContent.items as Array<Record<string, unknown>>)
+            : [];
+        if (items.length > 0) {
+            for (const item of items) {
+                if (typeof item.nodeId === "string") verified.push(item.nodeId);
+                if (typeof item.name === "string") verified.push(item.name);
+            }
+            if (args && Array.isArray(args.nodeIds)) {
+                for (const id of args.nodeIds) if (typeof id === "string") verified.push(id);
+            }
+        }
+    } else if (toolName === "run_program") {
+        if (parsedContent.results && typeof parsedContent.results === "object") {
+            if (args && Array.isArray(args.ops)) {
+                for (const op of args.ops) {
+                    if (op && typeof op === "object") {
+                        const o = op as Record<string, unknown>;
+                        if (typeof o.id === "string") verified.push(o.id);
+                        if (typeof o.name === "string") verified.push(o.name);
+                    }
+                }
+            }
+        }
+    }
+
+    return verified;
+}
+
+function matchesTarget(target: string, verifiedList: string[]): boolean {
+    if (target === "*") return verifiedList.length > 0;
+    const targetLower = target.toLowerCase();
+    return verifiedList.some((v) => v === target || v.toLowerCase() === targetLower);
+}
 
 /** How much of each recovery path this run has already spent. Each has its own ceiling. */
 interface RecoveryState {

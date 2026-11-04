@@ -22,7 +22,8 @@ function setupTestEnvironment() {
     const doc = createMockDocument();
     const nodes: any[] = [];
     (doc.modelManager as any).materials = [];
-    (doc.modelManager as any).findNodes = (pred: (n: any) => boolean) => nodes.filter(pred);
+    (doc.modelManager as any).findNodes = (pred?: (n: any) => boolean) =>
+        typeof pred === "function" ? nodes.filter(pred) : [...nodes];
     (doc.modelManager as any).addNode = (n: any) => {
         n.boundingBox = () =>
             new BoundingBox(new XYZ({ x: 0, y: 0, z: 0 }), new XYZ({ x: 100, y: 100, z: 100 }));
@@ -277,5 +278,144 @@ describe("TASK-38: Offline Agent Loop & Verification Gate Harness", () => {
         const mem = getSessionMemory();
         // Since no write succeeded, no unverified flag was set
         expect(mem.lastVerification?.verified).not.toBe(false);
+    });
+
+    test("Regression Case 1: creating node A then measuring node B still requires verification (nudged and unverified)", async () => {
+        const { doc } = setupTestEnvironment();
+        // Pre-create existing node B in document
+        const existingNodeB = new EditableShapeNode({ document: doc } as any);
+        existingNodeB.name = "nodeB";
+        doc.modelManager.addNode(existingNodeB);
+
+        const provider = new ScriptedLLMProvider([
+            // Turn 1: Model creates nodeA
+            {
+                type: "tool_calls",
+                calls: [
+                    {
+                        name: "run_program",
+                        args: {
+                            ops: [
+                                {
+                                    id: "nodeA",
+                                    name: "nodeA",
+                                    method: "box",
+                                    args: { dx: 100, dy: 100, dz: 100 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+            // Turn 2: Model measures nodeB instead of nodeA
+            {
+                type: "tool_calls",
+                calls: [
+                    {
+                        name: "measure_nodes",
+                        args: { nodeIds: ["nodeB"] },
+                    },
+                ],
+            },
+            // Turn 3: Model attempts to stop without verifying nodeA
+            {
+                type: "text",
+                text: "I measured nodeB and I am done.",
+                stopReason: "end_turn",
+            },
+            // Turn 4: Agent nudges (1/2), model attempts to stop again
+            {
+                type: "text",
+                text: "Still not measuring nodeA, attempting to stop again.",
+                stopReason: "end_turn",
+            },
+            // Turn 5: Agent nudges (2/2), model finishes unverified
+            {
+                type: "text",
+                text: "Stopping now without verifying nodeA.",
+                stopReason: "end_turn",
+            },
+        ]);
+
+        const messages: ChatMessage[] = [{ role: "user", content: "Create nodeA and measure" }];
+        await runAgent({
+            provider,
+            config: { model: "scripted" } as any,
+            system: { stable: "system-test", volatile: "" },
+            messages,
+            tools: buildTools(),
+            callbacks: nullCallbacks,
+        });
+
+        const nudges = messages.filter(
+            (m) => m.role === "user" && m.content === NUDGE_AFTER_UNVERIFIED_WRITE,
+        );
+        // Must be nudged 2 times because measuring nodeB cannot verify nodeA!
+        expect(nudges.length).toBe(2);
+
+        const mem = getSessionMemory();
+        expect(mem.lastVerification?.verified).toBe(false);
+        expect(mem.lastVerification?.summary).toBe("UNVERIFIED");
+    });
+
+    test("Regression Case 2: creating node A then measuring node A with valid result confirms verification", async () => {
+        setupTestEnvironment();
+        const provider = new ScriptedLLMProvider([
+            // Turn 1: Model creates nodeA
+            {
+                type: "tool_calls",
+                calls: [
+                    {
+                        name: "run_program",
+                        args: {
+                            ops: [
+                                {
+                                    id: "nodeA",
+                                    name: "nodeA",
+                                    method: "box",
+                                    args: { dx: 100, dy: 100, dz: 100 },
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+            // Turn 2: Model measures nodeA
+            {
+                type: "tool_calls",
+                calls: [
+                    {
+                        name: "measure_nodes",
+                        args: { nodeIds: ["nodeA"] },
+                    },
+                ],
+            },
+            // Turn 3: Model concludes after valid verification of nodeA
+            {
+                type: "text",
+                text: "Created nodeA and verified its dimensions successfully.",
+                stopReason: "end_turn",
+            },
+        ]);
+
+        const messages: ChatMessage[] = [{ role: "user", content: "Create nodeA and measure it" }];
+        await runAgent({
+            provider,
+            config: { model: "scripted" } as any,
+            system: { stable: "system-test", volatile: "" },
+            messages,
+            tools: buildTools(),
+            callbacks: nullCallbacks,
+        });
+
+        const nudges = messages.filter(
+            (m) => m.role === "user" && m.content === NUDGE_AFTER_UNVERIFIED_WRITE,
+        );
+        // Exactly 0 nudges because nodeA was properly verified!
+        expect(nudges.length).toBe(0);
+
+        const mem = getSessionMemory();
+        expect(mem.lastVerification?.verified).toBe(true);
+        expect(mem.lastVerification?.toolName).toBe("measure_nodes");
     });
 });

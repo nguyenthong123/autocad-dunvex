@@ -534,6 +534,50 @@ async function runVerification() {
         await page.captureScreenshot(screen3Path);
         console.log(`      ✅ Đã chụp Screen 3: ${screen3Path}`);
 
+        // 4. Screen 4: Ca hồi quy 1: Tạo A rồi đo B -> vẫn chờ hậu kiểm ("⚠️ Chưa kiểm chứng")
+        const screenRegUnverifiedPath = join(SCREENS_DIR, "screen-regression-measuring-other-unverified.png");
+        await page.evaluate(`(async () => {
+            const api = await globalThis.__chiliTest.getSessionMemoryApi();
+            api.updateSessionMemory({
+                goal: "Tạo chi tiết A và kiểm tra",
+                lastVerification: {
+                    timestamp: Date.now(),
+                    toolName: "measure_nodes",
+                    summary: "UNVERIFIED",
+                    verified: false
+                }
+            });
+            const chat = document.querySelector("chili-ai-chat");
+            if (chat && chat.updateMemoryStatusBar) chat.updateMemoryStatusBar();
+        })()`);
+        await page.settled();
+        await page.captureScreenshot(screenRegUnverifiedPath);
+        console.log(
+            `      ✅ Đã chụp Screen Regression 1 (Đo đối tượng khác -> Chưa kiểm chứng): ${screenRegUnverifiedPath}`,
+        );
+
+        // 5. Screen 5: Ca hồi quy 2: Tạo A rồi đo A với kết quả hợp lệ -> xác nhận thành công ("Đã kiểm chứng: measure_nodes")
+        const screenRegVerifiedPath = join(SCREENS_DIR, "screen-regression-measuring-target-verified.png");
+        await page.evaluate(`(async () => {
+            const api = await globalThis.__chiliTest.getSessionMemoryApi();
+            api.updateSessionMemory({
+                goal: "Tạo chi tiết A và kiểm tra",
+                lastVerification: {
+                    timestamp: Date.now(),
+                    toolName: "measure_nodes",
+                    summary: "verified post-write state",
+                    verified: true
+                }
+            });
+            const chat = document.querySelector("chili-ai-chat");
+            if (chat && chat.updateMemoryStatusBar) chat.updateMemoryStatusBar();
+        })()`);
+        await page.settled();
+        await page.captureScreenshot(screenRegVerifiedPath);
+        console.log(
+            `      ✅ Đã chụp Screen Regression 2 (Đo đúng đối tượng -> Đã kiểm chứng): ${screenRegVerifiedPath}`,
+        );
+
         console.log("      => KẾT QUẢ B3: ĐÃ CHỤP ĐẦY ĐỦ 3 ẢNH MÀN HÌNH THỰC TẾ.");
 
         // -------------------------------------------------------------
