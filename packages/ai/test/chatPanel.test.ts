@@ -133,6 +133,9 @@ rs.mock("../src/chatPanel.module.css", () => ({
     askInputRow: "askInputRow",
     askInput: "askInput",
     askAnswer: "askAnswer",
+    memoryStatusBar: "memoryStatusBar",
+    memoryText: "memoryText",
+    memoryErrorBtn: "memoryErrorBtn",
 }));
 
 // File-level, not per-describe: the panels share localStorage, PubSub and the ask handler, and a
@@ -2744,5 +2747,73 @@ describe("ChatPanel questions", () => {
         expect(card!.classList.contains("askAnswered")).toBe(true);
         expect(card!.querySelector(".askQuestion")?.textContent).toBe("how big?");
         expect(card!.querySelector(".askAnswer")?.textContent).toBe("8mm");
+    });
+
+    describe("memory status bar and diagnostics button", () => {
+        test("renders memory status bar and responds to error reports", async () => {
+            const { clearRuntimeErrorReports, recordRuntimeError } = await import(
+                "../src/diagnostics/runtimeErrorReporter"
+            );
+            clearRuntimeErrorReports();
+
+            const document = createMockDocument({ id: "d1" });
+            const panel = panelOn(document);
+
+            const statusBar = panel.querySelector(".memoryStatusBar");
+            expect(statusBar).not.toBeNull();
+
+            const textEl = panel.querySelector(".memoryText");
+            expect(textEl).not.toBeNull();
+
+            const errBtn = panel.querySelector(".memoryErrorBtn") as HTMLButtonElement | null;
+            expect(errBtn).not.toBeNull();
+            // Initially 0 errors -> hidden (display: none)
+            expect(errBtn?.style.display).toBe("none");
+
+            // Record a runtime error
+            recordRuntimeError({
+                toolName: "run_program",
+                error: new Error("Test CAD failure"),
+            });
+
+            // Updating status bar reflects the recorded error
+            (panel as any).updateMemoryStatusBar();
+            expect(errBtn?.style.display).not.toBe("none");
+            expect(errBtn?.textContent).toContain("Lỗi AI (1)");
+
+            // Clicking the error button fires PubSub showManual diagnostics
+            let manualView: string | undefined;
+            const sub = (view: string | undefined) => {
+                manualView = view;
+            };
+            PubSub.default.sub("showManual", sub);
+            try {
+                errBtn?.click();
+                expect(manualView).toBe("diagnostics");
+            } finally {
+                PubSub.default.remove("showManual", sub);
+                clearRuntimeErrorReports();
+            }
+        });
+
+        test("displays unverified warning in status bar when verification is missing", async () => {
+            const document = createMockDocument({ id: "d2" });
+            const panel = panelOn(document);
+
+            const { updateSessionMemory } = await import("../src/memory");
+            updateSessionMemory({
+                lastVerification: {
+                    timestamp: Date.now(),
+                    toolName: "none",
+                    summary: "UNVERIFIED",
+                    verified: false,
+                },
+            });
+
+            (panel as any).updateMemoryStatusBar();
+
+            const textEl = panel.querySelector(".memoryText");
+            expect(textEl?.textContent).toContain("Chưa kiểm chứng");
+        });
     });
 });

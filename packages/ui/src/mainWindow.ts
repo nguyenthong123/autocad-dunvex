@@ -18,6 +18,7 @@ import { showDialog } from "./dialog";
 import { Editor } from "./editor";
 import { showFloatPanel } from "./floatPanel";
 import { Home } from "./home";
+import { ManualReader } from "./manual";
 import { Permanent } from "./permanent";
 import { Toast } from "./toast";
 
@@ -28,6 +29,7 @@ export class MainWindow extends HTMLElement implements IWindow {
     private _inited: boolean = false;
     private _home?: Home;
     private _editor?: Editor;
+    private _manualReader?: ManualReader;
 
     constructor(
         readonly tabs: RibbonTabProfile[],
@@ -91,6 +93,7 @@ export class MainWindow extends HTMLElement implements IWindow {
         PubSub.default.sub("displayValidation", Toast.error);
         PubSub.default.sub("showDialog", showDialog);
         PubSub.default.sub("showFloatPanel", showFloatPanel);
+        PubSub.default.sub("showManual", (view?: string) => this.showManual(view));
         PubSub.default.sub("showPermanent", Permanent.show);
         PubSub.default.sub("activeViewChanged", (view) => displayHome(app, view === undefined));
         PubSub.default.sub("displayHome", (show) => displayHome(app, show));
@@ -101,6 +104,18 @@ export class MainWindow extends HTMLElement implements IWindow {
                 this.applyTheme();
             }
         });
+    }
+
+    public showManual(view?: string): void {
+        if (!this._manualReader) {
+            this._manualReader = new ManualReader(() => {
+                this._manualReader = undefined;
+            });
+            this.appendChild(this._manualReader);
+        }
+        if (view === "diagnostics") {
+            this._manualReader.openDiagnosticsView();
+        }
     }
 
     private readonly displayHome = (app: IApplication, displayHome: boolean) => {

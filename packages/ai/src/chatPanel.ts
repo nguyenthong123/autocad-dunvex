@@ -29,6 +29,7 @@ import {
 } from "@chili3d/element";
 import { marked, type Tokens } from "marked";
 import style from "./chatPanel.module.css";
+import { listRuntimeErrorReports } from "./diagnostics";
 import {
     conversationTitle,
     messageParts,
@@ -51,6 +52,7 @@ import { KNOWN_VENDORS } from "./llm/providerRegistry";
 import { readReference } from "./llm/referenceReader";
 import type { ChatMessage, ImagePart, TokenUsage, Tool } from "./llm/types";
 import { sanitizeErrorMessage } from "./llm/urlUtils";
+import { clearSessionMemory, getSessionMemory } from "./memory";
 import { ModelPicker } from "./modelPicker";
 import {
     CONTEXT_WINDOW_OPTIONS,
@@ -573,6 +575,9 @@ export class ChatPanel extends HTMLElement {
     private abortController?: AbortController;
     /** The send arrow, swapped for the stop square while a run is in flight. */
     private sendIconEl!: SVGSVGElement;
+    private memoryStatusBar!: HTMLElement;
+    private memoryTextEl!: HTMLElement;
+    private memoryErrorBtn!: HTMLButtonElement;
 
     constructor() {
         super();
@@ -587,6 +592,7 @@ export class ChatPanel extends HTMLElement {
         this.sendButton = this.createSendButton();
         this.header = this.createHeader();
         this.imagePreview = div({ className: style.imagePreview });
+        this.memoryStatusBar = this.createMemoryStatusBar();
 
         const fileInput = this.createFileInput();
         this.composer = this.createComposer(fileInput);
@@ -597,6 +603,7 @@ export class ChatPanel extends HTMLElement {
             this.messageList,
             this.emptyState,
             this.imagePreview,
+            this.memoryStatusBar,
             this.composer,
             fileInput,
             this.buildSettingsOverlay(),
@@ -822,6 +829,73 @@ export class ChatPanel extends HTMLElement {
         const hasMessages = this.messages.length > 0;
         this.emptyState.style.display = this.configured && !hasMessages ? "flex" : "none";
         this.messageList.style.display = this.configured && hasMessages ? "flex" : "none";
+    }
+
+    private createMemoryStatusBar(): HTMLElement {
+        this.memoryTextEl = div({
+            className: style.memoryText,
+            textContent: "🧠 Phiên AI",
+        });
+
+        this.memoryErrorBtn = button(
+            {
+                className: style.memoryErrorBtn,
+                style: "display: none",
+                onclick: (e: MouseEvent) => {
+                    e.stopPropagation();
+                    PubSub.default.pub("showManual", "diagnostics");
+                },
+            },
+            span({ textContent: "⚠️ Lỗi AI (0)" }),
+        );
+
+        this.memoryStatusBar = div(
+            { className: style.memoryStatusBar },
+            this.memoryTextEl,
+            this.memoryErrorBtn,
+        );
+
+        this.updateMemoryStatusBar();
+        return this.memoryStatusBar;
+    }
+
+    public updateMemoryStatusBar(): void {
+        if (!this.memoryStatusBar || !this.memoryTextEl || !this.memoryErrorBtn) return;
+        const mem = getSessionMemory();
+        const errReports = listRuntimeErrorReports();
+        const errCount = errReports.length;
+
+        const infoParts: string[] = [];
+        if (mem.goal) {
+            infoParts.push(`🧠 ${mem.goal}`);
+        } else {
+            infoParts.push("🧠 Phiên AI");
+        }
+
+        if (mem.activeNodes.length > 0) {
+            infoParts.push(`Node: ${mem.activeNodes.length}`);
+        }
+        if (mem.removedNodeIds.length > 0) {
+            infoParts.push(`Đã xóa: ${mem.removedNodeIds.length}`);
+        }
+        if (mem.lastVerification) {
+            if (mem.lastVerification.verified === false || mem.lastVerification.summary === "UNVERIFIED") {
+                infoParts.push("⚠️ Chưa kiểm chứng");
+            } else {
+                infoParts.push(`Đã kiểm chứng: ${mem.lastVerification.toolName}`);
+            }
+        }
+
+        const text = infoParts.join(" | ");
+        this.memoryTextEl.textContent = text;
+        this.memoryTextEl.title = text;
+
+        if (errCount > 0) {
+            this.memoryErrorBtn.style.display = "";
+            this.memoryErrorBtn.textContent = `⚠️ Lỗi AI (${errCount})`;
+        } else {
+            this.memoryErrorBtn.style.display = "none";
+        }
     }
 
     private buildSettingsOverlay(): HTMLElement {
@@ -1292,6 +1366,7 @@ export class ChatPanel extends HTMLElement {
             this.interrupt();
         }
         this.abandonPendingAsk();
+        clearSessionMemory();
         this.conversation = newConversation();
         this.messages.length = 0;
         this.journal = "";
@@ -1308,6 +1383,7 @@ export class ChatPanel extends HTMLElement {
         this.pendingImages.length = 0;
         this.renderImagePreview();
         this.updateEmptyState();
+        this.updateMemoryStatusBar();
     }
 
     /**
@@ -1418,6 +1494,7 @@ export class ChatPanel extends HTMLElement {
             this.interrupt();
         }
         this.abandonPendingAsk();
+        clearSessionMemory();
         this.conversation = conversation;
         this.messages.length = 0;
         this.messages.push(...conversation.messages.map(toChatMessage));
@@ -1427,6 +1504,7 @@ export class ChatPanel extends HTMLElement {
         // removed also need their text back, which the stored parts still have.
         this.journal = journalFromStored(conversation.messages, this.droppedTurnCount());
         this.renderConversation(conversation);
+        this.updateMemoryStatusBar();
         this.hideHistory();
     }
 
@@ -1657,6 +1735,7 @@ export class ChatPanel extends HTMLElement {
         this.sending = false;
         this.abortController = undefined;
         this.setStopMode(false);
+        this.updateMemoryStatusBar();
     }
 
     /** The config to run with, or undefined after sending the user to the settings overlay. */

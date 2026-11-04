@@ -596,6 +596,43 @@
     white-space: nowrap;
 }
 
+.memoryStatusBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 10px;
+    background-color: var(--background-secondary-color, rgba(255, 255, 255, 0.03));
+    border-top: 1px solid var(--border-color, #333);
+    font-size: 11px;
+    color: var(--foreground-secondary-color, #aaa);
+    gap: 8px;
+    min-height: 24px;
+    box-sizing: border-box;
+}
+
+.memoryText {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.memoryErrorBtn {
+    background: transparent;
+    border: 1px solid #d9534f;
+    color: #ff6b6b;
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background-color 0.15s ease;
+}
+
+.memoryErrorBtn:hover {
+    background-color: rgba(217, 83, 79, 0.2);
+}
+
 .input {
     display: block;
     width: 100%;

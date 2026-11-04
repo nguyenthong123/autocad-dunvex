@@ -2,6 +2,8 @@
 // See LICENSE file in the project root for full license information.
 
 import { I18n, type I18nKeys } from "@chili3d/core";
+import { recordRuntimeError } from "../diagnostics";
+import { onRecentError, onVerificationCompleted, updateSessionMemory } from "../memory";
 import type { LLMConfig } from "../settings";
 import { isMultimodalError } from "./completions";
 import { dropAllImages, dropSupersededImages, dropSupersededThinking } from "./messages";
@@ -139,7 +141,8 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
     // dropSupersededThinking), so every request below is spared it.
     dropSupersededThinking(opts.messages);
 
-    const state: RecoveryState = { continues: 0, lostCalls: 0, idleNudges: 0 };
+    const state: RecoveryState = { continues: 0, lostCalls: 0, idleNudges: 0, verifyNudges: 0 };
+    let needsVerification = false;
     // Whether the attempt in flight has already put text on screen. A retry after a context
     // overflow would replay that text, so the retry is only allowed before the first delta.
     let emittedText = false;
@@ -206,13 +209,77 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                 runOpts.messages.push({ role: "user", content: NUDGE_AFTER_PROMISE, synthetic: true });
                 continue;
             }
-            if (turn.toolCalls.length === 0) break;
+            if (turn.toolCalls.length === 0) {
+                if (needsVerification) {
+                    if (state.verifyNudges < MAX_VERIFY_NUDGES) {
+                        state.verifyNudges++;
+                        runOpts.messages.push({
+                            role: "user",
+                            content: NUDGE_AFTER_UNVERIFIED_WRITE,
+                            synthetic: true,
+                        });
+                        continue;
+                    }
+                    needsVerification = false;
+                    updateSessionMemory({
+                        lastVerification: {
+                            timestamp: Date.now(),
+                            toolName: "none",
+                            summary: "UNVERIFIED",
+                            verified: false,
+                        },
+                    });
+                }
+                break;
+            }
 
             const results = await runToolCalls(runOpts, turn.toolCalls);
             // The user may have switched conversations while a tool was running. Appending now
             // would put a tool_result into whatever history the panel installed in the meantime.
             if (opts.signal?.aborted) break;
             appendToolResults(runOpts, results, multimodalDisabled);
+
+            // Update verification state based on tool outputs
+            for (const res of results) {
+                let isError = false;
+                let parsedContent: Record<string, unknown> | undefined;
+                try {
+                    parsedContent = JSON.parse(res.content) as Record<string, unknown>;
+                    if (
+                        parsedContent &&
+                        typeof parsedContent === "object" &&
+                        typeof parsedContent["error"] === "string"
+                    ) {
+                        isError = true;
+                    }
+                } catch {
+                    // Non-JSON output
+                }
+                if (isError) continue;
+
+                if (res.name === "run_program") {
+                    const createdCount = Array.isArray(parsedContent?.["created"])
+                        ? (parsedContent["created"] as unknown[]).length
+                        : 0;
+                    const removedCount = Array.isArray(parsedContent?.["removed"])
+                        ? (parsedContent["removed"] as unknown[]).length
+                        : 0;
+                    if (createdCount > 0 || removedCount > 0) {
+                        needsVerification = true;
+                    } else if (parsedContent?.["results"]) {
+                        // Query-only run_program can serve as verification
+                        needsVerification = false;
+                        onVerificationCompleted(res.name, "verified via query ops");
+                    }
+                } else if (WRITE_TOOLS.has(res.name)) {
+                    needsVerification = true;
+                }
+
+                if (VERIFY_TOOLS.has(res.name)) {
+                    needsVerification = false;
+                    onVerificationCompleted(res.name, "verified post-write state");
+                }
+            }
         }
     } catch (err) {
         // The SDKs surface user cancellation as an AbortError mid-stream; treat it as a clean stop.
@@ -233,11 +300,27 @@ const SHORT_STOPS = new Set([...TRUNCATED, ...TOOL_STOPS]);
 /** Stops where the model deliberately declined; nothing to nudge, and nudging would push back. */
 const REFUSALS = new Set(["refusal", "content_filter"]);
 
+export const MAX_VERIFY_NUDGES = 2;
+export const NUDGE_AFTER_UNVERIFIED_WRITE =
+    "You modified geometry in this turn but have not verified the result yet. Call measure_nodes (or a geometry query / get_document_state) to verify the actual dimensions, count, and placement before reporting completion to the user.";
+
+const WRITE_TOOLS = new Set([
+    "run_program",
+    "run_parametric",
+    "apply_array",
+    "delete_node",
+    "transform_node",
+    "set_node_properties",
+]);
+
+const VERIFY_TOOLS = new Set(["measure_nodes", "bom_report", "classify_material", "get_node_properties"]);
+
 /** How much of each recovery path this run has already spent. Each has its own ceiling. */
 interface RecoveryState {
     continues: number;
     lostCalls: number;
     idleNudges: number;
+    verifyNudges: number;
 }
 
 /**
@@ -505,11 +588,38 @@ async function invokeTool(
     tool: Tool | undefined,
     signal?: AbortSignal,
 ): Promise<{ content: string; images?: ImagePart[] }> {
+    let parsedArgs: unknown = tc.arguments;
+    try {
+        parsedArgs = JSON.parse(tc.arguments);
+    } catch {
+        // keep raw string if not json
+    }
+
     if (!tool) {
-        return { content: JSON.stringify({ error: `unknown tool "${tc.name}"` }) };
+        const errMsg = `unknown tool "${tc.name}"`;
+        recordRuntimeError({ toolName: tc.name, error: new Error(errMsg), args: parsedArgs });
+        onRecentError({ toolName: tc.name, errorMessage: errMsg });
+        return { content: JSON.stringify({ error: errMsg }) };
     }
     try {
-        const result = await tool.handler(JSON.parse(tc.arguments), signal);
+        const result = await tool.handler(parsedArgs as Record<string, unknown>, signal);
+        const textContent = typeof result === "string" ? result : result.content;
+
+        // If tool returned an explicit error object in JSON, capture it for diagnostics
+        try {
+            const parsedRes = JSON.parse(textContent);
+            if (parsedRes && typeof parsedRes === "object" && typeof parsedRes.error === "string") {
+                recordRuntimeError({
+                    toolName: tc.name,
+                    error: new Error(parsedRes.error),
+                    args: parsedArgs,
+                });
+                onRecentError({ toolName: tc.name, errorMessage: parsedRes.error });
+            }
+        } catch {
+            // Not a JSON error, normal result
+        }
+
         if (typeof result === "string") {
             return { content: redactDataUrls(result) };
         }
@@ -517,6 +627,9 @@ async function invokeTool(
     } catch (err) {
         // A thrown message can quote the rejected value in full (coercion errors do), so it is
         // held to the same rule as a result: image bytes stay out of the replayed history.
-        return { content: JSON.stringify({ error: redactDataUrls((err as Error).message) }) };
+        const message = (err as Error).message;
+        recordRuntimeError({ toolName: tc.name, error: err, args: parsedArgs });
+        onRecentError({ toolName: tc.name, errorMessage: message });
+        return { content: JSON.stringify({ error: redactDataUrls(message) }) };
     }
 }

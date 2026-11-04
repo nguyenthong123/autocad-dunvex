@@ -86,6 +86,7 @@ export interface PubSubEventMap {
         handler: (text: string) => Result<string, I18nKeys>,
         options?: ShowInputOptions,
     ) => void;
+    showManual: (view?: string) => void;
     showPermanent: (action: () => Promise<void>, message: I18nKeys, ...args: any[]) => void;
     showProperties(document: IDocument, nodes: INode[]): void;
     showSelectionControl: (controller: AsyncController) => void;

@@ -1534,4 +1534,149 @@ describe("runAgent", () => {
         expect(toolMessages[0].images).toBeUndefined();
         expect(toolMessages[1].images).toEqual(shot(1));
     });
+
+    test("nudges the model to verify after geometry writes before ending turn", async () => {
+        let turnCount = 0;
+        const provider: LLMProvider = {
+            id: "fake",
+            streamChat: async function* (opts) {
+                turnCount++;
+                const lastMsg = opts.messages[opts.messages.length - 1];
+
+                if (turnCount === 1) {
+                    // Turn 1: Call write tool run_program
+                    yield {
+                        type: "tool_call",
+                        id: "call-write",
+                        name: "run_program",
+                        arguments: JSON.stringify({ code: "builder.box(100, 100, 100)" }),
+                    };
+                    yield { type: "done", stopReason: "tool_use" };
+                } else if (turnCount === 2) {
+                    // Turn 2: Attempt to finish without verifying
+                    yield { type: "text", text: "Created the box successfully!" };
+                    yield { type: "done", stopReason: "end_turn" };
+                } else if (turnCount === 3) {
+                    // Turn 3: Received verification nudge, now call measure_nodes
+                    expect(lastMsg.role).toBe("user");
+                    expect(typeof lastMsg.content === "string" ? lastMsg.content : "").toContain(
+                        "You modified geometry in this turn but have not verified the result yet",
+                    );
+
+                    yield {
+                        type: "tool_call",
+                        id: "call-measure",
+                        name: "measure_nodes",
+                        arguments: JSON.stringify({ nodeIds: ["b1"] }),
+                    };
+                    yield { type: "done", stopReason: "tool_use" };
+                } else {
+                    // Turn 4: Final completion after verification
+                    yield { type: "text", text: "Verified: box dimensions are 100x100x100mm." };
+                    yield { type: "done", stopReason: "end_turn" };
+                }
+            },
+        };
+
+        const tools: Tool[] = [
+            {
+                name: "run_program",
+                description: "",
+                parameters: { type: "object" },
+                handler: async () => JSON.stringify({ created: ["b1"], removed: [] }),
+            },
+            {
+                name: "measure_nodes",
+                description: "",
+                parameters: { type: "object" },
+                handler: async () =>
+                    JSON.stringify({ measurements: [{ id: "b1", dimensions: { x: 100, y: 100, z: 100 } }] }),
+            },
+        ];
+
+        const messages: ChatMessage[] = [{ role: "user", content: "Create a 100mm box" }];
+
+        await runAgent({
+            config: { provider: "anthropic", apiKey: "k", model: "claude-opus-5" },
+            system: SYSTEM,
+            messages,
+            tools,
+            callbacks: {
+                onTextDelta: () => {},
+                onToolCall: () => {},
+                onThinkingDelta: () => {},
+                onUsage: () => {},
+            },
+            provider,
+        });
+
+        expect(turnCount).toBe(4);
+        const nudgeMsg = messages.find(
+            (m) =>
+                m.role === "user" &&
+                typeof m.content === "string" &&
+                m.content.includes("You modified geometry in this turn"),
+        );
+        expect(nudgeMsg).toBeDefined();
+    });
+
+    test("caps verification nudges at MAX_VERIFY_NUDGES if model refuses to verify", async () => {
+        const { clearSessionMemory } = await import("../src/memory/sessionMemory");
+        clearSessionMemory();
+        let turnCount = 0;
+        const provider: LLMProvider = {
+            id: "fake",
+            streamChat: async function* () {
+                turnCount++;
+                if (turnCount === 1) {
+                    yield {
+                        type: "tool_call",
+                        id: "call-write",
+                        name: "run_program",
+                        arguments: "{}",
+                    };
+                    yield { type: "done", stopReason: "tool_use" };
+                } else {
+                    // Continually attempt to end without verifying
+                    yield { type: "text", text: "Done without verify" };
+                    yield { type: "done", stopReason: "end_turn" };
+                }
+            },
+        };
+
+        const tools: Tool[] = [
+            {
+                name: "run_program",
+                description: "",
+                parameters: { type: "object" },
+                handler: async () => JSON.stringify({ created: ["b1"] }),
+            },
+        ];
+
+        const messages: ChatMessage[] = [{ role: "user", content: "Create a box" }];
+
+        await runAgent({
+            config: { provider: "anthropic", apiKey: "k", model: "claude-opus-5" },
+            system: SYSTEM,
+            messages,
+            tools,
+            callbacks: {
+                onTextDelta: () => {},
+                onToolCall: () => {},
+                onThinkingDelta: () => {},
+                onUsage: () => {},
+            },
+            provider,
+        });
+
+        // Turn 1: tool call
+        // Turn 2: attempt stop -> nudge 1
+        // Turn 3: attempt stop -> nudge 2
+        // Turn 4: attempt stop -> nudges exhausted, stops with UNVERIFIED state!
+        expect(turnCount).toBe(4);
+        const { getSessionMemory } = await import("../src/memory/sessionMemory");
+        expect(getSessionMemory().lastVerification).toBeDefined();
+        expect(getSessionMemory().lastVerification?.summary).toBe("UNVERIFIED");
+        expect(getSessionMemory().lastVerification?.verified).toBe(false);
+    });
 });

@@ -5,7 +5,10 @@ import type { Tool } from "../llm/types";
 import { buildSkillTool } from "../skills";
 import { buildArrayTools } from "./arrayTools";
 import { buildAskUserTool } from "./askUser";
+import { buildBomTools } from "./bomTools";
 import { buildCapabilityTools } from "./capabilityEngine";
+import { buildCommandTools } from "./commandTools";
+import { buildDiagnosticTools } from "./diagnosticTools";
 import { buildDocumentTools } from "./documentTools";
 import { buildFileTools } from "./fileTools";
 import { buildMaterialTools } from "./materialTools";
@@ -15,6 +18,7 @@ import { buildPropertyTools } from "./propertyTools";
 import { buildReadTools } from "./readTools";
 import { buildRibbonTools } from "./ribbonTools";
 import { buildSelectionTools } from "./selectionTools";
+import { buildSessionMemoryTools } from "./sessionMemoryTools";
 import { buildVariableTools } from "./variableTools";
 import { buildCaptureViewsTool, buildViewTools } from "./viewTools";
 
@@ -40,5 +44,9 @@ export function buildTools(): Tool[] {
         // Appended last for the same reason: a newly added tool must not shift the cached prefix.
         ...buildDocumentTools(),
         ...buildArrayTools(),
+        ...buildDiagnosticTools(),
+        ...buildSessionMemoryTools(),
+        ...buildBomTools(),
+        ...buildCommandTools(),
     ];
 }

@@ -3,4 +3,56 @@
 
 export { bridgePortFromUrl, connectBridge, DEFAULT_BRIDGE_PORT } from "./bridge";
 export { ChatPanel } from "./chatPanel";
-export { type Skill, SkillStore } from "./skills";
+export {
+    classifyError,
+    clearRuntimeErrorReports,
+    type ErrorClass,
+    exportRuntimeErrorReports,
+    listRuntimeErrorReports,
+    type RecordRuntimeErrorOptions,
+    type RuntimeErrorDocumentSummary,
+    type RuntimeErrorNodeSummary,
+    type RuntimeErrorReport,
+    recordRuntimeError,
+    sanitizeArgs,
+} from "./diagnostics";
+export {
+    type ActiveNodeRef,
+    clearSessionMemory,
+    formatSessionMemorySummary,
+    getSessionMemory,
+    onNodeRenamed,
+    onNodesCreated,
+    onNodesRemoved,
+    onRecentError,
+    onUserConstraint,
+    onVerificationCompleted,
+    SESSION_MEMORY_MAX_SUMMARY_CHARS,
+    type SessionMemory,
+    type SessionMemoryPatch,
+    type SessionRecentError,
+    type SessionVerificationInfo,
+    updateSessionMemory,
+} from "./memory";
+export {
+    COMMAND_GUIDE_CARDS,
+    type CommandGuideCard,
+    commandGuide,
+    findCommandGuide,
+    type Skill,
+    SkillStore,
+    searchCommandGuides,
+} from "./skills";
+export {
+    type BomReportItem,
+    type BomReportSummary,
+    buildBomTools,
+    classifyForm,
+    type MaterialClassification,
+    type MaterialForm,
+} from "./tools/bomTools";
+export {
+    buildCommandTools,
+    resolveCommandKey,
+    SAFE_DIRECT_COMMANDS,
+} from "./tools/commandTools";

@@ -1,0 +1,1458 @@
+CMD: npx rstest packages/ai
+COMMIT: 37cdd6fbe4890dd4fa929b9078fce32605daef4c
+TIME: 2026-11-04T05:08:06Z
+  Rstest v0.10.0
+
+
+log | packages/ai/test/arrayTools.test.ts > arrayTools > measure_nodes tool > measures bounding box, dimensions, and approximate volume accurately
+history added change node
+
+
+log | packages/ai/test/arrayTools.test.ts > arrayTools > plan_array tool integration > plan_array tool queries node dimension automatically and catches overflow without creating nodes
+history added change node
+
+
+log | packages/ai/test/arrayTools.test.ts > arrayTools > apply_array tool & preflight enforcement > rejects direct call without planId and creates 0 nodes
+history added change node
+
+
+log | packages/ai/test/arrayTools.test.ts > arrayTools > apply_array tool & preflight enforcement > rejects call with unknown or expired planId and creates 0 nodes
+history added change node
+
+
+log | packages/ai/test/arrayTools.test.ts > arrayTools > apply_array tool & preflight enforcement > rejects call when parameters mismatch approved plan and creates 0 nodes
+history added change node
+
+
+log | packages/ai/test/arrayTools.test.ts > arrayTools > apply_array tool & preflight enforcement > rejects call when source node was mutated or moved after plan creation and creates 0 nodes
+history added change node
+
+
+log | packages/ai/test/arrayTools.test.ts > arrayTools > apply_array tool & preflight enforcement > rejects call when source node was mutated or moved after plan creation and creates 0 nodes
+history added change transform property
+
+
+log | packages/ai/test/arrayTools.test.ts > arrayTools > apply_array tool & preflight enforcement > rejects count > 200 with clear safety error
+history added change node
+
+
+log | packages/ai/test/arrayTools.test.ts > arrayTools > apply_array tool & preflight enforcement > mock unit benchmark 50 items: clones 49 copies in memory in a single transaction in under 50ms
+history added change node
+
+
+log | packages/ai/test/arrayTools.test.ts > arrayTools > apply_array tool & preflight enforcement > mock unit benchmark 50 items: clones 49 copies in memory in a single transaction in under 50ms
+history added AI Array
+
+
+log | packages/ai/test/arrayTools.test.ts > arrayTools > apply_array tool & preflight enforcement > mock unit benchmark 200 items: clones 199 copies in memory in a single transaction in under 100ms
+history added change node
+
+
+log | packages/ai/test/arrayTools.test.ts > arrayTools > apply_array tool & preflight enforcement > mock unit benchmark 200 items: clones 199 copies in memory in a single transaction in under 100ms
+history added AI Array
+
+ ✓ packages/ai/test/appGuide.test.ts (6)
+ ✓ packages/ai/test/arrayTools.test.ts (14)
+ ✓ packages/ai/test/askUser.test.ts (4)
+ ✓ packages/ai/test/bomTools.test.ts (3)
+ ✓ packages/ai/test/anthropicProvider.test.ts (13)
+ ✓ packages/ai/test/bridge.test.ts (11)
+
+warn | packages/ai/test/agent.test.ts > runAgent > runs tool calls and accumulates normalized messages
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > runs tool calls and accumulates normalized messages
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops between tool calls and drops their results once aborted
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > announces each tool batch before running it
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > announces each tool batch before running it
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > runs every call one response carries, in the order the model listed them
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > runs every call one response carries, in the order the model listed them
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > streams text deltas through callbacks
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops after MAX_AGENT_ITERATIONS when the model never stops calling tools
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > asks for the rest when the output limit cut the turn off
+[ai] tokens: usage=none stop=max_tokens 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > asks for the rest when the output limit cut the turn off
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops asking once the continuations are used up, and says why
+[ai] tokens: usage=none stop=max_tokens 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops asking once the continuations are used up, and says why
+[ai] tokens: usage=none stop=max_tokens 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > stops asking once the continuations are used up, and says why
+[ai] tokens: usage=none stop=max_tokens 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > runs the call a truncated turn did carry, and asks for nothing more
+[ai] tokens: usage=none stop=max_tokens 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > runs the call a truncated turn did carry, and asks for nothing more
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says so when the output limit cut the turn off
+[ai] tokens: usage=none stop=max_tokens 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says so when the output limit cut the turn off
+[ai] tokens: usage=none stop=max_tokens 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says so when the output limit cut the turn off
+[ai] tokens: usage=none stop=max_tokens 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > asks again when a tool call the model asked for never arrived
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > asks again when a tool call the model asked for never arrived
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > asks again when a tool call the model asked for never arrived
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > gives up on a lost call after MAX_LOST_CALL_NUDGES
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > gives up on a lost call after MAX_LOST_CALL_NUDGES
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > gives up on a lost call after MAX_LOST_CALL_NUDGES
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > gives up on a lost call after MAX_LOST_CALL_NUDGES
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > gives up on a lost call after MAX_LOST_CALL_NUDGES
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > gives up on a lost call after MAX_LOST_CALL_NUDGES
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > gives up on a lost call after MAX_LOST_CALL_NUDGES
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > gives up on a lost call after MAX_LOST_CALL_NUDGES
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > gives up on a lost call after MAX_LOST_CALL_NUDGES
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > nudges a turn that promised to act but made no call
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > nudges a turn that promised to act but made no call
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > nudges a turn that promised to act but made no call
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > does not nudge an ordinary answer: Which face should I fillet?
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > does not nudge an ordinary answer: Let me know if you want it taller.
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > does not nudge an ordinary answer: The box is 10x20x5.
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > caps idle nudges at MAX_IDLE_NUDGES
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > caps idle nudges at MAX_IDLE_NUDGES
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > caps idle nudges at MAX_IDLE_NUDGES
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > caps idle nudges at MAX_IDLE_NUDGES
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > retries once after the endpoint reports an oversized context
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > recovers from multimodal error by dropping images and retrying text-only
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > rebuilds the system prompt after an overflow compaction
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > a turn that simply ended says nothing extra
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > says the step limit was hit even when the model had been talking
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > returns tool handler errors to the model as JSON and continues the loop
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > returns tool handler errors to the model as JSON and continues the loop
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > stores thinking blocks on the assistant message
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > replays the turn in flight's thinking while its tool loop is open
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > replays the turn in flight's thinking while its tool loop is open
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > sends a new turn without the previous turns' thinking
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > keeps image bytes out of a tool result
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > keeps image bytes out of a tool result
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > keeps image bytes out of a tool error
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > keeps image bytes out of a tool error
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > leaves a data URL too small to be an image alone
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > leaves a data URL too small to be an image alone
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > passes the abort signal through to tool handlers
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > passes the abort signal through to tool handlers
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > keeps only the newest tool result's images while a run accumulates them
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > keeps only the newest tool result's images while a run accumulates them
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > keeps only the newest tool result's images while a run accumulates them
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > keeps the user's own images while the run takes screenshots
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > keeps the user's own images while the run takes screenshots
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > keeps the user's own images while the run takes screenshots
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > nudges the model to verify after geometry writes before ending turn
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > nudges the model to verify after geometry writes before ending turn
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > nudges the model to verify after geometry writes before ending turn
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > nudges the model to verify after geometry writes before ending turn
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+warn | packages/ai/test/agent.test.ts > runAgent > caps verification nudges at MAX_VERIFY_NUDGES if model refuses to verify
+[ai] tokens: usage=none stop=tool_use 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > caps verification nudges at MAX_VERIFY_NUDGES if model refuses to verify
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > caps verification nudges at MAX_VERIFY_NUDGES if model refuses to verify
+[ai] tokens: usage=none stop=end_turn 0s
+
+
+debug | packages/ai/test/agent.test.ts > runAgent > caps verification nudges at MAX_VERIFY_NUDGES if model refuses to verify
+[ai] tokens: usage=none stop=end_turn 0s
+
+ ✓ packages/ai/test/agent.test.ts (72)
+ ✓ packages/ai/test/discovery.test.ts (13)
+ ✓ packages/ai/test/commandTools.test.ts (7)
+ ✓ packages/ai/test/commandGuide.test.ts (8)
+
+log | packages/ai/test/capabilityEngine.test.ts > capabilityEngine > boolean operations > booleanCut transforms node with non-identity worldTransform into world space
+history added change transform property
+
+
+log | packages/ai/test/capabilityEngine.test.ts > capabilityEngine > boolean operations > disposes temporary transformed shapes on success, never disposes document input shapes
+history added change transform property
+
+
+log | packages/ai/test/capabilityEngine.test.ts > capabilityEngine > boolean operations > disposes temporary shapes and uncommitted result on volume check failure
+history added change transform property
+
+ ✓ packages/ai/test/capabilityEngine.test.ts (77)
+ ✓ packages/ai/test/documentTools.test.ts (3)
+ ✓ packages/ai/test/fileTools.test.ts (3)
+ ✓ packages/ai/test/history.test.ts (7)
+ ✓ packages/ai/test/host.test.ts (2)
+ ✓ packages/ai/test/imageData.test.ts (4)
+ ✓ packages/ai/test/journal.test.ts (30)
+ ✓ packages/ai/test/bridgeClient.test.ts (7)
+  ✓ bridge client > does not retry a close that means another page took over (705ms)
+  ✓ bridge client > does not retry a refused handshake and reports it (705ms)
+  ✓ bridge client > retries a transport close (514ms)
+ ✓ packages/ai/test/chatPanel.test.ts (114)
+
+log | packages/ai/test/materialTools.test.ts > material tools > list_materials > lists the document's materials with the values that shape them
+history added change roughness property
+
+
+log | packages/ai/test/materialTools.test.ts > material tools > get_material > reads the material's rows, the way the material editor shows them
+history added change metalness property
+
+
+log | packages/ai/test/materialTools.test.ts > material tools > get_material > reads the material's rows, the way the material editor shows them
+history added change normalScale property
+
+
+log | packages/ai/test/materialTools.test.ts > material tools > get_material > reads the material's rows, the way the material editor shows them
+history added change image property
+
+
+log | packages/ai/test/materialTools.test.ts > material tools > set_material_properties > writes the properties it is given, in one step
+history added AI set material properties
+
+
+log | packages/ai/test/materialTools.test.ts > material tools > set_material_properties > leaves the properties it is not given alone
+history added change roughness property
+
+
+log | packages/ai/test/materialTools.test.ts > material tools > set_material_properties > leaves the properties it is not given alone
+history added AI set material properties
+
+
+log | packages/ai/test/materialTools.test.ts > material tools > set_material_properties > takes a point for a vector property
+history added AI set material properties
+
+
+log | packages/ai/test/materialTools.test.ts > material tools > set_material_properties > gives a texture slot the image it is handed, and clears it with an empty string
+history added AI set material properties
+
+
+log | packages/ai/test/materialTools.test.ts > material tools > set_material_properties > gives a texture slot the image it is handed, and clears it with an empty string
+history added AI set material properties
+
+
+log | packages/ai/test/materialTools.test.ts > material tools > set_material_properties > stores an SVG a texture slot is handed as pixels
+history added AI set material properties
+
+
+log | packages/ai/test/materialTools.test.ts > material tools > set_material_properties > changes an existing material rather than adding one
+history added AI set material properties
+
+ ✓ packages/ai/test/materialTools.test.ts (13)
+
+log | packages/ai/test/nodeTools.test.ts > create_folder tool > creates a folder at the root and moves the given nodes into it
+history added change node
+
+
+log | packages/ai/test/nodeTools.test.ts > create_folder tool > creates a folder at the root and moves the given nodes into it
+history added AI create folder
+
+
+log | packages/ai/test/nodeTools.test.ts > create_folder tool > generates a name when none is given
+history added AI create folder
+
+
+log | packages/ai/test/nodeTools.test.ts > create_folder tool > generates a name when none is given
+history added AI create folder
+
+
+log | packages/ai/test/nodeTools.test.ts > create_folder tool > nests a new folder under parentId
+history added change node
+
+
+log | packages/ai/test/nodeTools.test.ts > create_folder tool > nests a new folder under parentId
+history added change node
+
+
+log | packages/ai/test/nodeTools.test.ts > create_folder tool > nests a new folder under parentId
+history added AI create folder
+
+
+log | packages/ai/test/nodeTools.test.ts > move_nodes tool > moves nodes into a folder and back to the root
+history added change node
+
+
+log | packages/ai/test/nodeTools.test.ts > move_nodes tool > moves nodes into a folder and back to the root
+history added change node
+
+
+log | packages/ai/test/nodeTools.test.ts > move_nodes tool > moves nodes into a folder and back to the root
+history added AI move nodes
+
+
+log | packages/ai/test/nodeTools.test.ts > move_nodes tool > moves nodes into a folder and back to the root
+history added AI move nodes
+
+
+log | packages/ai/test/nodeTools.test.ts > move_nodes tool > skips a node that is already in the target folder
+history added change node
+
+
+log | packages/ai/test/nodeTools.test.ts > move_nodes tool > skips a node that is already in the target folder
+history added change node
+
+
+log | packages/ai/test/nodeTools.test.ts > move_nodes tool > skips a node that is already in the target folder
+history added AI move nodes
+
+
+log | packages/ai/test/nodeTools.test.ts > move_nodes tool > refuses to move a folder into its own descendant
+history added change node
+
+
+log | packages/ai/test/nodeTools.test.ts > move_nodes tool > refuses to move a folder into its own descendant
+history added change node
+
+
+log | packages/ai/test/nodeTools.test.ts > move_nodes tool > refuses to move a folder into its own descendant
+history added AI move nodes
+
+ ✓ packages/ai/test/nodeTools.test.ts (26)
+ ✓ packages/ai/test/modelPicker.test.ts (8)
+ ✓ packages/ai/test/openaiCompatProvider.test.ts (10)
+
+log | packages/ai/test/propertyTools.test.ts > set_node_properties > writes a shape parameter and reports the new value
+history added AI set node properties
+
+
+log | packages/ai/test/propertyTools.test.ts > set_node_properties > republishes the property panel, which selection changes alone would not refresh
+history added AI set node properties
+
+
+log | packages/ai/test/propertyTools.test.ts > set_node_properties > writes a node name
+history added AI set node properties
+
+
+log | packages/ai/test/propertyTools.test.ts > set_node_properties > builds the geometry class a point property expects
+history added AI set node properties
+
+ ✓ packages/ai/test/propertyTools.test.ts (13)
+ ✓ packages/ai/test/providerRegistry.test.ts (3)
+ ✓ packages/ai/test/prompt.test.ts (8)
+ ✓ packages/ai/test/parametricTools.test.ts (4)
+ ✓ packages/ai/test/readTools.test.ts (6)
+ ✓ packages/ai/test/redact.test.ts (2)
+ ✓ packages/ai/test/ribbonTools.test.ts (5)
+ ✓ packages/ai/test/referenceReader.test.ts (4)
+
+debug | packages/ai/test/responsesProvider.test.ts > responses convertEvent > splits cached input out of the reported usage
+[ai] responses: status=completed text=none calls=0 reasoning=none tokens=0 reasoning
+
+
+warn | packages/ai/test/responsesProvider.test.ts > a response that stopped short > an incomplete response ends the turn and names the reason
+[ai] responses: status=incomplete (max_output_tokens) text=none calls=0 reasoning=none tokens=0 reasoning
+
+ ✓ packages/ai/test/responsesProvider.test.ts (13)
+ ✓ packages/ai/test/capabilitiesFreshness.test.ts (1)
+  ✓ capabilities.generated.ts is what the generator produces from the current core sources (5.17s)
+ ✓ packages/ai/test/selectionTools.test.ts (7)
+ ✓ packages/ai/test/sessionMemory.test.ts (8)
+ ✓ packages/ai/test/transformMatrix.test.ts (5)
+ ✓ packages/ai/test/skillTool.test.ts (15)
+ ✓ packages/ai/test/textureImage.test.ts (7)
+ ✓ packages/ai/test/settings.test.ts (8)
+ ✓ packages/ai/test/runtimeErrorReporter.test.ts (9)
+ ✓ packages/ai/test/urlUtils.test.ts (12)
+
+log | packages/ai/test/variableTools.test.ts > variableTools > set writes a variable and reports what it resolves to
+history added AI variables: set
+
+
+log | packages/ai/test/variableTools.test.ts > variableTools > set upserts by name — an existing variable keeps its place in the table
+history added AI variables: set
+
+
+log | packages/ai/test/variableTools.test.ts > variableTools > set upserts by name — an existing variable keeps its place in the table
+history added AI variables: set
+
+
+log | packages/ai/test/variableTools.test.ts > variableTools > a variable may reference the ones declared above it
+history added AI variables: set
+
+
+log | packages/ai/test/variableTools.test.ts > variableTools > an expression that cannot resolve is reported on its own row, not thrown
+history added AI variables: set
+
+
+log | packages/ai/test/variableTools.test.ts > variableTools > remove drops the named variables and keeps the rest
+history added AI variables: set
+
+
+log | packages/ai/test/variableTools.test.ts > variableTools > remove drops the named variables and keeps the rest
+history added AI variables: remove
+
+
+log | packages/ai/test/variableTools.test.ts > variableTools > one call is one undo step
+history added AI variables: set
+
+ ✓ packages/ai/test/variableTools.test.ts (10)
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > sets colour, opacity and texture together on a new material
+history added change opacity property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > sets colour, opacity and texture together on a new material
+history added change image property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > stores an SVG texture as pixels, not as a document every reader renders its own way
+history added change image property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > takes the texture off a material the document already has, instead of the bytes again
+history added change image property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > keeps the values it is not given, and reuses a material that already matches
+history added change opacity property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > applies a preset's surface and names the material after it
+history added change roughness property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > carries a preset's reflection weight, which is what keeps a metal bright
+history added change metalness property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > carries a preset's reflection weight, which is what keeps a metal bright
+history added change envMapIntensity property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > keeps the weight a material already has when no preset says otherwise
+history added change metalness property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > keeps the weight a material already has when no preset says otherwise
+history added change envMapIntensity property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > keeps the weight a material already has when no preset says otherwise
+history added change envMapIntensity property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > keeps the weight a material already has when no preset says otherwise
+history added change metalness property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > keeps the weight a material already has when no preset says otherwise
+history added change envMapIntensity property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > lets a colour passed with a preset override the preset's
+history added change roughness property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > reuses a material that already carries exactly the preset
+history added change metalness property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > reuses a material that already carries exactly the preset
+history added change envMapIntensity property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > does not reuse a material whose finish has since changed
+history added change roughness property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > does not reuse a material whose finish has since changed
+history added change roughness property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > does not reuse a material whose finish has since changed
+history added change roughness property
+
+
+log | packages/ai/test/viewTools.test.ts > set_material tool > removes a texture with an empty string
+history added change image property
+
+ ✓ packages/ai/test/viewTools.test.ts (54)
+
+ Test Files 43 passed
+      Tests 649 passed
+   Duration 9.74s (build 1.27s, tests 8.46s)
+
+EXIT=0
