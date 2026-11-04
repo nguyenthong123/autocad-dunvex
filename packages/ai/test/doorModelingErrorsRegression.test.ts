@@ -462,7 +462,7 @@ describe("Door Modeling Errors & Recovery Regression", () => {
                     ],
                 }),
             ).rejects.toThrow(
-                /booleanCut did not remove any volume from target "Wall".*Cutter does not intersect the target: cutter bounding box is completely outside the target solid/,
+                /booleanCut did not remove any volume from target "Wall".*Cutter does not intersect the target: cutter is completely outside target bounds/,
             );
 
             // Document remains completely pristine (no nodes removed, no nodes created)
@@ -516,7 +516,122 @@ describe("Door Modeling Errors & Recovery Regression", () => {
                     ],
                 }),
             ).rejects.toThrow(
-                /Cutter bounding box overlaps the target region but removed zero volume: the region is already hollow/,
+                /Geometric test confirmed the region is already hollow \(an opening or cut was already performed here\)/,
+            );
+
+            // Document remains completely pristine
+            expect(doc.modelManager.findNodes(() => true).length).toBe(initialCount);
+            expect(doc.modelManager.findNodes((n) => n.id === wallNode.id)[0]).toBe(wallNode);
+            expect(doc.modelManager.findNodes((n) => n.id === cutterNode.id)[0]).toBe(cutterNode);
+        });
+
+        test("booleanCut missing bounding box reports insufficient diagnostic data and preserves document", async () => {
+            const wallShape = {
+                shapeType: ShapeTypes.solid,
+                isEqual: () => false,
+                findSubShapes: () => [],
+                matrix: Matrix4.identity(),
+                mesh: { faces: undefined, edges: undefined, vertexs: undefined },
+                boundingBox: () => undefined, // Missing bounding box!
+                volume: () => 200000,
+                checkShape: () => true,
+                setTolerance: rs.fn(),
+                containsPoint: () => true,
+                transformedMul: () => wallShape,
+                dispose: rs.fn(),
+            } as any;
+
+            const cutterBox = new BoundingBox(new XYZ(20, -5, 0), new XYZ(40, 25, 40));
+            const cutterShape = createFakeSolid(cutterBox, 24000);
+
+            // 0 volume reduction
+            const booleanCut = rs.fn((_shapes: any[], _tools: any[]) => Result.ok(wallShape));
+            (globalThis.app as any).shapeProvider.factory.booleanCut = booleanCut;
+
+            const wallNode = new EditableShapeNode({
+                document: doc,
+                name: "WallNoBox",
+                shape: Result.ok(wallShape),
+            });
+            doc.modelManager.addNode(wallNode);
+
+            const cutterNode = new EditableShapeNode({
+                document: doc,
+                name: "CutterWithBox",
+                shape: Result.ok(cutterShape),
+            });
+            doc.modelManager.addNode(cutterNode);
+
+            const initialCount = doc.modelManager.findNodes(() => true).length;
+            const runProgram = buildCapabilityTools().find((t) => t.name === "run_program")!;
+
+            await expect(
+                runProgram.handler({
+                    ops: [
+                        {
+                            method: "booleanCut",
+                            id: "doorCutNoBox",
+                            args: {
+                                shape1: wallNode.id,
+                                shape2: cutterNode.id,
+                            },
+                        },
+                    ],
+                }),
+            ).rejects.toThrow(
+                /Insufficient bounding box diagnostic data to determine spatial relationship between target and cutter/,
+            );
+
+            // Document remains completely pristine
+            expect(doc.modelManager.findNodes(() => true).length).toBe(initialCount);
+            expect(doc.modelManager.findNodes((n) => n.id === wallNode.id)[0]).toBe(wallNode);
+            expect(doc.modelManager.findNodes((n) => n.id === cutterNode.id)[0]).toBe(cutterNode);
+        });
+
+        test("booleanCut overlapping bounding box without geometric proof reports cause undetermined and preserves document", async () => {
+            const wallBox = new BoundingBox(new XYZ(0, 0, 0), new XYZ(100, 20, 100));
+            // containsPoint returns true: solid interior, not proven hollow!
+            const wallShape = createFakeSolid(wallBox, 200000, () => true);
+
+            const cutterBox = new BoundingBox(new XYZ(20, -5, 0), new XYZ(40, 25, 40));
+            const cutterShape = createFakeSolid(cutterBox, 24000);
+
+            const unchangedResult = createFakeSolid(wallBox, 200000);
+            const booleanCut = rs.fn((_shapes: any[], _tools: any[]) => Result.ok(unchangedResult));
+            (globalThis.app as any).shapeProvider.factory.booleanCut = booleanCut;
+
+            const wallNode = new EditableShapeNode({
+                document: doc,
+                name: "WallSolid",
+                shape: Result.ok(wallShape),
+            });
+            doc.modelManager.addNode(wallNode);
+
+            const cutterNode = new EditableShapeNode({
+                document: doc,
+                name: "CutterOverlap",
+                shape: Result.ok(cutterShape),
+            });
+            doc.modelManager.addNode(cutterNode);
+
+            const initialCount = doc.modelManager.findNodes(() => true).length;
+            const runProgram = buildCapabilityTools().find((t) => t.name === "run_program")!;
+
+            await expect(
+                runProgram.handler({
+                    ops: [
+                        {
+                            method: "booleanCut",
+                            id: "doorCutUndetermined",
+                            args: {
+                                shape1: wallNode.id,
+                                shape2: cutterNode.id,
+                            },
+                        },
+                    ],
+                }),
+            ).rejects.toThrow(
+                /Cause undetermined: cutter bounding box overlaps target footprint but removed zero volume\. Inspect actual 3D geometry and model tree/,
             );
 
             // Document remains completely pristine

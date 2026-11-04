@@ -1592,6 +1592,7 @@ function runBooleanOp(
                 totalTargetVolume > 0 ? Math.min(1e-5, Math.max(1e-12, totalTargetVolume * 1e-6)) : 1e-5;
             if (volumeRemoved <= volTol) {
                 const primaryTargetName = resolvedTargets[0]?.name ?? "Target";
+                const primaryTargetShape = targetShapes[0];
                 // Inspect bounding boxes to distinguish cutter missing target vs re-cutting an already hollow region
                 const targetBoxes = targetShapes
                     .map((s) => (typeof s.boundingBox === "function" ? s.boundingBox() : undefined))
@@ -1600,33 +1601,71 @@ function runBooleanOp(
                     .map((s) => (typeof s.boundingBox === "function" ? s.boundingBox() : undefined))
                     .filter((b): b is BoundingBox => !!b);
 
-                let intersectsAabb = false;
-                let targetBox: BoundingBox | undefined;
-                let toolBox: BoundingBox | undefined;
-                if (targetBoxes.length > 0 && toolBoxes.length > 0) {
-                    targetBox = targetBoxes.length === 1 ? targetBoxes[0] : combineBoundingBoxes(targetBoxes);
-                    toolBox = toolBoxes.length === 1 ? toolBoxes[0] : combineBoundingBoxes(toolBoxes);
-                    const tol = 1e-3;
-                    intersectsAabb =
-                        toolBox.max.x >= targetBox.min.x - tol &&
-                        toolBox.min.x <= targetBox.max.x + tol &&
-                        toolBox.max.y >= targetBox.min.y - tol &&
-                        toolBox.min.y <= targetBox.max.y + tol &&
-                        toolBox.max.z >= targetBox.min.z - tol &&
-                        toolBox.min.z <= targetBox.max.z + tol;
+                if (targetBoxes.length === 0 || toolBoxes.length === 0) {
+                    throw new Error(
+                        `booleanCut did not remove any volume from target "${primaryTargetName}" (volume before: ${totalTargetVolume.toFixed(6)}, volume after: ${resultVolume.toFixed(6)}). Insufficient bounding box diagnostic data to determine spatial relationship between target and cutter. Inspect node geometry and model state.`,
+                    );
                 }
 
+                const targetBox =
+                    targetBoxes.length === 1 ? targetBoxes[0] : combineBoundingBoxes(targetBoxes);
+                const toolBox = toolBoxes.length === 1 ? toolBoxes[0] : combineBoundingBoxes(toolBoxes);
+                const tol = 1e-3;
+                const intersectsAabb =
+                    toolBox.max.x >= targetBox.min.x - tol &&
+                    toolBox.min.x <= targetBox.max.x + tol &&
+                    toolBox.max.y >= targetBox.min.y - tol &&
+                    toolBox.min.y <= targetBox.max.y + tol &&
+                    toolBox.max.z >= targetBox.min.z - tol &&
+                    toolBox.min.z <= targetBox.max.z + tol;
+
                 if (!intersectsAabb) {
-                    const boundsInfo =
-                        targetBox && toolBox
-                            ? ` Target bounds: X[${targetBox.min.x.toFixed(2)}, ${targetBox.max.x.toFixed(2)}], Y[${targetBox.min.y.toFixed(2)}, ${targetBox.max.y.toFixed(2)}], Z[${targetBox.min.z.toFixed(2)}, ${targetBox.max.z.toFixed(2)}]. Cutter bounds: X[${toolBox.min.x.toFixed(2)}, ${toolBox.max.x.toFixed(2)}], Y[${toolBox.min.y.toFixed(2)}, ${toolBox.max.y.toFixed(2)}], Z[${toolBox.min.z.toFixed(2)}, ${toolBox.max.z.toFixed(2)}].`
-                            : "";
+                    const boundsInfo = ` Target bounds: X[${targetBox.min.x.toFixed(2)}, ${targetBox.max.x.toFixed(2)}], Y[${targetBox.min.y.toFixed(2)}, ${targetBox.max.y.toFixed(2)}], Z[${targetBox.min.z.toFixed(2)}, ${targetBox.max.z.toFixed(2)}]. Cutter bounds: X[${toolBox.min.x.toFixed(2)}, ${toolBox.max.x.toFixed(2)}], Y[${toolBox.min.y.toFixed(2)}, ${toolBox.max.y.toFixed(2)}], Z[${toolBox.min.z.toFixed(2)}, ${toolBox.max.z.toFixed(2)}].`;
                     throw new Error(
-                        `booleanCut did not remove any volume from target "${primaryTargetName}" (volume before: ${totalTargetVolume.toFixed(6)}, volume after: ${resultVolume.toFixed(6)}). Cutter does not intersect the target: cutter bounding box is completely outside the target solid.${boundsInfo} Reposition or enlarge cutter so it intersects the target wall.`,
+                        `booleanCut did not remove any volume from target "${primaryTargetName}" (volume before: ${totalTargetVolume.toFixed(6)}, volume after: ${resultVolume.toFixed(6)}). Cutter does not intersect the target: cutter is completely outside target bounds.${boundsInfo} Reposition or enlarge cutter so it intersects the target wall.`,
+                    );
+                }
+
+                // Both bounding boxes exist and overlap.
+                // Only confirm an opening already exists when an explicit geometric test supports that conclusion.
+                let geometricProofOfOpening = false;
+                const overlapMin = new XYZ(
+                    Math.max(targetBox.min.x, toolBox.min.x),
+                    Math.max(targetBox.min.y, toolBox.min.y),
+                    Math.max(targetBox.min.z, toolBox.min.z),
+                );
+                const overlapMax = new XYZ(
+                    Math.min(targetBox.max.x, toolBox.max.x),
+                    Math.min(targetBox.max.y, toolBox.max.y),
+                    Math.min(targetBox.max.z, toolBox.max.z),
+                );
+
+                if (
+                    overlapMax.x - overlapMin.x > 1e-3 &&
+                    overlapMax.y - overlapMin.y > 1e-3 &&
+                    overlapMax.z - overlapMin.z > 1e-3
+                ) {
+                    const overlapCenter = new XYZ(
+                        (overlapMin.x + overlapMax.x) / 2,
+                        (overlapMin.y + overlapMax.y) / 2,
+                        (overlapMin.z + overlapMax.z) / 2,
+                    );
+                    if (
+                        primaryTargetShape &&
+                        typeof primaryTargetShape.containsPoint === "function" &&
+                        primaryTargetShape.containsPoint(overlapCenter, false) === false
+                    ) {
+                        geometricProofOfOpening = true;
+                    }
+                }
+
+                if (geometricProofOfOpening) {
+                    throw new Error(
+                        `booleanCut did not remove any volume from target "${primaryTargetName}" (volume before: ${totalTargetVolume.toFixed(6)}, volume after: ${resultVolume.toFixed(6)}). Geometric test confirmed the region is already hollow (an opening or cut was already performed here). Check if an opening was already made, or adjust cutter position/depth.`,
                     );
                 } else {
                     throw new Error(
-                        `booleanCut did not remove any volume from target "${primaryTargetName}" (volume before: ${totalTargetVolume.toFixed(6)}, volume after: ${resultVolume.toFixed(6)}). Cutter bounding box overlaps the target region but removed zero volume: the region is already hollow (an opening or cut was already performed here) or the cutter only grazes the surface without penetrating solid material. Check if an opening was already made, or adjust cutter position/depth.`,
+                        `booleanCut did not remove any volume from target "${primaryTargetName}" (volume before: ${totalTargetVolume.toFixed(6)}, volume after: ${resultVolume.toFixed(6)}). Cause undetermined: cutter bounding box overlaps target footprint but removed zero volume. Inspect actual 3D geometry and model tree to verify cutter alignment or target solids.`,
                     );
                 }
             }

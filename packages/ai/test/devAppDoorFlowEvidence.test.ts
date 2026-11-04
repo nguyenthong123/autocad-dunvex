@@ -10,7 +10,7 @@ import { clearSessionMemory, getSessionMemory } from "../src/memory";
 import { buildArrayTools } from "../src/tools/arrayTools";
 import { buildCapabilityTools } from "../src/tools/capabilityEngine";
 
-describe("End-to-End Dev App Door Modeling Flow Verification", () => {
+describe("End-to-End Door Modeling Flow Integration Test (Simulated Boolean)", () => {
     let doc: TestDocument;
     let factory: any;
 
