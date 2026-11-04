@@ -2,7 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 import { AppBuilder } from "@chili3d/builder";
-import { type IApplication, Logger, PubSub, pendingWork, quietFrames } from "@chili3d/core";
+import { type IApplication, type IDocument, Logger, PubSub, pendingWork, quietFrames } from "@chili3d/core";
 import { installApplicationErrorCapture } from "./errorCapture";
 import { Loading } from "./loading";
 import { parseStartupParams } from "./startupParams";
@@ -40,7 +40,7 @@ function exposeTestSurface(): void {
                 const appMod = await import("@chili3d/app");
                 return appMod.computeBomReport;
             },
-            createTestModel: async (doc: any) => {
+            createTestModel: async (doc: IDocument) => {
                 const { BoxNode } = await import("@chili3d/app");
                 const { FolderNode, Plane, XYZ } = await import("@chili3d/core");
                 const plane = new Plane({ origin: XYZ.zero, normal: XYZ.unitZ, xvec: XYZ.unitX });

@@ -242,13 +242,19 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
             // Update verification state based on tool outputs
             for (const res of results) {
                 let isError = false;
-                let parsedContent: Record<string, unknown> | undefined;
+                interface ToolOutputShape {
+                    error?: string;
+                    created?: unknown[];
+                    removed?: unknown[];
+                    results?: unknown[];
+                }
+                let parsedContent: ToolOutputShape | undefined;
                 try {
-                    parsedContent = JSON.parse(res.content) as Record<string, unknown>;
+                    parsedContent = JSON.parse(res.content) as ToolOutputShape;
                     if (
                         parsedContent &&
                         typeof parsedContent === "object" &&
-                        typeof parsedContent["error"] === "string"
+                        typeof parsedContent.error === "string"
                     ) {
                         isError = true;
                     }
@@ -258,15 +264,15 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                 if (isError) continue;
 
                 if (res.name === "run_program") {
-                    const createdCount = Array.isArray(parsedContent?.["created"])
-                        ? (parsedContent["created"] as unknown[]).length
+                    const createdCount = Array.isArray(parsedContent?.created)
+                        ? parsedContent.created.length
                         : 0;
-                    const removedCount = Array.isArray(parsedContent?.["removed"])
-                        ? (parsedContent["removed"] as unknown[]).length
+                    const removedCount = Array.isArray(parsedContent?.removed)
+                        ? parsedContent.removed.length
                         : 0;
                     if (createdCount > 0 || removedCount > 0) {
                         needsVerification = true;
-                    } else if (parsedContent?.["results"]) {
+                    } else if (parsedContent?.results) {
                         // Query-only run_program can serve as verification
                         needsVerification = false;
                         onVerificationCompleted(res.name, "verified via query ops");
@@ -301,8 +307,15 @@ const SHORT_STOPS = new Set([...TRUNCATED, ...TOOL_STOPS]);
 const REFUSALS = new Set(["refusal", "content_filter"]);
 
 export const MAX_VERIFY_NUDGES = 2;
-export const NUDGE_AFTER_UNVERIFIED_WRITE =
-    "You modified geometry in this turn but have not verified the result yet. Call measure_nodes (or a geometry query / get_document_state) to verify the actual dimensions, count, and placement before reporting completion to the user.";
+
+export const VERIFY_TOOLS = new Set([
+    "measure_nodes",
+    "bom_report",
+    "classify_material",
+    "get_node_properties",
+]);
+
+export const NUDGE_AFTER_UNVERIFIED_WRITE = `You modified geometry in this turn but have not verified the result yet. Call one of the verification tools (${Array.from(VERIFY_TOOLS).join(", ")}) to verify the actual dimensions, count, and placement before reporting completion to the user.`;
 
 const WRITE_TOOLS = new Set([
     "run_program",
@@ -312,8 +325,6 @@ const WRITE_TOOLS = new Set([
     "transform_node",
     "set_node_properties",
 ]);
-
-const VERIFY_TOOLS = new Set(["measure_nodes", "bom_report", "classify_material", "get_node_properties"]);
 
 /** How much of each recovery path this run has already spent. Each has its own ceiling. */
 interface RecoveryState {

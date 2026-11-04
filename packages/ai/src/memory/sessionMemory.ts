@@ -1,7 +1,7 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
-import type { ActiveNodeRef, SessionMemory, SessionMemoryPatch, SessionRecentError } from "./types";
+import type { SessionMemory, SessionMemoryPatch, SessionRecentError } from "./types";
 
 export const SESSION_MEMORY_MAX_SUMMARY_CHARS = 1500;
 const MAX_RECENT_ERRORS = 5;

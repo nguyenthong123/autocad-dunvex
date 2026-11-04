@@ -48,7 +48,6 @@ import { splitDataUrl } from "./llm/imageData";
 import { journalEntriesFromMessages, journalFromStored, mergeJournal } from "./llm/journal";
 import { dropSupersededImages, dropSupersededThinking, dropTrailingSynthetic } from "./llm/messages";
 import { buildSystemPrompt } from "./llm/prompt";
-import { KNOWN_VENDORS } from "./llm/providerRegistry";
 import { readReference } from "./llm/referenceReader";
 import type { ChatMessage, ImagePart, TokenUsage, Tool } from "./llm/types";
 import { sanitizeErrorMessage } from "./llm/urlUtils";

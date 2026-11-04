@@ -2726,7 +2726,7 @@ export function findCommandGuide(query: string): CommandGuideCard | undefined {
  * Searches and returns all matching command guide cards.
  */
 export function searchCommandGuides(query: string): CommandGuideCard[] {
-    if (!query || !query.trim()) return [...COMMAND_GUIDE_CARDS];
+    if (!query?.trim()) return [...COMMAND_GUIDE_CARDS];
     const q = query.trim().toLowerCase();
     return COMMAND_GUIDE_CARDS.filter(
         (c) =>

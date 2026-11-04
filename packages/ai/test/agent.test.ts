@@ -9,8 +9,11 @@ import {
     MAX_IDLE_NUDGES,
     MAX_LOST_CALL_NUDGES,
     MAX_TRUNCATION_CONTINUES,
+    MAX_VERIFY_NUDGES,
+    NUDGE_AFTER_UNVERIFIED_WRITE,
     promisedToAct,
     runAgent,
+    VERIFY_TOOLS,
 } from "../src/llm/agent";
 import type { ChatMessage, LLMProvider, StreamEvent, SystemPrompt, Tool } from "../src/llm/types";
 
@@ -1535,6 +1538,14 @@ describe("runAgent", () => {
         expect(toolMessages[1].images).toEqual(shot(1));
     });
 
+    test("NUDGE_AFTER_UNVERIFIED_WRITE dynamically contains all VERIFY_TOOLS and excludes get_document_state", () => {
+        expect(VERIFY_TOOLS.size).toBeGreaterThan(0);
+        for (const tool of VERIFY_TOOLS) {
+            expect(NUDGE_AFTER_UNVERIFIED_WRITE).toContain(tool);
+        }
+        expect(NUDGE_AFTER_UNVERIFIED_WRITE).not.toContain("get_document_state");
+    });
+
     test("nudges the model to verify after geometry writes before ending turn", async () => {
         let turnCount = 0;
         const provider: LLMProvider = {
@@ -1559,9 +1570,7 @@ describe("runAgent", () => {
                 } else if (turnCount === 3) {
                     // Turn 3: Received verification nudge, now call measure_nodes
                     expect(lastMsg.role).toBe("user");
-                    expect(typeof lastMsg.content === "string" ? lastMsg.content : "").toContain(
-                        "You modified geometry in this turn but have not verified the result yet",
-                    );
+                    expect(lastMsg.content).toBe(NUDGE_AFTER_UNVERIFIED_WRITE);
 
                     yield {
                         type: "tool_call",
