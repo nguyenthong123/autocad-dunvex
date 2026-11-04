@@ -1,6 +1,6 @@
 CMD: npm run check
-COMMIT: 4facbdb08cdc5f09a8aa977e4dfb4907ee4a1583
-TIME: 2026-11-04T07:25:01Z
+COMMIT: 41999efd9be933c37420842468cf6ba83e66f180
+TIME: 2026-11-04T07:48:04Z
 
 > chili3d@0.8.0 check
 > biome check --write
@@ -89,239 +89,204 @@ packages/ai/eval/runner.ts:60:13 lint/suspicious/noExplicitAny ━━━━━�
   i any disables many type checking rules. Its use should be avoided.
 
 
-packages/ai/eval/runner.ts:102:22 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━
+packages/ai/eval/setupGlobals.ts:10:43 lint/suspicious/noExplicitAny ━━━━━━━━━━━
 
   ! Unexpected any. Specify a different type.
 
-    100 │     // Fixture loading
-    101 │     const fixturePath = resolve(EVAL_DIR, scenario.fixture);
-  > 102 │     let fixtureData: any = { nodes: [], materials: [], components: [] };
-        │                      ^^^
-    103 │     if (existsSync(fixturePath)) {
-    104 │         fixtureData = JSON.parse(readFileSync(fixturePath, "utf-8"));
+     8 │ const require = createRequire(import.meta.url);
+     9 │ if (require.extensions) {
+  > 10 │     require.extensions[".css"] = (module: any) => {
+       │                                           ^^^
+    11 │         module.exports = new Proxy(
+    12 │             {},
 
   i any disables many type checking rules. Its use should be avoided.
 
 
-packages/ai/eval/runner.ts:116:10 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━
+packages/ai/eval/setupGlobals.ts:24:28 lint/suspicious/noExplicitAny ━━━━━━━━━━━
 
   ! Unexpected any. Specify a different type.
 
-    114 │         getSelection: () => [],
-    115 │         isSelected: () => false,
-  > 116 │     } as any;
-        │          ^^^
-    117 │     if (!doc.visual) {
-    118 │         doc.visual = { update: () => {}, box: () => undefined } as any;
+    22 │     if (!(prop in globalThis)) {
+    23 │         try {
+  > 24 │             (globalThis as any)[prop] = (happyWindow as any)[prop];
+       │                            ^^^
+    25 │         } catch {
+    26 │             // Read-only or getter without setter
 
   i any disables many type checking rules. Its use should be avoided.
 
 
-packages/ai/eval/runner.ts:118:68 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━
+packages/ai/eval/setupGlobals.ts:24:57 lint/suspicious/noExplicitAny ━━━━━━━━━━━
 
   ! Unexpected any. Specify a different type.
 
-    116 │     } as any;
-    117 │     if (!doc.visual) {
-  > 118 │         doc.visual = { update: () => {}, box: () => undefined } as any;
-        │                                                                    ^^^
-    119 │     } else {
-    120 │         (doc.visual as any).update = () => {};
+    22 │     if (!(prop in globalThis)) {
+    23 │         try {
+  > 24 │             (globalThis as any)[prop] = (happyWindow as any)[prop];
+       │                                                         ^^^
+    25 │         } catch {
+    26 │             // Read-only or getter without setter
 
   i any disables many type checking rules. Its use should be avoided.
 
 
-packages/ai/eval/runner.ts:120:24 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━
+packages/ai/eval/setupGlobals.ts:30:16 lint/suspicious/noExplicitAny ━━━━━━━━━━━
 
   ! Unexpected any. Specify a different type.
 
-    118 │         doc.visual = { update: () => {}, box: () => undefined } as any;
-    119 │     } else {
-  > 120 │         (doc.visual as any).update = () => {};
-        │                        ^^^
-    121 │     }
-    122 │     setupApplicationForDoc(doc);
+    28 │     }
+    29 │ }
+  > 30 │ (globalThis as any).window = globalThis;
+       │                ^^^
+    31 │ (globalThis as any).document = happyWindow.document;
+    32 │ (globalThis as any).HTMLElement = happyWindow.HTMLElement;
 
   i any disables many type checking rules. Its use should be avoided.
 
 
-packages/ai/eval/runner.ts:131:31 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━
+packages/ai/eval/setupGlobals.ts:31:16 lint/suspicious/noExplicitAny ━━━━━━━━━━━
 
   ! Unexpected any. Specify a different type.
 
-    129 │             if (node instanceof ShapeNode) {
-    130 │                 const mockShape = new MockShape({ shapeType: ShapeTypes.solid, id: node.id });
-  > 131 │                 (mockShape as any).transformedMul = () => new MockShape({ shapeType: ShapeTypes.solid });
-        │                               ^^^
-    132 │                 (node as any)._shape = Result.ok(mockShape);
-    133 │             }
+    29 │ }
+    30 │ (globalThis as any).window = globalThis;
+  > 31 │ (globalThis as any).document = happyWindow.document;
+       │                ^^^
+    32 │ (globalThis as any).HTMLElement = happyWindow.HTMLElement;
+    33 │ (globalThis as any).customElements = happyWindow.customElements;
 
   i any disables many type checking rules. Its use should be avoided.
 
 
-packages/ai/eval/runner.ts:132:26 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━
+packages/ai/eval/setupGlobals.ts:32:16 lint/suspicious/noExplicitAny ━━━━━━━━━━━
 
   ! Unexpected any. Specify a different type.
 
-    130 │                 const mockShape = new MockShape({ shapeType: ShapeTypes.solid, id: node.id });
-    131 │                 (mockShape as any).transformedMul = () => new MockShape({ shapeType: ShapeTypes.solid });
-  > 132 │                 (node as any)._shape = Result.ok(mockShape);
-        │                          ^^^
-    133 │             }
-    134 │         }
+    30 │ (globalThis as any).window = globalThis;
+    31 │ (globalThis as any).document = happyWindow.document;
+  > 32 │ (globalThis as any).HTMLElement = happyWindow.HTMLElement;
+       │                ^^^
+    33 │ (globalThis as any).customElements = happyWindow.customElements;
+    34 │
 
   i any disables many type checking rules. Its use should be avoided.
 
 
-packages/ai/eval/runner.ts:135:17 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━
+packages/ai/eval/setupGlobals.ts:33:16 lint/suspicious/noExplicitAny ━━━━━━━━━━━
 
   ! Unexpected any. Specify a different type.
 
-    133 │             }
-    134 │         }
-  > 135 │     } catch (e: any) {
-        │                 ^^^
-    136 │         errors.push(`Failed to deserialize fixture: ${e?.message ?? String(e)}`);
-    137 │     }
+    31 │ (globalThis as any).document = happyWindow.document;
+    32 │ (globalThis as any).HTMLElement = happyWindow.HTMLElement;
+  > 33 │ (globalThis as any).customElements = happyWindow.customElements;
+       │                ^^^
+    34 │
+    35 │ (globalThis as any).__APP_VERSION__ = "0.8.0";
 
   i any disables many type checking rules. Its use should be avoided.
 
 
-packages/ai/eval/runner.ts:140:19 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━
+packages/ai/eval/setupGlobals.ts:35:16 lint/suspicious/noExplicitAny ━━━━━━━━━━━
 
   ! Unexpected any. Specify a different type.
 
-    139 │     // Provider setup
-  > 140 │     let provider: any;
-        │                   ^^^
-    141 │     if (isLive) {
-    142 │         errors.push("Live mode not enabled. Need user decision on provider and API key.");
+    33 │ (globalThis as any).customElements = happyWindow.customElements;
+    34 │
+  > 35 │ (globalThis as any).__APP_VERSION__ = "0.8.0";
+       │                ^^^
+    36 │ (globalThis as any).__DOCUMENT_VERSION__ = "0.7.1";
+    37 │ (globalThis as any).__IS_PRODUCTION__ = false;
 
   i any disables many type checking rules. Its use should be avoided.
 
 
-packages/ai/eval/runner.ts:202:17 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━
+packages/ai/eval/setupGlobals.ts:36:16 lint/suspicious/noExplicitAny ━━━━━━━━━━━
 
   ! Unexpected any. Specify a different type.
 
-    200 │             },
-    201 │         });
-  > 202 │     } catch (e: any) {
-        │                 ^^^
-    203 │         errors.push(`Agent loop threw error: ${e?.message ?? String(e)}`);
-    204 │     }
+    35 │ (globalThis as any).__APP_VERSION__ = "0.8.0";
+  > 36 │ (globalThis as any).__DOCUMENT_VERSION__ = "0.7.1";
+       │                ^^^
+    37 │ (globalThis as any).__IS_PRODUCTION__ = false;
+    38 │
 
   i any disables many type checking rules. Its use should be avoided.
 
 
-packages/ai/eval/runner.ts:238:26 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━
+packages/ai/eval/setupGlobals.ts:37:16 lint/suspicious/noExplicitAny ━━━━━━━━━━━
 
   ! Unexpected any. Specify a different type.
 
-    236 │             if (
-    237 │                 expect.nodeProperties.materialId &&
-  > 238 │                 (node as any).materialId !== expect.nodeProperties.materialId
-        │                          ^^^
-    239 │             ) {
-    240 │                 errors.push(
+    35 │ (globalThis as any).__APP_VERSION__ = "0.8.0";
+    36 │ (globalThis as any).__DOCUMENT_VERSION__ = "0.7.1";
+  > 37 │ (globalThis as any).__IS_PRODUCTION__ = false;
+       │                ^^^
+    38 │
+    39 │ if (typeof (Promise as any).try !== "function") {
 
   i any disables many type checking rules. Its use should be avoided.
 
 
-packages/ai/eval/runner.ts:241:123 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━
+packages/ai/eval/setupGlobals.ts:39:24 lint/suspicious/noExplicitAny ━━━━━━━━━━━
 
   ! Unexpected any. Specify a different type.
 
-    239 │             ) {
-    240 │                 errors.push(
-  > 241 │                     `materialId mismatch on node ${node.id}: expected ${expect.nodeProperties.materialId}, got ${(node as any).materialId}`,
-        │                                                                                                                           ^^^
-    242 │                 );
-    243 │             }
+    37 │ (globalThis as any).__IS_PRODUCTION__ = false;
+    38 │
+  > 39 │ if (typeof (Promise as any).try !== "function") {
+       │                        ^^^
+    40 │     (Promise as any).try = (fn: any, ...args: any[]) => new Promise((resolve) => resolve(fn(...args)));
+    41 │ }
 
   i any disables many type checking rules. Its use should be avoided.
 
 
-packages/ai/eval/runner.ts:21:7 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━
+packages/ai/eval/setupGlobals.ts:40:17 lint/suspicious/noExplicitAny ━━━━━━━━━━━
 
-  ! This variable FIXTURES_DIR is unused.
+  ! Unexpected any. Specify a different type.
 
-    19 │ const EVAL_DIR = resolve(__dirname);
-    20 │ const SCENARIOS_DIR = resolve(EVAL_DIR, "scenarios");
-  > 21 │ const FIXTURES_DIR = resolve(EVAL_DIR, "fixtures");
-       │       ^^^^^^^^^^^^
-    22 │ const SYNTHETIC_RECORDINGS_DIR = resolve(EVAL_DIR, "synthetic-recordings");
-    23 │ const REPORTS_DIR = resolve(EVAL_DIR, "reports");
+    39 │ if (typeof (Promise as any).try !== "function") {
+  > 40 │     (Promise as any).try = (fn: any, ...args: any[]) => new Promise((resolve) => resolve(fn(...args)));
+       │                 ^^^
+    41 │ }
+    42 │
 
-  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
-
-  i Unsafe fix: If this is intentional, prepend FIXTURES_DIR with an underscore.
-
-     19  19 │   const EVAL_DIR = resolve(__dirname);
-     20  20 │   const SCENARIOS_DIR = resolve(EVAL_DIR, "scenarios");
-     21     │ - const·FIXTURES_DIR·=·resolve(EVAL_DIR,·"fixtures");
-         21 │ + const·_FIXTURES_DIR·=·resolve(EVAL_DIR,·"fixtures");
-     22  22 │   const SYNTHETIC_RECORDINGS_DIR = resolve(EVAL_DIR, "synthetic-recordings");
-     23  23 │   const REPORTS_DIR = resolve(EVAL_DIR, "reports");
+  i any disables many type checking rules. Its use should be avoided.
 
 
-packages/ai/eval/runner.ts:170:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━
+packages/ai/eval/setupGlobals.ts:40:33 lint/suspicious/noExplicitAny ━━━━━━━━━━━
 
-  ! This variable thinkingText is unused.
+  ! Unexpected any. Specify a different type.
 
-    168 │     const executedToolCalls: Array<{ name: string; arguments: string; result?: string }> = [];
-    169 │     let assistantText = "";
-  > 170 │     let thinkingText = "";
-        │         ^^^^^^^^^^^^
-    171 │     let lastUsage: TokenUsage = {
-    172 │         inputTokens: 0,
+    39 │ if (typeof (Promise as any).try !== "function") {
+  > 40 │     (Promise as any).try = (fn: any, ...args: any[]) => new Promise((resolve) => resolve(fn(...args)));
+       │                                 ^^^
+    41 │ }
+    42 │
 
-  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
-
-  i Unsafe fix: If this is intentional, prepend thinkingText with an underscore.
-
-    168 168 │       const executedToolCalls: Array<{ name: string; arguments: string; result?: string }> = [];
-    169 169 │       let assistantText = "";
-    170     │ - ····let·thinkingText·=·"";
-        170 │ + ····let·_thinkingText·=·"";
-    171 171 │       let lastUsage: TokenUsage = {
-    172 172 │           inputTokens: 0,
-    ······· │
-    190 190 │                   },
-    191 191 │                   onThinkingDelta: (t) => {
-    192     │ - ····················thinkingText·+=·t;
-        192 │ + ····················_thinkingText·+=·t;
-    193 193 │                   },
-    194 194 │                   onToolCall: (call) => {
+  i any disables many type checking rules. Its use should be avoided.
 
 
-packages/ai/eval/runner.ts:390:5 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━
+packages/ai/eval/setupGlobals.ts:40:47 lint/suspicious/noExplicitAny ━━━━━━━━━━━
 
-  ! Change to an optional chain.
+  ! Unexpected any. Specify a different type.
 
-    388 │ }
-    389 │
-  > 390 │ if (process.argv[1] && process.argv[1].endsWith("runner.ts")) {
-        │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    391 │     main().catch((err) => {
-    392 │         console.error("Eval runner fatal error:", err);
+    39 │ if (typeof (Promise as any).try !== "function") {
+  > 40 │     (Promise as any).try = (fn: any, ...args: any[]) => new Promise((resolve) => resolve(fn(...args)));
+       │                                               ^^^
+    41 │ }
+    42 │
 
-  i Unsafe fix: Change to an optional chain.
-
-    388 388 │   }
-    389 389 │
-    390     │ - if·(process.argv[1]·&&·process.argv[1].endsWith("runner.ts"))·{
-        390 │ + if·(process.argv[1]?.endsWith("runner.ts"))·{
-    391 391 │       main().catch((err) => {
-    392 392 │           console.error("Eval runner fatal error:", err);
+  i any disables many type checking rules. Its use should be avoided.
 
 
-Skipped 2807 suggested fixes.
+Skipped 2808 suggested fixes.
 If you wish to apply the suggested (unsafe) fixes, use the command biome check --write --unsafe
 
 The number of diagnostics exceeds the limit allowed. Use --max-diagnostics to increase it.
-Diagnostics not shown: 10539.
+Diagnostics not shown: 10547.
 Checked 1598 files in 5s. Fixed 3 files.
-Found 6659 warnings.
+Found 6667 warnings.
 Found 3900 infos.
 EXIT=0

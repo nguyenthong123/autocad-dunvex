@@ -191,14 +191,17 @@ Tạo file `packages/ai/src/tools/commandTools.ts` và đăng ký vào cuối `b
   - `docs/tasks/TASK-36-evidence/check.log`: `npm run check` (0 errors, `EXIT=0`).
 - **CHƯA KIỂM:** Kiểm thử tương tác trực tiếp với live LLM endpoint bên ngoài (do môi trường chưa có API key trực tiếp).
 
-### 5.8. Cập nhật Bằng chứng Round 3 (Cổng Hậu kiểm Theo Đối tượng Cụ thể)
-- **Commit SHA đối chiếu:** `4facbdb08cdc5f09a8aa977e4dfb4907ee4a1583`
-- **Thay đổi kỹ thuật:** Nâng cấp cổng hậu kiểm `agent.ts` theo dõi chính xác tập danh sách target (`pendingVerificationTargets`) sinh ra từ các tool ghi hình học. Phép đo trên đối tượng khác (ví dụ: tạo Box A rồi đo Box B) không thể giải phóng cờ kiểm chứng (`needsVerification` vẫn `true`). Chỉ khi đo đúng đối tượng mục tiêu với kết quả hợp lệ mới được xác nhận (`needsVerification = false`, `lastVerification.verified = true`).
+### 5.8. Cập nhật Bằng chứng Round 3 (Cổng Hậu kiểm Theo Đối tượng Cụ thể & Bằng chứng Thực)
+- **Commit SHA đối chiếu:** `41999efd9be933c37420842468cf6ba83e66f180`
+- **Thay đổi kỹ thuật:**
+  1. Nâng cấp cổng hậu kiểm `agent.ts`: Chỉ xác nhận các ID thực sự có bằng chứng trong kết quả trả về của công cụ (`parsedContent.items`, `parsedContent.nodes`), loại bỏ hoàn toàn việc lấy danh sách ID từ tham số yêu cầu (`args.nodeIds`, `args.ids`). Nếu yêu cầu BOM cho cả A và B nhưng kết quả chỉ có B, thì A phải tiếp tục chờ hậu kiểm.
+  2. Xử lý mục tiêu ghi chưa xác định: Khi lệnh ghi không thể xác định cụ thể danh tính đối tượng (`*`), phép đo/kiểm tra một đối tượng bất kỳ không thể giải phóng cờ kiểm chứng (`matchesTarget` trả về `false`), trạng thái phiên tiếp tục giữ nguyên là Chưa kiểm chứng.
 - **Danh mục Bằng chứng Round 3:**
-  - `docs/tasks/TASK-36-evidence/round3/rstest-ai.log`: `npx rstest packages/ai` (44 files pass, 656 tests pass, `EXIT=0`).
-  - `docs/tasks/TASK-36-evidence/round3/test-all.log`: `npm run test` (602 files pass, 10,139 tests pass + 2 server suites pass, `EXIT=0`).
+  - `docs/tasks/TASK-36-evidence/round3/rstest-ai.log`: `npx rstest packages/ai` (44 files pass, 658 tests pass, `EXIT=0`).
+  - `docs/tasks/TASK-36-evidence/round3/test-all.log`: `npm run test` (602 files pass, 10,141 tests pass + 2 server suites pass, `EXIT=0`).
   - `docs/tasks/TASK-36-evidence/round3/tsc.log`: `npx tsc --noEmit -p .` (`EXIT=0`).
   - `docs/tasks/TASK-36-evidence/round3/check.log`: `npm run check` (0 errors, `EXIT=0`).
   - `docs/tasks/TASK-36-evidence/round3/build.log`: `npm run build` (Rspack + plugins build thành công, `EXIT=0`).
-  - `docs/tasks/TASK-38-evidence/agent-loop-offline-harness.log`: 6/6 tests pass (kèm 2 test hồi quy đối tượng).
+  - `docs/tasks/TASK-36-evidence/round3/diff-check.log`: `git diff --check` (`EXIT=0`).
+  - `docs/tasks/TASK-38-evidence/agent-loop-offline-harness.log`: 8/8 tests pass (kèm 4 test hồi quy đối tượng và bằng chứng thực).
 - **Trạng thái Triển khai:** `CHƯA DEPLOY` (Tuân thủ nghiêm ngặt quy tắc không tự ý deploy VPS và không git push).

@@ -99,9 +99,15 @@ Các ảnh màn hình được chụp trực tiếp từ trình duyệt headless
 ### 6.1. Bằng chứng Thực thi Round 3
 - **Lệnh thực thi:** `node scripts/verifyTask37Round3.mjs`
 - **File nhật ký gốc:** `docs/tasks/TASK-37-evidence/task37-round3-execution.log`
-- **Thời gian chạy:** `2026-11-04T07:21:06Z`
-- **Commit SHA đối chiếu:** `4facbdb08cdc5f09a8aa977e4dfb4907ee4a1583`
+- **Thời gian chạy:** `2026-11-04T07:44:11Z`
+- **Commit SHA đối chiếu:** `41999efd9be933c37420842468cf6ba83e66f180`
 - **Mã thoát (Exit Code):** `EXIT=0`
+- **Quy trình kiểm tra DOM:** Script đã kiểm tra và đối chiếu trực tiếp chuỗi văn bản DOM trên thanh trạng thái `memoryStatusBar` trước khi gọi lệnh chụp từng ảnh màn hình CDP:
+  - Screen 1: `[DOM Verify Screen 1] Nội dung thanh trạng thái: "🧠 Phiên AI⚠️ Lỗi AI (0)"`
+  - Screen 2: `[DOM Verify Screen 2] Đã xác nhận "Chưa kiểm chứng": "🧠 Thiết kế chi tiết máy | ⚠️ Chưa kiểm chứng⚠️ Lỗi AI (0)"`
+  - Screen 3: `[DOM Verify Screen 3] Đã kiểm tra nút lỗi AI: "⚠️ Lỗi AI (1)"`
+  - Screen Regression 1: `[DOM Verify Screen Regression 1] Đã xác nhận "Chưa kiểm chứng": "🧠 Tạo chi tiết A và kiểm tra | ⚠️ Chưa kiểm chứng⚠️ Lỗi AI (1)"`
+  - Screen Regression 2: `[DOM Verify Screen Regression 2] Đã xác nhận "Đã kiểm chứng": "🧠 Tạo chi tiết A và kiểm tra | Đã kiểm chứng: measure_nodes⚠️ Lỗi AI (1)"`
 
 ### 6.2. Danh mục Bằng chứng Lưu trữ
 - `docs/tasks/TASK-37-evidence/bom-report-extended-ui.json`: Báo cáo BOM mở rộng từ UI `computeBomReport`.

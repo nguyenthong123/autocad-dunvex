@@ -1,6 +1,6 @@
 CMD: node scripts/verifyTask37Round3.mjs
-COMMIT: 4facbdb08cdc5f09a8aa977e4dfb4907ee4a1583
-TIME: 2026-11-04T07:21:06Z
+COMMIT: 41999efd9be933c37420842468cf6ba83e66f180
+TIME: 2026-11-04T07:44:11Z
 === BẮT ĐẦU KIỂM THỬ THỰC TẾ ROUND 3 TRÊN APP THẬT (TASK-37) ===
 URL: http://localhost:8080
 Thư mục lưu evidence: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence
@@ -32,10 +32,15 @@ Thư mục lưu ảnh chụp: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tas
       => KẾT QUẢ B2: TOÀN BỘ 6 LỆNH THỰC THI CHUẨN XÁC TRÊN APP THẬT.
 
 [5/6] B3: Chụp ảnh màn hình thực tế (CDP Page.captureScreenshot)...
+      [DOM Verify Screen 1] Nội dung thanh trạng thái: "🧠 Phiên AI⚠️ Lỗi AI (0)"
       ✅ Đã chụp Screen 1: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence/screens/screen-1-chatpanel-memory-bar.png
+      [DOM Verify Screen 2] Đã xác nhận "Chưa kiểm chứng": "🧠 Thiết kế chi tiết máy | ⚠️ Chưa kiểm chứng⚠️ Lỗi AI (0)"
       ✅ Đã chụp Screen 2: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence/screens/screen-2-memory-unverified.png
+      [DOM Verify Screen 3] Đã kiểm tra nút lỗi AI: "⚠️ Lỗi AI (1)"
       ✅ Đã chụp Screen 3: /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence/screens/screen-3-ai-error-diagnostics.png
+      [DOM Verify Screen Regression 1] Đã xác nhận "Chưa kiểm chứng": "🧠 Tạo chi tiết A và kiểm tra | ⚠️ Chưa kiểm chứng⚠️ Lỗi AI (1)"
       ✅ Đã chụp Screen Regression 1 (Đo đối tượng khác -> Chưa kiểm chứng): /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence/screens/screen-regression-measuring-other-unverified.png
+      [DOM Verify Screen Regression 2] Đã xác nhận "Đã kiểm chứng": "🧠 Tạo chi tiết A và kiểm tra | Đã kiểm chứng: measure_nodes⚠️ Lỗi AI (1)"
       ✅ Đã chụp Screen Regression 2 (Đo đúng đối tượng -> Đã kiểm chứng): /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/TASK-37-evidence/screens/screen-regression-measuring-target-verified.png
       => KẾT QUẢ B3: ĐÃ CHỤP ĐẦY ĐỦ 3 ẢNH MÀN HÌNH THỰC TẾ.
 

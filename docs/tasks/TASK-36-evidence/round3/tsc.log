@@ -1,4 +1,6 @@
 CMD: npx tsc --noEmit -p .
-COMMIT: 4facbdb08cdc5f09a8aa977e4dfb4907ee4a1583
-TIME: 2026-11-04T07:27:07Z
-EXIT=0
+COMMIT: 41999efd9be933c37420842468cf6ba83e66f180
+TIME: 2026-11-04T07:49:17Z
+packages/ai/test/agentLoopOfflineHarness.test.ts(519,52): error TS2345: Argument of type '{ document: IDocument; }' is not assignable to parameter of type 'EditableShapeNodeOptions'.
+  Type '{ document: IDocument; }' is missing the following properties from type 'EditableShapeNodeOptions': name, shape
+EXIT=2
