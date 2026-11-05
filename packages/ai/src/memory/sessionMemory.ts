@@ -82,26 +82,45 @@ export function clearSessionMemory(): void {
 /**
  * Synchronizes session memory with the current active document state.
  * Reconciles created, removed, deleted, and undone nodes against live document model tree:
- * 1. If an ID was in removedNodeIds but is now present in the document (e.g. after Undo
- *    or recreated), un-marks it from removedNodeIds.
- * 2. Active nodes: evicts any node that no longer exists in the document model.
- * 3. Populates active nodes from live non-consumed document nodes.
+ * 1. Nodes that are currently consumed boolean tools (isConsumedTool) belong to a parametric
+ *    body's feature history — they MUST be recorded in removedNodeIds and excluded from activeNodes.
+ * 2. Nodes completely absent from the document (deleted) MUST remain in removedNodeIds.
+ * 3. Only nodes that are present in the document and operating independently (!isConsumedTool,
+ *    e.g. released by Undo or recreated) are un-marked from removedNodeIds and restored to activeNodes.
+ * 4. Active nodes: evicts any node that is deleted OR currently consumed as a tool.
  */
 export function syncSessionMemoryWithDocument(doc: IDocument): void {
     if (!doc || !doc.modelManager) return;
     const allNodes = doc.modelManager.findNodes(() => true);
-    const liveIds = new Set(allNodes.map((n) => n.id));
 
-    // 1. Un-mark restored / undone nodes from removedNodeIds
-    currentMemory.removedNodeIds = currentMemory.removedNodeIds.filter((id) => !liveIds.has(id));
+    const independentLiveIds = new Set<string>();
+    const consumedIds = new Set<string>();
 
-    // 2. Evict dead nodes from activeNodes
-    currentMemory.activeNodes = currentMemory.activeNodes.filter((n) => liveIds.has(n.id));
+    for (const node of allNodes) {
+        if (!node.id) continue;
+        if (isConsumedTool(node)) {
+            consumedIds.add(node.id);
+        } else {
+            independentLiveIds.add(node.id);
+        }
+    }
 
-    // 3. Keep activeNodes in sync with live non-consumed nodes
+    // 1. Process removedNodeIds:
+    // - Consumed tools are locked into body history and cannot be operated on independently.
+    // - Deleted nodes absent from doc remain removed.
+    // - Only independent live nodes (!isConsumedTool) are un-marked from removedNodeIds (e.g. after Undo).
+    const retainedRemoved = currentMemory.removedNodeIds.filter((id) => !independentLiveIds.has(id));
+    currentMemory.removedNodeIds = Array.from(new Set([...retainedRemoved, ...consumedIds])).slice(
+        -MAX_REMOVED_NODES,
+    );
+
+    // 2. Evict dead or consumed nodes from activeNodes
+    currentMemory.activeNodes = currentMemory.activeNodes.filter((n) => independentLiveIds.has(n.id));
+
+    // 3. Keep activeNodes in sync with independent live nodes
     const existingActiveMap = new Map(currentMemory.activeNodes.map((n) => [n.id, n]));
     for (const node of allNodes) {
-        if (!node.id || isConsumedTool(node)) continue;
+        if (!node.id || !independentLiveIds.has(node.id)) continue;
         if (!existingActiveMap.has(node.id)) {
             existingActiveMap.set(node.id, {
                 id: node.id,

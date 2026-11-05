@@ -4,15 +4,17 @@
 import {
     BoundingBox,
     EditableShapeNode,
+    isConsumedTool,
     Matrix4,
     Plane,
     Result,
     type ShapeType,
     ShapeTypes,
+    Transaction,
     XYZ,
 } from "@chili3d/core";
 import { createMockApplication, TestDocument } from "@chili3d/core/test-utils";
-import { SketchNode } from "@chili3d/parametric";
+import { ParametricBodyNode, SketchNode } from "@chili3d/parametric";
 import { rs } from "@rstest/core";
 import { extractVerifiedEvidence, runAgent } from "../src/llm/agent";
 import {
@@ -2145,6 +2147,81 @@ describe("Door Modeling Errors & Recovery Regression", () => {
             // nodeA is restored: must NOT be in removedNodeIds, must be back in activeNodes
             expect(mem.removedNodeIds).not.toContain(nodeA.id);
             expect(mem.activeNodes.map((n) => n.id)).toContain(nodeA.id);
+        });
+
+        test("parametric boolean consumes cutter into body history -> sync keeps cutter protected in removedNodeIds and excluded from activeNodes; real undo restores it", async () => {
+            clearSessionMemory();
+
+            const body = new ParametricBodyNode({
+                document: doc,
+                features: [],
+            });
+            body.name = "TargetBody";
+            doc.modelManager.addNode(body);
+
+            const cutter = new EditableShapeNode({
+                document: doc,
+                name: "CutterTool",
+                shape: Result.ok({
+                    shapeType: ShapeTypes.solid,
+                    isEqual: () => false,
+                } as any),
+            });
+            doc.modelManager.addNode(cutter);
+
+            // 1. Initial document state sync: both are independent active nodes
+            syncSessionMemoryWithDocument(doc);
+            let mem = getSessionMemory();
+            expect(mem.activeNodes.map((n) => n.id)).toContain(body.id);
+            expect(mem.activeNodes.map((n) => n.id)).toContain(cutter.id);
+            expect(mem.removedNodeIds).not.toContain(cutter.id);
+
+            // 2. Parametric boolean cut consumes the cutter into the body's feature history
+            Transaction.execute(doc, "cut", () => {
+                body.setFeaturesEmitShapeChanged([
+                    {
+                        id: "cut-feat-1",
+                        type: "boolean",
+                        operation: "cut",
+                        toolIds: [cutter.id],
+                        consumeTools: true,
+                    } as never,
+                ]);
+            });
+
+            // Verify the cutter was transferred to the body as a consumed tool
+            expect(cutter.parent).toBe(body);
+            expect(isConsumedTool(cutter)).toBe(true);
+
+            // 3. Sync with document after boolean adoption:
+            // syncSessionMemoryWithDocument must recognize isConsumedTool(cutter) === true.
+            // Cutter MUST be placed into removedNodeIds and MUST NOT return to activeNodes.
+            syncSessionMemoryWithDocument(doc);
+            mem = getSessionMemory();
+            expect(mem.removedNodeIds).toContain(cutter.id);
+            expect(mem.activeNodes.map((n) => n.id)).not.toContain(cutter.id);
+            expect(mem.activeNodes.map((n) => n.id)).toContain(body.id);
+
+            // 4. Also verify that attempting to delete the consumed tool fails with ownership protection
+            const deleteTool = buildNodeTools().find((t) => t.name === "delete_node")!;
+            const rawDelResult = (await deleteTool.handler({ id: cutter.id })) as string;
+            const delResult = JSON.parse(rawDelResult);
+            expect(delResult.error).toContain("it is a consumed boolean tool owned by parametric body");
+            expect(delResult.error).toContain("TargetBody");
+
+            // 5. Perform real Undo: releases cutter from body back to root
+            doc.history.undo();
+            expect(cutter.parent).toBe(doc.modelManager.rootNode);
+            expect(isConsumedTool(cutter)).toBe(false);
+
+            // 6. Sync with document after Undo:
+            // State is now legitimately an independent live node, so it MUST be restored to activeNodes
+            // and un-marked from removedNodeIds!
+            syncSessionMemoryWithDocument(doc);
+            mem = getSessionMemory();
+            expect(mem.removedNodeIds).not.toContain(cutter.id);
+            expect(mem.activeNodes.map((n) => n.id)).toContain(cutter.id);
+            expect(mem.activeNodes.map((n) => n.id)).toContain(body.id);
         });
     });
 });
