@@ -1487,7 +1487,7 @@ describe("Door Modeling Errors & Recovery Regression", () => {
             expect(res.results.norm[1]).toEqual({ x: 0, y: 1, z: 0 });
         });
 
-        test("coercePlane on vertical facade with normal (0,1,0) aligns yvec along +Z (World Up)", async () => {
+        test("coercePlane preserves legacy default orientation when xvec and alignUp are omitted", async () => {
             const capabilityTools = buildCapabilityTools();
             const runProgramTool = capabilityTools.find((t) => t.name === "run_program")!;
 
@@ -1509,15 +1509,70 @@ describe("Door Modeling Errors & Recovery Regression", () => {
             const app = (globalThis as any).app;
             app.shapeProvider.factory = mockFactory;
 
+            // Legacy payload without xvec or alignUp
             await runProgramTool.handler({
                 ops: [
                     {
                         method: "box",
-                        id: "doorCutter",
+                        id: "legacyBox",
+                        args: {
+                            plane: {
+                                origin: { x: 100, y: 200, z: 0 },
+                                normal: { x: 0, y: 1, z: 0 },
+                            },
+                            dx: 500,
+                            dy: 600,
+                            dz: 700,
+                        },
+                    },
+                ],
+            });
+
+            expect(receivedPlane).toBeDefined();
+            // Normal is +Y
+            expect(receivedPlane!.normal.y).toBeCloseTo(1, 5);
+            // Legacy default orientation: fallback xvec is unitX (1, 0, 0)
+            expect(receivedPlane!.xvec.x).toBeCloseTo(1, 5);
+            expect(receivedPlane!.xvec.y).toBeCloseTo(0, 5);
+            expect(receivedPlane!.xvec.z).toBeCloseTo(0, 5);
+            // In-plane yvec is normal.cross(xvec) = (0, 1, 0) x (1, 0, 0) = (0, 0, -1) (-unitZ)
+            expect(receivedPlane!.yvec.z).toBeCloseTo(-1, 5);
+            expect(receivedPlane!.yvec.y).toBeCloseTo(0, 5);
+        });
+
+        test("coercePlane with explicit xvec or alignUp cuts door aperture with upward height (+Z)", async () => {
+            const capabilityTools = buildCapabilityTools();
+            const runProgramTool = capabilityTools.find((t) => t.name === "run_program")!;
+
+            const receivedPlanes: Plane[] = [];
+            const mockFactory = {
+                box: rs.fn((plane: Plane, dx: number, dy: number, dz: number) => {
+                    receivedPlanes.push(plane);
+                    return Result.ok({
+                        shapeType: ShapeTypes.solid,
+                        isEqual: () => false,
+                        boundingBox: () =>
+                            new BoundingBox(
+                                new XYZ(plane.origin.x, plane.origin.y, plane.origin.z),
+                                new XYZ(plane.origin.x + dx, plane.origin.y + dz, plane.origin.z + dy),
+                            ),
+                    });
+                }),
+            };
+            const app = (globalThis as any).app;
+            app.shapeProvider.factory = mockFactory;
+
+            // Case A: Explicit xvec to orient in-plane yvec upward along +Z
+            await runProgramTool.handler({
+                ops: [
+                    {
+                        method: "box",
+                        id: "doorCutterExplicitXvec",
                         args: {
                             plane: {
                                 origin: { x: 500, y: -157, z: 0 },
                                 normal: { x: 0, y: 1, z: 0 },
+                                xvec: { x: -1, y: 0, z: 0 },
                             },
                             dx: 900,
                             dy: 2100,
@@ -1527,12 +1582,37 @@ describe("Door Modeling Errors & Recovery Regression", () => {
                 ],
             });
 
-            expect(receivedPlane).toBeDefined();
-            // Normal is +Y
-            expect(receivedPlane!.normal.y).toBeCloseTo(1, 5);
-            // In-plane yvec points along +Z (World Up, height from floor)
-            expect(receivedPlane!.yvec.z).toBeCloseTo(1, 5);
-            expect(receivedPlane!.yvec.y).toBeCloseTo(0, 5);
+            // Case B: Deliberate upright mechanism (alignUp: true)
+            await runProgramTool.handler({
+                ops: [
+                    {
+                        method: "box",
+                        id: "doorCutterAlignUp",
+                        args: {
+                            plane: {
+                                origin: { x: 500, y: -157, z: 0 },
+                                normal: { x: 0, y: 1, z: 0 },
+                                alignUp: true,
+                            },
+                            dx: 900,
+                            dy: 2100,
+                            dz: 400,
+                        },
+                    },
+                ],
+            });
+
+            expect(receivedPlanes).toHaveLength(2);
+
+            for (const plane of receivedPlanes) {
+                // Normal is +Y
+                expect(plane.normal.y).toBeCloseTo(1, 5);
+                // xvec is perpendicular to normal along X axis
+                expect(Math.abs(plane.xvec.x)).toBeCloseTo(1, 5);
+                // In-plane yvec points strictly along World Up (+Z, door height from floor)
+                expect(plane.yvec.z).toBeCloseTo(1, 5);
+                expect(plane.yvec.y).toBeCloseTo(0, 5);
+            }
         });
 
         test("misaligned cutter with negative Y target wall fails with clear bounds diagnostic and preserves doc", async () => {

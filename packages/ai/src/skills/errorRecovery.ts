@@ -67,6 +67,8 @@ transformedMul with zero translation is NOT a delete operation — transformedMu
 
 "booleanCut did not remove any volume from target" — the cutter did not penetrate target solid material. If cutter bounds are outside the target, reposition or enlarge the cutter. If bounds overlap but removed volume is 0, the target is already hollow at that position (an opening was already cut) or only grazed the boundary — inspect the active model tree with get_document_state to confirm existing openings before deciding whether to adjust cutter or proceed to door framing.
 
+Cutter extends downward into negative Z or misses vertical wall facade — the plane coordinate system on the vertical facade had an in-plane Y axis pointing down (-Z) or plane origin outside the wall footprint. In the plane definition, either pass explicit "xvec" (e.g. [-1, 0, 0] for normal (0, 1, 0)) or set "alignUp": true to align in-plane Y along World Up (+Z). Verify cutter bounding box overlaps the target wall before calling booleanCut.
+
 "booleanCut failed through-cut verification" — the cutter only created a blind pocket or recess and did not penetrate both opposite faces in the wall thickness dimension. Check the thickness direction of the wall, enlarge the cutter's span along that axis so it extends beyond both target boundaries, and retry. Never declare a door or window complete if it did not cut all the way through.
 
 "Target/Tool "x" is a Shell/Face/Wire, not a solid body. Boolean cut requires solid bodies." — boolean operations require solid bodies. If the cutter was extruded from a wire or profile, ensure the profile was closed into a face before extrusion, or create a solid primitive (box, cylinder). A compound mixing solids with open shells/faces is also rejected.

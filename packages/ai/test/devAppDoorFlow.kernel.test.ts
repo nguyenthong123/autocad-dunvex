@@ -393,6 +393,8 @@ describe("Dev App Door Flow on Real OCCT/WASM Kernel", () => {
         const geomRes = JSON.parse(geomResRaw as string);
 
         let frontFaceRef: string | undefined;
+        let facadePt: XYZ | undefined;
+        let facadeNormal: XYZ | undefined;
         for (let i = 0; i < faceRefs.length; i++) {
             const bounds = geomRes.results[`b_${i}`];
             const uMid = (bounds.u1 + bounds.u2) / 2;
@@ -412,6 +414,8 @@ describe("Dev App Door Flow on Real OCCT/WASM Kernel", () => {
             // Front facade has normal facing +Y (outward) and is located at max Y (-157)
             if (normal.y > 0.99 && Math.abs(pt.y - -157) < 1.0) {
                 frontFaceRef = faceRefs[i];
+                facadePt = pt;
+                facadeNormal = normal;
                 console.log(
                     `[OCCT Real Kernel] Front Facade identified: ${frontFaceRef} at Y=${pt.y.toFixed(2)}, normal=[${normal.x}, ${normal.y}, ${normal.z}]`,
                 );
@@ -419,22 +423,61 @@ describe("Dev App Door Flow on Real OCCT/WASM Kernel", () => {
             }
         }
         expect(frontFaceRef).toBeDefined();
+        expect(facadePt).toBeDefined();
+        expect(facadeNormal).toBeDefined();
 
-        // 4. Create Cutter Box piercing through the wall:
+        // 4. Create Cutter Box via run_program using queried facade position and normal
+        // This exercises coercePlane with alignUp: true on vertical plane
         // Door opening: width 1000 mm (X in [1000, 2000]), height 2200 mm (Z in [0, 2200])
-        // Depth: from Y = -100 to Y = -400 (spanning across Y=-157 to Y=-357)
-        const cutterPlane = Plane.XY.translateTo(new XYZ(1000, -400, 0));
-        const cutterRes = factory.box(cutterPlane, 1000, 300, 2200);
-        expect(cutterRes.isOk).toBe(true);
-
-        const cutterNode = new EditableShapeNode({
-            document: doc,
-            name: "Door Cutter Through",
-            shape: cutterRes,
+        // Wall thickness is 200 mm (spanning Y in [-357, -157]).
+        // Origin: X=2000, Y=facadePt.y - 250 = -407, Z=0. Normal: [0, 1, 0].
+        // coercePlane computes xvec = (-1, 0, 0), yvec = normal.cross(xvec) = (0, 0, 1) (+Z, World Up).
+        // Then box parameters:
+        // - dx = 1000 along xvec: X goes from 2000 down to 1000 (span [1000, 2000])
+        // - dy = 2200 along yvec: Z goes from 0 up to 2200 (span [0, 2200], height upward from floor)
+        // - dz = 300 along normal: Y goes from -407 up to -107 (span [-407, -107], piercing both faces)
+        const cutterProgRaw = await runProgramTool.handler({
+            ops: [
+                {
+                    method: "box",
+                    id: "doorCutterThrough",
+                    args: {
+                        plane: {
+                            origin: { x: 2000, y: facadePt!.y - 250, z: 0 },
+                            normal: { x: facadeNormal!.x, y: facadeNormal!.y, z: facadeNormal!.z },
+                            alignUp: true,
+                        },
+                        dx: 1000,
+                        dy: 2200,
+                        dz: 300,
+                    },
+                    name: "Door Cutter Through",
+                },
+            ],
         });
-        doc.modelManager.addNode(cutterNode);
+        const cutterProg = JSON.parse(cutterProgRaw as string);
+        expect(cutterProg.created).toHaveLength(1);
+        const cutterNodeId = cutterProg.created[0].nodeId;
 
-        // 5. Execute Boolean Cut via run_program
+        // Inspect real bounding box of cutter BEFORE Boolean operation
+        const cutterNode = doc.modelManager.findNodes((n) => n.id === cutterNodeId)[0] as EditableShapeNode;
+        expect(cutterNode).toBeDefined();
+        const cutterBbox = cutterNode.shape.value.boundingBox();
+        console.log("[OCCT Real Kernel] Cutter BoundingBox:", cutterBbox);
+
+        // Verify height extends upward from the floor: Z_min = 0, Z_max = 2200 (strictly positive)
+        expect(cutterBbox.min.z).toBeCloseTo(0, 1);
+        expect(cutterBbox.max.z).toBeCloseTo(2200, 1);
+
+        // Verify cutter penetrates through BOTH opposite faces of the wall (wall Y in [-357, -157])
+        expect(cutterBbox.min.y).toBeLessThanOrEqual(-357);
+        expect(cutterBbox.max.y).toBeGreaterThanOrEqual(-157);
+
+        // Verify cutter is positioned correctly along wall width (X in [1000, 2000])
+        expect(cutterBbox.min.x).toBeCloseTo(1000, 1);
+        expect(cutterBbox.max.x).toBeCloseTo(2000, 1);
+
+        // 5. Execute Boolean Cut via run_program with throughCut: true
         const cutRaw = await runProgramTool.handler({
             ops: [
                 {
@@ -442,7 +485,7 @@ describe("Dev App Door Flow on Real OCCT/WASM Kernel", () => {
                     id: "doorCutAperture",
                     args: {
                         target: wallNode.id,
-                        tool: cutterNode.id,
+                        tool: cutterNodeId,
                         throughCut: true,
                     },
                     name: "Wall with Front Door Aperture",
@@ -452,6 +495,13 @@ describe("Dev App Door Flow on Real OCCT/WASM Kernel", () => {
         const cutRes = JSON.parse(cutRaw as string);
         expect(cutRes.created).toHaveLength(1);
         expect(cutRes.removed).toHaveLength(2); // old wall and cutter consumed
+
+        // Verify throughCut verification result
+        expect(cutRes.results.doorCutAperture).toBeDefined();
+        expect(cutRes.results.doorCutAperture.throughVerified).toBe(true);
+        expect(cutRes.results.doorCutAperture.status).toBe("verified");
+        expect(cutRes.results.doorCutAperture.penetrationAxis).toBe("y");
+        console.log("[OCCT Real Kernel] throughCut Verification:", cutRes.results.doorCutAperture);
 
         const newWallId = cutRes.created[0].nodeId;
         const newWallNode = doc.modelManager.findNodes((n) => n.id === newWallId)[0] as EditableShapeNode;

@@ -576,10 +576,14 @@ function coerceGeometry(p: ShapeCapabilityParam, v: unknown): unknown {
 }
 
 /**
- * Inline plane literal: "XY" | "YZ" | "ZX" | { origin?, normal?, xvec? }. Without a normal
- * it is an XY-oriented plane through origin (default: the world XY plane); with a normal,
- * xvec defaults to a horizontal perpendicular vector ensuring in-plane yvec (normal.cross(xvec))
- * points along World Up (+Z) for vertical/inclined walls.
+ * Inline plane literal: "XY" | "YZ" | "ZX" | { origin?, normal?, xvec?, alignUp?: boolean }.
+ * Without a normal it is an XY-oriented plane through origin (default: the world XY plane).
+ * When normal is provided:
+ * - If xvec is explicitly provided, it is coerced and used.
+ * - If alignUp is true (or upright: true), xvec is chosen so that in-plane yvec (normal.cross(xvec))
+ *   points along World Up (+Z) for vertical/inclined walls.
+ * - Otherwise, xvec defaults to the legacy fallback: unitX (unitY when normal is parallel to unitX),
+ *   preserving backward compatibility for existing callers.
  */
 function coercePlane(label: string, v: unknown): Plane {
     if (typeof v === "string") {
@@ -588,7 +592,13 @@ function coercePlane(label: string, v: unknown): Plane {
         if (upper === "YZ") return Plane.YZ;
         if (upper === "ZX") return Plane.ZX;
     }
-    const p = v as { origin?: unknown; normal?: unknown; xvec?: unknown } | null;
+    const p = v as {
+        origin?: unknown;
+        normal?: unknown;
+        xvec?: unknown;
+        alignUp?: unknown;
+        upright?: unknown;
+    } | null;
     const origin = p?.origin !== undefined ? coerceXYZ(p.origin, `${label}.origin`) : XYZ.zero;
     if (p?.normal === undefined) {
         return Plane.XY.translateTo(origin);
@@ -601,12 +611,17 @@ function coercePlane(label: string, v: unknown): Plane {
     let xvec: XYZ;
     if (p?.xvec !== undefined) {
         xvec = coerceXYZ(p.xvec, `${label}.xvec`);
-    } else if (normal.isParallelTo(XYZ.unitZ)) {
-        xvec = normal.z > 0 ? XYZ.unitX : XYZ.unitNX;
+    } else if (p?.alignUp === true || p?.upright === true) {
+        if (normal.isParallelTo(XYZ.unitZ)) {
+            xvec = normal.z > 0 ? XYZ.unitX : XYZ.unitNX;
+        } else {
+            // Deliberate upright orientation: choose xvec so that yvec = normal.cross(xvec) points UP (+Z)
+            const cross = XYZ.unitZ.cross(normal).normalize();
+            xvec = cross && !cross.isEqualTo(XYZ.zero) ? cross : XYZ.unitX;
+        }
     } else {
-        // Vertical or inclined wall: choose xvec so that in-plane yvec (normal.cross(xvec)) points UP (+Z)
-        const cross = XYZ.unitZ.cross(normal).normalize();
-        xvec = cross && !cross.isEqualTo(XYZ.zero) ? cross : XYZ.unitX;
+        // Legacy fallback orientation: unitX (unitY when normal is parallel to unitX)
+        xvec = normal.isParallelTo(XYZ.unitX) ? XYZ.unitY : XYZ.unitX;
     }
 
     return new Plane({

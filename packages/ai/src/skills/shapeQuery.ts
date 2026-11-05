@@ -32,7 +32,13 @@ const subshapeNote = `\n\n## shape.findSubShapes Parameter Requirement
 - Do NOT rely on fixed face index (e.g. "#5") or normal vector alone.
 - For a building footprint, find faces whose normal points outward (e.g. +Y).
 - Check the face's 3D coordinates / bounding box: for a building extending in negative Y, the front facade is at the maximum Y coordinate (e.g. Y = -157).
-- If multiple faces share the outward normal (e.g. facade vs protruding porch), prompt the user to clarify before cutting.`;
+- If multiple faces share the outward normal (e.g. facade vs protruding porch), prompt the user to clarify before cutting.
+
+## Wall Facade Cutters & Upright Plane Alignment
+- Default plane orientation: omitting "xvec" and "alignUp" retains legacy CAD orientation (xvec = unitX).
+- On a vertical facade (e.g. normal +Y): to align in-plane Y axis with World Up (+Z) so box "dy" is height upward:
+  - Pass explicit "xvec": e.g. for normal (0, 1, 0), pass xvec: [-1, 0, 0] so normal.cross(xvec) points along +Z.
+  - Or pass "alignUp": true so in-plane yvec automatically aligns with World Up (+Z).`;
 
 export const shapeQuery: Skill = {
     name: "shape-query",

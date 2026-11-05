@@ -38,11 +38,12 @@ const usageNotes = `## Additional Creation & Transform Ops
   "shells" accepts an array of closed shell refs.
 
 - "box": { "method": "box", "args": { "plane": planeLiteral, "dx": number, "dy": number, "dz": number } }
-  "plane" can be "XY", "YZ", "ZX", or an object: { "origin": {x,y,z}, "normal": {x,y,z}, "xvec"?: {x,y,z} }.
-  For vertical planes (e.g. wall normal (0,1,0)):
-  - "dy" is along World Up (+Z): height from floor upward (e.g. 2100mm).
-  - "dz" is along normal: thickness piercing through the wall.
-  - "dx" is along the horizontal wall face.
+  "plane" can be "XY", "YZ", "ZX", or an object: { "origin": {x,y,z}, "normal": {x,y,z}, "xvec"?: {x,y,z}, "alignUp"?: boolean }.
+  By default, omitting "xvec" retains legacy CAD orientation (xvec = unitX).
+  For vertical wall facades (e.g. wall normal (0,1,0)) where dy must be height upward (+Z):
+  - Pass explicit "xvec": e.g. for normal (0,1,0), pass xvec: [-1, 0, 0] so in-plane yvec points along +Z.
+  - Or pass "alignUp": true so in-plane yvec automatically aligns with World Up (+Z).
+  - Then "dy" is height from floor upward (e.g. 2200mm), "dz" is thickness piercing through wall, "dx" is along wall face.
   Ensure cutter bounds intersect target wall in all 3 axes (X, Y, Z) before calling booleanCut.
 
 - Surface bounds & face normal:
