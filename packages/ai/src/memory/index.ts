@@ -12,6 +12,7 @@ export {
     onUserConstraint,
     onVerificationCompleted,
     SESSION_MEMORY_MAX_SUMMARY_CHARS,
+    syncSessionMemoryWithDocument,
     updateSessionMemory,
 } from "./sessionMemory";
 export type {

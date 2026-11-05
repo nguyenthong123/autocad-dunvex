@@ -533,7 +533,13 @@ function coerceMissing(p: ShapeCapabilityParam): unknown {
 function coercePrimitive(p: ShapeCapabilityParam, v: unknown): unknown {
     switch (p.kind) {
         case "number":
-            if (!isFiniteNumber(v)) throw new Error(`${p.name} must be a finite number, got ${describe(v)}`);
+            if (!isFiniteNumber(v)) {
+                const hint =
+                    p.name === "u" || p.name === "v"
+                        ? `. If this was caused by (u1 + u2) / 2 on unbounded/infinite surface bounds (e.g. -Infinity + Infinity), use ${p.name}=0 for planar surfaces or query a bounded sub-surface.`
+                        : "";
+                throw new Error(`${p.name} must be a finite number, got ${describe(v)}${hint}`);
+            }
             return v;
         case "boolean":
             if (typeof v !== "boolean") throw new Error(`${p.name} must be a boolean, got ${describe(v)}`);

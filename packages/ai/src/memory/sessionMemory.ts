@@ -1,6 +1,7 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
+import { type IDocument, isConsumedTool } from "@chili3d/core";
 import type { SessionMemory, SessionMemoryPatch, SessionRecentError } from "./types";
 
 export const SESSION_MEMORY_MAX_SUMMARY_CHARS = 1500;
@@ -76,6 +77,39 @@ export function updateSessionMemory(patch: SessionMemoryPatch): SessionMemory {
  */
 export function clearSessionMemory(): void {
     currentMemory = createInitialMemory();
+}
+
+/**
+ * Synchronizes session memory with the current active document state.
+ * Reconciles created, removed, deleted, and undone nodes against live document model tree:
+ * 1. If an ID was in removedNodeIds but is now present in the document (e.g. after Undo
+ *    or recreated), un-marks it from removedNodeIds.
+ * 2. Active nodes: evicts any node that no longer exists in the document model.
+ * 3. Populates active nodes from live non-consumed document nodes.
+ */
+export function syncSessionMemoryWithDocument(doc: IDocument): void {
+    if (!doc || !doc.modelManager) return;
+    const allNodes = doc.modelManager.findNodes(() => true);
+    const liveIds = new Set(allNodes.map((n) => n.id));
+
+    // 1. Un-mark restored / undone nodes from removedNodeIds
+    currentMemory.removedNodeIds = currentMemory.removedNodeIds.filter((id) => !liveIds.has(id));
+
+    // 2. Evict dead nodes from activeNodes
+    currentMemory.activeNodes = currentMemory.activeNodes.filter((n) => liveIds.has(n.id));
+
+    // 3. Keep activeNodes in sync with live non-consumed nodes
+    const existingActiveMap = new Map(currentMemory.activeNodes.map((n) => [n.id, n]));
+    for (const node of allNodes) {
+        if (!node.id || isConsumedTool(node)) continue;
+        if (!existingActiveMap.has(node.id)) {
+            existingActiveMap.set(node.id, {
+                id: node.id,
+                name: node.name || node.id,
+            });
+        }
+    }
+    currentMemory.activeNodes = Array.from(existingActiveMap.values()).slice(-MAX_ACTIVE_NODES);
 }
 
 /**

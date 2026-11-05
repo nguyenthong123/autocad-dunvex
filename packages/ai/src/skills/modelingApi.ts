@@ -47,8 +47,11 @@ const usageNotes = `## Additional Creation & Transform Ops
   Ensure cutter bounds intersect target wall in all 3 axes (X, Y, Z) before calling booleanCut.
 
 - Surface bounds & face normal:
-  Use "surface.bounds" (NOT surface.uvBounds) to query UV bounds:
-  face.surface -> surface.bounds -> face.normal.
+  Use "surface.bounds" (target: surface ref) to query UV bounds: returns { u1, u2, v1, v2 }.
+  Executable 3-step sequence: face.surface -> surface.bounds -> face.normal.
+  For planar/unbounded domains (|u1| > 1e10), pass u=0, v=0 to face.normal.
+  For finite domains (|u1| < 1e10), pass midpoint u=(u1+u2)/2, v=(v1+v2)/2.
+  Top face of a solid must be determined by upward normal (normal.z > 0.9) and maximum Z position, NOT by index #0 or name "top_face".
 `;
 
 /** The catalogue, as families with what each costs to fetch. */

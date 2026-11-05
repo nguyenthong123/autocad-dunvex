@@ -18,15 +18,38 @@ const subshapeNote = `\n\n## shape.findSubShapes Parameter Requirement
 ## Separate Query from Property Measurement
 - NEVER batch shape.findSubShapes together with assumed indexed refs (like "#0", "#1", ..., "#8") in the same run_program call!
   You do not know in advance how many faces or edges the shape actually has.
-- Step 1: Call shape.findSubShapes alone.
-- Step 2: Read results[id].refs in the tool response (e.g. 8 faces -> ["faces#0", ..., "faces#7"]). Only use the exact refs returned. Do not reference "#8" or beyond, and never use the group id (like "wallFaces") as a single ref.
+- Step 1: Call shape.findSubShapes alone:
+  {"ops": [{"method": "shape.findSubShapes", "target": "<nodeId>", "id": "f", "args": { "subshapeType": "face" }}]}
+- Step 2: Read results[id].refs in the tool response (e.g. 6 faces -> ["f#0", "f#1", ..., "f#5"]). Only query the returned refs. Do not reference "#6" or beyond, and never use the group id (like "f") as a single ref.
 - When topology changes (after a cut, extrude, or fillet), always re-query shape.findSubShapes — old subshape refs are invalidated.
 
-## Querying Face Normal & Surface UV Bounds (3-Step Pattern)
-1. Query surface ref: {"method": "face.surface", "target": "faceRef#0", "id": "s0"}
-2. Query surface UV bounds (from surface-query skill): target "s0" -> bounds { u1, u2, v1, v2 }
-3. Query normal at midpoint: {"method": "face.normal", "target": "faceRef#0", "args": { "u": (u1 + u2) / 2, "v": (v1 + v2) / 2 }}
-   Note: method name is "surface." + "bounds" (from surface-query, NOT surface.uvBounds).
+## Querying Face Normal, Surface UV Bounds & Identifying Top Face (Executable Workflow)
+1. Query subshapes alone:
+   {"ops": [{"method": "shape.findSubShapes", "target": "<nodeId>", "id": "f", "args": { "subshapeType": "face" }}]}
+   Response: results.f = { count: 6, refs: ["f#0", "f#1", "f#2", "f#3", "f#4", "f#5"] }
+
+2. Query face surface, then use surface-query skill for UV bounds on candidate refs:
+   - First get surface ref: {"method": "face.surface", "target": "f#0", "id": "s0"}
+   - Query bounds from surface-query skill (target: "s0", id: "b0") -> returns { u1, u2, v1, v2 }
+   (bounds data shape: { u1: number, u2: number, v1: number, v2: number }).
+
+3. Handle bounds & evaluate face.normal:
+   - If bounds are unbounded or non-finite (|u1| > 1e10 or !Number.isFinite(u1), typical for planar faces in CAD):
+     Pass canonical u = 0, v = 0. Do NOT evaluate (u1 + u2) / 2 because (-Infinity + Infinity) yields NaN!
+   - If bounds are finite (|u1| < 1e10, e.g. bounded BSpline surface):
+     Pass midpoint u = (u1 + u2) / 2, v = (v1 + v2) / 2.
+   {"ops": [
+     {"method": "face.normal", "target": "f#0", "args": { "u": 0, "v": 0 }, "id": "n0"},
+     {"method": "face.normal", "target": "f#1", "args": { "u": 0, "v": 0 }, "id": "n1"}
+   ]}
+   Response: results.n0 = [point: { x, y, z }, normal: { x, y, z }]
+
+4. Identifying the Top Face of a Floor or Box:
+   - NEVER deduce the top face by index (e.g. assuming "#0" is top) or by naming an op "top_face".
+     In an OCCT box, face "#0" is the BOTTOM face at Z=0 with outward normal (0, 0, -1)!
+   - The top face MUST be identified by:
+     1) Upward normal direction: normal.z > 0.9 (e.g. normal is [0, 0, 1]).
+     2) Highest Z position: candidate face with the maximum point.z (or bounding box max Z).
 
 ## Identifying the Front Facade of a Building
 - Do NOT rely on fixed face index (e.g. "#5") or normal vector alone.

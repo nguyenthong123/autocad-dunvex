@@ -314,6 +314,14 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                             }
                         }
                     }
+                } else if (res.name === "delete_node") {
+                    if (parsedContent && typeof parsedContent.deleted === "string") {
+                        const delId = parsedContent.deleted;
+                        pendingVerificationTargets = pendingVerificationTargets.filter((p) => p.id !== delId);
+                        if (pendingVerificationTargets.length === 0) {
+                            needsVerification = false;
+                        }
+                    }
                 } else if (WRITE_TOOLS.has(res.name)) {
                     needsVerification = true;
                     const targets = extractWriteTargets(res.name, rawArgs, parsedContent);
@@ -403,6 +411,7 @@ interface WriteToolArgs {
 
 interface ToolOutputShape {
     error?: string;
+    deleted?: string;
     created?: (NodeIdNameItem | string)[];
     removed?: (NodeIdNameItem | string)[];
     results?: unknown;
@@ -542,6 +551,15 @@ export function extractVerifiedEvidence(
         for (const item of items) {
             if (typeof item.nodeId === "string" && item.nodeId.trim()) ids.add(item.nodeId.trim());
             if (typeof item.name === "string" && item.name.trim()) names.add(item.name.trim().toLowerCase());
+        }
+    } else if (toolName === "get_document_state") {
+        const nodeList = Array.isArray(parsedContent.nodes) ? parsedContent.nodes : [];
+        for (const node of nodeList) {
+            if (node && typeof node === "object") {
+                if (typeof node.id === "string" && node.id.trim()) ids.add(node.id.trim());
+                if (typeof node.name === "string" && node.name.trim())
+                    names.add(node.name.trim().toLowerCase());
+            }
         }
     } else if (toolName === "run_program") {
         if (parsedContent.results && typeof parsedContent.results === "object") {

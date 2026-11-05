@@ -549,4 +549,110 @@ describe("Dev App Door Flow on Real OCCT/WASM Kernel", () => {
         console.log("[Evidence Viewpoints] Front view:", frontFacadeView);
         console.log("[Evidence Viewpoints] Oblique isometric view:", obliqueIsometricView);
     });
+
+    test("Real Kernel Floor Top Face Normal Query: 4m x 8m slab -> shape.findSubShapes alone -> surface.bounds -> handle unbounded domain -> face.normal -> identify top face by normal (+Z) and position", async () => {
+        console.log("--- REAL OCCT WASM FLOOR TOP FACE NORMAL QUERY ---");
+        // 1. Create real OCCT floor slab: 4000 x 8000 x 200 mm (4m x 8m x 0.2m)
+        const floorRes = factory.box(Plane.XY, 4000, 8000, 200);
+        expect(floorRes.isOk).toBe(true);
+        const floorShape = floorRes.value;
+
+        const floorNode = new EditableShapeNode({
+            document: doc,
+            name: "Sàn nhà 4m x 8m",
+            shape: floorRes,
+        });
+        doc.modelManager.addNode(floorNode);
+        const floorId = floorNode.id;
+
+        const capabilityTools = buildCapabilityTools();
+        const runProgramTool = capabilityTools.find((t) => t.name === "run_program")!;
+
+        // 2. Step 1: Query shape.findSubShapes alone (never batch with assumed #0)
+        const step1Raw = await runProgramTool.handler({
+            ops: [
+                {
+                    id: "flFaces",
+                    method: "shape.findSubShapes",
+                    target: floorId,
+                    args: { subshapeType: "face" },
+                },
+            ],
+        });
+        const step1 = JSON.parse(step1Raw as string);
+        expect(step1.results.flFaces.count).toBe(6);
+        expect(step1.results.flFaces.refs).toHaveLength(6);
+        expect(step1.results.flFaces.refs).toContain("flFaces#0");
+        expect(step1.results.flFaces.refs).toContain("flFaces#1");
+        console.log("[OCCT Kernel] Returned Face Refs:", step1.results.flFaces.refs);
+
+        // 3. Step 2: Query surface and bounds for faces to check UV bounds data shape
+        const step2Raw = await runProgramTool.handler({
+            ops: [
+                { method: "face.surface", id: "surf0", target: "flFaces#0" },
+                { method: "surface.bounds", id: "bounds0", target: "surf0" },
+                { method: "face.surface", id: "surf1", target: "flFaces#1" },
+                { method: "surface.bounds", id: "bounds1", target: "surf1" },
+            ],
+        });
+        const step2 = JSON.parse(step2Raw as string);
+        const b0 = step2.results.bounds0;
+        const b1 = step2.results.bounds1;
+
+        // Verify bounds data shape { u1, u2, v1, v2 }
+        expect(b0).toHaveProperty("u1");
+        expect(b0).toHaveProperty("u2");
+        expect(b0).toHaveProperty("v1");
+        expect(b0).toHaveProperty("v2");
+        console.log("[OCCT Kernel] Planar Face Bounds (b0):", b0);
+
+        // In OCCT, Geom_Plane has infinite bounds (magnitude > 1e10, e.g. -2e100 to 2e100)
+        expect(Math.abs(b0.u1)).toBeGreaterThan(1e10);
+        expect(Math.abs(b0.u2)).toBeGreaterThan(1e10);
+
+        // 4. Step 3: Handle unbounded domain -> pass canonical u = 0, v = 0 to face.normal
+        const ops = [];
+        for (let i = 0; i < 6; i++) {
+            ops.push({
+                id: `norm${i}`,
+                method: "face.normal",
+                target: `flFaces#${i}`,
+                args: { u: 0, v: 0 },
+            });
+            ops.push({
+                id: `area${i}`,
+                method: "face.area",
+                target: `flFaces#${i}`,
+            });
+        }
+        const step3Raw = await runProgramTool.handler({ ops });
+        const step3 = JSON.parse(step3Raw as string);
+
+        let topFaceIndex = -1;
+        for (let i = 0; i < 6; i++) {
+            const [pnt, norm] = step3.results[`norm${i}`];
+            const area = step3.results[`area${i}`];
+            console.log(
+                `[OCCT Kernel] Face #${i}: Point (${pnt.x}, ${pnt.y}, ${pnt.z}) | Normal (${norm.x}, ${norm.y}, ${norm.z}) | Area: ${area}`,
+            );
+            if (norm.z > 0.9 && pnt.z >= 199) {
+                topFaceIndex = i;
+            }
+        }
+        console.log(`[OCCT Kernel] True Top Face is Face #${topFaceIndex}`);
+
+        // Face #0 in OCCT box has normal [-1, 0, 0] (LEFT face, pointing -X, not top!)
+        const [pnt0, norm0] = step3.results.norm0;
+        expect(norm0.z).toBeCloseTo(0, 1); // Proves #0 is NOT the top face!
+
+        // Confirm that the identified top face has normal pointing UP (+Z) and position Z = 200
+        expect(topFaceIndex).toBeGreaterThanOrEqual(0);
+        const [topPnt, topNorm] = step3.results[`norm${topFaceIndex}`];
+        expect(topNorm.z).toBeCloseTo(1, 2);
+        expect(topPnt.z).toBeCloseTo(200, 1);
+
+        // Top face area = 4000 * 8000 = 32,000,000 mm2
+        const topArea = step3.results[`area${topFaceIndex}`];
+        expect(topArea).toBeCloseTo(32_000_000, 0);
+    });
 });

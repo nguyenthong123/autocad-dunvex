@@ -15,11 +15,17 @@ import { createMockApplication, TestDocument } from "@chili3d/core/test-utils";
 import { SketchNode } from "@chili3d/parametric";
 import { rs } from "@rstest/core";
 import { extractVerifiedEvidence, runAgent } from "../src/llm/agent";
-import { clearSessionMemory, getSessionMemory, onNodesRemoved } from "../src/memory";
+import {
+    clearSessionMemory,
+    getSessionMemory,
+    onNodesRemoved,
+    syncSessionMemoryWithDocument,
+} from "../src/memory";
 import { buildArrayTools } from "../src/tools/arrayTools";
 import { buildCapabilityTools } from "../src/tools/capabilityEngine";
 import { buildNodeTools } from "../src/tools/nodeTools";
 import { buildParametricTools } from "../src/tools/parametricTools";
+import { buildReadTools } from "../src/tools/readTools";
 import { ScriptedLLMProvider } from "./_helpers/scriptedProvider";
 
 function createFakeEdge(start: XYZ, end: XYZ) {
@@ -1829,6 +1835,316 @@ describe("Door Modeling Errors & Recovery Regression", () => {
 
             const finalMsg = messages[messages.length - 1];
             expect(finalMsg.content).toContain("Successfully queried real face area on valid subshape ref.");
+        });
+
+        test("Agent missing UV in face.normal receives clear error and recovers by querying surface.bounds and passing valid UV", async () => {
+            const fakeSurface = {
+                bounds: () => ({ u1: 0, u2: 10, v1: 0, v2: 20 }),
+            };
+            const fakeFace = {
+                shapeType: ShapeTypes.face,
+                isEqual: () => false,
+                surface: () => fakeSurface,
+                normal: rs.fn((u: number, v: number) => [new XYZ(u, v, 200), new XYZ(0, 0, 1)]),
+            };
+            const fakeSolid = {
+                shapeType: ShapeTypes.solid,
+                isEqual: () => false,
+                findSubShapes: rs.fn((type: ShapeType) => (type === ShapeTypes.face ? [fakeFace] : [])),
+            };
+            const floorNode = new EditableShapeNode({
+                document: doc,
+                name: "FloorSlab",
+                shape: Result.ok(fakeSolid as any),
+            });
+            doc.modelManager.addNode(floorNode);
+
+            const allTools = [
+                ...buildCapabilityTools(),
+                ...buildNodeTools(),
+                ...buildArrayTools(),
+                ...buildParametricTools(),
+            ];
+
+            // Scripted Agent Recovery Sequence:
+            // Turn 1: Agent mistakenly attempts to call face.normal without u and v
+            // Turn 2: Agent receives "Missing required parameter 'u' ... Query surface bounds" error,
+            //         changes step: queries shape.findSubShapes alone to get real refs
+            // Turn 3: Agent queries face.surface -> surface.bounds on real returned ref
+            // Turn 4: Agent reads bounds { u1: 0, u2: 10, v1: 0, v2: 20 }, passes midpoint u=5, v=10 to face.normal
+            // Turn 5: Agent reports recovered normal
+            const scriptedProvider = new ScriptedLLMProvider([
+                // Turn 1: Mistaken call batching shape.findSubShapes and face.normal without u, v (exactly like error report)
+                {
+                    type: "tool_calls",
+                    calls: [
+                        {
+                            id: "call-uv-1",
+                            name: "run_program",
+                            args: {
+                                ops: [
+                                    {
+                                        id: "find_faces",
+                                        method: "shape.findSubShapes",
+                                        target: floorNode.id,
+                                        args: { shapeType: "face" },
+                                    },
+                                    {
+                                        id: "top_face",
+                                        method: "face.normal",
+                                        target: "find_faces#0",
+                                        args: {},
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+                // Turn 2: Reads error, changes step: runs shape.findSubShapes alone
+                (opts) => {
+                    const lastMsg = opts.messages[opts.messages.length - 1];
+                    expect((lastMsg as any).content).toContain("Missing required parameter");
+                    expect((lastMsg as any).content).toContain("surface.bounds");
+                    return {
+                        type: "tool_calls",
+                        calls: [
+                            {
+                                id: "call-uv-2",
+                                name: "run_program",
+                                args: {
+                                    ops: [
+                                        {
+                                            method: "shape.findSubShapes",
+                                            id: "flFaces",
+                                            target: floorNode.id,
+                                            args: { subshapeType: "face" },
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                    };
+                },
+                // Turn 3: Reads returned refs, queries face.surface and surface.bounds
+                (opts) => {
+                    const lastMsg = opts.messages[opts.messages.length - 1];
+                    expect((lastMsg as any).content).toContain('"refs":["flFaces#0"]');
+                    return {
+                        type: "tool_calls",
+                        calls: [
+                            {
+                                id: "call-uv-3",
+                                name: "run_program",
+                                args: {
+                                    ops: [
+                                        {
+                                            method: "face.surface",
+                                            id: "surf0",
+                                            target: "flFaces#0",
+                                        },
+                                        {
+                                            method: "surface.bounds",
+                                            id: "bounds0",
+                                            target: "surf0",
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                    };
+                },
+                // Turn 4: Reads bounds { u1: 0, u2: 10, v1: 0, v2: 20 }, computes valid midpoint and calls face.normal
+                (opts) => {
+                    const lastMsg = opts.messages[opts.messages.length - 1];
+                    expect((lastMsg as any).content).toContain('"u1":0');
+                    expect((lastMsg as any).content).toContain('"v2":20');
+                    return {
+                        type: "tool_calls",
+                        calls: [
+                            {
+                                id: "call-uv-4",
+                                name: "run_program",
+                                args: {
+                                    ops: [
+                                        {
+                                            method: "face.normal",
+                                            id: "good_norm",
+                                            target: "flFaces#0",
+                                            args: { u: 5, v: 10 },
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                    };
+                },
+                // Turn 5: Final text confirmation
+                {
+                    type: "text",
+                    text: "Successfully recovered from missing UV error and queried face normal on real ref.",
+                },
+            ]);
+
+            const messages: any[] = [{ role: "user", content: "Query normal of floor top face." }];
+            const callbacks = {
+                onTextDelta: () => {},
+                onThinkingDelta: () => {},
+                onToolCall: () => {},
+                onUsage: () => {},
+            };
+
+            await runAgent({
+                provider: scriptedProvider,
+                config: { model: "mock-model" } as any,
+                system: { stable: "system-test", volatile: "" },
+                messages,
+                tools: allTools,
+                callbacks,
+            });
+
+            const finalMsg = messages[messages.length - 1];
+            expect(finalMsg.content).toContain(
+                "Successfully recovered from missing UV error and queried face normal on real ref.",
+            );
+        });
+
+        test("Already-deleted node ID is rejected and agent does NOT repeat delete, calling get_document_state instead", async () => {
+            const nodeToDelete = new EditableShapeNode({
+                document: doc,
+                name: "NodeToDelete",
+                shape: Result.ok({
+                    shapeType: ShapeTypes.solid,
+                    isEqual: () => false,
+                } as any),
+            });
+            doc.modelManager.addNode(nodeToDelete);
+            const targetId = nodeToDelete.id;
+
+            const allTools = [
+                ...buildCapabilityTools(),
+                ...buildNodeTools(),
+                ...buildReadTools(),
+                ...buildArrayTools(),
+                ...buildParametricTools(),
+            ];
+
+            let deleteAttemptCount = 0;
+
+            // Scripted Agent Sequence:
+            // Turn 1: Calls delete_node on targetId -> node is successfully deleted
+            // Turn 2: Agent attempts to delete targetId again -> receives "already consumed or deleted" error
+            // Turn 3: Agent changes step: does NOT call delete_node again; calls get_document_state to confirm active tree
+            // Turn 4: Agent confirms node is gone and finishes turn
+            const scriptedProvider = new ScriptedLLMProvider([
+                // Turn 1: First delete
+                {
+                    type: "tool_calls",
+                    calls: [
+                        {
+                            id: "del-1",
+                            name: "delete_node",
+                            args: { id: targetId },
+                        },
+                    ],
+                },
+                // Turn 2: Erroneous duplicate delete attempt
+                (opts) => {
+                    deleteAttemptCount++;
+                    const lastMsg = opts.messages[opts.messages.length - 1];
+                    expect((lastMsg as any).content).toContain(`"deleted":"${targetId}"`);
+                    return {
+                        type: "tool_calls",
+                        calls: [
+                            {
+                                id: "del-2",
+                                name: "delete_node",
+                                args: { id: targetId },
+                            },
+                        ],
+                    };
+                },
+                // Turn 3: Reads error, changes step: calls get_document_state instead of retrying delete
+                (opts) => {
+                    deleteAttemptCount++;
+                    const lastMsg = opts.messages[opts.messages.length - 1];
+                    expect((lastMsg as any).content).toContain("was already consumed or deleted");
+                    return {
+                        type: "tool_calls",
+                        calls: [
+                            {
+                                id: "read-doc",
+                                name: "get_document_state",
+                                args: {},
+                            },
+                        ],
+                    };
+                },
+                // Turn 4: Completes turn without retrying delete
+                {
+                    type: "text",
+                    text: `Confirmed via get_document_state that node ${targetId} is no longer in active document.`,
+                },
+            ]);
+
+            const messages: any[] = [{ role: "user", content: `Delete node ${targetId}` }];
+            const callbacks = {
+                onTextDelta: () => {},
+                onThinkingDelta: () => {},
+                onToolCall: () => {},
+                onUsage: () => {},
+            };
+
+            await runAgent({
+                provider: scriptedProvider,
+                config: { model: "mock-model" } as any,
+                system: { stable: "system-test", volatile: "" },
+                messages,
+                tools: allTools,
+                callbacks,
+            });
+
+            expect(deleteAttemptCount).toBe(2); // Attempt 1 succeeded, Attempt 2 rejected, Attempt 3 switched to get_document_state!
+            const finalMsg = messages[messages.length - 1];
+            expect(finalMsg.content).toContain(
+                `Confirmed via get_document_state that node ${targetId} is no longer in active document.`,
+            );
+        });
+
+        test("syncSessionMemoryWithDocument reconciles active and removed nodes across delete and undo", () => {
+            const nodeA = new EditableShapeNode({
+                document: doc,
+                name: "NodeA",
+                shape: Result.ok({ shapeType: ShapeTypes.solid } as any),
+            });
+            const nodeB = new EditableShapeNode({
+                document: doc,
+                name: "NodeB",
+                shape: Result.ok({ shapeType: ShapeTypes.solid } as any),
+            });
+            doc.modelManager.addNode(nodeA);
+            doc.modelManager.addNode(nodeB);
+
+            // Sync with initial document
+            syncSessionMemoryWithDocument(doc);
+            let mem = getSessionMemory();
+            expect(mem.activeNodes.map((n) => n.id)).toContain(nodeA.id);
+            expect(mem.activeNodes.map((n) => n.id)).toContain(nodeB.id);
+            expect(mem.removedNodeIds).not.toContain(nodeA.id);
+
+            // Simulate deleting nodeA
+            nodeA.parent?.remove(nodeA);
+            onNodesRemoved([nodeA.id]);
+            mem = getSessionMemory();
+            expect(mem.removedNodeIds).toContain(nodeA.id);
+            expect(mem.activeNodes.map((n) => n.id)).not.toContain(nodeA.id);
+
+            // Simulate Undo restoring nodeA back to document
+            doc.modelManager.addNode(nodeA);
+            syncSessionMemoryWithDocument(doc);
+            mem = getSessionMemory();
+            // nodeA is restored: must NOT be in removedNodeIds, must be back in activeNodes
+            expect(mem.removedNodeIds).not.toContain(nodeA.id);
+            expect(mem.activeNodes.map((n) => n.id)).toContain(nodeA.id);
         });
     });
 });

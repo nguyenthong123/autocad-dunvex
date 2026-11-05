@@ -32,6 +32,7 @@ export {
     type SessionMemoryPatch,
     type SessionRecentError,
     type SessionVerificationInfo,
+    syncSessionMemoryWithDocument,
     updateSessionMemory,
 } from "./memory";
 export {

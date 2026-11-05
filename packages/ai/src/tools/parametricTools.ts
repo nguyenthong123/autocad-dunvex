@@ -5,7 +5,7 @@ import { Transaction } from "@chili3d/core";
 import type { ParametricOp, ProgramResult } from "@chili3d/parametric";
 import { recordRuntimeError } from "../diagnostics";
 import type { Tool } from "../llm/types";
-import { onNodesCreated, onRecentError } from "../memory";
+import { onNodesCreated, onNodesRemoved, onRecentError } from "../memory";
 import { requireDocument } from "./documentContext";
 
 /**
@@ -196,6 +196,9 @@ async function runParametric(args: Record<string, unknown>): Promise<string> {
         });
         if (result?.created) {
             onNodesCreated(result.created.map((c) => ({ id: c.nodeId, name: c.name })));
+        }
+        if (result?.consumed && result.consumed.length > 0) {
+            onNodesRemoved(result.consumed.map((c) => c.nodeId));
         }
     } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);

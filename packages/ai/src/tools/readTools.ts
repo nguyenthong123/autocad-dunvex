@@ -3,6 +3,7 @@
 
 import type { IDocument, INode } from "@chili3d/core";
 import type { Tool } from "../llm/types";
+import { onVerificationCompleted, syncSessionMemoryWithDocument } from "../memory";
 import { getDocument, shapeKindOf } from "./documentContext";
 
 function summarizeNode(node: INode) {
@@ -26,7 +27,10 @@ function documentSummary(doc: IDocument) {
 async function readDocumentState(): Promise<string> {
     const doc = getDocument();
     if (!doc) return JSON.stringify({ hasActiveDocument: false });
-    return JSON.stringify(documentSummary(doc));
+    syncSessionMemoryWithDocument(doc);
+    const summary = documentSummary(doc);
+    onVerificationCompleted("get_document_state", `Active document has ${summary.nodeCount} nodes`);
+    return JSON.stringify(summary);
 }
 
 async function readSelection(): Promise<string> {
@@ -43,6 +47,7 @@ async function readSelection(): Promise<string> {
 export function documentSnapshot(): string {
     const doc = getDocument();
     if (!doc) return JSON.stringify({ hasActiveDocument: false });
+    syncSessionMemoryWithDocument(doc);
     const selected = doc.selection.getSelectedNodes().map(summarizeNode);
     return JSON.stringify({ ...documentSummary(doc), selected });
 }
