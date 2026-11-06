@@ -8,7 +8,7 @@
 | SHA | Note |
 |-----|------|
 | `9ff3d494` | First pass (401 on bad Bearer, sync status labels) — **not approved alone** |
-|  | Owner-bound outbox + safe `ensureAuthSession` + tests + scrub user dumps |
+| `2092798d55a1237ea83b2dbacfd1a6f8a5fde940` | Owner-bound outbox + safe `ensureAuthSession` + tests + scrub user dumps |
 
 ## Concrete document under test
 
@@ -23,12 +23,19 @@
 
 Silent guest fallback on bad/expired JWT while UI still showed a logged-in username. Win listed the guest DB; Mac with a valid token saw the user DB.
 
-## Follow-up (this SHA)
+## Follow-up (`2092798d`)
 
-1. **Outbox ownership** — each item stores `ownerUserId` at enqueue; flush skips mismatches (logout / switch account / mid-retry); never uploads A’s rows as guest or B.
+1. **Outbox ownership** — each item stores `ownerUserId` at enqueue; flush skips mismatches (logout / switch account / mid-retry); never uploads A's rows as guest or B.
 2. **`ensureAuthSession`** — clears session only on **401/403**; keeps identity on **5xx** / network / missing token (offline scoping). `page()` with user-id and no token uses local fallback only (no guest API).
 3. **Tests** — owner isolation, expired-token retry, A→B switch, re-login A, auth/me 5xx, dual-session same-account on real storage server; existing offline / conflict / local-fallback suites retained.
 4. **Evidence** — synthetic dual-session in `clientServerIntegration.test.ts`; pre-fix VPS probe kept as metadata-only JSON; full drawing dumps out of git.
+
+## Verification (local)
+
+- rstest storage/UI related: **59 passed**
+- server storageServer: **17/17**
+- `tsc --noEmit`: pass
+- `npm run build`: pass
 
 ## Reviewer ask
 
