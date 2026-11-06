@@ -1,19 +1,22 @@
-# TASK-41 — Mac ↔ Windows sync handoff (review before deploy)
+# TASK-41 — Mac ↔ Windows sync handoff
 
-**Status:** ready for review · **do not deploy until reviewer OK**  
-**Date:** 2026-11-06
+**Status:** reviewer approved · deploy in progress  
+**Date:** 2026-11-07
 
-## Final handoff SHA
+## Final tips
 
-`3f82747d4e2ca63be40c1f3e1ebbd260977d9ac3` — `🐛 fix(storage): ignore stale 401 after account switch`
+| Role | SHA |
+|------|-----|
+| Code (approved) | `3f82747d4e2ca63be40c1f3e1ebbd260977d9ac3` |
+| Docs tip (approved) | `cd9c117dbd357965caa6c8678a961708ba00fca2` |
 
-Local stack on top of `origin/dev` (`b31f6b53`), **not pushed**. History rewritten locally so user drawing dumps from the old `9ff3d494` tip are **absent** from this range (private copies in agent store `sync-evidence-private/`).
+Local stack sits on `origin/dev` base `b31f6b53`. History was rewritten locally before push so user drawing dumps from the old `9ff3d494` tip are absent (private copies in agent store `sync-evidence-private/`).
 
 | Prior tip | Role |
 |-----------|------|
-| `9ff3d494` (rewritten → `714f90ca`) | 401 on bad Bearer + sync labels — dumps stripped |
-| `2092798d` (rewritten → `dd76a6dc`) | Owner-bound outbox |
-| `3f82747d` | Stale-request 401 / GET/page isolation (**handoff**) |
+| `9ff3d494` → `714f90ca` | 401 on bad Bearer + sync labels — dumps stripped |
+| `2092798d` → `dd76a6dc` | Owner-bound outbox |
+| `3f82747d` | Stale-request 401 / GET/page isolation |
 
 ## Root cause
 
@@ -36,7 +39,7 @@ Automated (synthetic fixture, no user drawing payload):
 
 Pre-fix VPS metadata only: `docs/tasks/sync-evidence/dual-session-2026-11-06T15-17-17-568Z.json`
 
-## Verification (this tip)
+## Pre-deploy verification
 
 | Check | Result |
 |-------|--------|
@@ -46,6 +49,6 @@ Pre-fix VPS metadata only: `docs/tasks/sync-evidence/dual-session-2026-11-06T15-
 | Biome (touched files) | pass (warnings only) |
 | User dump paths in `origin/dev..HEAD` | **none** |
 
-## Reviewer ask
+## Deploy note
 
-Approve `3f82747d`, then deploy **web + storage-api together**. Do not push until approved — local history was rewritten to scrub dumps.
+Deploy **web + storage-api together**. Keep original user drawings and private backups untouched.
