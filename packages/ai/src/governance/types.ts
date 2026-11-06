@@ -41,7 +41,9 @@ export type PermissionCode =
     | "INDETERMINATE_IMPACT_BLOCKED"
     | "ASYNC_PATH_UNSUPPORTED"
     | "UNDO_TASK_HALTED"
-    | "DOCUMENT_DRIFT";
+    | "DOCUMENT_DRIFT"
+    | "PLAN_INVALIDATED"
+    | "PROPOSAL_STALE";
 
 export interface PermissionDecision {
     allowed: boolean;

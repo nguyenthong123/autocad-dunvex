@@ -6,8 +6,15 @@ import { getDocument } from "../tools/documentContext";
 import { analyzeToolImpact } from "./impactAnalysis";
 import { stripSelfApproval } from "./selfApproval";
 import { absorbForeignNodes, ensureSourceProtection, isSourceProtected } from "./sourceProtection";
-import { getActiveTaskProfile, getAgentCreatedNodeIds, isNodeAllowed, isTaskOwned } from "./taskProfile";
+import {
+    getActiveTaskProfile,
+    getAgentCreatedNodeIds,
+    getTaskProfile,
+    isNodeAllowed,
+    isTaskOwned,
+} from "./taskProfile";
 import type { PermissionDecision, ToolImpact } from "./types";
+import { detectInterleaving, INTERLEAVE_MESSAGE } from "./undoTask";
 
 /**
  * Check write permission after normalize/resolve (via impact analysis), immediately before mutation.
@@ -20,7 +27,10 @@ export function checkToolPermission(
 ): { decision: PermissionDecision; impact: ToolImpact; cleanArgs: Record<string, unknown> } {
     const cleanArgs = stripSelfApproval(args);
     const active = ensureSourceProtection(doc ?? getDocument());
+    // Interleaved user edits revoke old plan rights before any further write check.
+    detectInterleaving(active);
     const profile = getActiveTaskProfile(active);
+    const rawProfile = getTaskProfile();
     const exempt = new Set<string>([...getAgentCreatedNodeIds(active), ...(profile?.taskOwnedNodeIds ?? [])]);
     absorbForeignNodes(exempt, active);
     const impact = analyzeToolImpact(toolName, cleanArgs, active);
@@ -126,6 +136,18 @@ export function checkToolPermission(
 
     if (denied.length > 0) {
         const uniqueDenied = [...new Set(denied)];
+        if (rawProfile?.status === "invalidated" && (rawProfile.interleaved || rawProfile.haltReason)) {
+            return {
+                decision: {
+                    allowed: false,
+                    code: "PLAN_INVALIDATED",
+                    message: rawProfile.haltReason ?? INTERLEAVE_MESSAGE,
+                    deniedNodeIds: uniqueDenied,
+                },
+                impact,
+                cleanArgs,
+            };
+        }
         return {
             decision: {
                 allowed: false,

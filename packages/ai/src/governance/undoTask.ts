@@ -3,11 +3,16 @@
 
 import type { IDocument, IHistoryRecord } from "@chili3d/core";
 import { getDocument } from "../tools/documentContext";
-import { getActiveTaskProfile, markTaskInterleaved, recordTaskHistoryEntry } from "./taskProfile";
+import {
+    getActiveTaskProfile,
+    getTaskProfile,
+    markTaskInterleaved,
+    recordTaskHistoryEntry,
+} from "./taskProfile";
 import type { PermissionDecision } from "./types";
 
-const INTERLEAVE_MESSAGE =
-    "UNDO_TASK_HALTED: Detected interleaved edits, new dependencies, or an uncertain history state. Automatic task undo stopped to protect independent user changes. Use step-by-step Undo on the toolbar or delete specific objects.";
+export const INTERLEAVE_MESSAGE =
+    "PLAN_INVALIDATED: Detected interleaved edits, new dependencies, or an uncertain history state. Prior plan rights are revoked. Re-read the document and call propose_task_plan again for the needed scope.";
 
 /**
  * After a governed mutating tool commits, record the new history top if it advanced.
@@ -27,19 +32,32 @@ export function noteGovernedMutation(doc?: IDocument): void {
 }
 
 /**
- * Detect user interleaving: history top is no longer the last task record.
- * Call before undo-task and after external edits when known.
+ * Detect user interleaving: history top drifted from the task's contiguous chain
+ * (or from preTaskUndoTop before the first agent write). Invalidates the plan so
+ * subsequent writes cannot use the old rights.
  */
 export function detectInterleaving(doc?: IDocument): boolean {
     const active = doc ?? getDocument();
-    const profile = getActiveTaskProfile(active);
-    if (!active || !profile) return false;
+    const profile = getTaskProfile();
+    if (!active || !profile || profile.status !== "active") return Boolean(profile?.interleaved);
+    if (profile.documentId !== active.id) {
+        markTaskInterleaved(
+            `DOCUMENT_CHANGED: Plan was for "${profile.documentId}" but active document is "${active.id}".`,
+        );
+        return true;
+    }
     if (profile.interleaved) return true;
 
-    const records = profile.taskHistoryRecords as IHistoryRecord[];
-    if (records.length === 0) return false;
-
     const top = active.history.undoTop();
+    const records = profile.taskHistoryRecords as IHistoryRecord[];
+    if (records.length === 0) {
+        if (top !== profile.preTaskUndoTop) {
+            markTaskInterleaved(INTERLEAVE_MESSAGE);
+            return true;
+        }
+        return false;
+    }
+
     const last = records[records.length - 1];
     if (top !== last) {
         markTaskInterleaved(INTERLEAVE_MESSAGE);
@@ -63,21 +81,22 @@ export function undoActiveTask(doc?: IDocument): PermissionDecision & { undone: 
         };
     }
 
+    if (detectInterleaving(active)) {
+        const halted = getTaskProfile();
+        return {
+            allowed: false,
+            code: "PLAN_INVALIDATED",
+            message: halted?.haltReason ?? INTERLEAVE_MESSAGE,
+            undone: 0,
+        };
+    }
+
     const profile = getActiveTaskProfile(active);
     if (!profile || profile.taskHistoryRecords.length === 0) {
         return {
             allowed: false,
             code: "UNDO_TASK_HALTED",
             message: "UNDO_TASK_HALTED: No contiguous task history to undo.",
-            undone: 0,
-        };
-    }
-
-    if (profile.interleaved || detectInterleaving(active)) {
-        return {
-            allowed: false,
-            code: "UNDO_TASK_HALTED",
-            message: profile.haltReason ?? INTERLEAVE_MESSAGE,
             undone: 0,
         };
     }
@@ -92,7 +111,7 @@ export function undoActiveTask(doc?: IDocument): PermissionDecision & { undone: 
             markTaskInterleaved(INTERLEAVE_MESSAGE);
             return {
                 allowed: false,
-                code: "UNDO_TASK_HALTED",
+                code: "PLAN_INVALIDATED",
                 message: INTERLEAVE_MESSAGE,
                 undone,
             };
@@ -102,7 +121,6 @@ export function undoActiveTask(doc?: IDocument): PermissionDecision & { undone: 
         undone += 1;
     }
 
-    // Clear recorded stack after successful contiguous rewind.
     profile.taskHistoryRecords.length = 0;
     active.visual.update();
 
@@ -116,29 +134,30 @@ export function undoActiveTask(doc?: IDocument): PermissionDecision & { undone: 
 
 /**
  * Single-step agent `undo` tool: only allowed when the top record belongs to the task
- * (or there is no active task tracking — then allow normal undo for ambient creates).
+ * (or there is no active task tracking).
  */
 export function checkAgentUndoAllowed(doc?: IDocument): PermissionDecision {
     const active = doc ?? getDocument();
-    const profile = getActiveTaskProfile(active);
     if (!active) {
         return { allowed: true, code: "ALLOWED", message: "ok" };
     }
-    if (!profile || profile.taskHistoryRecords.length === 0) {
-        return { allowed: true, code: "ALLOWED", message: "ok" };
-    }
-    if (profile.interleaved || detectInterleaving(active)) {
+    if (detectInterleaving(active)) {
+        const halted = getTaskProfile();
         return {
             allowed: false,
-            code: "UNDO_TASK_HALTED",
-            message: profile.haltReason ?? INTERLEAVE_MESSAGE,
+            code: "PLAN_INVALIDATED",
+            message: halted?.haltReason ?? INTERLEAVE_MESSAGE,
         };
+    }
+    const profile = getActiveTaskProfile(active);
+    if (!profile || profile.taskHistoryRecords.length === 0) {
+        return { allowed: true, code: "ALLOWED", message: "ok" };
     }
     const top = active.history.undoTop();
     const last = profile.taskHistoryRecords[profile.taskHistoryRecords.length - 1];
     if (top !== last) {
         markTaskInterleaved(INTERLEAVE_MESSAGE);
-        return { allowed: false, code: "UNDO_TASK_HALTED", message: INTERLEAVE_MESSAGE };
+        return { allowed: false, code: "PLAN_INVALIDATED", message: INTERLEAVE_MESSAGE };
     }
     return { allowed: true, code: "ALLOWED", message: "ok" };
 }

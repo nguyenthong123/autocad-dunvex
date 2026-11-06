@@ -5,13 +5,20 @@ export { governTool, governTools } from "./governedRouter";
 export { analyzeToolImpact } from "./impactAnalysis";
 export { checkToolPermission, permissionDeniedPayload } from "./permissionGate";
 export {
+    type BoundTaskPlanProposal,
+    bindTaskPlanProposal,
     buildProposeTaskPlanTool,
     confirmProposedPlan,
+    documentStateMark,
+    getPendingProposal,
     getPlanApprovalHandler,
+    invalidatePendingProposals,
     type PlanApprovalDecision,
     type PlanApprovalHandler,
     parseTaskPlanProposal,
     proposalToScope,
+    resetPlanApprovalForTests,
+    rulesFingerprintFor,
     setPlanApprovalHandler,
     type TaskPlanProposal,
 } from "./planApproval";
@@ -68,6 +75,7 @@ export type {
 export {
     checkAgentUndoAllowed,
     detectInterleaving,
+    INTERLEAVE_MESSAGE,
     noteGovernedMutation,
     undoActiveTask,
 } from "./undoTask";

@@ -236,7 +236,7 @@ Dữ liệu thực nghiệm thực tế tại thời điểm hoàn thiện Đợ
 | --- | --- | --- |
 | 1 | **Một đường kiểm soát chung** ChatPanel + bridge (`governTools` trên `buildTools()` → `createToolHost`). Kiểm quyền từng op sau chuẩn hóa/resolve ID thật, ngay trước mutation. Hỗ trợ batch tạo rồi tham chiếu. Tác động không phân tích được → `INDETERMINATE_IMPACT_BLOCKED`. | Đã triển khai |
 | 2 | **Node nguồn mặc định được bảo vệ.** Chỉ sửa/xóa/tiêu thụ khi app ghi nhận quyền từ kế hoạch người dùng duyệt (`approveTaskPlan`). Model/Markdown không tự cấp quyền. Áp dụng con cháu, phụ thuộc, cấu trúc cây. | Đã triển khai |
-| 3 | **Undo Task** chỉ chuỗi liên tiếp không xung đột; xen kẽ / phụ thuộc mới / trạng thái không chắc → dừng (`UNDO_TASK_HALTED`). Selective inversion tách đề tài riêng. | Đã triển khai |
+| 3 | **Undo Task** chỉ chuỗi liên tiếp không xung đột; xen kẽ / phụ thuộc mới / trạng thái không chắc → dừng và thu hồi quyền kế hoạch (`PLAN_INVALIDATED`). Selective inversion tách đề tài riêng. | Đã triển khai |
 | 4 | **Lưu quy tắc tối thiểu:** `ObjectStorage` account/document; thiếu liên kết → default-safe. Kênh khác để đợt sau. Sanitization ≠ chống prompt injection. | Đã triển khai |
 | 5 | **Lệnh bất đồng bộ:** chỉ khi kiểm soát quyền tại thời điểm ghi + vòng đời hoàn tất/hủy. Timeout **không** chứng minh mutation đã dừng. Chặn đường chưa hỗ trợ (`SAFE_DIRECT_COMMANDS`). | Đã triển khai |
 | 6 | **Không áp bảng dung sai Mục 5.2** như tiêu chuẩn đã duyệt. Hậu kiểm nâng cao = Đợt C. UI ghi đúng cơ chế có hiệu lực (bảo vệ nguồn + cổng quyền + Undo chuỗi; chưa có criteria/tolerances). | Đã tuân thủ |
@@ -246,21 +246,21 @@ Dữ liệu thực nghiệm thực tế tại thời điểm hoàn thiện Đợ
 ## 9. Bàn giao Đợt B (Waiting Reviewer SHA)
 
 ### 9.1. Mã có hiệu lực
-- `packages/ai/src/governance/*` — router, gate, source protection, task profile, rules store, undo task, tool matrix, status
+- `packages/ai/src/governance/*` — router, gate, source protection, task profile, plan approval (bind/confirm/invalidate), rules store, undo task, tool matrix, status
 - `packages/ai/src/tools/index.ts` — `buildTools()` = `governTools(buildUngovernedTools())`
 - `packages/ai/src/tools/capabilityEngine.ts` — export `normalizeOpArgs`, `lookupSessionRefNodeId`
 - `packages/ai/src/tools/commandTools.ts` — timeout async trung thực; drift check trước ghi
-- `packages/ai/src/llm/prompt.ts` + `chatPanel.ts` — nạp quy tắc / status Đợt B đúng cơ chế
+- `packages/ai/src/llm/prompt.ts` + `chatPanel.ts` — nạp quy tắc / status Đợt B; thẻ duyệt gắn document; invalidate khi đổi tài liệu / hủy lượt
 
 ### 9.2. Ma trận công cụ
 Xem `BATCH_B_TOOL_MATRIX` trong `packages/ai/src/governance/toolMatrix.ts` (gated / supported / read).
 
 ### 9.3. Kiểm thử
-`packages/ai/test/governance/batchBGovernance.test.ts`: vượt quyền ChatPanel + bridge, batch nhiều op, tác động gián tiếp, trạng thái thay đổi, Undo xen kẽ.
+`packages/ai/test/governance/batchBGovernance.test.ts` (+ `host.test.ts`): vượt quyền ChatPanel + bridge, mutation query metadata, ownership theo document, thẻ stale (đổi tài liệu / sửa nguồn / hủy / thay thẻ), ghi sau xen kẽ → `PLAN_INVALIDATED`.
 
 ### 9.4. Chưa làm (đúng phạm vi)
 - Đợt C: tiêu chí / hậu kiểm / bảng dung sai
-- Deploy VPS: **chờ Reviewer nghiệm thu SHA**
+- Deploy VPS: **chờ Reviewer nghiệm thu SHA** — chưa báo Đợt B đã bảo vệ phạm vi cho đến khi các đường trên được duyệt
 
 ---
-*Đợt B đã cập nhật quyết định Reviewer vào tài liệu và triển khai mã. Chờ nghiệm thu SHA trước khi triển khai VPS.*
+*Đợt B: vòng đời quyền kế hoạch đã hoàn tất trong mã. Chờ nghiệm thu SHA trước khi triển khai VPS.*

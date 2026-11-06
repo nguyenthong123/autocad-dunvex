@@ -29,10 +29,16 @@ export function approveTaskPlan(
     if (!active) {
         throw new Error("Cannot approve a task plan without an open document");
     }
+    // Never grant against a substituted document when the caller bound a specific id.
+    if (input.documentId !== undefined && input.documentId !== active.id) {
+        throw new Error(
+            `DOCUMENT_MISMATCH: Cannot approve plan for document "${input.documentId}" while "${active.id}" is open.`,
+        );
+    }
     refreshSourceProtection(active);
     const profile: TaskProfile = {
         taskId: input.taskId ?? Id.generate(),
-        documentId: input.documentId ?? active.id,
+        documentId: active.id,
         goal: input.goal,
         allowedModifiedNodeIds: unique(input.allowedModifiedNodeIds),
         allowedDeletedNodeIds: unique(input.allowedDeletedNodeIds),
@@ -129,10 +135,12 @@ export function isTaskOwned(nodeId: string, doc?: IDocument): boolean {
 
 export function markTaskInterleaved(reason: string): void {
     if (!activeProfile || activeProfile.status !== "active") return;
+    const message = `${reason} Re-read the document and call propose_task_plan again for the needed scope.`;
     activeProfile = {
         ...activeProfile,
+        status: "invalidated",
         interleaved: true,
-        haltReason: reason,
+        haltReason: message,
     };
 }
 

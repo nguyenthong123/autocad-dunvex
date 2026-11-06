@@ -31,10 +31,12 @@ import { marked, type Tokens } from "marked";
 import style from "./chatPanel.module.css";
 import { isStreamParseError, listRuntimeErrorReports, recordRuntimeError } from "./diagnostics";
 import {
+    type BoundTaskPlanProposal,
     confirmProposedPlan,
     formatGovernanceStatusLine,
+    invalidatePendingProposals,
+    invalidateTaskProfile,
     setPlanApprovalHandler,
-    type TaskPlanProposal,
 } from "./governance";
 import {
     conversationTitle,
@@ -1560,6 +1562,12 @@ export class ChatPanel extends HTMLElement {
 
     /** Swap to another document's history. Both sides of the switch tolerate a missing document. */
     private openDocument(document: IDocument | undefined) {
+        if (this.document?.id !== document?.id) {
+            invalidatePendingProposals("document switched");
+            invalidateTaskProfile(
+                `DOCUMENT_CHANGED: Active document switched to "${document?.id ?? "none"}". Re-read and propose_task_plan again.`,
+            );
+        }
         this.document = document;
         this.conversations = document ? readConversations(document) : [];
         const latest = this.sortedConversations()[0];
@@ -2575,11 +2583,11 @@ export class ChatPanel extends HTMLElement {
     }
 
     /**
-     * Trusted UI for propose_task_plan: show scope, approve only on explicit user click.
-     * Model-supplied approved/force flags never reach confirmProposedPlan.
+     * Trusted UI for propose_task_plan: show bound scope, approve only on explicit user click.
+     * Confirm re-validates document/history/rules marks; stale cards never grant rights.
      */
     private approveTaskPlanWithUser(
-        proposal: TaskPlanProposal,
+        proposal: BoundTaskPlanProposal,
         signal?: AbortSignal,
     ): Promise<import("./governance").PlanApprovalDecision> {
         this.sealStream();
@@ -2602,7 +2610,7 @@ export class ChatPanel extends HTMLElement {
                 resolve(decision);
             };
             const settleBridge = (answer: string) => {
-                // ask_user settle path is reused only for interrupt markers.
+                invalidatePendingProposals("turn cancelled");
                 finish({ approved: false, reason: answer }, answer);
             };
             this.settleAsk = settleBridge;
@@ -2613,7 +2621,7 @@ export class ChatPanel extends HTMLElement {
                 "click",
                 () => {
                     try {
-                        const profile = confirmProposedPlan(proposal);
+                        const profile = confirmProposedPlan(proposal, { signal });
                         finish({ approved: true, profile }, "Approved");
                     } catch (error) {
                         const message = error instanceof Error ? error.message : String(error);
@@ -2624,19 +2632,25 @@ export class ChatPanel extends HTMLElement {
             );
             rejectBtn?.addEventListener(
                 "click",
-                () => finish({ approved: false, reason: "User rejected the plan" }, "Rejected"),
+                () => {
+                    invalidatePendingProposals("user rejected");
+                    finish({ approved: false, reason: "User rejected the plan" }, "Rejected");
+                },
                 { once: true },
             );
 
-            const onAbort = () =>
+            const onAbort = () => {
+                invalidatePendingProposals("turn aborted");
                 finish({ approved: false, reason: ASK_INTERRUPTED }, I18n.translate("ai.ask.notAnswered"));
+            };
             if (signal?.aborted) onAbort();
             else signal?.addEventListener("abort", onAbort, { once: true });
         });
     }
 
-    private buildPlanApprovalCard(proposal: TaskPlanProposal): HTMLElement {
+    private buildPlanApprovalCard(proposal: BoundTaskPlanProposal): HTMLElement {
         const lines = [
+            `Document: ${proposal.documentId}`,
             proposal.goal ? `Goal: ${proposal.goal}` : undefined,
             proposal.summary ? proposal.summary : undefined,
             proposal.allowedModifiedNodeIds.length

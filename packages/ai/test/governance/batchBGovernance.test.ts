@@ -7,15 +7,19 @@ import { afterEach, beforeEach, describe, expect, rs, test } from "@rstest/core"
 import {
     approveTaskPlan,
     BATCH_B_TOOL_MATRIX,
+    bindTaskPlanProposal,
     checkToolPermission,
     clearTaskProfile,
     confirmProposedPlan,
     getActiveTaskProfile,
     getGovernanceStatus,
+    getPendingProposal,
+    invalidatePendingProposals,
     invalidateTaskProfile,
     isTaskOwned,
     loadEffectiveDesignRules,
     recordTaskOwnedNodes,
+    resetPlanApprovalForTests,
     resetSourceProtectionForTests,
     resetTaskProfileForTests,
     saveAccountDesignRules,
@@ -70,7 +74,7 @@ describe("TASK-40 Batch B governance", () => {
 
     afterEach(() => {
         resetTaskProfileForTests();
-        setPlanApprovalHandler(undefined);
+        resetPlanApprovalForTests();
         rs.unstubAllGlobals();
     });
 
@@ -282,7 +286,7 @@ describe("TASK-40 Batch B governance", () => {
         expect(detectInterleaving(doc)).toBe(true);
         const halted = undoActiveTask(doc);
         expect(halted.allowed).toBe(false);
-        expect(halted.code).toBe("UNDO_TASK_HALTED");
+        expect(halted.code).toBe("PLAN_INVALIDATED");
     });
 
     test("rules store uses ObjectStorage with default-safe missing link", () => {
@@ -401,9 +405,11 @@ describe("TASK-40 Batch B governance", () => {
         (docB.modelManager as any).findNodes = (pred?: (n: any) => boolean) =>
             typeof pred === "function" ? nodes.filter(pred) : [...nodes];
         (docB.modelManager as any).findNodesDeep = (docB.modelManager as any).findNodes;
+        // Document switch already invalidated the prior plan — writes stay blocked.
         const blockedOwned = checkToolPermission("delete_node", { id: "owned-2" }, docB);
         expect(blockedOwned.decision.allowed).toBe(false);
-        expect(blockedOwned.decision.code).toBe("PERMISSION_DENIED");
+        expect(blockedOwned.decision.code).toBe("PLAN_INVALIDATED");
+        expect(isTaskOwned("owned-2", docB)).toBe(false);
     });
 
     test("user-approved single-object plan only unlocks that object", () => {
@@ -414,14 +420,18 @@ describe("TASK-40 Batch B governance", () => {
         resetSourceProtectionForTests(doc);
         refreshSourceProtection(doc);
 
-        // Trusted UI path (confirmProposedPlan), not model self-approval.
-        confirmProposedPlan({
-            goal: "edit one wall",
-            allowedModifiedNodeIds: ["wall-1"],
-            allowedDeletedNodeIds: [],
-            allowedConsumedNodeIds: [],
-            allowedTreeNodeIds: [],
-        });
+        // Trusted UI path: bind then confirm — not model self-approval.
+        const bound = bindTaskPlanProposal(
+            {
+                goal: "edit one wall",
+                allowedModifiedNodeIds: ["wall-1"],
+                allowedDeletedNodeIds: [],
+                allowedConsumedNodeIds: [],
+                allowedTreeNodeIds: [],
+            },
+            doc,
+        );
+        confirmProposedPlan(bound, { document: doc });
 
         expect(checkToolPermission("transform_node", { id: "wall-1" }, doc).decision.allowed).toBe(true);
         expect(checkToolPermission("transform_node", { id: "wall-2" }, doc).decision.allowed).toBe(false);
@@ -446,8 +456,7 @@ describe("TASK-40 Batch B governance", () => {
         expect(getActiveTaskProfile(doc)).toBeUndefined();
 
         setPlanApprovalHandler(async (proposal) => {
-            // Handler is the trusted path — it alone may confirm.
-            return { approved: true, profile: confirmProposedPlan(proposal) };
+            return { approved: true, profile: confirmProposedPlan(proposal, { document: doc }) };
         });
         const ok = JSON.parse(
             (await tool.handler({
@@ -458,6 +467,7 @@ describe("TASK-40 Batch B governance", () => {
         );
         expect(ok.approved).toBe(true);
         expect(ok.allowedConsumedNodeIds).toEqual(["wall-1"]);
+        expect(ok.documentId).toBe(doc.id);
         expect(checkToolPermission("delete_node", { id: "wall-1" }, doc).decision.allowed).toBe(false);
         expect(
             checkToolPermission(
@@ -471,7 +481,134 @@ describe("TASK-40 Batch B governance", () => {
                 doc,
             ).decision.allowed,
         ).toBe(true);
+    });
 
-        setPlanApprovalHandler(undefined);
+    test("stale plan card cannot approve after document switch, source edit, cancel, or replace", () => {
+        const docA = stubDocWithNodes([{ id: "wall-1" }], { id: "doc-a" });
+        resetSourceProtectionForTests(docA);
+        refreshSourceProtection(docA);
+
+        const card1 = bindTaskPlanProposal(
+            {
+                goal: "edit wall",
+                allowedModifiedNodeIds: ["wall-1"],
+                allowedDeletedNodeIds: [],
+                allowedConsumedNodeIds: [],
+                allowedTreeNodeIds: [],
+            },
+            docA,
+        );
+        expect(getPendingProposal()?.proposalId).toBe(card1.proposalId);
+
+        // Replace with a newer card — old Approve must fail.
+        const card2 = bindTaskPlanProposal(
+            {
+                goal: "edit wall v2",
+                allowedModifiedNodeIds: ["wall-1"],
+                allowedDeletedNodeIds: [],
+                allowedConsumedNodeIds: [],
+                allowedTreeNodeIds: [],
+            },
+            docA,
+        );
+        expect(() => confirmProposedPlan(card1, { document: docA })).toThrow(/PROPOSAL_STALE/);
+        expect(getActiveTaskProfile(docA)).toBeUndefined();
+
+        // Cancel / invalidate pending — card2 also fails.
+        invalidatePendingProposals("turn cancelled");
+        expect(() => confirmProposedPlan(card2, { document: docA })).toThrow(/PROPOSAL_STALE/);
+
+        // Fresh card, then user edits source (history mark drifts).
+        const card3 = bindTaskPlanProposal(
+            {
+                goal: "edit wall",
+                allowedModifiedNodeIds: ["wall-1"],
+                allowedDeletedNodeIds: [],
+                allowedConsumedNodeIds: [],
+                allowedTreeNodeIds: [],
+            },
+            docA,
+        );
+        (docA.history as any).__push({
+            name: "user edit",
+            undo: rs.fn(),
+            redo: rs.fn(),
+            dispose: rs.fn(),
+        });
+        expect(() => confirmProposedPlan(card3, { document: docA })).toThrow(
+            /PROPOSAL_STALE|Document changed/,
+        );
+        expect(getActiveTaskProfile(docA)).toBeUndefined();
+
+        // Fresh card on doc A, then switch open document — must not approve against doc B.
+        const card4 = bindTaskPlanProposal(
+            {
+                goal: "edit wall",
+                allowedModifiedNodeIds: ["wall-1"],
+                allowedDeletedNodeIds: [],
+                allowedConsumedNodeIds: [],
+                allowedTreeNodeIds: [],
+            },
+            docA,
+        );
+        const docB = stubDocWithNodes([{ id: "other" }], { id: "doc-b" });
+        expect(() => confirmProposedPlan(card4, { document: docB })).toThrow(/DOCUMENT_MISMATCH/);
+        expect(getActiveTaskProfile(docB)).toBeUndefined();
+        expect(getActiveTaskProfile(docA)).toBeUndefined();
+    });
+
+    test("approved plan then interleaved edit blocks subsequent source writes", () => {
+        const doc = stubDocWithNodes([{ id: "wall-1" }]);
+        resetSourceProtectionForTests(doc);
+        refreshSourceProtection(doc);
+
+        const bound = bindTaskPlanProposal(
+            {
+                goal: "modify wall",
+                allowedModifiedNodeIds: ["wall-1"],
+                allowedDeletedNodeIds: [],
+                allowedConsumedNodeIds: [],
+                allowedTreeNodeIds: [],
+            },
+            doc,
+        );
+        confirmProposedPlan(bound, { document: doc });
+        expect(checkToolPermission("transform_node", { id: "wall-1" }, doc).decision.allowed).toBe(true);
+
+        // User interleaved edit before / between agent writes.
+        (doc.history as any).__push({
+            name: "user edit",
+            undo: rs.fn(),
+            redo: rs.fn(),
+            dispose: rs.fn(),
+        });
+        expect(detectInterleaving(doc)).toBe(true);
+        expect(getActiveTaskProfile(doc)).toBeUndefined();
+
+        const blocked = checkToolPermission("transform_node", { id: "wall-1" }, doc);
+        expect(blocked.decision.allowed).toBe(false);
+        expect(blocked.decision.code).toBe("PLAN_INVALIDATED");
+        expect(blocked.decision.message).toMatch(/propose_task_plan|Re-read/i);
+    });
+
+    test("bridge still blocks propose_task_plan while ChatPanel path binds documentId", async () => {
+        const host = createToolHost();
+        const reply = await host.call("propose_task_plan", { allowedModifiedNodeIds: ["n1"] });
+        expect(reply.ok).toBe(false);
+        expect(reply.content).toContain("not available over the bridge");
+
+        const doc = stubDocWithNodes([{ id: "wall-1" }], { id: "chat-doc" });
+        resetSourceProtectionForTests(doc);
+        refreshSourceProtection(doc);
+        setPlanApprovalHandler(async (proposal) => {
+            expect(proposal.documentId).toBe("chat-doc");
+            expect(proposal.proposalId).toBeTruthy();
+            expect(proposal.generation).toBeGreaterThan(0);
+            return { approved: true, profile: confirmProposedPlan(proposal, { document: doc }) };
+        });
+        const tool = buildTools().find((t) => t.name === "propose_task_plan")!;
+        const result = JSON.parse((await tool.handler({ allowedModifiedNodeIds: ["wall-1"] })) as string);
+        expect(result.approved).toBe(true);
+        expect(result.documentId).toBe("chat-doc");
     });
 });
