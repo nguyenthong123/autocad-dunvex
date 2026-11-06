@@ -1,6 +1,6 @@
 # TASK-41 — Mac ↔ Windows sync handoff (review before deploy)
 
-**Status:** root cause confirmed · fix in working tree · **do not deploy until reviewer OK**  
+**Status:** root cause confirmed · fix SHA `9ff3d494` · **do not deploy until reviewer OK**  
 **Date:** 2026-11-06
 
 ## Concrete document under test
@@ -60,7 +60,11 @@ Script: `docs/tasks/TASK-41-mac-win-sync-evidence.mjs`
 
 After deploy, `B.invalidBearer.get` must become **401 UNAUTHORIZED** (covered by `server/test/storageServer.test.mjs`).
 
-## Fix (awaiting review — not deployed)
+## Fix SHA (awaiting review — not deployed)
+
+`9ff3d4940af875cb8500fc18484ca8a8523955b3` — `🐛 fix(storage): stop silent guest fallback on bad JWT for Mac↔Win sync`
+
+## Fix contents
 
 1. **Server** `resolveStorageUserId`: Bearer present but invalid → **401**, never guest. No header → guest (legacy).
 2. **Client** `ensureAuthSession` + `authSessionInvalid`: clear stale localStorage when `/api/auth/me` or storage returns 401; home/ribbon verify session before listing.
