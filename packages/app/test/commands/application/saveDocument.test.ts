@@ -186,7 +186,7 @@ describe("SaveDocument callback", () => {
             await state.callback!();
 
             expect(state.toastChannel).toBe("showToast");
-            expect(state.toastMessage).toBe("toast.document.saved");
+            expect(state.toastMessage).toBe("sync.local");
         } finally {
             restore();
         }

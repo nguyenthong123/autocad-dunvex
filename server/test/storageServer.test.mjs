@@ -170,6 +170,20 @@ describe("StorageServer SQLite & Auth API", () => {
         assert.strictEqual(getGuestRes.status, 404);
     });
 
+    it("rejects invalid or expired Bearer on storage routes with 401 (no silent guest)", async () => {
+        const bad = await fetch(`${baseUrl}/api/storage/dunvex/documents/proj_abc_123`, {
+            headers: { Authorization: "Bearer not.a.valid.jwt" },
+        });
+        assert.strictEqual(bad.status, 401);
+        const body = await bad.json();
+        assert.strictEqual(body.error, "UNAUTHORIZED");
+
+        const recents = await fetch(`${baseUrl}/api/storage/dunvex/recents`, {
+            headers: { Authorization: "Bearer not.a.valid.jwt" },
+        });
+        assert.strictEqual(recents.status, 401);
+    });
+
     it("manages recents in SQLite", async () => {
         const putRecent = await fetch(`${baseUrl}/api/storage/dunvex/recents/proj_abc_123`, {
             method: "PUT",

@@ -20,7 +20,16 @@ export interface OutboxItem {
     conflict?: boolean;
 }
 
-export type SyncStatus = "saved" | "saving" | "pending" | "error" | "conflict";
+/**
+ * Sync pipeline status (never treat IndexedDB-only success as VPS-synced):
+ * - local: written on this device, not yet ACKed by server
+ * - saving: upload in flight
+ * - pending: waiting to retry (offline / backlog)
+ * - saved: server ACK — present in the account DB on VPS
+ * - error: last upload failed (auth/network/5xx)
+ * - conflict: version conflict; local copy kept until user resolves
+ */
+export type SyncStatus = "local" | "saved" | "saving" | "pending" | "error" | "conflict";
 
 export interface OutboxOptions {
     fallback?: IndexedDBStorage;
@@ -180,6 +189,8 @@ export class OutboxManager {
             }
         }
 
+        // Local write is durable; VPS sync is a separate phase.
+        this.emitStatus("local");
         this.emitStatus("saving");
         await this.processQueue();
     }
@@ -291,14 +302,16 @@ export class OutboxManager {
         }
 
         if (this._pendingItems.size === 0) {
+            // Empty queue only after successful dequeue → server ACK.
             this.emitStatus("saved");
         } else if (hasConflict) {
             this.emitStatus("conflict");
         } else if (hasError) {
-            this.emitStatus("pending");
+            this.emitStatus("error");
             this.scheduleNextProcess();
         } else {
-            this.emitStatus("saved");
+            this.emitStatus("pending");
+            this.scheduleNextProcess();
         }
     }
 

@@ -21,7 +21,13 @@ import {
     type RibbonTabKeys,
 } from "@chili3d/core";
 import { a, button, collection, createIcon, div, label, span, svg } from "@chili3d/element";
-import { getAuthUser, logout, showAuthDialog } from "../auth/authDialog";
+import {
+    ensureAuthSession,
+    getAuthUser,
+    logout,
+    showAuthDialog,
+    wireAuthSessionInvalidHandler,
+} from "../auth/authDialog";
 import style from "./ribbon.module.css";
 import { RibbonPushButton } from "./ribbonButton";
 import { RibbonGroupElement } from "./ribbonGroup";
@@ -270,6 +276,8 @@ export class RibbonUI extends HTMLElement {
 
         update();
         PubSub.default.sub("authChanged", update);
+        wireAuthSessionInvalidHandler();
+        void ensureAuthSession().then(() => update());
         return pill;
     }
 

@@ -72,7 +72,7 @@ export class Statusbar extends HTMLElement {
     };
 
     private readonly syncStatusChanged = (
-        status: "saved" | "saving" | "pending" | "error" | "conflict",
+        status: "local" | "saved" | "saving" | "pending" | "error" | "conflict",
         count?: number,
     ) => {
         if (!this.syncLabel) {
@@ -84,7 +84,9 @@ export class Statusbar extends HTMLElement {
             };
             this.right.prepend(this.syncLabel);
         }
-        if (status === "saved") {
+        if (status === "local") {
+            I18n.set(this.syncLabel, "textContent", "sync.local");
+        } else if (status === "saved") {
             I18n.set(this.syncLabel, "textContent", "sync.saved");
         } else if (status === "saving") {
             I18n.set(this.syncLabel, "textContent", "sync.saving");

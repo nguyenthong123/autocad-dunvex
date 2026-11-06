@@ -1,0 +1,73 @@
+{
+    "at": "2026-11-06T15:17:14.710Z",
+    "baseUrl": "http://136.66.95.155",
+    "documentId": "G5zyyoF_RQQdTN4qeFmjS",
+    "userId": "f475072d00964fa53d5b4deaecb30225",
+    "steps": [
+        {
+            "name": "A.auth.me",
+            "status": 200,
+            "body": {
+                "user": {
+                    "id": "f475072d00964fa53d5b4deaecb30225",
+                    "username": "thông",
+                    "storeName": "tâm an"
+                }
+            }
+        },
+        {
+            "name": "A.recents",
+            "status": 200,
+            "count": 7,
+            "hasDoc": true,
+            "ids": [
+                "G5zyyoF_RQQdTN4qeFmjS",
+                "iAU8aXH49IRS699J_DaaI",
+                "_Rrz-LSE_EuRrwn46clgk",
+                "Aako_eiZWpvOITmOZ1-dU",
+                "kDlqVT2ahhAG-JdSNiNPJ",
+                "n638RgwHN93QFQX0XWjWm",
+                "udYMcajQ_OthrFnzPTNwQ"
+            ]
+        },
+        {
+            "name": "A.get",
+            "status": 200,
+            "serverVersion": 18,
+            "nameField": "ct nano thành ở kiến đức",
+            "id": "G5zyyoF_RQQdTN4qeFmjS"
+        },
+        {
+            "name": "B.guest.recents",
+            "status": 200,
+            "hasDoc": false,
+            "ids": [
+                "xQm7PustFkjQ0LXDJi7Cf",
+                "wkjZeLdu6yRO4bvnFrbgp",
+                "es80PrcnGsUNiqRyh9vGq",
+                "KLxP3Xv92pImeAEZki3Wd",
+                "OKmECw3Rf6BCNviXwO8H-"
+            ]
+        },
+        {
+            "name": "B.guest.get",
+            "status": 404
+        },
+        {
+            "name": "B.invalidBearer.get",
+            "status": 404,
+            "error": "Record not found",
+            "note": "After fix: expect 401. Before fix: 404 guest fallback."
+        },
+        {
+            "name": "A.put.staleBaseVersion",
+            "status": 200,
+            "body": {
+                "ok": true,
+                "unchanged": true,
+                "version": 18
+            },
+            "expect": "409 keeps server data"
+        }
+    ]
+}

@@ -94,9 +94,11 @@ export interface PubSubEventMap {
     startRenameNode: (node: INode) => void;
     statusBarTip: (tip: I18nKeys, ...args: any[]) => void;
     syncStatusChanged: (
-        status: "saved" | "saving" | "pending" | "error" | "conflict",
+        status: "local" | "saved" | "saving" | "pending" | "error" | "conflict",
         pendingCount?: number,
     ) => void;
+    /** Fired when a storage/API call gets 401 — UI should clear the stale session. */
+    authSessionInvalid: (reason: "expired" | "unauthorized") => void;
     toggleChatPanel: () => void;
     /**
      * Replaces what the floating input holds, for a drag that keeps it up as a readout. A box

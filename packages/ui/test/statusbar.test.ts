@@ -205,21 +205,25 @@ describe("Statusbar", () => {
             const handler = pubSubRecorder.handlers.get("syncStatusChanged");
             expect(handler).toBeDefined();
 
-            // 1. Saving
-            handler!("saving", 1);
+            // 1. Local device save (IndexedDB) — not yet VPS
+            handler!("local", 1);
             const syncLabel = bar.querySelector("[data-sync-status]");
             expect(syncLabel).not.toBeNull();
+            expect(syncLabel?.getAttribute("data-sync-status")).toBe("local");
+
+            // 2. Saving / syncing
+            handler!("saving", 1);
             expect(syncLabel?.getAttribute("data-sync-status")).toBe("saving");
 
-            // 2. Saved
+            // 3. Saved = VPS ACK
             handler!("saved", 0);
             expect(syncLabel?.getAttribute("data-sync-status")).toBe("saved");
 
-            // 3. Pending
+            // 4. Pending
             handler!("pending", 3);
             expect(syncLabel?.getAttribute("data-sync-status")).toBe("pending");
 
-            // 4. Error
+            // 5. Error
             handler!("error", 1);
             expect(syncLabel?.getAttribute("data-sync-status")).toBe("error");
         });

@@ -13,7 +13,13 @@ import {
     type RecentDocumentDTO,
 } from "@chili3d/core";
 import { a, button, collection, div, img, label, span, svg } from "@chili3d/element";
-import { getAuthUser, logout, showAuthDialog } from "../auth/authDialog";
+import {
+    ensureAuthSession,
+    getAuthUser,
+    logout,
+    showAuthDialog,
+    wireAuthSessionInvalidHandler,
+} from "../auth/authDialog";
 import style from "./home.module.css";
 import { LanguageSelector } from "./languageSelector";
 import { Navigation3DSelector } from "./navigation3DSelector";
@@ -107,6 +113,8 @@ export class Home extends HTMLElement {
     }
 
     async render() {
+        wireAuthSessionInvalidHandler();
+        await ensureAuthSession();
         const documents = await this.getDocuments();
         const videoData = await this.getVideoData();
         this.append(this.leftSection(), this.rightSection(documents, videoData));
@@ -127,7 +135,10 @@ export class Home extends HTMLElement {
                             className: style.userName ?? "userName",
                             textContent: `👤 ${user.storeName || user.username}`,
                         }),
-                        span({ className: style.userSub ?? "userSub", textContent: user.username }),
+                        span({
+                            className: style.userSub ?? "userSub",
+                            textContent: `${user.username} · id ${user.id.slice(0, 8)}…`,
+                        }),
                     ),
                     button(
                         {

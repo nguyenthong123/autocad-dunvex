@@ -25,13 +25,65 @@ export function getAuthUser(): AuthUser | null {
     return null;
 }
 
-export function logout(): void {
+export function logout(options?: { silent?: boolean; reason?: "manual" | "expired" }): void {
     if (typeof window !== "undefined" && window.localStorage) {
         localStorage.removeItem("dunvex_auth_token");
         localStorage.removeItem("dunvex_auth_user");
     }
     PubSub.default.pub("authChanged", null);
+    if (options?.silent) return;
+    if (options?.reason === "expired") {
+        Toast.info("toast.auth.sessionExpired");
+        return;
+    }
     Toast.info("error.default:{0}", "Đã đăng xuất tài khoản");
+}
+
+/**
+ * Verify the stored JWT still maps to a real user on the server.
+ * Stale username in localStorage without a valid token is the Mac↔Win
+ * "same account, empty list" failure mode — clear it before home loads recents.
+ */
+export async function ensureAuthSession(): Promise<AuthUser | null> {
+    const token = getAuthToken();
+    const cached = getAuthUser();
+    if (!token) {
+        if (cached) logout({ silent: true, reason: "expired" });
+        return null;
+    }
+    try {
+        const response = await fetch("/api/auth/me", {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) {
+            logout({ reason: "expired" });
+            return null;
+        }
+        const data = await response.json();
+        const user = data?.user as AuthUser | undefined;
+        if (!user?.id) {
+            logout({ reason: "expired" });
+            return null;
+        }
+        if (typeof window !== "undefined" && window.localStorage) {
+            localStorage.setItem("dunvex_auth_user", JSON.stringify(user));
+        }
+        return user;
+    } catch {
+        // Network down: keep cached identity so offline local scoped saves still work.
+        return cached;
+    }
+}
+
+let authInvalidWired = false;
+
+/** Subscribe once: storage 401 → clear fake "logged in" state. */
+export function wireAuthSessionInvalidHandler(): void {
+    if (authInvalidWired) return;
+    authInvalidWired = true;
+    PubSub.default.sub("authSessionInvalid", () => {
+        logout({ reason: "expired" });
+    });
 }
 
 export function showAuthDialog(onSuccess?: (user: AuthUser) => void): void {

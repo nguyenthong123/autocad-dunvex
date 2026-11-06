@@ -145,6 +145,14 @@ export class ApiCloudStorage implements IStorage {
         }
     }
 
+    private handleUnauthorized(): void {
+        try {
+            PubSub.default.pub("authSessionInvalid", "expired");
+        } catch {
+            // PubSub may be absent in headless tests
+        }
+    }
+
     private async sendToServer(
         item: OutboxItem,
     ): Promise<{ ok: boolean; status?: number; error?: string; version?: number; currentVersion?: number }> {
@@ -165,6 +173,10 @@ export class ApiCloudStorage implements IStorage {
                     await this.setVersion(item.database, item.scopedId, resData.version);
                 }
                 return { ok: true, status: response.status, version: resData?.version };
+            }
+            if (response.status === 401) {
+                this.handleUnauthorized();
+                return { ok: false, status: 401, error: "UNAUTHORIZED" };
             }
             if (response.status === 409) {
                 const errData = await response.json().catch(() => ({}));
@@ -234,6 +246,10 @@ export class ApiCloudStorage implements IStorage {
                     }
                 }
                 return data;
+            }
+            if (response.status === 401) {
+                this.handleUnauthorized();
+                throw new Error("HTTP 401: Unauthorized");
             }
             if (response.status === 404) {
                 return undefined;
@@ -333,6 +349,10 @@ export class ApiCloudStorage implements IStorage {
                 method: "GET",
                 headers: this.headers(),
             });
+            if (response.status === 401) {
+                this.handleUnauthorized();
+                throw new Error("HTTP 401: Unauthorized");
+            }
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }

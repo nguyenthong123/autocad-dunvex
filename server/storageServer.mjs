@@ -322,8 +322,23 @@ export function extractStrictAuthUserId(req) {
     return null;
 }
 
+/**
+ * Resolve the storage namespace for a request.
+ * - No Authorization header → anonymous "guest" DB (legacy local/demo mode).
+ * - Bearer present but invalid/expired → null (caller must 401). Never silently
+ *   fall back to guest: that made Mac/Win look "logged in" while reading the
+ *   wrong user DB, so drawings vanished across devices.
+ */
+export function resolveStorageUserId(req) {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+        return extractStrictAuthUserId(req);
+    }
+    return "guest";
+}
+
 function extractAuthUserId(req) {
-    return extractStrictAuthUserId(req) || "guest";
+    return resolveStorageUserId(req) || "guest";
 }
 
 export const server = createServer(async (req, res) => {
@@ -619,7 +634,14 @@ export const server = createServer(async (req, res) => {
         }
 
         const [, _dbName, table, id] = match;
-        const userId = extractAuthUserId(req);
+        const userId = resolveStorageUserId(req);
+        if (!userId) {
+            sendJson(res, 401, {
+                error: "UNAUTHORIZED",
+                message: "Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.",
+            });
+            return;
+        }
         const userDb = getUserDb(userId);
 
         // --- DOCUMENTS TABLE ---

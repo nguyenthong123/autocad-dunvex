@@ -25,6 +25,7 @@ export class SaveDocument extends DocumentTaskCommand {
             );
             return;
         }
-        PubSub.default.pub("showToast", "toast.document.saved");
+        // IndexedDB success ≠ VPS ACK; status bar tracks sync.local → sync.saving → sync.saved.
+        PubSub.default.pub("showToast", "sync.local");
     }
 }
