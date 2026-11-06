@@ -1,6 +1,7 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
+import { governTools } from "../governance";
 import type { Tool } from "../llm/types";
 import { buildSkillTool } from "../skills";
 import { buildArrayTools } from "./arrayTools";
@@ -22,7 +23,16 @@ import { buildSessionMemoryTools } from "./sessionMemoryTools";
 import { buildVariableTools } from "./variableTools";
 import { buildCaptureViewsTool, buildViewTools } from "./viewTools";
 
+/**
+ * Full tool registry for ChatPanel and bridge.
+ * Handlers are wrapped by the Batch B governance gate so both surfaces share one control path.
+ */
 export function buildTools(): Tool[] {
+    return governTools(buildUngovernedTools());
+}
+
+/** Raw tools without the permission gate — unit tests of individual handlers use the builders directly. */
+export function buildUngovernedTools(): Tool[] {
     return [
         ...buildReadTools(),
         ...buildRibbonTools(),

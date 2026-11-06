@@ -32,8 +32,9 @@ describe("buildSystemPrompt", () => {
         // document, and an external agent has no one to click New for it.
         // Array planning and measurement tools added to registry and index.
         // TASK-35: diagnostics and session memory tools, preflight policies added.
+        // TASK-40 Batch B: design-rules volatile block + source-protection policy line.
         const { stable, volatile } = buildSystemPrompt();
-        expect(stable.length + volatile.length).toBeLessThan(12000);
+        expect(stable.length + volatile.length).toBeLessThan(13000);
     });
 
     test("keeps the creation-method catalog out of the resident half", () => {

@@ -21,6 +21,28 @@ export {
     type TurnDiagnostics,
 } from "./diagnostics";
 export {
+    approveTaskPlan,
+    BATCH_B_TOOL_MATRIX,
+    checkToolPermission,
+    clearTaskProfile,
+    type DesignRules,
+    formatGovernanceStatusLine,
+    formatRulesForPrompt,
+    type GovernanceStatus,
+    getActiveTaskProfile,
+    getGovernanceStatus,
+    governTools,
+    loadEffectiveDesignRules,
+    type PermissionDecision,
+    saveAccountDesignRules,
+    saveDocumentDesignRules,
+    stripSelfApproval,
+    type TaskProfile,
+    type TaskScope,
+    toolMatrixSummary,
+    undoActiveTask,
+} from "./governance";
+export {
     type ActiveNodeRef,
     clearSessionMemory,
     formatSessionMemorySummary,

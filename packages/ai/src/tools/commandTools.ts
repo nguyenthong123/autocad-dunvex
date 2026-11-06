@@ -204,7 +204,9 @@ export function buildCommandTools(): Tool[] {
                     }
                 }
 
-                // 5. Execute safe command, track errors, and await pendingWork completion
+                // 5. Re-check at write time, then execute. Timeout is NOT proof the mutation stopped.
+                const historyMarkBefore =
+                    typeof doc.history?.undoTop === "function" ? doc.history.undoTop() : undefined;
                 let caughtError: string | undefined;
                 const onError = (msg: string) => {
                     caughtError = msg;
@@ -216,14 +218,53 @@ export function buildCommandTools(): Tool[] {
                 PubSub.default.sub("displayError", onError);
                 PubSub.default.sub("applicationError", onAppError);
 
+                const ASYNC_COMMAND_TIMEOUT_MS = 15_000;
+                let timedOut = false;
                 try {
+                    // Permission already passed the shared gate; re-validate document still open.
+                    if (requireDocument() !== doc) {
+                        return JSON.stringify({
+                            success: false,
+                            executed: false,
+                            completed: false,
+                            code: "DOCUMENT_DRIFT_DURING_ASYNC_OPERATION",
+                            commandKey: resolvedKey,
+                            error: "DOCUMENT_DRIFT_DURING_ASYNC_OPERATION: Active document changed before write.",
+                        });
+                    }
+
                     PubSub.default.pub("executeCommand", resolvedKey as CommandKeys);
-                    await pendingWork.whenIdle();
+                    await Promise.race([
+                        pendingWork.whenIdle(),
+                        new Promise<void>((resolve) => {
+                            setTimeout(() => {
+                                timedOut = true;
+                                resolve();
+                            }, ASYNC_COMMAND_TIMEOUT_MS);
+                        }),
+                    ]);
                 } catch (err) {
                     caughtError = err instanceof Error ? err.message : String(err);
                 } finally {
                     PubSub.default.remove("displayError", onError);
                     PubSub.default.remove("applicationError", onAppError);
+                }
+
+                if (timedOut) {
+                    const historyTopAfter =
+                        typeof doc.history?.undoTop === "function" ? doc.history.undoTop() : undefined;
+                    const historyChanged = historyTopAfter !== historyMarkBefore;
+                    return JSON.stringify({
+                        success: false,
+                        executed: true,
+                        dispatched: true,
+                        completed: false,
+                        timedOut: true,
+                        mutationPossiblyInFlight: true,
+                        historyChangedSinceDispatch: historyChanged,
+                        commandKey: resolvedKey,
+                        error: `ASYNC_TIMEOUT: Lệnh '${resolvedKey}' vượt quá ${ASYNC_COMMAND_TIMEOUT_MS}ms chờ settle. Timeout không chứng minh mutation đã dừng — kiểm tra bản vẽ trước khi thử lại.`,
+                    });
                 }
 
                 if (caughtError) {

@@ -30,6 +30,7 @@ import {
 import { marked, type Tokens } from "marked";
 import style from "./chatPanel.module.css";
 import { isStreamParseError, listRuntimeErrorReports, recordRuntimeError } from "./diagnostics";
+import { formatGovernanceStatusLine } from "./governance";
 import {
     conversationTitle,
     messageParts,
@@ -884,6 +885,9 @@ export class ChatPanel extends HTMLElement {
                 infoParts.push(`Đã kiểm chứng: ${mem.lastVerification.toolName}`);
             }
         }
+
+        // Batch B UI must report mechanisms that are actually in force — not Batch C criteria/tolerances.
+        infoParts.push(formatGovernanceStatusLine());
 
         const text = infoParts.join(" | ");
         this.memoryTextEl.textContent = text;

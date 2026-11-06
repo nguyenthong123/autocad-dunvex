@@ -1,6 +1,7 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
+import { formatRulesForPrompt } from "../governance";
 import { formatSessionMemorySummary } from "../memory";
 import { SkillStore } from "../skills";
 import { buildTools } from "../tools";
@@ -22,7 +23,12 @@ export interface BuildSystemPromptOptions {
 export function buildSystemPrompt(options: BuildSystemPromptOptions = {}): SystemPrompt {
     return {
         stable: [introSection(), toolIndexSection(), policySection(), rulesSection()].join("\n\n"),
-        volatile: [contextSection(), sessionMemorySection(), journalSection(options.journal)]
+        volatile: [
+            formatRulesForPrompt(),
+            contextSection(),
+            sessionMemorySection(),
+            journalSection(options.journal),
+        ]
             .filter(Boolean)
             .join("\n\n"),
     };
@@ -115,6 +121,7 @@ function rulesSection(): string {
 - Units are mm, angles are degrees (simplifyShape angleTolerance and conicalSurface.semiAngle in radians). For building/architectural requests (floors, walls), convert m/cm to mm.
 - box/rect/pyramid are corner-based: plane.origin is a corner. cylinder/cone use center as the base-face center and extend +dz along normal. sphere uses center as its true center.
 - Plan exact dimensions; verify volume/bounds with query ops. Cuts require volume reduction; never blame camera/zoom without geometric proof.
+- Sources are protected by default; do not invent approved/force flags. Criteria/tolerances are Batch C (not active).
 - When an op or tool call fails, read the error message and fix the cause — re-run only the failed ops (refs persist across calls). If a node was deleted or not found, call get_document_state to re-read the active tree instead of retrying. Load the error-recovery skill when stuck.
 - When blocked, never end silently: explain clearly which step is blocked or what information is needed.
 - The user is watching the viewport; results appear live. If no document is open, call new_document; never replace a document that is already open.

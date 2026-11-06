@@ -99,6 +99,17 @@ function sessionRefs(doc: IDocument): Map<string, LocalRef> {
 }
 
 /**
+ * Resolve a session ref or node name/id to a live nodeId for governance impact analysis.
+ * Returns undefined when the ref is unknown (caller treats that as indeterminate).
+ */
+export function lookupSessionRefNodeId(doc: IDocument, refId: string): string | undefined {
+    const hit = sessionRefs(doc).get(refId);
+    if (hit?.nodeId) return hit.nodeId;
+    const node = findNode(doc, refId);
+    return node?.id;
+}
+
+/**
  * Owned ref values replaced while a program runs, released when it commits. They cannot be
  * disposed on the spot: a rollback restores the pre-program registry (restoreRefRegistries),
  * and the restored entries must still point at live shapes.
@@ -1199,7 +1210,8 @@ function addCreatedNode(
     created.push({ id: op.id, nodeId: node.id, name });
 }
 
-function normalizeOpArgs(op: Op): Record<string, unknown> {
+/** Exported for Batch B impact analysis (normalize aliases before permission checks). */
+export function normalizeOpArgs(op: Pick<Op, "method" | "args">): Record<string, unknown> {
     const args: Record<string, unknown> = { ...(op.args ?? {}) };
 
     // Boolean aliases: shape1 (targets), shape2 (tools/cutters)
