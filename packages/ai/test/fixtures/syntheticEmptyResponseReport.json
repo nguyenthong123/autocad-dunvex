@@ -1,0 +1,25 @@
+{
+    "id": "synthetic_err_vps_empty_turn",
+    "label": "synthetic",
+    "note": "Synthetic test fixture representing an empty model turn after read-only inspection (get_document_state). Constructed for offline testing; does not represent live captured runtime telemetry.",
+    "timestamp": 1793869950410,
+    "toolName": "get_document_state",
+    "operation": "empty-response-after-read",
+    "errorClass": "ai-planning",
+    "errorMessage": "Model ended with empty text response after calling get_document_state.",
+    "sanitizedArgs": {},
+    "suspectedCause": "Synthetic reproduction of empty turn ending after document state query.",
+    "suggestedFixForDeveloper": "Ensure bounded empty-read recovery prompts agent to answer within requested scope without duplicate writes.",
+    "diagnostics": {
+        "provider": "synthetic-provider",
+        "model": "synthetic-model",
+        "rawStopReason": "end_turn",
+        "normalizedStopReason": "empty-response",
+        "textLength": 0,
+        "textPartsCount": 0,
+        "thinkingCount": 1,
+        "toolCallCount": 1,
+        "iterationCount": 1,
+        "terminationReason": "synthetic-empty-after-read"
+    }
+}

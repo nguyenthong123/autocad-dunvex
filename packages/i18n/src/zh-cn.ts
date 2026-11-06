@@ -30,6 +30,8 @@ export default {
         "ai.discoveryNotFound": "无法识别的供应商或无效的 API 密钥",
         "ai.discoverySuccess": "已连接: {0}",
         "ai.effortDefault": "默认",
+        "ai.emptyAfterReadActionable":
+            "模型在读取文档状态后未返回内容。请提供具体的毫米(mm)尺寸或补充必要参数后重试。",
         "ai.emptyAsk": "也可以直接问 Chili3D 怎么用，例如：「怎么给边倒斜角？」",
         "ai.emptyExample": "例如：创建一个 10×20×5 的盒子，再倒 2mm 圆角",
         "ai.emptyHint": "用自然语言创建和编辑 3D 模型",

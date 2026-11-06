@@ -194,8 +194,8 @@ export function onRecentError(err: { toolName: string; operation?: string; error
 }
 
 /**
- * Lifecycle hook: called when a verification tool (e.g. measure_nodes, get_document_state)
- * verifies the post-write geometry state.
+ * Lifecycle hook: called when a verification tool (e.g. measure_nodes, bom_report,
+ * classify_material, get_node_properties) verifies the post-write geometry state.
  */
 export function onVerificationCompleted(toolName: string, summary: string): void {
     currentMemory.lastVerification = {

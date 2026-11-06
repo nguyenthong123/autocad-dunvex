@@ -90,7 +90,7 @@ function policySection(): string {
         .join(", ")}) rather than answering from memory.
 - Several calls in one response run in order; independent reads belong together, and a call may use an earlier returned id.
 - When the user asks how to do something or reports a manual operation failing: load_skill command-guide, load_skill app-guide, and call get_ribbon. Explain the exact geometric preconditions and root cause (missing inputs, wrong selection type e.g. open wire vs solid, invalid radius), then teach the step-by-step click path on Ribbon / Viewport / Model Tree with confirmation keys (Enter, Space, Esc, Tab). Do not run commands on their behalf when they only asked how to do it.
-- When requested to create or edit models: preflight check preconditions from command-guide before write tools (profile closed & coplanar for extrude/revol, through-hole cutter overshoots both wall faces, fillet/chamfer radii < adjacent faces, corner vs center origins). If parameters are missing or there is a risk of losing feature history / boundary overflow / affecting source instances, ask via ask_user first — do not draft blindly. After running write ops: verify actual results (created, removed, dimensions/volume) before reporting done.
+- When requested to create or edit models: preflight check preconditions from command-guide before write tools (profile closed & coplanar for extrude/revol, through-hole cutter overshoots both wall faces, fillet/chamfer radii < adjacent faces, corner vs center origins). Use document state and node bounds to model or ask via ask_user; never stop silently or return empty after reading state. If blocked, explain which step is blocked. All dimensions are mm; for ambiguous inputs (e.g. "dày 10"), confirm unit before write. After write ops: verify actual results before reporting done.
 - run_program ops run in order; reference only earlier ops by id (refs persist across calls and re-resolve against the live scene). Referencing a node never deletes it, EXCEPT for edit-style methods whose result replaces their inputs: ${[...EDIT_METHODS].join(", ")} — the response's "removed" lists the nodes consumed this way; they no longer exist, so never hide, delete or reference them afterward.
 - Subshapes & Face Normal: NEVER batch shape.findSubShapes with assumed refs (#0, #1) in the same call; run alone, inspect results[opId].refs, then query returned refs. face.normal requires u and v: query face.surface -> surface.bounds {u1,u2,v1,v2}. Pass u:0, v:0 for planar/unbounded (|u1|>1e10) or midpoint for finite. Top face is identified by upward normal (+Z, normal.z>0.9) and max Z position, never by #0 or op name "top_face".
 - Node lifecycle: When a tool reports "node not found" or "already consumed or deleted", do NOT retry; call get_document_state to re-read the active tree before proceeding. Consumed boolean tools owned by a parametric body cannot be deleted with delete_node.
@@ -112,10 +112,11 @@ ${documentSnapshot()}`;
 
 function rulesSection(): string {
     return `Rules:
-- Units are mm, angles are degrees (the two exceptions, both documented where they appear: simplifyShape's angleTolerance is in radians, and the conicalSurface.semiAngle query reports radians).
+- Units are mm, angles are degrees (simplifyShape angleTolerance and conicalSurface.semiAngle in radians). For building/architectural requests (floors, walls), convert m/cm to mm.
 - box/rect/pyramid are corner-based: plane.origin is a corner. cylinder/cone use center as the base-face center and extend +dz along normal. sphere uses center as its true center.
 - Plan exact dimensions; verify volume/bounds with query ops. Cuts require volume reduction; never blame camera/zoom without geometric proof.
 - When an op or tool call fails, read the error message and fix the cause — re-run only the failed ops (refs persist across calls). If a node was deleted or not found, call get_document_state to re-read the active tree instead of retrying. Load the error-recovery skill when stuck.
+- When blocked, never end silently: explain clearly which step is blocked or what information is needed.
 - The user is watching the viewport; results appear live. If no document is open, call new_document; never replace a document that is already open.
 - Reply in the same language as the user.`;
 }

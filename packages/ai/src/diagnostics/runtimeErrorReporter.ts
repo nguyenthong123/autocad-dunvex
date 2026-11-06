@@ -4,10 +4,12 @@
 import { redactDataUrls } from "../llm/redact";
 import type {
     ErrorClass,
+    NormalizedStopReason,
     RecordRuntimeErrorOptions,
     RuntimeErrorDocumentSummary,
     RuntimeErrorNodeSummary,
     RuntimeErrorReport,
+    TurnDiagnostics,
 } from "./types";
 
 const STORAGE_KEY = "chili3d:ai:error_reports";
@@ -60,6 +62,66 @@ function persistReports(reports: RuntimeErrorReport[]): void {
 export function sanitizeArgs(args: unknown): Record<string, unknown> {
     if (!args || typeof args !== "object") return {};
     return sanitizeValue(args) as Record<string, unknown>;
+}
+
+export function sanitizeDiagnostics(diag?: TurnDiagnostics): TurnDiagnostics | undefined {
+    if (!diag) return undefined;
+    return {
+        provider: typeof diag.provider === "string" ? (sanitizeValue(diag.provider) as string) : undefined,
+        model: typeof diag.model === "string" ? (sanitizeValue(diag.model) as string) : undefined,
+        rawStopReason:
+            typeof diag.rawStopReason === "string"
+                ? (sanitizeValue(diag.rawStopReason) as string)
+                : undefined,
+        normalizedStopReason: diag.normalizedStopReason,
+        textLength: typeof diag.textLength === "number" ? diag.textLength : undefined,
+        textPartsCount: typeof diag.textPartsCount === "number" ? diag.textPartsCount : undefined,
+        thinkingCount: typeof diag.thinkingCount === "number" ? diag.thinkingCount : undefined,
+        toolCallCount: typeof diag.toolCallCount === "number" ? diag.toolCallCount : undefined,
+        tokenUsage: diag.tokenUsage ? { ...diag.tokenUsage } : undefined,
+        iterationCount: typeof diag.iterationCount === "number" ? diag.iterationCount : undefined,
+        terminationReason:
+            typeof diag.terminationReason === "string"
+                ? (sanitizeValue(diag.terminationReason) as string)
+                : undefined,
+    };
+}
+
+export function isStreamParseError(err: unknown): boolean {
+    if (!err) return false;
+    if (err instanceof SyntaxError) return true;
+    const msg = err instanceof Error ? err.message : String(err);
+    return /parse|stream|sse|eventstream|unexpected token|malformed chunk|invalid json/i.test(msg);
+}
+
+export function normalizeStopReason(
+    rawStopReason?: string,
+    opts?: {
+        text?: string;
+        toolCallsCount?: number;
+        aborted?: boolean;
+        error?: unknown;
+    },
+): NormalizedStopReason {
+    if (opts?.aborted) return "aborted";
+    if (opts?.error) {
+        if (isStreamParseError(opts.error)) return "stream-parse-error";
+        const msg = opts.error instanceof Error ? opts.error.message : String(opts.error);
+        if (
+            /context[_ -]?length|prompt is too long|too many tokens|maximum context|input is too long/i.test(
+                msg,
+            )
+        ) {
+            return "token-limit";
+        }
+        return "provider-error";
+    }
+    const raw = rawStopReason?.toLowerCase() ?? "";
+    if (["max_tokens", "length", "incomplete"].includes(raw)) return "token-limit";
+    if (["refusal", "content_filter"].includes(raw)) return "refusal";
+    if (["tool_use", "tool_calls"].includes(raw) || (opts?.toolCallsCount ?? 0) > 0) return "tool-call";
+    if ((opts?.text ?? "").trim().length === 0) return "empty-response";
+    return "complete";
 }
 
 function sanitizeValue(val: unknown): unknown {
@@ -140,15 +202,15 @@ export function classifyError(
 
     // 3. AI planning failures
     if (
-        /node not found|consumed by|removed|unknown ref|already deleted|requires an? ["']?ops["']? array|referenced node|planid|dangling ref/i.test(
+        /node not found|consumed by|removed|unknown ref|already deleted|requires an? ["']?ops["']? array|referenced node|planid|dangling ref|empty response|no text response/i.test(
             lower,
         )
     ) {
         return {
             errorClass: "ai-planning",
-            suspectedCause: `AI agent referenced a deleted/consumed node, passed an invalid ref, or violated planning lifecycle rules: ${message}`,
+            suspectedCause: `AI agent planning lifecycle failure or empty response: ${message}`,
             suggestedFixForDeveloper:
-                "Ensure agent checks sessionMemory's removedNodeIds before referencing nodes. Edit methods (booleanCut, fillet) consume their inputs.",
+                "Ensure agent checks sessionMemory and handles empty turn recovery. If inspecting document state, provide explicit dimensions or verify output token budget.",
         };
     }
 
@@ -249,7 +311,7 @@ export function recordRuntimeError(opts: RecordRuntimeErrorOptions): RuntimeErro
     recentReportTimes.set(dedupKey, now);
 
     const classification = classifyError(opts.error, opts.toolName, opts.operation);
-    const errorClass = opts.overrideErrorClass || classification.errorClass;
+    const errorClass = opts.errorClass || opts.overrideErrorClass || classification.errorClass;
     const suspectedCause = opts.suspectedCause || classification.suspectedCause;
     const suggestedFix = opts.suggestedFixForDeveloper || classification.suggestedFixForDeveloper;
 
@@ -266,6 +328,7 @@ export function recordRuntimeError(opts: RecordRuntimeErrorOptions): RuntimeErro
         documentSummary: getDocumentSummary(),
         suspectedCause,
         suggestedFixForDeveloper: suggestedFix,
+        diagnostics: sanitizeDiagnostics(opts.diagnostics),
     };
 
     const existing = loadStoredReports();
@@ -348,6 +411,14 @@ export function exportRuntimeErrorReports(format: "markdown" | "json" = "markdow
             lines.push(
                 r.documentSummary.nodes.map((n) => `  - \`${n.id}\`: ${n.name}`).join("\n") || "  (trống)",
             );
+        }
+
+        if (r.diagnostics) {
+            lines.push("");
+            lines.push("**Thông tin chẩn đoán lượt (Turn Diagnostics):**");
+            lines.push("```json");
+            lines.push(JSON.stringify(r.diagnostics, null, 2));
+            lines.push("```");
         }
 
         if (r.stack) {

@@ -8,13 +8,17 @@ export {
     clearRuntimeErrorReports,
     type ErrorClass,
     exportRuntimeErrorReports,
+    isStreamParseError,
     listRuntimeErrorReports,
+    type NormalizedStopReason,
+    normalizeStopReason,
     type RecordRuntimeErrorOptions,
     type RuntimeErrorDocumentSummary,
     type RuntimeErrorNodeSummary,
     type RuntimeErrorReport,
     recordRuntimeError,
     sanitizeArgs,
+    type TurnDiagnostics,
 } from "./diagnostics";
 export {
     type ActiveNodeRef,

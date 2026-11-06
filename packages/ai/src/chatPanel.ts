@@ -29,7 +29,7 @@ import {
 } from "@chili3d/element";
 import { marked, type Tokens } from "marked";
 import style from "./chatPanel.module.css";
-import { listRuntimeErrorReports } from "./diagnostics";
+import { isStreamParseError, listRuntimeErrorReports, recordRuntimeError } from "./diagnostics";
 import {
     conversationTitle,
     messageParts,
@@ -1651,7 +1651,7 @@ export class ChatPanel extends HTMLElement {
         try {
             await this.runTurn(config, this.abortController.signal);
             if (this.stream.raw) showFooter = true;
-            else this.appendNoReply(assistantEl);
+            else this.appendNoReply(assistantEl, config);
         } catch (err) {
             showFooter = this.handleSendError(err);
         } finally {
@@ -1660,9 +1660,30 @@ export class ChatPanel extends HTMLElement {
     }
 
     /** A turn that streamed no text still owes the user an answer, even a placeholder one. */
-    private appendNoReply(assistantEl: HTMLElement): void {
+    private appendNoReply(assistantEl: HTMLElement, config?: LLMConfig): void {
         this.clearThinking();
         assistantEl.append(div({ className: style.noReply, textContent: I18n.translate("ai.noReply") }));
+        if (config) {
+            recordRuntimeError({
+                toolName: "ChatPanel",
+                operation: "send",
+                errorClass: "ai-planning",
+                error: new Error("Empty text response from model"),
+                diagnostics: {
+                    provider: config.provider,
+                    model: config.model,
+                    normalizedStopReason: "empty-response",
+                    textLength: 0,
+                    textPartsCount: 0,
+                    toolCallCount: this.turnParts.filter((p) => p.type === "tool").length,
+                    tokenUsage: this.turnUsage,
+                    terminationReason: "empty-response",
+                },
+                suspectedCause: "Model completed the turn without generating reply text.",
+                suggestedFixForDeveloper:
+                    "Verify model parameters, check thinking budget, or retry with explicit dimensions in mm.",
+            });
+        }
     }
 
     /** Undo what beginTurn set up, once the reply has landed. */
@@ -2164,6 +2185,18 @@ export class ChatPanel extends HTMLElement {
         this.discardParagraph();
         const rawMessage = (err as Error)?.message || String(err);
         const config = currentConfig();
+        const normReason = isStreamParseError(err) ? "stream-parse-error" : "provider-error";
+        recordRuntimeError({
+            toolName: "ChatPanel",
+            operation: "send",
+            error: err,
+            diagnostics: {
+                provider: config.provider,
+                model: config.model,
+                normalizedStopReason: normReason,
+                terminationReason: normReason,
+            },
+        });
         this.appendError(sanitizeErrorMessage(rawMessage, config.apiKey));
         return false;
     }

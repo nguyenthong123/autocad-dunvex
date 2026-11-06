@@ -531,6 +531,8 @@ const vi: Locale = {
         // AI Assistant
         "ai.emptyTitle": "Trợ lý thiết kế AI",
         "ai.emptyHint": "Tạo và hiệu chỉnh mô hình 3D bằng ngôn ngữ tự nhiên",
+        "ai.emptyAfterReadActionable":
+            "Model không phản hồi văn bản sau khi đọc trạng thái tài liệu. Vui lòng thử lại với kích thước cụ thể theo milimét (mm) hoặc cung cấp thêm thông tin còn thiếu.",
         "ai.emptyAsk": "Hoặc hỏi cách sử dụng Dunvex CAD — ví dụ: “cách vát mép một cạnh?”",
         "ai.emptyExample": "ví dụ: tạo khối hộp 10×20×5, sau đó bo góc 2mm",
         "ai.history": "Lịch sử hội thoại",

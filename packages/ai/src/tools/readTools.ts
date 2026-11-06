@@ -3,7 +3,7 @@
 
 import type { IDocument, INode } from "@chili3d/core";
 import type { Tool } from "../llm/types";
-import { onVerificationCompleted, syncSessionMemoryWithDocument } from "../memory";
+import { syncSessionMemoryWithDocument } from "../memory";
 import { getDocument, shapeKindOf } from "./documentContext";
 
 function summarizeNode(node: INode) {
@@ -29,7 +29,6 @@ async function readDocumentState(): Promise<string> {
     if (!doc) return JSON.stringify({ hasActiveDocument: false });
     syncSessionMemoryWithDocument(doc);
     const summary = documentSummary(doc);
-    onVerificationCompleted("get_document_state", `Active document has ${summary.nodeCount} nodes`);
     return JSON.stringify(summary);
 }
 

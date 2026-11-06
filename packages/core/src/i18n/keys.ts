@@ -27,6 +27,7 @@ export const I18N_KEYS = [
     "ai.discoveryNotFound",
     "ai.discoverySuccess",
     "ai.effortDefault",
+    "ai.emptyAfterReadActionable",
     "ai.emptyAsk",
     "ai.emptyExample",
     "ai.emptyHint",

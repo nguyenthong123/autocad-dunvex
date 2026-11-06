@@ -31,6 +31,8 @@ export default {
         "ai.discoveryNotFound": "Unrecognized provider or invalid API key",
         "ai.discoverySuccess": "Connected: {0}",
         "ai.effortDefault": "Default",
+        "ai.emptyAfterReadActionable":
+            "The model produced no text after inspecting the document. Please retry with explicit dimensions in millimeters (mm) or specify missing parameters.",
         "ai.emptyAsk": "Or ask how to use Chili3D — e.g. “how do I chamfer an edge?”",
         "ai.emptyExample": "e.g. create a 10×20×5 box, then fillet 2mm",
         "ai.emptyHint": "Create and edit 3D models with natural language",

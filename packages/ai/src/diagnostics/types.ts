@@ -9,6 +9,35 @@ export type ErrorClass =
     | "ai-planning"
     | "user-input";
 
+export type NormalizedStopReason =
+    | "token-limit"
+    | "empty-response"
+    | "stream-parse-error"
+    | "aborted"
+    | "provider-error"
+    | "tool-call"
+    | "complete"
+    | "refusal";
+
+export interface TurnDiagnostics {
+    provider?: string;
+    model?: string;
+    rawStopReason?: string;
+    normalizedStopReason?: NormalizedStopReason;
+    textLength?: number;
+    textPartsCount?: number;
+    thinkingCount?: number;
+    toolCallCount?: number;
+    tokenUsage?: {
+        inputTokens?: number;
+        outputTokens?: number;
+        cacheReadTokens?: number;
+        cacheCreationTokens?: number;
+    };
+    iterationCount?: number;
+    terminationReason?: string;
+}
+
 export interface RuntimeErrorNodeSummary {
     id: string;
     name: string;
@@ -33,6 +62,7 @@ export interface RuntimeErrorReport {
     documentSummary?: RuntimeErrorDocumentSummary;
     suspectedCause: string;
     suggestedFixForDeveloper: string;
+    diagnostics?: TurnDiagnostics;
 }
 
 export interface RecordRuntimeErrorOptions {
@@ -41,7 +71,9 @@ export interface RecordRuntimeErrorOptions {
     operation?: string;
     error: unknown;
     args?: unknown;
+    errorClass?: ErrorClass;
     overrideErrorClass?: ErrorClass;
     suspectedCause?: string;
     suggestedFixForDeveloper?: string;
+    diagnostics?: TurnDiagnostics;
 }

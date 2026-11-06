@@ -2,7 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 import { I18n, type I18nKeys } from "@chili3d/core";
-import { recordRuntimeError } from "../diagnostics";
+import { isStreamParseError, recordRuntimeError } from "../diagnostics";
 import { onRecentError, onVerificationCompleted, updateSessionMemory } from "../memory";
 import type { LLMConfig } from "../settings";
 import { isMultimodalError } from "./completions";
@@ -100,6 +100,54 @@ const NUDGE_AFTER_PROMISE =
     "Your previous turn described an action but made no tool call. Make the tool call now, with no " +
     "further prose.";
 
+export const MAX_EMPTY_READ_NUDGES = 1;
+
+export const NUDGE_AFTER_EMPTY_READ_MODELING =
+    "You inspected the document state for the user's modeling request but produced no geometry or response. " +
+    "Based on the document state, proceed with the requested modeling steps using run_program or run_parametric, " +
+    "or explain clearly if specific dimensions or parameters are required.";
+
+export const NUDGE_AFTER_EMPTY_READ_INFO =
+    "You inspected the document state to answer the user's question, but produced no response. " +
+    "Based on the document state you just read, answer the user's question directly within the requested scope. " +
+    "Do not modify the document or execute write tools.";
+
+export const NUDGE_AFTER_EMPTY_READ = NUDGE_AFTER_EMPTY_READ_MODELING;
+
+export function isInformationalQuery(text: string): boolean {
+    const trimmed = text.trim();
+    if (!trimmed) return false;
+
+    // Normalize out common nouns containing action substrings: "bản vẽ" (the drawing), "mô hình" (this model)
+    const actionProbe = trimmed.replace(/bản\s+vẽ/gi, "").replace(/mô\s+hình/gi, "");
+
+    const hasModelingIntent =
+        /\b(build|create|make|add|draw|construct|modify|edit|apply|extrude|revolve|fillet|chamfer|cut|subtract|fuse|combine|generate|sketch)\b/i.test(
+            actionProbe,
+        ) ||
+        /(?:^|[\s,.:;?!])(dựng|tạo|vẽ|thiết kế|khoét|cắt|bo\s+góc|vát\s+mép|thêm|sửa|xóa|đùn|làm\s+dày)(?:$|[\s,.:;?!])/i.test(
+            actionProbe,
+        ) ||
+        /(创建|建|画|做|拉伸|旋转|切割|切|加|修改|放|生成)/.test(actionProbe);
+
+    if (hasModelingIntent) return false;
+
+    return (
+        /[?？]\s*$/.test(trimmed) ||
+        /\b(what|which|how many|how much|count|list|show|tell me|explain|describe|check|inspect|find)\b/i.test(
+            trimmed,
+        ) ||
+        /(bao nhiêu|là gì|thế nào|sao|đâu|nào|mấy|liệt kê|danh sách|cho biết|thông tin|kiểm tra|tìm)/i.test(
+            trimmed,
+        ) ||
+        /(多少|什么|哪些|列出|查看|查询|是否存在)/.test(trimmed)
+    );
+}
+
+export function getNudgeAfterEmptyRead(userPrompt: string): string {
+    return isInformationalQuery(userPrompt) ? NUDGE_AFTER_EMPTY_READ_INFO : NUDGE_AFTER_EMPTY_READ_MODELING;
+}
+
 /** What one streamed model turn produced — what the loop reads, and `endingOf` judges. */
 interface TurnParts {
     text: string;
@@ -107,6 +155,7 @@ interface TurnParts {
     thinking: ThinkingBlock[];
     /** Why the model stopped — the one thing that tells a cut-off turn from an empty answer. */
     stopReason?: string;
+    usage?: TokenUsage;
 }
 
 interface RunAgentOptions {
@@ -141,9 +190,18 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
     // dropSupersededThinking), so every request below is spared it.
     dropSupersededThinking(opts.messages);
 
-    const state: RecoveryState = { continues: 0, lostCalls: 0, idleNudges: 0, verifyNudges: 0 };
+    const state: RecoveryState = {
+        continues: 0,
+        lostCalls: 0,
+        idleNudges: 0,
+        verifyNudges: 0,
+        emptyReadNudges: 0,
+    };
     let needsVerification = false;
     let pendingVerificationTargets: VerificationTarget[] = [];
+    let hasExecutedReadTools = false;
+    let hasExecutedWriteTools = false;
+    let lastTokenUsage: TokenUsage | undefined;
     // Whether the attempt in flight has already put text on screen. A retry after a context
     // overflow would replay that text, so the retry is only allowed before the first delta.
     let emittedText = false;
@@ -187,12 +245,29 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                     }
                     throw err;
                 } else {
+                    const normReason = isStreamParseError(err) ? "stream-parse-error" : "provider-error";
+                    recordRuntimeError({
+                        toolName: "runAgent",
+                        operation: "streamTurn",
+                        error: err,
+                        diagnostics: {
+                            provider: opts.config.provider,
+                            model: opts.config.model,
+                            normalizedStopReason: normReason,
+                            iterationCount: iteration,
+                            terminationReason: normReason,
+                        },
+                    });
                     throw err;
                 }
             }
 
+            if (turn.usage) lastTokenUsage = turn.usage;
+            if (opts.signal?.aborted) break;
+
             runOpts.messages.push(assistantMessage(turn.text, turn.toolCalls, turn.thinking));
-            const ending = endingOf(turn, state);
+            const hasRunReadToolOnly = hasExecutedReadTools && !hasExecutedWriteTools;
+            const ending = endingOf(turn, state, { hasRunReadToolOnly });
             if (ending.notice !== undefined) callbacks.onTextDelta(I18n.translate(ending.notice));
 
             if (ending.kind === "continue") {
@@ -210,7 +285,48 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                 runOpts.messages.push({ role: "user", content: NUDGE_AFTER_PROMISE, synthetic: true });
                 continue;
             }
+            if (ending.kind === "empty-read") {
+                state.emptyReadNudges++;
+                const lastUserMsg = [...runOpts.messages]
+                    .reverse()
+                    .find((m) => m.role === "user" && !m.synthetic);
+                const userText = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
+                const nudgePrompt = getNudgeAfterEmptyRead(userText);
+                runOpts.messages.push({ role: "user", content: nudgePrompt, synthetic: true });
+                continue;
+            }
             if (turn.toolCalls.length === 0) {
+                if (
+                    hasRunReadToolOnly &&
+                    turn.text.trim() === "" &&
+                    state.emptyReadNudges >= MAX_EMPTY_READ_NUDGES
+                ) {
+                    recordRuntimeError({
+                        toolName: "runAgent",
+                        operation: "empty-response-recovery",
+                        errorClass: "ai-planning",
+                        error: new Error(
+                            "Model returned empty response after reading document state; recovery nudge exhausted",
+                        ),
+                        diagnostics: {
+                            provider: opts.config.provider,
+                            model: opts.config.model,
+                            rawStopReason: turn.stopReason,
+                            normalizedStopReason: "empty-response",
+                            textLength: 0,
+                            textPartsCount: 0,
+                            thinkingCount: turn.thinking.length,
+                            toolCallCount: 0,
+                            tokenUsage: lastTokenUsage,
+                            iterationCount: iteration,
+                            terminationReason: "empty-after-read-exhausted",
+                        },
+                        suspectedCause:
+                            "Model completed with empty text and no tool calls after inspecting document state.",
+                        suggestedFixForDeveloper:
+                            "Verify model parameters, ensure prompt provides dimensions in mm, or check token limit.",
+                    });
+                }
                 if (needsVerification) {
                     if (state.verifyNudges < MAX_VERIFY_NUDGES) {
                         state.verifyNudges++;
@@ -241,8 +357,12 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
             if (opts.signal?.aborted) break;
             appendToolResults(runOpts, results, multimodalDisabled);
 
+            const READ_TOOLS = new Set(["get_document_state", "get_selection"]);
             // Update verification state based on tool outputs
             for (const res of results) {
+                if (READ_TOOLS.has(res.name)) {
+                    hasExecutedReadTools = true;
+                }
                 let isError = false;
                 let parsedContent: ToolOutputShape | undefined;
                 try {
@@ -284,6 +404,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                     }
 
                     if (createdCount > 0 || createdNodeIds.length > 0 || removedList.length > 0) {
+                        hasExecutedWriteTools = true;
                         const targets = extractWriteTargets(res.name, rawArgs, parsedContent);
                         if (targets.length > 0) {
                             needsVerification = true;
@@ -315,6 +436,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                         }
                     }
                 } else if (res.name === "delete_node") {
+                    hasExecutedWriteTools = true;
                     if (parsedContent && typeof parsedContent.deleted === "string") {
                         const delId = parsedContent.deleted;
                         pendingVerificationTargets = pendingVerificationTargets.filter((p) => p.id !== delId);
@@ -323,6 +445,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                         }
                     }
                 } else if (WRITE_TOOLS.has(res.name)) {
+                    hasExecutedWriteTools = true;
                     needsVerification = true;
                     const targets = extractWriteTargets(res.name, rawArgs, parsedContent);
                     if (targets.length > 0) {
@@ -593,11 +716,16 @@ function isTargetVerified(target: VerificationTarget, evidence: VerifiedEvidence
 }
 
 /** How much of each recovery path this run has already spent. Each has its own ceiling. */
-interface RecoveryState {
+export interface RecoveryState {
     continues: number;
     lostCalls: number;
     idleNudges: number;
     verifyNudges: number;
+    emptyReadNudges: number;
+}
+
+export interface EndingOfOptions {
+    hasRunReadToolOnly?: boolean;
 }
 
 /**
@@ -612,12 +740,17 @@ interface RecoveryState {
  * - A stop that claimed a call and delivered none: ask for the call again, up to
  *   `MAX_LOST_CALL_NUDGES` times. A dropped payload is not an answer.
  * - A turn that only narrated its next action: ask it to act, up to `MAX_IDLE_NUDGES` times.
+ * - An empty reply after inspecting document state during modeling: ask it to proceed, up to
+ *   `MAX_EMPTY_READ_NUDGES` times.
  * - Anything else (a plain `end_turn`, a turn that called a tool): stop. An empty reply is the
  *   panel's to report, not a limit to announce.
  */
-type EndingAction = { kind: "continue" | "lost-call" | "idle" | "stop"; notice?: I18nKeys };
+export type EndingAction = {
+    kind: "continue" | "lost-call" | "idle" | "empty-read" | "stop";
+    notice?: I18nKeys;
+};
 
-function endingOf(turn: TurnParts, state: RecoveryState): EndingAction {
+export function endingOf(turn: TurnParts, state: RecoveryState, options?: EndingOfOptions): EndingAction {
     const stop = turn.stopReason;
     if (stop !== undefined && TRUNCATED.has(stop)) {
         // A call the turn did carry is work in hand — the loop runs it and carries on, so the
@@ -636,6 +769,17 @@ function endingOf(turn: TurnParts, state: RecoveryState): EndingAction {
 
     if (turn.toolCalls.length === 0 && !REFUSALS.has(stop ?? "") && promisedToAct(turn.text)) {
         if (state.idleNudges < MAX_IDLE_NUDGES) return { kind: "idle" };
+    }
+
+    if (
+        turn.toolCalls.length === 0 &&
+        turn.text.trim() === "" &&
+        !REFUSALS.has(stop ?? "") &&
+        options?.hasRunReadToolOnly
+    ) {
+        return state.emptyReadNudges < MAX_EMPTY_READ_NUDGES
+            ? { kind: "empty-read" }
+            : { kind: "stop", notice: "ai.emptyAfterReadActionable" };
     }
 
     return { kind: "stop" };
@@ -837,6 +981,7 @@ async function streamTurn(provider: LLMProvider, opts: RunAgentOptions): Promise
         if (ev.type === "usage") usage = ev.usage;
         else collectEvent(parts, ev, opts.callbacks);
     }
+    parts.usage = usage;
     logTokenUsage(usage, parts.stopReason, Date.now() - startedAt);
     if (usage) opts.callbacks.onUsage(usage);
     return parts;

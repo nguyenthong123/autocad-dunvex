@@ -5,14 +5,19 @@ export {
     classifyError,
     clearRuntimeErrorReports,
     exportRuntimeErrorReports,
+    isStreamParseError,
     listRuntimeErrorReports,
+    normalizeStopReason,
     recordRuntimeError,
     sanitizeArgs,
+    sanitizeDiagnostics,
 } from "./runtimeErrorReporter";
 export type {
     ErrorClass,
+    NormalizedStopReason,
     RecordRuntimeErrorOptions,
     RuntimeErrorDocumentSummary,
     RuntimeErrorNodeSummary,
     RuntimeErrorReport,
+    TurnDiagnostics,
 } from "./types";
