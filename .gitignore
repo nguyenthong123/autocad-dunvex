@@ -18,3 +18,8 @@ types
 .env.*
 !.env.example
 /data/
+
+# Real user drawing dumps — never commit (keep outside repo / agent store)
+docs/tasks/sync-evidence/BACKUP-*.json
+docs/tasks/sync-evidence/doc-*.json
+docs/tasks/sync-evidence/recents-*.json

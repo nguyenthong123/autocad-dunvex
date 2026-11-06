@@ -48,20 +48,25 @@ export async function ensureAuthSession(): Promise<AuthUser | null> {
     const token = getAuthToken();
     const cached = getAuthUser();
     if (!token) {
-        if (cached) logout({ silent: true, reason: "expired" });
-        return null;
+        // Keep cached identity for offline IndexedDB scoping; do not pretend guest.
+        return cached;
     }
     try {
         const response = await fetch("/api/auth/me", {
             headers: { Authorization: `Bearer ${token}` },
         });
-        if (!response.ok) {
+        // Only confirmed auth failures clear the session — never 5xx / transient outages.
+        if (response.status === 401 || response.status === 403) {
             logout({ reason: "expired" });
             return null;
+        }
+        if (!response.ok) {
+            return cached;
         }
         const data = await response.json();
         const user = data?.user as AuthUser | undefined;
         if (!user?.id) {
+            // 200 with empty body is not a transient outage — treat as invalid session.
             logout({ reason: "expired" });
             return null;
         }

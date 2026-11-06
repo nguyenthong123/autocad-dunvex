@@ -1,0 +1,6 @@
+{
+    "documentId": "G5zyyoF_RQQdTN4qeFmjS",
+    "userId": "f475072d00964fa53d5b4deaecb30225",
+    "note": "Full drawing JSON kept outside git (agent store sync-evidence-private). Automated dual-session coverage lives in packages/storage/test/clientServerIntegration.test.ts with synthetic fixtures.",
+    "preFixEvidence": "dual-session-2026-11-06T15-17-17-568Z.json"
+}

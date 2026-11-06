@@ -10,6 +10,11 @@ export interface OutboxItem {
     table: string;
     recordId: string;
     scopedId: string;
+    /**
+     * Account that owned the session when this item was enqueued.
+     * `null` = anonymous guest. Never rewrite to another account on upload.
+     */
+    ownerUserId?: string | null;
     value: any;
     baseVersion?: number;
     currentServerVersion?: number;
@@ -18,6 +23,18 @@ export interface OutboxItem {
     lastAttemptAt?: number;
     lastError?: string;
     conflict?: boolean;
+}
+
+/** Resolve ownership for new and legacy outbox rows (pre-ownerUserId). */
+export function resolveOutboxOwner(item: OutboxItem): string | null {
+    if ("ownerUserId" in item) {
+        return item.ownerUserId ?? null;
+    }
+    const sep = item.scopedId.indexOf(":");
+    if (sep > 0 && item.scopedId.slice(sep + 1) === item.recordId) {
+        return item.scopedId.slice(0, sep);
+    }
+    return null;
 }
 
 /**
@@ -37,6 +54,8 @@ export interface OutboxOptions {
         item: OutboxItem,
     ) => Promise<{ ok: boolean; status?: number; error?: string; version?: number; currentVersion?: number }>;
     onStatusChange?: (status: SyncStatus, pendingCount: number) => void;
+    /** Current session owner (`null`/undefined = guest). Compared to each item before upload. */
+    getCurrentOwnerId?: () => string | null | undefined;
 }
 
 export class OutboxManager {
@@ -50,15 +69,25 @@ export class OutboxManager {
         item: OutboxItem,
     ) => Promise<{ ok: boolean; status?: number; error?: string; version?: number; currentVersion?: number }>;
     private _onStatusChange?: (status: SyncStatus, pendingCount: number) => void;
+    private _getCurrentOwnerId?: () => string | null | undefined;
 
     constructor(options: OutboxOptions = {}) {
         this._fallback = options.fallback;
         this._sendFn = options.sendFn;
         this._onStatusChange = options.onStatusChange;
+        this._getCurrentOwnerId = options.getCurrentOwnerId;
 
         if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
             window.addEventListener("online", this.handleOnline);
         }
+    }
+
+    private currentOwnerId(): string | null {
+        return this._getCurrentOwnerId?.() ?? null;
+    }
+
+    private ownersMatch(item: OutboxItem): boolean {
+        return resolveOutboxOwner(item) === this.currentOwnerId();
     }
 
     private readonly handleOnline = () => {
@@ -262,11 +291,22 @@ export class OutboxManager {
 
         let hasError = false;
         let hasConflict = false;
+        let heldWrongOwner = false;
 
         const items = Array.from(this._pendingItems.values());
         for (const item of items) {
             if (item.conflict && !force) {
                 hasConflict = true;
+                continue;
+            }
+
+            // Re-check every iteration: logout / account switch mid-retry must stop foreign uploads.
+            if (!this.ownersMatch(item)) {
+                heldWrongOwner = true;
+                item.lastError = "OWNER_MISMATCH";
+                if (this._fallback) {
+                    await this._fallback.put(item.database, "_outbox", item.id, item).catch(() => {});
+                }
                 continue;
             }
 
@@ -282,6 +322,12 @@ export class OutboxManager {
                     item.lastError = res.error || "Conflict";
                     item.currentServerVersion = res.currentVersion ?? res.version;
                     hasConflict = true;
+                    if (this._fallback) {
+                        await this._fallback.put(item.database, "_outbox", item.id, item).catch(() => {});
+                    }
+                } else if (res.error === "OWNER_MISMATCH") {
+                    heldWrongOwner = true;
+                    item.lastError = "OWNER_MISMATCH";
                     if (this._fallback) {
                         await this._fallback.put(item.database, "_outbox", item.id, item).catch(() => {});
                     }
@@ -309,6 +355,9 @@ export class OutboxManager {
         } else if (hasError) {
             this.emitStatus("error");
             this.scheduleNextProcess();
+        } else if (heldWrongOwner) {
+            // Keep local rows; wait for the owning session (authChanged / re-login) to flush.
+            this.emitStatus("pending");
         } else {
             this.emitStatus("pending");
             this.scheduleNextProcess();

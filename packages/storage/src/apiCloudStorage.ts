@@ -3,7 +3,7 @@
 
 import { type IStorage, Logger, PubSub } from "@chili3d/core";
 import { IndexedDBStorage } from "./indexedDBStorage";
-import { type OutboxItem, OutboxManager, type SyncStatus } from "./outbox";
+import { type OutboxItem, OutboxManager, resolveOutboxOwner, type SyncStatus } from "./outbox";
 
 export interface CloudStorageOptions {
     baseUrl?: string;
@@ -29,6 +29,7 @@ export class ApiCloudStorage implements IStorage {
         this._outbox = new OutboxManager({
             fallback: this._fallback,
             sendFn: (item) => this.sendToServer(item),
+            getCurrentOwnerId: () => this.getUserId() ?? null,
             onStatusChange: (status, count) => {
                 options.onStatusChange?.(status, count);
                 try {
@@ -38,6 +39,17 @@ export class ApiCloudStorage implements IStorage {
                 }
             },
         });
+
+        try {
+            // Re-login / account switch: resume only items owned by the new session.
+            PubSub.default.sub("authChanged", () => {
+                this._outbox.processQueue(true).catch((err) => {
+                    Logger.warn(`Outbox flush after authChanged failed: ${String(err)}`);
+                });
+            });
+        } catch {
+            // PubSub may be absent in headless tests
+        }
     }
 
     get outbox(): OutboxManager {
@@ -74,19 +86,43 @@ export class ApiCloudStorage implements IStorage {
         return uid ? `${uid}:${id}` : id;
     }
 
-    private headers(): Record<string, string> {
-        const headers: Record<string, string> = {
-            "Content-Type": "application/json",
-        };
+    private readAuthToken(): string | undefined {
         let token = this._getAuthToken?.();
         if (!token && typeof window !== "undefined" && window.localStorage) {
             token = localStorage.getItem("dunvex_auth_token") || undefined;
         }
+        return token || undefined;
+    }
+
+    private headers(): Record<string, string> {
+        const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+        };
+        const token = this.readAuthToken();
         if (token) {
             // biome-ignore lint/complexity/useLiteralKeys: required by noPropertyAccessFromIndexSignature
             headers["Authorization"] = `Bearer ${token}`;
         }
         return headers;
+    }
+
+    private pageLocalFallback(database: string, table: string, page: number): Promise<any[]> {
+        return (async () => {
+            const fallbackItems = (await this._fallback?.page(database, table, page)) ?? [];
+            const uid = this.getUserId();
+            if (uid) {
+                const prefix = `${uid}:`;
+                return fallbackItems
+                    .filter((item: any) => typeof item?.id === "string" && item.id.startsWith(prefix))
+                    .map((item: any) => ({
+                        ...item,
+                        id: item.id.slice(prefix.length),
+                    }));
+            }
+            return fallbackItems.filter(
+                (item: any) => typeof item?.id !== "string" || !item.id.includes(":"),
+            );
+        })();
     }
 
     private async readLocal(database: string, table: string, localId: string, id: string): Promise<any> {
@@ -156,6 +192,17 @@ export class ApiCloudStorage implements IStorage {
     private async sendToServer(
         item: OutboxItem,
     ): Promise<{ ok: boolean; status?: number; error?: string; version?: number; currentVersion?: number }> {
+        const owner = resolveOutboxOwner(item);
+        const current = this.getUserId() ?? null;
+        // Never upload an A-owned row under guest or B credentials.
+        if (owner !== current) {
+            return { ok: false, status: 403, error: "OWNER_MISMATCH" };
+        }
+        if (owner !== null && !this.readAuthToken()) {
+            // Hold the row; do not clear local identity here (offline / re-login pending).
+            return { ok: false, status: 401, error: "UNAUTHORIZED" };
+        }
+
         const url = `${this._baseUrl}/${encodeURIComponent(item.database)}/${encodeURIComponent(item.table)}/${encodeURIComponent(item.recordId)}`;
         try {
             const payload = {
@@ -290,6 +337,7 @@ export class ApiCloudStorage implements IStorage {
             table,
             recordId: id,
             scopedId: localId,
+            ownerUserId: this.getUserId() ?? null,
             value: cleanValue,
             baseVersion,
             updatedAt: Date.now(),
@@ -343,6 +391,13 @@ export class ApiCloudStorage implements IStorage {
     }
 
     async page(database: string, table: string, page: number): Promise<any[]> {
+        const uid = this.getUserId();
+        // User-scoped session without a token must not hit the guest namespace.
+        if (uid && !this.readAuthToken()) {
+            Logger.warn("CloudStorage page: user identity present without token; using local fallback only");
+            return this.pageLocalFallback(database, table, page);
+        }
+
         const url = `${this._baseUrl}/${encodeURIComponent(database)}/${encodeURIComponent(table)}?page=${page}&count=20`;
         try {
             const response = await fetch(url, {
@@ -360,20 +415,7 @@ export class ApiCloudStorage implements IStorage {
             return items;
         } catch (err) {
             Logger.warn(`CloudStorage page failed, falling back to IndexedDB: ${String(err)}`);
-            const fallbackItems = (await this._fallback?.page(database, table, page)) ?? [];
-            const uid = this.getUserId();
-            if (uid) {
-                const prefix = `${uid}:`;
-                return fallbackItems
-                    .filter((item: any) => typeof item?.id === "string" && item.id.startsWith(prefix))
-                    .map((item: any) => ({
-                        ...item,
-                        id: item.id.slice(prefix.length),
-                    }));
-            }
-            return fallbackItems.filter(
-                (item: any) => typeof item?.id !== "string" || !item.id.includes(":"),
-            );
+            return this.pageLocalFallback(database, table, page);
         }
     }
 }

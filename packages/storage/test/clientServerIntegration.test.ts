@@ -204,4 +204,145 @@ describe("Real Client <-> Server Integration (Optimistic Locking & 409 Resolutio
         const originalDocStillIntact = await clientA.get("dunvex", "documents", docId);
         expect(originalDocStillIntact.name).toBe("B cập nhật bản 5");
     });
+
+    test("dual session same account: A saves → server ACK → B lists and opens same version", async () => {
+        const origin = baseUrl.replace(/\/api\/storage\/?$/, "");
+        const regA = await fetch(`${origin}/api/auth/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                username: `dual_a_${Date.now()}`,
+                password: "password123",
+                storeName: "Dual A",
+            }),
+        });
+        expect(regA.status).toBe(200);
+        const { token, user } = await regA.json();
+
+        localStorage.setItem("dunvex_auth_token", token);
+        localStorage.setItem("dunvex_auth_user", JSON.stringify(user));
+
+        const clientA = new ApiCloudStorage({
+            baseUrl,
+            getAuthToken: () => localStorage.getItem("dunvex_auth_token") || undefined,
+        });
+        await clientA.createDBIfNeeded("chili3d", ["documents", "recents"]);
+
+        const docId = `dual_${Date.now()}`;
+        const doc = { id: docId, name: "Fixture Dual Session", models: { nodes: [] }, version: "0.7.1" };
+        await clientA.put("chili3d", "documents", docId, doc);
+        await clientA.flushOutbox();
+        expect(clientA.getPendingSyncCount()).toBe(0);
+        expect(await clientA.getVersion("chili3d", `${user.id}:${docId}`)).toBe(1);
+
+        // Client B = second browser session, same account JWT + user id
+        localStorage.setItem("dunvex_auth_token", token);
+        localStorage.setItem("dunvex_auth_user", JSON.stringify(user));
+        const clientB = new ApiCloudStorage({
+            baseUrl,
+            getAuthToken: () => token,
+        });
+        const list = await clientB.page("chili3d", "recents", 0);
+        expect(list.some((r: { id: string }) => r.id === docId)).toBe(true);
+        const loaded = await clientB.get("chili3d", "documents", docId);
+        expect(loaded).toBeDefined();
+        expect(loaded.name).toBe("Fixture Dual Session");
+        expect(await clientB.getVersion("chili3d", `${user.id}:${docId}`)).toBe(1);
+
+        // Prove guest cannot see it
+        localStorage.removeItem("dunvex_auth_token");
+        localStorage.removeItem("dunvex_auth_user");
+        const guest = new ApiCloudStorage({ baseUrl });
+        const guestDoc = await guest.get("chili3d", "documents", docId);
+        expect(guestDoc).toBeUndefined();
+    });
+
+    test("owner isolation on real server: A pending → B login must not land A's doc in B's DB", async () => {
+        const origin = baseUrl.replace(/\/api\/storage\/?$/, "");
+        const stamp = Date.now();
+        const regA = await fetch(`${origin}/api/auth/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                username: `own_a_${stamp}`,
+                password: "password123",
+                storeName: "Own A",
+            }),
+        });
+        const regB = await fetch(`${origin}/api/auth/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                username: `own_b_${stamp}`,
+                password: "password123",
+                storeName: "Own B",
+            }),
+        });
+        expect(regA.status).toBe(200);
+        expect(regB.status).toBe(200);
+        const sessionA = await regA.json();
+        const sessionB = await regB.json();
+
+        localStorage.setItem("dunvex_auth_token", sessionA.token);
+        localStorage.setItem("dunvex_auth_user", JSON.stringify(sessionA.user));
+
+        let allowNetwork = false;
+        const realFetch = globalThis.fetch.bind(globalThis);
+        rs.stubGlobal(
+            "fetch",
+            rs.fn(async (input: string | URL | Request, init?: RequestInit) => {
+                const url = String(input);
+                if (url.includes("/documents/") && init?.method === "PUT" && !allowNetwork) {
+                    return new Response("offline", { status: 503 });
+                }
+                return realFetch(input, init);
+            }),
+        );
+
+        const client = new ApiCloudStorage({
+            baseUrl,
+            getAuthToken: () => localStorage.getItem("dunvex_auth_token") || undefined,
+        });
+        await client.createDBIfNeeded("chili3d", ["documents"]);
+
+        const docId = `own_doc_${stamp}`;
+        await client.put("chili3d", "documents", docId, {
+            id: docId,
+            name: "Secret A only",
+            models: { nodes: [] },
+        });
+        expect(client.getPendingSyncCount()).toBe(1);
+        expect(client.outbox.getPendingItems()[0].ownerUserId).toBe(sessionA.user.id);
+
+        // Switch to B while A's upload is pending
+        localStorage.setItem("dunvex_auth_token", sessionB.token);
+        localStorage.setItem("dunvex_auth_user", JSON.stringify(sessionB.user));
+        allowNetwork = true;
+        await client.flushOutbox();
+        expect(client.getPendingSyncCount()).toBe(1);
+
+        const asB = await realFetch(`${baseUrl}/chili3d/documents/${docId}`, {
+            headers: { Authorization: `Bearer ${sessionB.token}` },
+        });
+        expect(asB.status).toBe(404);
+
+        const asGuest = await realFetch(`${baseUrl}/chili3d/documents/${docId}`);
+        expect(asGuest.status).toBe(404);
+
+        // Re-login A → flush to A's DB only
+        localStorage.setItem("dunvex_auth_token", sessionA.token);
+        localStorage.setItem("dunvex_auth_user", JSON.stringify(sessionA.user));
+        await client.flushOutbox();
+        expect(client.getPendingSyncCount()).toBe(0);
+
+        const asA = await realFetch(`${baseUrl}/chili3d/documents/${docId}`, {
+            headers: { Authorization: `Bearer ${sessionA.token}` },
+        });
+        expect(asA.status).toBe(200);
+        const body = await asA.json();
+        expect(body.name).toBe("Secret A only");
+        expect(body.serverVersion).toBe(1);
+
+        rs.unstubAllGlobals();
+    });
 });
