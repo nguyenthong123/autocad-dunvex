@@ -1,6 +1,6 @@
 # TASK-40 — Quy tắc thiết kế và kiểm chứng agent CAD
 
-Ngày giao việc 06/11/2026. Trạng thái `[?] WAITING_REVIEW` — Đợt B đã bàn giao (bảo vệ nguồn / cổng quyền / nạp quy tắc); chờ Reviewer nghiệm thu SHA trước deploy VPS.
+Ngày giao việc 06/11/2026. Trạng thái `[?] WAITING_REVIEW` — Đợt B đã triển khai kiểm tra trên VPS (tip `c5caebd6` / code `b7db4591`); hậu kiểm Đợt C chưa có hiệu lực. Phương án Đợt C: `docs/tasks/TASK-40-batch-C-implementation-plan.md`.
 
 ## 1. Nhiệm vụ bắt buộc trước khi triển khai
 
@@ -193,4 +193,10 @@ Các nguồn trên dùng để tham khảo cơ chế. Bộ nguyên tắc và ki�
   - Selective inversion; hậu kiểm tiêu chí; bảng dung sai (Đợt C).
   - Lệnh interactive / ngoài `SAFE_DIRECT_COMMANDS`.
 - **Test:** `packages/ai/test/governance/batchBGovernance.test.ts` (+ host) — 25 ca cũ + fingerprint cùng độ dài/cùng timestamp/thêm protected id + quy tắc đổi khi thẻ chờ / sau duyệt.
-- **Deploy VPS:** chưa — chờ Reviewer nghiệm thu SHA mới.
+- **Deploy VPS (06/11/2026):** tip `c5caebd6ac66eb97554d002b51ff4d260e6b163d` / code `b7db4591feed2204c94ebfe33b10aef9953cb6b7` đã đẩy GitHub (`origin/dev`) và triển khai. Endpoint phiên bản thống nhất: `/version.json` + `/deploy-version.json` + file trên VPS (`documentVersion` 0.7.1, `appVersion` 0.8.0). UI status: Đợt B bảo vệ phạm vi; **chưa có hậu kiểm tiêu chí (Đợt C)**.
+- **Kiểm UI thật sau deploy:**
+  1. Sửa/xóa nguồn chưa duyệt → `PERMISSION_DENIED` (bridge `delete_node`/`transform_node`, kể cả `approved:true` model).
+  2. Duyệt một đối tượng chỉ mở đúng phạm vi → ChatPanel-path test tại cùng SHA.
+  3. Đổi quy tắc sau duyệt → `PLAN_INVALIDATED` → ChatPanel-path test tại cùng SHA.
+  4. Thẻ Reject / đổi tài liệu → không cấp quyền (UI thật trên VPS).
+- **Đợt C:** phương án chờ duyệt — `docs/tasks/TASK-40-batch-C-implementation-plan.md`.

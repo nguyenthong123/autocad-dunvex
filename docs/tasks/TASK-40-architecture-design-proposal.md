@@ -258,9 +258,11 @@ Xem `BATCH_B_TOOL_MATRIX` trong `packages/ai/src/governance/toolMatrix.ts` (gate
 ### 9.3. Kiểm thử
 `packages/ai/test/governance/batchBGovernance.test.ts` (+ `host.test.ts`): vượt quyền ChatPanel + bridge, mutation query metadata, ownership theo document, thẻ stale (đổi tài liệu / sửa nguồn / hủy / thay thẻ), ghi sau xen kẽ → `PLAN_INVALIDATED`, fingerprint quy tắc (cùng độ dài Markdown / cùng `Date.now` / thêm `protectedNodeIds`), đổi quy tắc khi thẻ chờ và sau duyệt.
 
-### 9.4. Chưa làm (đúng phạm vi)
-- Đợt C: tiêu chí / hậu kiểm / bảng dung sai
-- Deploy VPS: **chờ Reviewer nghiệm thu SHA** — chưa báo Đợt B đã bảo vệ phạm vi cho đến khi các đường trên được duyệt
+### 9.4. Triển khai kiểm tra Đợt B (06/11/2026)
+- GitHub `origin/dev` = tip `c5caebd6` (code `b7db4591`)
+- VPS `http://136.66.95.155` phục vụ cùng tip; `/version.json` ↔ `/deploy-version.json` ↔ disk đồng bộ
+- **Đợt B đã bảo vệ phạm vi.** Hậu kiểm tiêu chí / bảng dung sai = Đợt C (**chưa hiệu lực**).
+- Phương án Đợt C: [`TASK-40-batch-C-implementation-plan.md`](./TASK-40-batch-C-implementation-plan.md) — chờ Reviewer duyệt trước khi code
 
 ---
-*Đợt B: vòng đời quyền kế hoạch + phiên bản quy tắc đã hoàn tất trong mã. Chờ nghiệm thu SHA trước khi triển khai VPS.*
+*Đợt B đã triển khai kiểm tra trên VPS. Không tuyên bố hậu kiểm Đợt C.*
