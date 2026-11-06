@@ -121,6 +121,11 @@ export const BATCH_B_TOOL_MATRIX: readonly ToolMatrixEntry[] = [
         notes: "UI prompt; unavailable on bridge",
     },
     {
+        tool: "propose_task_plan",
+        support: "read",
+        notes: "Requests UI approval only; model cannot self-approve; unavailable on bridge",
+    },
+    {
         tool: "load_skill",
         support: "read",
         notes: "Read-only skill text",

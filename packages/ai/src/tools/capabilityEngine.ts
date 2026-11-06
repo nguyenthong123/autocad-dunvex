@@ -109,6 +109,11 @@ export function lookupSessionRefNodeId(doc: IDocument, refId: string): string | 
     return node?.id;
 }
 
+/** Test helper: seed a session ref that points at an existing node (no live geometry required). */
+export function seedSessionRefForTests(doc: IDocument, refId: string, nodeId: string): void {
+    sessionRefs(doc).set(refId, { nodeId, kind: "shape", value: {} });
+}
+
 /**
  * Owned ref values replaced while a program runs, released when it commits. They cannot be
  * disposed on the spot: a rollback restores the pre-program registry (restoreRefRegistries),

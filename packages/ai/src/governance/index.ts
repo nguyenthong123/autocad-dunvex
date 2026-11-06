@@ -5,6 +5,17 @@ export { governTool, governTools } from "./governedRouter";
 export { analyzeToolImpact } from "./impactAnalysis";
 export { checkToolPermission, permissionDeniedPayload } from "./permissionGate";
 export {
+    buildProposeTaskPlanTool,
+    confirmProposedPlan,
+    getPlanApprovalHandler,
+    type PlanApprovalDecision,
+    type PlanApprovalHandler,
+    parseTaskPlanProposal,
+    proposalToScope,
+    setPlanApprovalHandler,
+    type TaskPlanProposal,
+} from "./planApproval";
+export {
     clearDesignRulesForTests,
     defaultSafeDesignRules,
     documentRulesKey,
@@ -32,6 +43,8 @@ export {
     approveTaskPlan,
     clearTaskProfile,
     getActiveTaskProfile,
+    getAgentCreatedNodeIds,
+    getTaskProfile,
     invalidateTaskProfile,
     isNodeAllowed,
     isTaskOwned,

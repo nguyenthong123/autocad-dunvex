@@ -2,11 +2,18 @@
 // See LICENSE file in the project root for full license information.
 
 import type { IDocument } from "@chili3d/core";
+import { queryCapabilities } from "../tools/capabilities.generated";
 import { EDIT_METHODS, lookupSessionRefNodeId, normalizeOpArgs } from "../tools/capabilityEngine";
 import { resolveCommandKey, SAFE_DIRECT_COMMANDS } from "../tools/commandTools";
 import { findNode, getDocument } from "../tools/documentContext";
 import { collectSubtreeIds } from "./sourceProtection";
 import type { NodeImpact, ToolImpact } from "./types";
+
+const MUTATE_QUERY_METHODS = new Set(
+    queryCapabilities.filter((cap) => cap.returnKind === "mutate").map((cap) => cap.method),
+);
+
+const QUERY_METHODS = new Set(queryCapabilities.map((cap) => cap.method));
 
 const READ_TOOLS = new Set([
     "get_document_state",
@@ -21,6 +28,7 @@ const READ_TOOLS = new Set([
     "classify_material",
     "load_skill",
     "ask_user",
+    "propose_task_plan",
     "plan_array",
     "export_runtime_error_reports",
     "list_runtime_errors",
@@ -224,11 +232,42 @@ function analyzeRunProgram(args: Record<string, unknown>, doc: IDocument | undef
             };
         }
 
-        const normalized = normalizeOpArgs({ method, args: (op["args"] as Record<string, unknown>) ?? {} });
+        const rawArgs = (op["args"] as Record<string, unknown>) ?? {};
+        const normalized = normalizeOpArgs({ method, args: rawArgs });
         const opId = typeof op["id"] === "string" ? op["id"] : undefined;
 
-        // Query ops: read only; may register refs but do not mutate nodes.
-        if (method.includes(".") || method.startsWith("shape.") || method.startsWith("face.")) {
+        // Mutation queries (curve.reverse, trimmedCurve.setTrim, …): capability metadata,
+        // not "method contains a dot". Resolve the source node and require modify rights.
+        if (MUTATE_QUERY_METHODS.has(method)) {
+            const targetRef = queryTargetRef(op, rawArgs);
+            if (!targetRef) {
+                return {
+                    toolName: "run_program",
+                    impacts,
+                    creates,
+                    kind: "indeterminate",
+                    indeterminateReason: `Mutation query "${method}" requires a target ref`,
+                };
+            }
+            const resolved = resolveImpactRef(targetRef, doc, batchCreated);
+            if (resolved === "indeterminate") {
+                return {
+                    toolName: "run_program",
+                    impacts,
+                    creates,
+                    kind: "indeterminate",
+                    indeterminateReason: `Cannot resolve mutation target "${targetRef}" for "${method}"`,
+                };
+            }
+            if (resolved !== "batch") {
+                impacts.push({ nodeId: resolved, kind: "modify", batchCreated: false });
+            }
+            if (opId) batchCreated.add(opId);
+            continue;
+        }
+
+        // Non-mutating query ops: register result ids only.
+        if (QUERY_METHODS.has(method)) {
             if (opId) batchCreated.add(opId);
             continue;
         }
@@ -541,4 +580,13 @@ function resolveImpactRef(
 function asStringArray(value: unknown): string[] {
     if (!Array.isArray(value)) return [];
     return value.filter((item): item is string => typeof item === "string" && item.length > 0);
+}
+
+/** Target of a query op: top-level `target`, else common arg aliases used by the engine. */
+function queryTargetRef(op: Record<string, unknown>, args: Record<string, unknown>): string | undefined {
+    const candidates = [op["target"], args["target"], args["shape"], args["nodeId"], args["body"]];
+    for (const candidate of candidates) {
+        if (typeof candidate === "string" && candidate.length > 0) return candidate;
+    }
+    return undefined;
 }

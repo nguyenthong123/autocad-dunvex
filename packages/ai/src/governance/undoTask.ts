@@ -14,8 +14,8 @@ const INTERLEAVE_MESSAGE =
  */
 export function noteGovernedMutation(doc?: IDocument): void {
     const active = doc ?? getDocument();
-    const profile = getActiveTaskProfile();
-    if (!active || !profile || profile.status !== "active" || profile.interleaved) return;
+    const profile = getActiveTaskProfile(active);
+    if (!active || !profile || profile.interleaved) return;
 
     const top = active.history.undoTop();
     if (!top) return;
@@ -23,16 +23,7 @@ export function noteGovernedMutation(doc?: IDocument): void {
     const records = profile.taskHistoryRecords as IHistoryRecord[];
     if (records.length > 0 && records[records.length - 1] === top) return;
 
-    // If something else landed on the stack that is not our previous top's successor
-    // in a contiguous chain, the stack was interleaved before this mutation.
-    if (records.length > 0) {
-        const expectedPrev = records[records.length - 1];
-        // Walk: current top should be new; previous undoTop before this write should equal expectedPrev.
-        // We only observe after the write, so verify the new top is not already alien:
-        // if undoCount grew by more than we can attribute, mark interleaved.
-    }
-
-    recordTaskHistoryEntry(top);
+    recordTaskHistoryEntry(top, active);
 }
 
 /**
@@ -41,8 +32,8 @@ export function noteGovernedMutation(doc?: IDocument): void {
  */
 export function detectInterleaving(doc?: IDocument): boolean {
     const active = doc ?? getDocument();
-    const profile = getActiveTaskProfile();
-    if (!active || !profile || profile.status !== "active") return false;
+    const profile = getActiveTaskProfile(active);
+    if (!active || !profile) return false;
     if (profile.interleaved) return true;
 
     const records = profile.taskHistoryRecords as IHistoryRecord[];
@@ -72,7 +63,7 @@ export function undoActiveTask(doc?: IDocument): PermissionDecision & { undone: 
         };
     }
 
-    const profile = getActiveTaskProfile();
+    const profile = getActiveTaskProfile(active);
     if (!profile || profile.taskHistoryRecords.length === 0) {
         return {
             allowed: false,
@@ -129,7 +120,7 @@ export function undoActiveTask(doc?: IDocument): PermissionDecision & { undone: 
  */
 export function checkAgentUndoAllowed(doc?: IDocument): PermissionDecision {
     const active = doc ?? getDocument();
-    const profile = getActiveTaskProfile();
+    const profile = getActiveTaskProfile(active);
     if (!active) {
         return { allowed: true, code: "ALLOWED", message: "ok" };
     }

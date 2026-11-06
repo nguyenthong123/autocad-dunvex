@@ -1,7 +1,7 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
-import { governTools } from "../governance";
+import { buildProposeTaskPlanTool, governTools } from "../governance";
 import type { Tool } from "../llm/types";
 import { buildSkillTool } from "../skills";
 import { buildArrayTools } from "./arrayTools";
@@ -58,5 +58,7 @@ export function buildUngovernedTools(): Tool[] {
         ...buildSessionMemoryTools(),
         ...buildBomTools(),
         ...buildCommandTools(),
+        // Appended: trusted plan-approval request (UI grants rights; model cannot self-approve).
+        buildProposeTaskPlanTool(),
     ];
 }

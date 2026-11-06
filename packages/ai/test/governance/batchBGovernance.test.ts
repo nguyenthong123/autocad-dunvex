@@ -9,22 +9,31 @@ import {
     BATCH_B_TOOL_MATRIX,
     checkToolPermission,
     clearTaskProfile,
+    confirmProposedPlan,
+    getActiveTaskProfile,
     getGovernanceStatus,
+    invalidateTaskProfile,
+    isTaskOwned,
     loadEffectiveDesignRules,
     recordTaskOwnedNodes,
     resetSourceProtectionForTests,
     resetTaskProfileForTests,
     saveAccountDesignRules,
+    setPlanApprovalHandler,
     stripSelfApproval,
     undoActiveTask,
 } from "../../src/governance";
 import { refreshSourceProtection } from "../../src/governance/sourceProtection";
 import { detectInterleaving, noteGovernedMutation } from "../../src/governance/undoTask";
 import { buildTools } from "../../src/tools";
+import { seedSessionRefForTests } from "../../src/tools/capabilityEngine";
 import { createToolHost } from "../../src/tools/host";
 
-function stubDocWithNodes(nodes: Array<{ id: string; name?: string; parent?: unknown }>): IDocument {
-    const doc = createMockDocument();
+function stubDocWithNodes(
+    nodes: Array<{ id: string; name?: string; parent?: unknown }>,
+    overrides: { id?: string } = {},
+): IDocument {
+    const doc = createMockDocument(overrides);
     const list = nodes.map((n) => ({
         id: n.id,
         name: n.name ?? n.id,
@@ -61,6 +70,7 @@ describe("TASK-40 Batch B governance", () => {
 
     afterEach(() => {
         resetTaskProfileForTests();
+        setPlanApprovalHandler(undefined);
         rs.unstubAllGlobals();
     });
 
@@ -294,5 +304,174 @@ describe("TASK-40 Batch B governance", () => {
         expect(status.toleranceTable).toBe("not_applied");
         expect(status.sourceProtection).toBe("active");
         expect(status.permissionGate).toBe("active");
+    });
+
+    test("mutation queries via capability metadata require modify rights on resolved source", () => {
+        const doc = stubDocWithNodes([{ id: "wall-1", name: "Wall" }]);
+        resetSourceProtectionForTests(doc);
+        refreshSourceProtection(doc);
+        seedSessionRefForTests(doc, "edge0", "wall-1");
+
+        const blocked = checkToolPermission(
+            "run_program",
+            {
+                ops: [{ method: "curve.reverse", id: "rev1", target: "edge0", args: {} }],
+            },
+            doc,
+        );
+        expect(blocked.decision.allowed).toBe(false);
+        expect(blocked.decision.code).toBe("PERMISSION_DENIED");
+        expect(blocked.decision.deniedNodeIds).toContain("wall-1");
+
+        const trimBlocked = checkToolPermission(
+            "run_program",
+            {
+                ops: [
+                    {
+                        method: "trimmedCurve.setTrim",
+                        id: "trim1",
+                        target: "edge0",
+                        args: { u1: 0, u2: 1 },
+                    },
+                ],
+            },
+            doc,
+        );
+        expect(trimBlocked.decision.allowed).toBe(false);
+        expect(trimBlocked.decision.deniedNodeIds).toContain("wall-1");
+
+        approveTaskPlan({ allowedModifiedNodeIds: ["wall-1"] }, doc);
+        const allowed = checkToolPermission(
+            "run_program",
+            {
+                ops: [{ method: "curve.reverse", id: "rev2", target: "edge0", args: {} }],
+            },
+            doc,
+        );
+        expect(allowed.decision.allowed).toBe(true);
+    });
+
+    test("read-only queries with dots stay allowed without a plan", () => {
+        const doc = stubDocWithNodes([{ id: "wall-1", name: "Wall" }]);
+        resetSourceProtectionForTests(doc);
+        refreshSourceProtection(doc);
+        seedSessionRefForTests(doc, "edge0", "wall-1");
+
+        const decision = checkToolPermission(
+            "run_program",
+            {
+                ops: [{ method: "edge.length", id: "len1", target: "edge0", args: {} }],
+            },
+            doc,
+        );
+        expect(decision.decision.allowed).toBe(true);
+    });
+
+    test("invalidated plan and document change revoke isTaskOwned rights", () => {
+        const docA = stubDocWithNodes([{ id: "src-a" }], { id: "doc-a" });
+        resetSourceProtectionForTests(docA);
+        refreshSourceProtection(docA);
+        approveTaskPlan({ allowedModifiedNodeIds: ["src-a"] }, docA);
+        recordTaskOwnedNodes(["owned-1"], docA);
+        expect(isTaskOwned("owned-1", docA)).toBe(true);
+
+        invalidateTaskProfile("test invalidate");
+        expect(getActiveTaskProfile(docA)).toBeUndefined();
+        expect(isTaskOwned("owned-1", docA)).toBe(false);
+
+        const afterInvalidate = checkToolPermission("delete_node", { id: "src-a" }, docA);
+        expect(afterInvalidate.decision.allowed).toBe(false);
+
+        // Fresh plan on doc A, then switch active document — rights must not carry over.
+        approveTaskPlan({ allowedModifiedNodeIds: ["src-a"] }, docA);
+        recordTaskOwnedNodes(["owned-2"], docA);
+        expect(isTaskOwned("owned-2", docA)).toBe(true);
+
+        const docB = stubDocWithNodes([{ id: "src-b" }], { id: "doc-b" });
+        resetSourceProtectionForTests(docB);
+        refreshSourceProtection(docB);
+        expect(getActiveTaskProfile(docB)).toBeUndefined();
+        expect(isTaskOwned("owned-2", docB)).toBe(false);
+
+        // Prior task-owned id appears on another document without an active matching plan → protected.
+        const nodes: any[] = [
+            { id: "src-b", name: "B", parent: { remove: rs.fn() } },
+            { id: "owned-2", name: "Owned", parent: { remove: rs.fn() } },
+        ];
+        (docB.modelManager as any).findNodes = (pred?: (n: any) => boolean) =>
+            typeof pred === "function" ? nodes.filter(pred) : [...nodes];
+        (docB.modelManager as any).findNodesDeep = (docB.modelManager as any).findNodes;
+        const blockedOwned = checkToolPermission("delete_node", { id: "owned-2" }, docB);
+        expect(blockedOwned.decision.allowed).toBe(false);
+        expect(blockedOwned.decision.code).toBe("PERMISSION_DENIED");
+    });
+
+    test("user-approved single-object plan only unlocks that object", () => {
+        const doc = stubDocWithNodes([
+            { id: "wall-1", name: "Wall1" },
+            { id: "wall-2", name: "Wall2" },
+        ]);
+        resetSourceProtectionForTests(doc);
+        refreshSourceProtection(doc);
+
+        // Trusted UI path (confirmProposedPlan), not model self-approval.
+        confirmProposedPlan({
+            goal: "edit one wall",
+            allowedModifiedNodeIds: ["wall-1"],
+            allowedDeletedNodeIds: [],
+            allowedConsumedNodeIds: [],
+            allowedTreeNodeIds: [],
+        });
+
+        expect(checkToolPermission("transform_node", { id: "wall-1" }, doc).decision.allowed).toBe(true);
+        expect(checkToolPermission("transform_node", { id: "wall-2" }, doc).decision.allowed).toBe(false);
+        expect(checkToolPermission("delete_node", { id: "wall-1" }, doc).decision.allowed).toBe(false);
+    });
+
+    test("propose_task_plan grants rights only through trusted UI handler", async () => {
+        const doc = stubDocWithNodes([{ id: "wall-1" }]);
+        resetSourceProtectionForTests(doc);
+        refreshSourceProtection(doc);
+
+        const tool = buildTools().find((t) => t.name === "propose_task_plan")!;
+        setPlanApprovalHandler(undefined);
+        const noUi = JSON.parse(
+            (await tool.handler({
+                goal: "cut",
+                allowedConsumedNodeIds: ["wall-1"],
+                approved: true,
+            })) as string,
+        );
+        expect(noUi.approved).toBe(false);
+        expect(getActiveTaskProfile(doc)).toBeUndefined();
+
+        setPlanApprovalHandler(async (proposal) => {
+            // Handler is the trusted path — it alone may confirm.
+            return { approved: true, profile: confirmProposedPlan(proposal) };
+        });
+        const ok = JSON.parse(
+            (await tool.handler({
+                goal: "cut",
+                allowedConsumedNodeIds: ["wall-1"],
+                force: true,
+            })) as string,
+        );
+        expect(ok.approved).toBe(true);
+        expect(ok.allowedConsumedNodeIds).toEqual(["wall-1"]);
+        expect(checkToolPermission("delete_node", { id: "wall-1" }, doc).decision.allowed).toBe(false);
+        expect(
+            checkToolPermission(
+                "run_program",
+                {
+                    ops: [
+                        { method: "box", id: "c", args: { dx: 1, dy: 1, dz: 1 } },
+                        { method: "booleanCut", args: { shape1: "wall-1", shape2: "c" } },
+                    ],
+                },
+                doc,
+            ).decision.allowed,
+        ).toBe(true);
+
+        setPlanApprovalHandler(undefined);
     });
 });

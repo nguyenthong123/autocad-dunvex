@@ -4,14 +4,14 @@
 import { getDocument } from "../tools/documentContext";
 import { loadEffectiveDesignRules } from "./rulesStore";
 import { getProtectedNodeIds } from "./sourceProtection";
-import { getActiveTaskProfile } from "./taskProfile";
+import { getActiveTaskProfile, getTaskProfile } from "./taskProfile";
 import type { GovernanceStatus } from "./types";
 
 /** Accurate Batch B status for UI — does not claim Batch C verification or tolerance tables. */
 export function getGovernanceStatus(): GovernanceStatus {
     const doc = getDocument();
     const { missingLink, scope } = loadEffectiveDesignRules(doc?.id);
-    const profile = getActiveTaskProfile();
+    const profile = getActiveTaskProfile(doc) ?? getTaskProfile();
     return {
         batch: "B",
         sourceProtection: "active",

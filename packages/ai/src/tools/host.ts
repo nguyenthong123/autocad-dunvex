@@ -36,7 +36,7 @@ export interface ToolHost {
  * card, and the calling agent has a conversation of its own to ask in — over the bridge it would
  * return a "no panel" error as a success, or block on a card the user is not expecting.
  */
-const BRIDGE_UNSUPPORTED = new Set(["ask_user"]);
+const BRIDGE_UNSUPPORTED = new Set(["ask_user", "propose_task_plan"]);
 
 export function createToolHost(): ToolHost {
     // Built once per host. That is not the same promise the chat panel makes — it rebuilds

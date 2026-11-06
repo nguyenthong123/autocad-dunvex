@@ -6,7 +6,7 @@ import { getDocument } from "../tools/documentContext";
 import { analyzeToolImpact } from "./impactAnalysis";
 import { stripSelfApproval } from "./selfApproval";
 import { absorbForeignNodes, ensureSourceProtection, isSourceProtected } from "./sourceProtection";
-import { getActiveTaskProfile, isNodeAllowed, isTaskOwned } from "./taskProfile";
+import { getActiveTaskProfile, getAgentCreatedNodeIds, isNodeAllowed, isTaskOwned } from "./taskProfile";
 import type { PermissionDecision, ToolImpact } from "./types";
 
 /**
@@ -20,8 +20,9 @@ export function checkToolPermission(
 ): { decision: PermissionDecision; impact: ToolImpact; cleanArgs: Record<string, unknown> } {
     const cleanArgs = stripSelfApproval(args);
     const active = ensureSourceProtection(doc ?? getDocument());
-    const profile = getActiveTaskProfile();
-    absorbForeignNodes(profile?.taskOwnedNodeIds ?? [], active);
+    const profile = getActiveTaskProfile(active);
+    const exempt = new Set<string>([...getAgentCreatedNodeIds(active), ...(profile?.taskOwnedNodeIds ?? [])]);
+    absorbForeignNodes(exempt, active);
     const impact = analyzeToolImpact(toolName, cleanArgs, active);
 
     if (
@@ -65,8 +66,7 @@ export function checkToolPermission(
     }
 
     if (impact.kind === "material_library") {
-        const profile = getActiveTaskProfile();
-        if (profile?.status === "active" && profile.allowMaterialLibrary) {
+        if (profile?.allowMaterialLibrary) {
             return {
                 decision: { allowed: true, code: "ALLOWED", message: "ok" },
                 impact,
@@ -86,8 +86,7 @@ export function checkToolPermission(
     }
 
     if (impact.kind === "document_variable") {
-        const profile = getActiveTaskProfile();
-        if (profile?.status === "active" && profile.allowDocumentVariables) {
+        if (profile?.allowDocumentVariables) {
             return {
                 decision: { allowed: true, code: "ALLOWED", message: "ok" },
                 impact,
@@ -108,7 +107,7 @@ export function checkToolPermission(
 
     const denied: string[] = [];
     for (const item of impact.impacts) {
-        if (item.batchCreated || isTaskOwned(item.nodeId)) continue;
+        if (item.batchCreated || isTaskOwned(item.nodeId, active)) continue;
         if (!isSourceProtected(item.nodeId, active)) continue;
 
         const kind =
@@ -120,7 +119,7 @@ export function checkToolPermission(
                     ? "tree"
                     : "modify";
 
-        if (!isNodeAllowed(item.nodeId, kind)) {
+        if (!isNodeAllowed(item.nodeId, kind, active)) {
             denied.push(item.nodeId);
         }
     }

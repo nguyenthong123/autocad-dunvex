@@ -179,11 +179,16 @@ Các nguồn trên dùng để tham khảo cơ chế. Bộ nguyên tắc và ki�
 
 ## 5. Nhật ký Thực thi & Báo cáo Thay đổi (Execution Log)
 
-- **Thời điểm:** 06/11/2026 (GMT+7). **SHA bàn giao:** `aa136320` (`aa136320ad73df8be24f2e45b37f3b85b8d3922a`). **Mốc Đợt A:** `1a527bacdcee`.
-- **Phạm vi Đợt B có hiệu lực bằng mã:**
-  - `packages/ai/src/governance/` — `governTools`, permission gate, source protection, task profile (`approveTaskPlan`), ObjectStorage rules, contiguous undo task, tool matrix, status UI.
-  - `packages/ai/src/tools/index.ts` — ChatPanel + bridge cùng một registry đã bọc governance.
-  - `capabilityEngine` exports `normalizeOpArgs` / `lookupSessionRefNodeId`; `commandTools` timeout trung thực; prompt + ChatPanel status Đợt B.
-- **Chưa có hiệu lực (Đợt C):** hậu kiểm tiêu chí, bảng dung sai Mục 5.2 đề xuất, selective inversion.
-- **Test:** `packages/ai/test/governance/batchBGovernance.test.ts` (+ regression host/command/prompt/agentLoop/runtimeErrorReporter).
-- **Deploy VPS:** chưa — chờ Reviewer duyệt SHA.
+- **Thời điểm:** 06/11/2026 (GMT+7). **SHA bàn giao:** điền sau commit follow-up reviewer. **Mốc Đợt A:** `1a527bacdcee`. **SHA trước đó:** `aa136320` / tip `492f4e62` (chưa duyệt VPS).
+- **Phạm vi bảo vệ thực sự đã có hiệu lực:**
+  - Cổng chung ChatPanel + bridge; nguồn mặc định bảo vệ; quyền chỉ từ kế hoạch UI duyệt (`confirmProposedPlan` / `approveTaskPlan` — model không tự duyệt).
+  - Mutation query (`returnKind: "mutate"`, ví dụ `curve.reverse`, `trimmedCurve.setTrim`) resolve nguồn và kiểm modify — không còn coi mọi method có dấu `.` là chỉ đọc.
+  - `isTaskOwned` / mọi quyền chỉ khi profile `active`, đúng `documentId`; invalidated hoặc đổi tài liệu → hết quyền.
+  - UI `propose_task_plan` + thẻ duyệt trên ChatPanel; bridge không có tool này.
+  - ObjectStorage rules; Undo chuỗi liên tiếp; async timeout ≠ mutation dừng.
+- **Đường còn bị chặn / chưa có:**
+  - Bridge: không duyệt kế hoạch UI (`propose_task_plan` unsupported) — agent ngoài phải dùng ChatPanel hoặc API UI tin cậy.
+  - Selective inversion; hậu kiểm tiêu chí; bảng dung sai (Đợt C).
+  - Lệnh interactive / ngoài `SAFE_DIRECT_COMMANDS`.
+- **Test:** `packages/ai/test/governance/batchBGovernance.test.ts` (+ host/command/prompt/capabilityEngine/agentLoop).
+- **Deploy VPS:** chưa — chờ Reviewer nghiệm thu SHA mới.

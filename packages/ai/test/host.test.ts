@@ -9,11 +9,20 @@ describe("tool host", () => {
             .list()
             .map((tool) => tool.name);
         expect(names).not.toContain("ask_user");
+        expect(names).not.toContain("propose_task_plan");
         expect(names).toContain("run_program");
     });
 
     test("explains that ask_user is unavailable rather than reporting it as unknown", async () => {
         const reply = await createToolHost().call("ask_user", { question: "keep or discard?" });
+        expect(reply.ok).toBe(false);
+        expect(reply.content).toContain("not available over the bridge");
+    });
+
+    test("explains that propose_task_plan is unavailable on the bridge", async () => {
+        const reply = await createToolHost().call("propose_task_plan", {
+            allowedModifiedNodeIds: ["n1"],
+        });
         expect(reply.ok).toBe(false);
         expect(reply.content).toContain("not available over the bridge");
     });

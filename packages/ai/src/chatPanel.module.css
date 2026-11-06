@@ -1162,6 +1162,14 @@
     line-height: 1.5;
 }
 
+.planScopeLine {
+    font-weight: 400;
+    font-size: 11px;
+    margin-top: 4px;
+    color: var(--foreground-muted-color, var(--foreground-color));
+    line-height: 1.4;
+}
+
 .askStop {
     flex: 0 0 auto;
     display: flex;

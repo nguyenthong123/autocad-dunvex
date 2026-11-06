@@ -30,7 +30,12 @@ import {
 import { marked, type Tokens } from "marked";
 import style from "./chatPanel.module.css";
 import { isStreamParseError, listRuntimeErrorReports, recordRuntimeError } from "./diagnostics";
-import { formatGovernanceStatusLine } from "./governance";
+import {
+    confirmProposedPlan,
+    formatGovernanceStatusLine,
+    setPlanApprovalHandler,
+    type TaskPlanProposal,
+} from "./governance";
 import {
     conversationTitle,
     messageParts,
@@ -613,6 +618,8 @@ export class ChatPanel extends HTMLElement {
         this.openDocument(getDocument());
         // The ask_user tool reaches its card through here; see tools/askUser.ts for the channel.
         setAskHandler((request, signal) => this.askUser(request, signal));
+        // Trusted plan approval: only this UI path may call approveTaskPlan / confirmProposedPlan.
+        setPlanApprovalHandler((proposal, signal) => this.approveTaskPlanWithUser(proposal, signal));
         // Subscribed once, for the panel's whole life: floating mode detaches by moving this node
         // between parents, so a connect/disconnect pair would re-subscribe on every drag.
         PubSub.default.sub("activeViewChanged", this.onActiveViewChanged);
@@ -2565,6 +2572,123 @@ export class ChatPanel extends HTMLElement {
         if (nodes.length === 0) return;
         document.selection.setSelectedNodes(nodes, false);
         document.application?.activeView?.cameraController.fitContent({ duration: CAMERA_FLY_DURATION });
+    }
+
+    /**
+     * Trusted UI for propose_task_plan: show scope, approve only on explicit user click.
+     * Model-supplied approved/force flags never reach confirmProposedPlan.
+     */
+    private approveTaskPlanWithUser(
+        proposal: TaskPlanProposal,
+        signal?: AbortSignal,
+    ): Promise<import("./governance").PlanApprovalDecision> {
+        this.sealStream();
+        this.clearThinking();
+        const card = this.buildPlanApprovalCard(proposal);
+        this.pinAskCard(card);
+
+        return new Promise((resolve) => {
+            const finish = (decision: import("./governance").PlanApprovalDecision, label: string) => {
+                if (this.settleAsk !== settleBridge) return;
+                this.settleAsk = undefined;
+                this.turnParts.push({
+                    type: "ask",
+                    question: proposal.goal ?? proposal.summary ?? "Task plan approval",
+                    answer: label,
+                });
+                this.markAskAnswered(card, label);
+                this.unpinAskCard(card);
+                if (decision.approved) this.showThinking();
+                resolve(decision);
+            };
+            const settleBridge = (answer: string) => {
+                // ask_user settle path is reused only for interrupt markers.
+                finish({ approved: false, reason: answer }, answer);
+            };
+            this.settleAsk = settleBridge;
+
+            const approveBtn = card.querySelector("[data-plan-approve]") as HTMLButtonElement | null;
+            const rejectBtn = card.querySelector("[data-plan-reject]") as HTMLButtonElement | null;
+            approveBtn?.addEventListener(
+                "click",
+                () => {
+                    try {
+                        const profile = confirmProposedPlan(proposal);
+                        finish({ approved: true, profile }, "Approved");
+                    } catch (error) {
+                        const message = error instanceof Error ? error.message : String(error);
+                        finish({ approved: false, reason: message }, message);
+                    }
+                },
+                { once: true },
+            );
+            rejectBtn?.addEventListener(
+                "click",
+                () => finish({ approved: false, reason: "User rejected the plan" }, "Rejected"),
+                { once: true },
+            );
+
+            const onAbort = () =>
+                finish({ approved: false, reason: ASK_INTERRUPTED }, I18n.translate("ai.ask.notAnswered"));
+            if (signal?.aborted) onAbort();
+            else signal?.addEventListener("abort", onAbort, { once: true });
+        });
+    }
+
+    private buildPlanApprovalCard(proposal: TaskPlanProposal): HTMLElement {
+        const lines = [
+            proposal.goal ? `Goal: ${proposal.goal}` : undefined,
+            proposal.summary ? proposal.summary : undefined,
+            proposal.allowedModifiedNodeIds.length
+                ? `Modify: ${proposal.allowedModifiedNodeIds.join(", ")}`
+                : undefined,
+            proposal.allowedDeletedNodeIds.length
+                ? `Delete: ${proposal.allowedDeletedNodeIds.join(", ")}`
+                : undefined,
+            proposal.allowedConsumedNodeIds.length
+                ? `Consume: ${proposal.allowedConsumedNodeIds.join(", ")}`
+                : undefined,
+            proposal.allowedTreeNodeIds.length
+                ? `Tree: ${proposal.allowedTreeNodeIds.join(", ")}`
+                : undefined,
+            proposal.allowMaterialLibrary ? "Material library: yes" : undefined,
+            proposal.allowDocumentVariables ? "Document variables: yes" : undefined,
+        ].filter(Boolean) as string[];
+
+        const body = div({ className: style.askQuestion });
+        body.append(
+            div({ textContent: "Approve source-edit plan?" }),
+            ...lines.map((line) => div({ className: style.planScopeLine, textContent: line })),
+        );
+
+        const approve = button({
+            className: style.askOption,
+            textContent: "Approve",
+        });
+        approve.dataset["planApprove"] = "1";
+        const reject = button({
+            className: style.askOption,
+            textContent: "Reject",
+        });
+        reject.dataset["planReject"] = "1";
+        const actions = div({ className: style.askOptions }, approve, reject);
+
+        return div(
+            { className: style.askCard },
+            div(
+                { className: style.askHeader },
+                body,
+                button(
+                    {
+                        className: style.askStop,
+                        title: I18n.translate("ai.stop"),
+                        onclick: () => this.interrupt(),
+                    },
+                    svg({ className: style.askStopIcon, icon: "icon-times" }),
+                ),
+            ),
+            actions,
+        );
     }
 
     /**
