@@ -179,7 +179,7 @@ Các nguồn trên dùng để tham khảo cơ chế. Bộ nguyên tắc và ki�
 
 ## 5. Nhật ký Thực thi & Báo cáo Thay đổi (Execution Log)
 
-- **Thời điểm:** 06/11/2026 (GMT+7). **SHA bàn giao:** điền sau commit (`git rev-parse --short HEAD`). **Mốc Đợt A:** `1a527bacdcee`.
+- **Thời điểm:** 06/11/2026 (GMT+7). **SHA bàn giao:** `aa136320` (`aa136320ad73df8be24f2e45b37f3b85b8d3922a`). **Mốc Đợt A:** `1a527bacdcee`.
 - **Phạm vi Đợt B có hiệu lực bằng mã:**
   - `packages/ai/src/governance/` — `governTools`, permission gate, source protection, task profile (`approveTaskPlan`), ObjectStorage rules, contiguous undo task, tool matrix, status UI.
   - `packages/ai/src/tools/index.ts` — ChatPanel + bridge cùng một registry đã bọc governance.
