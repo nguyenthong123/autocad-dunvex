@@ -102,51 +102,16 @@ const NUDGE_AFTER_PROMISE =
 
 export const MAX_EMPTY_READ_NUDGES = 1;
 
-export const NUDGE_AFTER_EMPTY_READ_MODELING =
-    "You inspected the document state for the user's modeling request but produced no geometry or response. " +
-    "Based on the document state, proceed with the requested modeling steps using run_program or run_parametric, " +
-    "or explain clearly if specific dimensions or parameters are required.";
-
-export const NUDGE_AFTER_EMPTY_READ_INFO =
-    "You inspected the document state to answer the user's question, but produced no response. " +
-    "Based on the document state you just read, answer the user's question directly within the requested scope. " +
-    "Do not modify the document or execute write tools.";
-
-export const NUDGE_AFTER_EMPTY_READ = NUDGE_AFTER_EMPTY_READ_MODELING;
-
-export function isInformationalQuery(text: string): boolean {
-    const trimmed = text.trim();
-    if (!trimmed) return false;
-
-    // Normalize out common nouns containing action substrings: "bản vẽ" (the drawing), "mô hình" (this model)
-    const actionProbe = trimmed.replace(/bản\s+vẽ/gi, "").replace(/mô\s+hình/gi, "");
-
-    const hasModelingIntent =
-        /\b(build|create|make|add|draw|construct|modify|edit|apply|extrude|revolve|fillet|chamfer|cut|subtract|fuse|combine|generate|sketch)\b/i.test(
-            actionProbe,
-        ) ||
-        /(?:^|[\s,.:;?!])(dựng|tạo|vẽ|thiết kế|khoét|cắt|bo\s+góc|vát\s+mép|thêm|sửa|xóa|đùn|làm\s+dày)(?:$|[\s,.:;?!])/i.test(
-            actionProbe,
-        ) ||
-        /(创建|建|画|做|拉伸|旋转|切割|切|加|修改|放|生成)/.test(actionProbe);
-
-    if (hasModelingIntent) return false;
-
-    return (
-        /[?？]\s*$/.test(trimmed) ||
-        /\b(what|which|how many|how much|count|list|show|tell me|explain|describe|check|inspect|find)\b/i.test(
-            trimmed,
-        ) ||
-        /(bao nhiêu|là gì|thế nào|sao|đâu|nào|mấy|liệt kê|danh sách|cho biết|thông tin|kiểm tra|tìm)/i.test(
-            trimmed,
-        ) ||
-        /(多少|什么|哪些|列出|查看|查询|是否存在)/.test(trimmed)
-    );
-}
-
-export function getNudgeAfterEmptyRead(userPrompt: string): string {
-    return isInformationalQuery(userPrompt) ? NUDGE_AFTER_EMPTY_READ_INFO : NUDGE_AFTER_EMPTY_READ_MODELING;
-}
+/**
+ * Recovery text for a turn that called a read tool (e.g. get_document_state) to inspect the scene
+ * but then returned an empty response. A single generic nudge instructs the model to fulfill the
+ * user's original request within the requested scope, performing only explicit actions or asking for
+ * clarification while preserving read-only queries, negative constraints, and unclear intent.
+ */
+export const NUDGE_AFTER_EMPTY_READ =
+    "You inspected the document state but produced no response. " +
+    "Continue with the user's original request: answer their question, perform only the actions explicitly requested, " +
+    "or ask for any missing information. Preserve read-only queries, negative constraints, and unclear intent without executing unrequested modifications.";
 
 /** What one streamed model turn produced — what the loop reads, and `endingOf` judges. */
 interface TurnParts {
@@ -287,12 +252,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
             }
             if (ending.kind === "empty-read") {
                 state.emptyReadNudges++;
-                const lastUserMsg = [...runOpts.messages]
-                    .reverse()
-                    .find((m) => m.role === "user" && !m.synthetic);
-                const userText = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
-                const nudgePrompt = getNudgeAfterEmptyRead(userText);
-                runOpts.messages.push({ role: "user", content: nudgePrompt, synthetic: true });
+                runOpts.messages.push({ role: "user", content: NUDGE_AFTER_EMPTY_READ, synthetic: true });
                 continue;
             }
             if (turn.toolCalls.length === 0) {

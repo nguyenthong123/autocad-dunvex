@@ -8,11 +8,8 @@ import { clearRuntimeErrorReports, listRuntimeErrorReports, normalizeStopReason 
 import {
     type ChatCallbacks,
     endingOf,
-    isInformationalQuery,
     MAX_EMPTY_READ_NUDGES,
     NUDGE_AFTER_EMPTY_READ,
-    NUDGE_AFTER_EMPTY_READ_INFO,
-    NUDGE_AFTER_EMPTY_READ_MODELING,
     NUDGE_AFTER_UNVERIFIED_WRITE,
     runAgent,
 } from "../src/llm/agent";
@@ -65,7 +62,7 @@ function setupTestEnvironment() {
 }
 
 describe("Empty Response Recovery and Diagnostics after Read Tool", () => {
-    test("Requirement 1: calling get_document_state alone does NOT create or overwrite lastVerification", async () => {
+    test("Requirement 1: calling get_document_state alone does NOT create or overwrite lastVerification [ScriptedLLMProvider]", async () => {
         setupTestEnvironment();
         const provider = new ScriptedLLMProvider([
             {
@@ -94,7 +91,7 @@ describe("Empty Response Recovery and Diagnostics after Read Tool", () => {
         expect(mem.lastVerification).toBeUndefined();
     });
 
-    test("Requirement 1: calling get_document_state after a write tool does NOT satisfy verification", async () => {
+    test("Requirement 1: calling get_document_state after a write tool does NOT satisfy verification [ScriptedLLMProvider]", async () => {
         setupTestEnvironment();
         const provider = new ScriptedLLMProvider([
             // Turn 1: write op
@@ -154,7 +151,7 @@ describe("Empty Response Recovery and Diagnostics after Read Tool", () => {
         expect(mem.lastVerification?.summary).toBe("UNVERIFIED");
     });
 
-    test("Requirement 3 & 5: empty response after get_document_state triggers recovery and succeeds on retry", async () => {
+    test("Requirement 3 & 5: empty response after get_document_state triggers recovery and succeeds on retry [ScriptedLLMProvider]", async () => {
         setupTestEnvironment();
         const provider = new ScriptedLLMProvider([
             // Turn 1: model reads document state
@@ -168,7 +165,7 @@ describe("Empty Response Recovery and Diagnostics after Read Tool", () => {
                 text: "",
                 stopReason: "end_turn",
             },
-            // Turn 3: after recovery nudge, model explains what is needed or executes
+            // Turn 3: after generic recovery nudge, model explains what is needed or executes
             {
                 type: "text",
                 text: "Dự án dùng đơn vị mm. Vui lòng xác định độ dày 10 là 10mm hay 100mm.",
@@ -186,11 +183,13 @@ describe("Empty Response Recovery and Diagnostics after Read Tool", () => {
             callbacks: nullCallbacks,
         });
 
-        // Synthetic recovery message was injected
+        // Synthetic recovery message was injected using NUDGE_AFTER_EMPTY_READ
         const recoveryNudges = messages.filter(
-            (m) => m.role === "user" && m.content === NUDGE_AFTER_EMPTY_READ_MODELING,
+            (m): m is Extract<ChatMessage, { role: "user" }> =>
+                m.role === "user" && m.content === NUDGE_AFTER_EMPTY_READ,
         );
         expect(recoveryNudges.length).toBe(1);
+        expect(recoveryNudges[0].synthetic).toBe(true);
 
         // Assistant final message contains the explanation
         const lastMsg = messages[messages.length - 1];
@@ -198,31 +197,29 @@ describe("Empty Response Recovery and Diagnostics after Read Tool", () => {
         expect(lastMsg.content).toContain("Dự án dùng đơn vị mm");
     });
 
-    test("Requirement 3: informational query -> read tool -> empty turn -> recovery asks only for answer within scope without write tools", async () => {
+    test("Recovery preserves read-only explanation scope for 'giải thích cách tạo tường' without write commands [ScriptedLLMProvider]", async () => {
         setupTestEnvironment();
         const provider = new ScriptedLLMProvider([
-            // Turn 1: model reads document state
+            // Turn 1: model inspects document
             {
                 type: "tool_calls",
                 calls: [{ name: "get_document_state", args: {} }],
             },
-            // Turn 2: model returns empty text
+            // Turn 2: model returns empty turn
             {
                 type: "text",
                 text: "",
                 stopReason: "end_turn",
             },
-            // Turn 3: after informational nudge, model answers the question
+            // Turn 3: model responds after generic recovery nudge
             {
                 type: "text",
-                text: "Hiện tại bản vẽ không có đối tượng nào.",
+                text: "Để tạo tường trong mô hình, bạn có thể phác thảo profile hoặc dùng lệnh dựng hình với kích thước mong muốn. Bản vẽ hiện tại chưa có tường nào.",
                 stopReason: "end_turn",
             },
         ]);
 
-        const messages: ChatMessage[] = [
-            { role: "user", content: "Bản vẽ hiện tại có bao nhiêu đối tượng?" },
-        ];
+        const messages: ChatMessage[] = [{ role: "user", content: "giải thích cách tạo tường" }];
         await runAgent({
             provider,
             config: { model: "claude-opus-5", provider: "anthropic" } as any,
@@ -232,20 +229,142 @@ describe("Empty Response Recovery and Diagnostics after Read Tool", () => {
             callbacks: nullCallbacks,
         });
 
-        // Synthetic recovery message was the informational one
-        const recoveryNudges = messages.filter((m) => m.role === "user" && m.synthetic);
-        expect(recoveryNudges.length).toBe(1);
-        expect(recoveryNudges[0].content).toBe(NUDGE_AFTER_EMPTY_READ_INFO);
-        expect(recoveryNudges[0].content).not.toContain("run_program");
-        expect(recoveryNudges[0].content).toContain("Do not modify the document");
+        // Check actual payload passed to provider in Turn 3
+        expect(provider.recordedTurns.length).toBe(3);
+        const turn3Messages = provider.recordedTurns[2].messages;
+        const injectedNudge = turn3Messages[turn3Messages.length - 2];
+        expect(injectedNudge.role).toBe("user");
+        if (injectedNudge.role === "user") {
+            expect(injectedNudge.synthetic).toBe(true);
+        }
+        expect(injectedNudge.content).toBe(NUDGE_AFTER_EMPTY_READ);
 
-        // Assistant final message answers the question
+        // Verify nudge payload content maintains strict boundaries:
+        const nudgeContent = injectedNudge.content as string;
+        expect(nudgeContent).toContain("Continue with the user's original request");
+        expect(nudgeContent).toContain(
+            "Preserve read-only queries, negative constraints, and unclear intent",
+        );
+        expect(nudgeContent).toContain("without executing unrequested modifications");
+        expect(nudgeContent).not.toContain("run_program");
+        expect(nudgeContent).not.toContain("run_parametric");
+
+        // Assistant final message answers the explanation without modifying geometry
         const lastMsg = messages[messages.length - 1];
         expect(lastMsg.role).toBe("assistant");
-        expect(lastMsg.content).toContain("Hiện tại bản vẽ không có đối tượng nào.");
+        expect(lastMsg.content).toContain("Để tạo tường trong mô hình");
+        expect(getSessionMemory().lastVerification).toBeUndefined();
     });
 
-    test("Requirement 3 & 5: empty response after get_document_state exhausts recovery -> displays actionable message and records diagnostic", async () => {
+    test("Recovery preserves negative constraint for 'đừng xóa, chỉ kiểm tra' without executing deletion [ScriptedLLMProvider]", async () => {
+        setupTestEnvironment();
+        const provider = new ScriptedLLMProvider([
+            // Turn 1: model reads document state
+            {
+                type: "tool_calls",
+                calls: [{ name: "get_document_state", args: {} }],
+            },
+            // Turn 2: model returns empty turn
+            {
+                type: "text",
+                text: "",
+                stopReason: "end_turn",
+            },
+            // Turn 3: model adheres to negative instruction and reports status without deleting
+            {
+                type: "text",
+                text: "Đã kiểm tra tài liệu: tất cả đối tượng đều nguyên vẹn, không có thao tác xóa nào được thực hiện.",
+                stopReason: "end_turn",
+            },
+        ]);
+
+        const messages: ChatMessage[] = [{ role: "user", content: "đừng xóa, chỉ kiểm tra" }];
+        await runAgent({
+            provider,
+            config: { model: "claude-opus-5", provider: "anthropic" } as any,
+            system: { stable: "system-test", volatile: "" },
+            messages,
+            tools: buildTools(),
+            callbacks: nullCallbacks,
+        });
+
+        // Check actual payload passed to provider in Turn 3
+        expect(provider.recordedTurns.length).toBe(3);
+        const turn3Messages = provider.recordedTurns[2].messages;
+        const injectedNudge = turn3Messages[turn3Messages.length - 2];
+        expect(injectedNudge.role).toBe("user");
+        if (injectedNudge.role === "user") {
+            expect(injectedNudge.synthetic).toBe(true);
+        }
+        expect(injectedNudge.content).toBe(NUDGE_AFTER_EMPTY_READ);
+
+        // Verify negative constraint preservation in prompt payload
+        const nudgeContent = injectedNudge.content as string;
+        expect(nudgeContent).toContain("negative constraints");
+        expect(nudgeContent).toContain("without executing unrequested modifications");
+
+        // Assistant confirms check without deleting anything
+        const lastMsg = messages[messages.length - 1];
+        expect(lastMsg.role).toBe("assistant");
+        expect(lastMsg.content).toContain("không có thao tác xóa nào được thực hiện");
+        expect(getSessionMemory().lastVerification).toBeUndefined();
+    });
+
+    test("Recovery handles unclear intent by asking for missing info instead of assuming modeling [ScriptedLLMProvider]", async () => {
+        setupTestEnvironment();
+        const provider = new ScriptedLLMProvider([
+            // Turn 1: model reads document state
+            {
+                type: "tool_calls",
+                calls: [{ name: "get_document_state", args: {} }],
+            },
+            // Turn 2: model returns empty turn
+            {
+                type: "text",
+                text: "",
+                stopReason: "end_turn",
+            },
+            // Turn 3: model asks for clarification
+            {
+                type: "text",
+                text: "Tôi đã kiểm tra trạng thái tài liệu hiện tại. Bạn muốn kiểm tra thông số chi tiết hay dựng thêm chi tiết mới?",
+                stopReason: "end_turn",
+            },
+        ]);
+
+        const messages: ChatMessage[] = [{ role: "user", content: "xem xét đối tượng này rồi tính tiếp" }];
+        await runAgent({
+            provider,
+            config: { model: "claude-opus-5", provider: "anthropic" } as any,
+            system: { stable: "system-test", volatile: "" },
+            messages,
+            tools: buildTools(),
+            callbacks: nullCallbacks,
+        });
+
+        // Check actual payload passed to provider in Turn 3
+        expect(provider.recordedTurns.length).toBe(3);
+        const turn3Messages = provider.recordedTurns[2].messages;
+        const injectedNudge = turn3Messages[turn3Messages.length - 2];
+        expect(injectedNudge.role).toBe("user");
+        if (injectedNudge.role === "user") {
+            expect(injectedNudge.synthetic).toBe(true);
+        }
+        expect(injectedNudge.content).toBe(NUDGE_AFTER_EMPTY_READ);
+
+        // Verify unclear intent preservation in prompt payload
+        const nudgeContent = injectedNudge.content as string;
+        expect(nudgeContent).toContain("unclear intent");
+        expect(nudgeContent).toContain("ask for any missing information");
+
+        // Assistant asks for clarification instead of modifying geometry
+        const lastMsg = messages[messages.length - 1];
+        expect(lastMsg.role).toBe("assistant");
+        expect(lastMsg.content).toContain("Bạn muốn kiểm tra thông số chi tiết hay dựng thêm chi tiết mới?");
+        expect(getSessionMemory().lastVerification).toBeUndefined();
+    });
+
+    test("Requirement 3 & 5: empty response after get_document_state exhausts recovery -> displays actionable message and records diagnostic [ScriptedLLMProvider]", async () => {
         setupTestEnvironment();
         const provider = new ScriptedLLMProvider([
             // Turn 1: read doc state
@@ -304,7 +423,7 @@ describe("Empty Response Recovery and Diagnostics after Read Tool", () => {
         expect(emptyReport?.diagnostics?.provider).toBe("anthropic");
     });
 
-    test("Cancellation: aborted signal does NOT trigger empty-read recovery or error report", async () => {
+    test("Cancellation: aborted signal does NOT trigger empty-read recovery or error report [ScriptedLLMProvider]", async () => {
         setupTestEnvironment();
         const controller = new AbortController();
 
@@ -338,7 +457,7 @@ describe("Empty Response Recovery and Diagnostics after Read Tool", () => {
         expect(reports.filter((r) => r.operation === "empty-response-recovery").length).toBe(0);
     });
 
-    test("Refusal: model refusal does NOT trigger empty-read recovery", async () => {
+    test("Refusal: model refusal does NOT trigger empty-read recovery [ScriptedLLMProvider]", async () => {
         setupTestEnvironment();
         const provider = new ScriptedLLMProvider([
             {
@@ -368,7 +487,7 @@ describe("Empty Response Recovery and Diagnostics after Read Tool", () => {
         expect(recoveryNudges.length).toBe(0);
     });
 
-    test("Avoid duplicate writes: if write tool already ran, empty turn does NOT trigger empty-read recovery", async () => {
+    test("Avoid duplicate writes: if write tool already ran, empty turn does NOT trigger empty-read recovery [ScriptedLLMProvider]", async () => {
         setupTestEnvironment();
         const provider = new ScriptedLLMProvider([
             // Turn 1: write tool succeeds
@@ -446,18 +565,5 @@ describe("Empty Response Recovery and Diagnostics after Read Tool", () => {
 
         // Complete normal text
         expect(normalizeStopReason("end_turn", { text: "Hello CAD" })).toBe("complete");
-    });
-
-    test("Requirement 3: isInformationalQuery separates query-only requests from modeling requests", () => {
-        expect(isInformationalQuery("Bản vẽ hiện tại có bao nhiêu đối tượng?")).toBe(true);
-        expect(isInformationalQuery("Liệt kê các khối trong scene")).toBe(true);
-        expect(isInformationalQuery("What nodes exist in the current document?")).toBe(true);
-        expect(isInformationalQuery("How many shapes are in the tree?")).toBe(true);
-
-        expect(isInformationalQuery("dựng sàn và vách")).toBe(false);
-        expect(isInformationalQuery("tạo một khối hộp 100x100x100")).toBe(false);
-        expect(isInformationalQuery("vẽ hình chữ nhật")).toBe(false);
-        expect(isInformationalQuery("build a box at origin")).toBe(false);
-        expect(isInformationalQuery("extrude the profile by 50mm")).toBe(false);
     });
 });
