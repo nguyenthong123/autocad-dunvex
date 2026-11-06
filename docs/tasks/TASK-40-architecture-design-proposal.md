@@ -3,8 +3,8 @@
 > **Tài liệu phương án kiến trúc + quyết định Reviewer đã chốt cho Đợt B.**  
 > **Ngày cập nhật:** 06/11/2026  
 > **Trạng thái:** `ĐỢT B — IMPLEMENTATION HANDOFF (WAITING_REVIEW SHA)`  
-> **SHA bàn giao Đợt B (ban đầu, chưa duyệt VPS):** `aa136320` / tip docs `492f4e62`  
-> **SHA follow-up reviewer (mutation query + ownership + UI duyệt):** điền sau commit  
+> **SHA bàn giao hiện tại (chờ duyệt):** `3f8849a865ac0e3e7ecba3c7959efee1f4d4c9e5` (`3f8849a8`)  
+> **SHA Đợt B ban đầu (chưa duyệt VPS):** `aa136320` / tip docs `492f4e62`  
 > **Mốc mã nguồn Đợt A (Git SHA):** `1a527bacdcee5c4a384b92dec5ce575fb7924ccd`  
 > **Căn cứ:** [`docs/tasks/TASK-40-agent-design-governance-and-verification.md`](./TASK-40-agent-design-governance-and-verification.md), [`AGENTS.md`](../../AGENTS.md), chỉ đạo Reviewer duyệt Đợt B.
 

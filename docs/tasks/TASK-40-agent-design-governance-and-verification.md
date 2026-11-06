@@ -179,7 +179,7 @@ Các nguồn trên dùng để tham khảo cơ chế. Bộ nguyên tắc và ki�
 
 ## 5. Nhật ký Thực thi & Báo cáo Thay đổi (Execution Log)
 
-- **Thời điểm:** 06/11/2026 (GMT+7). **SHA bàn giao:** điền sau commit follow-up reviewer. **Mốc Đợt A:** `1a527bacdcee`. **SHA trước đó:** `aa136320` / tip `492f4e62` (chưa duyệt VPS).
+- **Thời điểm:** 06/11/2026 (GMT+7). **SHA bàn giao:** `3f8849a8` (`3f8849a865ac0e3e7ecba3c7959efee1f4d4c9e5`). **Mốc Đợt A:** `1a527bacdcee`. **SHA trước đó:** `aa136320` / tip `492f4e62` (chưa duyệt VPS).
 - **Phạm vi bảo vệ thực sự đã có hiệu lực:**
   - Cổng chung ChatPanel + bridge; nguồn mặc định bảo vệ; quyền chỉ từ kế hoạch UI duyệt (`confirmProposedPlan` / `approveTaskPlan` — model không tự duyệt).
   - Mutation query (`returnKind: "mutate"`, ví dụ `curve.reverse`, `trimmedCurve.setTrim`) resolve nguồn và kiểm modify — không còn coi mọi method có dấu `.` là chỉ đọc.
