@@ -1,42 +1,51 @@
 # TASK-41 — Mac ↔ Windows sync handoff (review before deploy)
 
-**Status:** follow-up ready · **do not deploy until reviewer OK**  
+**Status:** ready for review · **do not deploy until reviewer OK**  
 **Date:** 2026-11-06
 
-## Fix SHAs
+## Final handoff SHA
 
-| SHA | Note |
-|-----|------|
-| `9ff3d494` | First pass (401 on bad Bearer, sync status labels) — **not approved alone** |
-| `2092798d55a1237ea83b2dbacfd1a6f8a5fde940` | Owner-bound outbox + safe `ensureAuthSession` + tests + scrub user dumps |
+`3f82747d4e2ca63be40c1f3e1ebbd260977d9ac3` — `🐛 fix(storage): ignore stale 401 after account switch`
 
-## Concrete document under test
+Local stack on top of `origin/dev` (`b31f6b53`), **not pushed**. History rewritten locally so user drawing dumps from the old `9ff3d494` tip are **absent** from this range (private copies in agent store `sync-evidence-private/`).
 
-| Field | Value |
+| Prior tip | Role |
+|-----------|------|
+| `9ff3d494` (rewritten → `714f90ca`) | 401 on bad Bearer + sync labels — dumps stripped |
+| `2092798d` (rewritten → `dd76a6dc`) | Owner-bound outbox |
+| `3f82747d` | Stale-request 401 / GET/page isolation (**handoff**) |
+
+## Root cause
+
+Silent guest fallback on bad/expired JWT while UI still showed a logged-in username → Win listed guest DB.
+
+## Fixes included
+
+1. Bearer invalid → **401** (never guest).
+2. Outbox `ownerUserId`; flush skips foreign owners; no auto-transfer to guest/B.
+3. `ensureAuthSession` clears only on **401/403**; keeps identity on 5xx/network.
+4. **Per-request session stamp** (token + userId); 401 / stale GET/page only affect the live session if it still matches the sender — A's in-flight 401 cannot log out B; stale lists/docs do not update B's cache.
+5. Sync status: local / syncing / VPS synced / conflict / error.
+
+## Dual-session evidence (same account)
+
+Automated (synthetic fixture, no user drawing payload):
+
+`packages/storage/test/clientServerIntegration.test.ts`  
+→ `dual session same account: A saves → server ACK → B lists and opens same version`
+
+Pre-fix VPS metadata only: `docs/tasks/sync-evidence/dual-session-2026-11-06T15-17-17-568Z.json`
+
+## Verification (this tip)
+
+| Check | Result |
 |-------|--------|
-| Document ID | `G5zyyoF_RQQdTN4qeFmjS` |
-| Name | `ct nano thành ở kiến đức` |
-| User ID | `f475072d00964fa53d5b4deaecb30225` (`thông` / `tâm an`) |
-| Private backup | Agent store `sync-evidence-private/` (removed from git) |
-
-## Root cause (unchanged)
-
-Silent guest fallback on bad/expired JWT while UI still showed a logged-in username. Win listed the guest DB; Mac with a valid token saw the user DB.
-
-## Follow-up (`2092798d`)
-
-1. **Outbox ownership** — each item stores `ownerUserId` at enqueue; flush skips mismatches (logout / switch account / mid-retry); never uploads A's rows as guest or B.
-2. **`ensureAuthSession`** — clears session only on **401/403**; keeps identity on **5xx** / network / missing token (offline scoping). `page()` with user-id and no token uses local fallback only (no guest API).
-3. **Tests** — owner isolation, expired-token retry, A→B switch, re-login A, auth/me 5xx, dual-session same-account on real storage server; existing offline / conflict / local-fallback suites retained.
-4. **Evidence** — synthetic dual-session in `clientServerIntegration.test.ts`; pre-fix VPS probe kept as metadata-only JSON; full drawing dumps out of git.
-
-## Verification (local)
-
-- rstest storage/UI related: **59 passed**
-- server storageServer: **17/17**
-- `tsc --noEmit`: pass
-- `npm run build`: pass
+| rstest storage/UI related | **51 passed** |
+| server `storageServer.test.mjs` | **17/17** |
+| `tsc --noEmit` | pass |
+| Biome (touched files) | pass (warnings only) |
+| User dump paths in `origin/dev..HEAD` | **none** |
 
 ## Reviewer ask
 
-Approve this SHA, then deploy **web + storage-api together**. Do not deploy one side alone.
+Approve `3f82747d`, then deploy **web + storage-api together**. Do not push until approved — local history was rewritten to scrub dumps.
