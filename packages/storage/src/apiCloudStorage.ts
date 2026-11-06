@@ -94,16 +94,36 @@ export class ApiCloudStorage implements IStorage {
         return token || undefined;
     }
 
-    private headers(): Record<string, string> {
+    /** Freeze token + identity at send time so late 401s cannot log out a newer session. */
+    private captureSession(): { userId: string | null; token: string | undefined } {
+        return {
+            userId: this.getUserId() ?? null,
+            token: this.readAuthToken(),
+        };
+    }
+
+    private sessionStillCurrent(sent: { userId: string | null; token: string | undefined }): boolean {
+        const live = this.captureSession();
+        return live.userId === sent.userId && (live.token ?? undefined) === (sent.token ?? undefined);
+    }
+
+    private scopedIdFor(userId: string | null, id: string): string {
+        return userId ? `${userId}:${id}` : id;
+    }
+
+    private headersFor(token: string | undefined): Record<string, string> {
         const headers: Record<string, string> = {
             "Content-Type": "application/json",
         };
-        const token = this.readAuthToken();
         if (token) {
             // biome-ignore lint/complexity/useLiteralKeys: required by noPropertyAccessFromIndexSignature
             headers["Authorization"] = `Bearer ${token}`;
         }
         return headers;
+    }
+
+    private headers(): Record<string, string> {
+        return this.headersFor(this.readAuthToken());
     }
 
     private pageLocalFallback(database: string, table: string, page: number): Promise<any[]> {
@@ -181,9 +201,15 @@ export class ApiCloudStorage implements IStorage {
         }
     }
 
-    private handleUnauthorized(): void {
+    private handleUnauthorized(sent: { userId: string | null; token: string | undefined }): void {
+        if (!this.sessionStillCurrent(sent)) {
+            return;
+        }
         try {
-            PubSub.default.pub("authSessionInvalid", "expired");
+            PubSub.default.pub("authSessionInvalid", "expired", {
+                userId: sent.userId,
+                token: sent.token ?? null,
+            });
         } catch {
             // PubSub may be absent in headless tests
         }
@@ -193,12 +219,12 @@ export class ApiCloudStorage implements IStorage {
         item: OutboxItem,
     ): Promise<{ ok: boolean; status?: number; error?: string; version?: number; currentVersion?: number }> {
         const owner = resolveOutboxOwner(item);
-        const current = this.getUserId() ?? null;
+        const sent = this.captureSession();
         // Never upload an A-owned row under guest or B credentials.
-        if (owner !== current) {
+        if (owner !== sent.userId) {
             return { ok: false, status: 403, error: "OWNER_MISMATCH" };
         }
-        if (owner !== null && !this.readAuthToken()) {
+        if (owner !== null && !sent.token) {
             // Hold the row; do not clear local identity here (offline / re-login pending).
             return { ok: false, status: 401, error: "UNAUTHORIZED" };
         }
@@ -211,18 +237,19 @@ export class ApiCloudStorage implements IStorage {
             };
             const response = await fetch(url, {
                 method: "PUT",
-                headers: this.headers(),
+                headers: this.headersFor(sent.token),
                 body: JSON.stringify(payload),
             });
             if (response.ok) {
                 const resData = await response.json().catch(() => ({}));
-                if (typeof resData?.version === "number") {
+                // Upload used the frozen token; only refresh the live session's version map if unchanged.
+                if (this.sessionStillCurrent(sent) && typeof resData?.version === "number") {
                     await this.setVersion(item.database, item.scopedId, resData.version);
                 }
                 return { ok: true, status: response.status, version: resData?.version };
             }
             if (response.status === 401) {
-                this.handleUnauthorized();
+                this.handleUnauthorized(sent);
                 return { ok: false, status: 401, error: "UNAUTHORIZED" };
             }
             if (response.status === 409) {
@@ -253,7 +280,8 @@ export class ApiCloudStorage implements IStorage {
     }
 
     async get(database: string, table: string, id: string): Promise<any> {
-        const localId = this.scopedId(id);
+        const sent = this.captureSession();
+        const localId = this.scopedIdFor(sent.userId, id);
         const isDirty = await this._outbox.isDirty(database, table, localId);
 
         // If local copy is dirty (has unpushed edits), NEVER allow server to overwrite it!
@@ -267,14 +295,24 @@ export class ApiCloudStorage implements IStorage {
             }
         }
 
+        if (sent.userId && !sent.token) {
+            return this.readLocal(database, table, localId, id);
+        }
+
         const url = `${this._baseUrl}/${encodeURIComponent(database)}/${encodeURIComponent(table)}/${encodeURIComponent(id)}`;
         try {
             const response = await fetch(url, {
                 method: "GET",
-                headers: this.headers(),
+                headers: this.headersFor(sent.token),
             });
             if (response.ok) {
                 const data = await response.json();
+                // Account switched while this GET was in flight — do not touch B's cache.
+                if (!this.sessionStillCurrent(sent)) {
+                    Logger.warn("Discarding stale GET response after session switch");
+                    const liveId = this.scopedId(id);
+                    return this.readLocal(database, table, liveId, id);
+                }
                 if (typeof data?.serverVersion === "number") {
                     await this.setVersion(database, localId, data.serverVersion);
                 }
@@ -295,7 +333,7 @@ export class ApiCloudStorage implements IStorage {
                 return data;
             }
             if (response.status === 401) {
-                this.handleUnauthorized();
+                this.handleUnauthorized(sent);
                 throw new Error("HTTP 401: Unauthorized");
             }
             if (response.status === 404) {
@@ -304,7 +342,8 @@ export class ApiCloudStorage implements IStorage {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         } catch (err) {
             Logger.warn(`CloudStorage get failed, falling back to IndexedDB: ${String(err)}`);
-            return this.readLocal(database, table, localId, id);
+            const liveId = this.sessionStillCurrent(sent) ? localId : this.scopedId(id);
+            return this.readLocal(database, table, liveId, id);
         }
     }
 
@@ -391,9 +430,9 @@ export class ApiCloudStorage implements IStorage {
     }
 
     async page(database: string, table: string, page: number): Promise<any[]> {
-        const uid = this.getUserId();
+        const sent = this.captureSession();
         // User-scoped session without a token must not hit the guest namespace.
-        if (uid && !this.readAuthToken()) {
+        if (sent.userId && !sent.token) {
             Logger.warn("CloudStorage page: user identity present without token; using local fallback only");
             return this.pageLocalFallback(database, table, page);
         }
@@ -402,16 +441,21 @@ export class ApiCloudStorage implements IStorage {
         try {
             const response = await fetch(url, {
                 method: "GET",
-                headers: this.headers(),
+                headers: this.headersFor(sent.token),
             });
             if (response.status === 401) {
-                this.handleUnauthorized();
+                this.handleUnauthorized(sent);
                 throw new Error("HTTP 401: Unauthorized");
             }
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             const items = (await response.json()) as any[];
+            // Stale list for A must not become B's home/recents payload.
+            if (!this.sessionStillCurrent(sent)) {
+                Logger.warn("Discarding stale page response after session switch");
+                return this.pageLocalFallback(database, table, page);
+            }
             return items;
         } catch (err) {
             Logger.warn(`CloudStorage page failed, falling back to IndexedDB: ${String(err)}`);

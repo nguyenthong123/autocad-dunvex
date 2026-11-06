@@ -248,6 +248,160 @@ describe("Outbox owner isolation & session gates", () => {
         expect(storage.getPendingSyncCount()).toBe(0);
     });
 
+    test("in-flight A 401 after B login must not log out B; A pending stays owned by A", async () => {
+        setSession(USER_A, "token-a");
+
+        const invalidEvents: Array<{ userId: string | null; token: string | null } | undefined> = [];
+        const onInvalid = (_reason: string, sent?: { userId: string | null; token: string | null }) => {
+            invalidEvents.push(sent);
+            // Simulate UI handler: only clear if the live session still matches the sender.
+            const liveToken = localStorage.getItem("dunvex_auth_token");
+            const liveUser = localStorage.getItem("dunvex_auth_user");
+            const liveId = liveUser ? JSON.parse(liveUser).id : null;
+            if (sent && sent.token === liveToken && sent.userId === liveId) {
+                localStorage.removeItem("dunvex_auth_token");
+                localStorage.removeItem("dunvex_auth_user");
+            }
+        };
+        PubSub.default.sub("authSessionInvalid", onInvalid);
+
+        let releaseA!: (value: Response) => void;
+        const aResponse = new Promise<Response>((resolve) => {
+            releaseA = resolve;
+        });
+
+        const storage = new ApiCloudStorage({
+            baseUrl: "/api/storage",
+            getAuthToken: () => localStorage.getItem("dunvex_auth_token") || undefined,
+        });
+        await storage.createDBIfNeeded(DB, [TABLE]);
+
+        // Seed a pending A row first (offline), then start a flush that hangs on A's token.
+        rs.stubGlobal(
+            "fetch",
+            rs.fn(async () => new Response("offline", { status: 503 })),
+        );
+        await storage.put(DB, TABLE, "doc-a", { id: "doc-a", name: "A secret" });
+        expect(storage.outbox.getPendingItems()[0].ownerUserId).toBe(USER_A);
+
+        let fetchStarted!: () => void;
+        const started = new Promise<void>((resolve) => {
+            fetchStarted = resolve;
+        });
+        rs.stubGlobal(
+            "fetch",
+            rs.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+                const headers = init?.headers as Record<string, string> | undefined;
+                if (headers?.["Authorization"] === "Bearer token-a") {
+                    fetchStarted();
+                    return aResponse;
+                }
+                return new Response(JSON.stringify([{ id: "b-only" }]), { status: 200 });
+            }),
+        );
+
+        const flushPromise = storage.flushOutbox();
+        await started;
+
+        // Switch to B while A's upload is still in flight.
+        setSession(USER_B, "token-b");
+        PubSub.default.pub("authChanged", {
+            id: USER_B,
+            username: USER_B,
+            storeName: USER_B,
+        });
+
+        releaseA(new Response(JSON.stringify({ error: "UNAUTHORIZED" }), { status: 401 }));
+        await flushPromise;
+
+        expect(invalidEvents.length).toBe(0);
+        expect(localStorage.getItem("dunvex_auth_token")).toBe("token-b");
+        expect(JSON.parse(localStorage.getItem("dunvex_auth_user")!).id).toBe(USER_B);
+        expect(storage.getPendingSyncCount()).toBe(1);
+        expect(storage.outbox.getPendingItems()[0].ownerUserId).toBe(USER_A);
+        expect(storage.outbox.getPendingItems()[0].scopedId).toBe(`${USER_A}:doc-a`);
+
+        PubSub.default.remove("authSessionInvalid", onInvalid);
+    });
+
+    test("stale GET for A after B login does not write into B's cache", async () => {
+        setSession(USER_A, "token-a");
+        let releaseA!: (value: Response) => void;
+        const aResponse = new Promise<Response>((resolve) => {
+            releaseA = resolve;
+        });
+
+        rs.stubGlobal(
+            "fetch",
+            rs.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+                const headers = init?.headers as Record<string, string> | undefined;
+                if (headers?.["Authorization"] === "Bearer token-a") {
+                    return aResponse;
+                }
+                return new Response(JSON.stringify({ id: "doc-a", name: "from-B-server" }), {
+                    status: 200,
+                });
+            }),
+        );
+
+        const storage = new ApiCloudStorage({
+            baseUrl: "/api/storage",
+            getAuthToken: () => localStorage.getItem("dunvex_auth_token") || undefined,
+        });
+        await storage.createDBIfNeeded(DB, [TABLE]);
+
+        const getPromise = storage.get(DB, TABLE, "doc-a");
+        setSession(USER_B, "token-b");
+        releaseA(
+            new Response(JSON.stringify({ id: "doc-a", name: "from-A-server", serverVersion: 9 }), {
+                status: 200,
+            }),
+        );
+        const result = await getPromise;
+
+        // Must not surface A's payload as B's document, nor cache under B.
+        expect(result?.name).not.toBe("from-A-server");
+        rs.stubGlobal(
+            "fetch",
+            rs.fn(async () => new Response("missing", { status: 404 })),
+        );
+        const bGet = await storage.get(DB, TABLE, "doc-a");
+        expect(bGet?.name).not.toBe("from-A-server");
+        expect(await storage.getVersion(DB, `${USER_B}:doc-a`)).toBeUndefined();
+        expect(await storage.getVersion(DB, `${USER_A}:doc-a`)).toBeUndefined();
+    });
+
+    test("stale page for A after B login does not return A's list to B", async () => {
+        setSession(USER_A, "token-a");
+        let releaseA!: (value: Response) => void;
+        const aResponse = new Promise<Response>((resolve) => {
+            releaseA = resolve;
+        });
+
+        rs.stubGlobal(
+            "fetch",
+            rs.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+                const headers = init?.headers as Record<string, string> | undefined;
+                if (headers?.["Authorization"] === "Bearer token-a") {
+                    return aResponse;
+                }
+                return new Response(JSON.stringify([]), { status: 200 });
+            }),
+        );
+
+        const storage = new ApiCloudStorage({
+            baseUrl: "/api/storage",
+            getAuthToken: () => localStorage.getItem("dunvex_auth_token") || undefined,
+        });
+        await storage.createDBIfNeeded(DB, [TABLE, "recents"]);
+
+        const pagePromise = storage.page(DB, "recents", 0);
+        setSession(USER_B, "token-b");
+        releaseA(new Response(JSON.stringify([{ id: "a-doc", name: "Only A" }]), { status: 200 }));
+        const list = await pagePromise;
+        expect(list.some((r: { id: string }) => r.id === "a-doc")).toBe(false);
+    });
+
     test("ApiCloudStorage put stamps ownerUserId from the session at enqueue time", async () => {
         setSession(USER_A, "tok");
         rs.stubGlobal(

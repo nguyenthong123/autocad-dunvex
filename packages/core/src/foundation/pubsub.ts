@@ -97,8 +97,15 @@ export interface PubSubEventMap {
         status: "local" | "saved" | "saving" | "pending" | "error" | "conflict",
         pendingCount?: number,
     ) => void;
-    /** Fired when a storage/API call gets 401 — UI should clear the stale session. */
-    authSessionInvalid: (reason: "expired" | "unauthorized") => void;
+    /**
+     * Fired when a storage/API call gets 401 for the session that *sent* the request.
+     * UI must ignore the event if the live session no longer matches `sent`
+     * (e.g. A's in-flight 401 must not log out B).
+     */
+    authSessionInvalid: (
+        reason: "expired" | "unauthorized",
+        sent?: { userId: string | null; token: string | null },
+    ) => void;
     toggleChatPanel: () => void;
     /**
      * Replaces what the floating input holds, for a drag that keeps it up as a readout. A box

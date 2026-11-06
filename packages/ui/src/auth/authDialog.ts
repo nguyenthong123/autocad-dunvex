@@ -44,6 +44,14 @@ export function logout(options?: { silent?: boolean; reason?: "manual" | "expire
  * Stale username in localStorage without a valid token is the Mac↔Win
  * "same account, empty list" failure mode — clear it before home loads recents.
  */
+function sessionMatches(
+    sent: { userId: string | null; token: string | null },
+    liveToken: string | null,
+    liveUser: AuthUser | null,
+): boolean {
+    return sent.token === liveToken && sent.userId === (liveUser?.id ?? null);
+}
+
 export async function ensureAuthSession(): Promise<AuthUser | null> {
     const token = getAuthToken();
     const cached = getAuthUser();
@@ -51,24 +59,35 @@ export async function ensureAuthSession(): Promise<AuthUser | null> {
         // Keep cached identity for offline IndexedDB scoping; do not pretend guest.
         return cached;
     }
+    const sent = { userId: cached?.id ?? null, token };
     try {
         const response = await fetch("/api/auth/me", {
             headers: { Authorization: `Bearer ${token}` },
         });
         // Only confirmed auth failures clear the session — never 5xx / transient outages.
         if (response.status === 401 || response.status === 403) {
-            logout({ reason: "expired" });
-            return null;
+            if (sessionMatches(sent, getAuthToken(), getAuthUser())) {
+                logout({ reason: "expired" });
+                return null;
+            }
+            // Stale /auth/me of a previous account — keep the live session.
+            return getAuthUser();
         }
         if (!response.ok) {
-            return cached;
+            return getAuthUser() ?? cached;
         }
         const data = await response.json();
         const user = data?.user as AuthUser | undefined;
         if (!user?.id) {
-            // 200 with empty body is not a transient outage — treat as invalid session.
-            logout({ reason: "expired" });
-            return null;
+            if (sessionMatches(sent, getAuthToken(), getAuthUser())) {
+                logout({ reason: "expired" });
+                return null;
+            }
+            return getAuthUser();
+        }
+        // Only apply /me result if this tab is still the same session that sent it.
+        if (!sessionMatches(sent, getAuthToken(), getAuthUser())) {
+            return getAuthUser();
         }
         if (typeof window !== "undefined" && window.localStorage) {
             localStorage.setItem("dunvex_auth_user", JSON.stringify(user));
@@ -76,17 +95,20 @@ export async function ensureAuthSession(): Promise<AuthUser | null> {
         return user;
     } catch {
         // Network down: keep cached identity so offline local scoped saves still work.
-        return cached;
+        return getAuthUser() ?? cached;
     }
 }
 
 let authInvalidWired = false;
 
-/** Subscribe once: storage 401 → clear fake "logged in" state. */
+/** Subscribe once: storage 401 → clear fake "logged in" state (only if still that session). */
 export function wireAuthSessionInvalidHandler(): void {
     if (authInvalidWired) return;
     authInvalidWired = true;
-    PubSub.default.sub("authSessionInvalid", () => {
+    PubSub.default.sub("authSessionInvalid", (_reason, sent) => {
+        if (sent && !sessionMatches(sent, getAuthToken(), getAuthUser())) {
+            return;
+        }
         logout({ reason: "expired" });
     });
 }

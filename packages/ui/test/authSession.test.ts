@@ -3,7 +3,12 @@
 
 import { PubSub } from "@chili3d/core";
 import { rs } from "@rstest/core";
-import { ensureAuthSession, getAuthUser, logout } from "../src/auth/authDialog";
+import {
+    ensureAuthSession,
+    getAuthUser,
+    logout,
+    wireAuthSessionInvalidHandler,
+} from "../src/auth/authDialog";
 
 describe("ensureAuthSession", () => {
     beforeEach(() => {
@@ -88,5 +93,45 @@ describe("ensureAuthSession", () => {
         logout({ silent: true });
         expect(getAuthUser()).toBeNull();
         expect(localStorage.getItem("dunvex_auth_token")).toBeNull();
+    });
+
+    test("stale /auth/me 401 for A does not log out B", async () => {
+        localStorage.setItem("dunvex_auth_token", "token-a");
+        localStorage.setItem("dunvex_auth_user", JSON.stringify(user));
+
+        let release!: (value: Response) => void;
+        const pending = new Promise<Response>((resolve) => {
+            release = resolve;
+        });
+        rs.stubGlobal(
+            "fetch",
+            rs.fn(async () => pending),
+        );
+
+        const ensurePromise = ensureAuthSession();
+        const userB = { id: "user-b", username: "bob", storeName: "Bob Shop" };
+        localStorage.setItem("dunvex_auth_token", "token-b");
+        localStorage.setItem("dunvex_auth_user", JSON.stringify(userB));
+
+        release(new Response(JSON.stringify({ error: "expired" }), { status: 401 }));
+        const result = await ensurePromise;
+        expect(result).toEqual(userB);
+        expect(getAuthUser()).toEqual(userB);
+        expect(localStorage.getItem("dunvex_auth_token")).toBe("token-b");
+    });
+
+    test("authSessionInvalid for A is ignored when B is live", () => {
+        wireAuthSessionInvalidHandler();
+        const userB = { id: "user-b", username: "bob", storeName: "Bob Shop" };
+        localStorage.setItem("dunvex_auth_token", "token-b");
+        localStorage.setItem("dunvex_auth_user", JSON.stringify(userB));
+
+        PubSub.default.pub("authSessionInvalid", "expired", {
+            userId: "user-a",
+            token: "token-a",
+        });
+
+        expect(getAuthUser()).toEqual(userB);
+        expect(localStorage.getItem("dunvex_auth_token")).toBe("token-b");
     });
 });
