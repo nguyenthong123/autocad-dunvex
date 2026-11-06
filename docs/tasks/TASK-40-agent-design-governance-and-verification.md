@@ -179,17 +179,18 @@ Các nguồn trên dùng để tham khảo cơ chế. Bộ nguyên tắc và ki�
 
 ## 5. Nhật ký Thực thi & Báo cáo Thay đổi (Execution Log)
 
-- **Thời điểm:** 06/11/2026 (GMT+7). **SHA bàn giao:** `a5cc7b01` (`a5cc7b01692a03c8d349e2da2158d9cf2e75d14c`). **Mốc Đợt A:** `1a527bacdcee`. **SHA trước đó:** `3f8849a8` / tip `47f75403` (chưa duyệt VPS).
+- **Thời điểm:** 06/11/2026 (GMT+7). **SHA bàn giao:** *(điền sau commit)*. **Mốc Đợt A:** `1a527bacdcee`. **SHA trước đó:** `a5cc7b01` / tip `f18ac9a9` (chưa duyệt VPS).
 - **Phạm vi bảo vệ thực sự đã có hiệu lực:**
   - Cổng chung ChatPanel + bridge; nguồn mặc định bảo vệ; quyền chỉ từ kế hoạch UI duyệt (`confirmProposedPlan` / `approveTaskPlan` — model không tự duyệt).
   - Mutation query (`returnKind: "mutate"`, ví dụ `curve.reverse`, `trimmedCurve.setTrim`) resolve nguồn và kiểm modify — không còn coi mọi method có dấu `.` là chỉ đọc.
   - `isTaskOwned` / mọi quyền chỉ khi profile `active`, đúng `documentId`; invalidated hoặc đổi tài liệu → hết quyền.
   - **Vòng đời thẻ kế hoạch:** `bindTaskPlanProposal` gắn `documentId` + history mark + rules fingerprint + `proposalId`/`generation` lúc tạo. `confirmProposedPlan` từ chối thẻ cũ / đã hủy / đổi tài liệu / lệch trạng thái (`PROPOSAL_STALE` / `DOCUMENT_MISMATCH`) — không lấy tài liệu đang mở thay proposal cũ. Xen kẽ người dùng → `PLAN_INVALIDATED`, chặn ghi tiếp bằng quyền cũ; phải đọc lại và `propose_task_plan` lại.
+  - **Vòng đời phiên bản quy tắc:** fingerprint nội dung đầy đủ (`guidanceMarkdown` + `protectedNodeIds` + scope/revision — không dựa độ dài Markdown hay `Date.now` đơn độc); lưu vào profile lúc duyệt; đọc lại ObjectStorage trước mỗi lần ghi (`detectRulesDrift`). Đổi quy tắc khi thẻ đang chờ hoặc sau duyệt → vô hiệu hóa thẻ/quyền cũ, yêu cầu đánh giá lại kế hoạch.
   - UI `propose_task_plan` + thẻ duyệt trên ChatPanel; bridge không có tool này.
   - ObjectStorage rules; Undo chuỗi liên tiếp (xen kẽ → `PLAN_INVALIDATED`); async timeout ≠ mutation dừng.
 - **Đường còn bị chặn / chưa có:**
   - Bridge: không duyệt kế hoạch UI (`propose_task_plan` unsupported) — agent ngoài phải dùng ChatPanel hoặc API UI tin cậy.
   - Selective inversion; hậu kiểm tiêu chí; bảng dung sai (Đợt C).
   - Lệnh interactive / ngoài `SAFE_DIRECT_COMMANDS`.
-- **Test:** `packages/ai/test/governance/batchBGovernance.test.ts` (+ host) — gồm thẻ stale / đổi tài liệu / hủy / thay thẻ, và ghi sau xen kẽ bị chặn.
-- **Deploy VPS:** chưa — chờ Reviewer nghiệm thu SHA mới. Không báo Đợt B đã bảo vệ phạm vi cho đến khi reviewer duyệt các đường trên.
+- **Test:** `packages/ai/test/governance/batchBGovernance.test.ts` (+ host) — 25 ca cũ + fingerprint cùng độ dài/cùng timestamp/thêm protected id + quy tắc đổi khi thẻ chờ / sau duyệt.
+- **Deploy VPS:** chưa — chờ Reviewer nghiệm thu SHA mới.

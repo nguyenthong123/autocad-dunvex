@@ -7,6 +7,7 @@ import { analyzeToolImpact } from "./impactAnalysis";
 import { stripSelfApproval } from "./selfApproval";
 import { absorbForeignNodes, ensureSourceProtection, isSourceProtected } from "./sourceProtection";
 import {
+    detectRulesDrift,
     getActiveTaskProfile,
     getAgentCreatedNodeIds,
     getTaskProfile,
@@ -27,8 +28,9 @@ export function checkToolPermission(
 ): { decision: PermissionDecision; impact: ToolImpact; cleanArgs: Record<string, unknown> } {
     const cleanArgs = stripSelfApproval(args);
     const active = ensureSourceProtection(doc ?? getDocument());
-    // Interleaved user edits revoke old plan rights before any further write check.
+    // Interleaved user edits and rules-content drift revoke old plan rights before any further write.
     detectInterleaving(active);
+    detectRulesDrift(active);
     const profile = getActiveTaskProfile(active);
     const rawProfile = getTaskProfile();
     const exempt = new Set<string>([...getAgentCreatedNodeIds(active), ...(profile?.taskOwnedNodeIds ?? [])]);

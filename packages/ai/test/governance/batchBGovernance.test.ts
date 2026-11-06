@@ -9,11 +9,13 @@ import {
     BATCH_B_TOOL_MATRIX,
     bindTaskPlanProposal,
     checkToolPermission,
+    clearDesignRulesForTests,
     clearTaskProfile,
     confirmProposedPlan,
     getActiveTaskProfile,
     getGovernanceStatus,
     getPendingProposal,
+    getTaskProfile,
     invalidatePendingProposals,
     invalidateTaskProfile,
     isTaskOwned,
@@ -22,7 +24,9 @@ import {
     resetPlanApprovalForTests,
     resetSourceProtectionForTests,
     resetTaskProfileForTests,
+    rulesFingerprintFor,
     saveAccountDesignRules,
+    saveDocumentDesignRules,
     setPlanApprovalHandler,
     stripSelfApproval,
     undoActiveTask,
@@ -75,6 +79,7 @@ describe("TASK-40 Batch B governance", () => {
     afterEach(() => {
         resetTaskProfileForTests();
         resetPlanApprovalForTests();
+        clearDesignRulesForTests();
         rs.unstubAllGlobals();
     });
 
@@ -610,5 +615,124 @@ describe("TASK-40 Batch B governance", () => {
         const result = JSON.parse((await tool.handler({ allowedModifiedNodeIds: ["wall-1"] })) as string);
         expect(result.approved).toBe(true);
         expect(result.documentId).toBe("chat-doc");
+    });
+
+    test("rules fingerprint reflects full guidance and protected ids, not length or Date.now alone", () => {
+        const docId = "rules-fp-doc";
+        const fixedNow = 1_700_000_000_000;
+        const nowSpy = rs.spyOn(Date, "now").mockReturnValue(fixedNow);
+
+        saveDocumentDesignRules(docId, { guidanceMarkdown: "Keep AAA walls" });
+        const fp1 = rulesFingerprintFor(docId);
+
+        // Same length, same timestamp — content change must still change the fingerprint.
+        saveDocumentDesignRules(docId, { guidanceMarkdown: "Keep BBB walls" });
+        const fp2 = rulesFingerprintFor(docId);
+        expect(fp1).not.toBe(fp2);
+        expect(loadEffectiveDesignRules(docId).rules.updatedAt).toBe(fixedNow);
+        expect(loadEffectiveDesignRules(docId).rules.guidanceMarkdown?.length).toBe("Keep AAA walls".length);
+
+        // Consecutive saves at the same millisecond still bump contentRevision / fingerprint.
+        saveDocumentDesignRules(docId, { guidanceMarkdown: "Keep BBB walls", protectedNodeIds: ["p1"] });
+        const fp3 = rulesFingerprintFor(docId);
+        expect(fp3).not.toBe(fp2);
+
+        // Adding another protected id alone invalidates the prior fingerprint.
+        saveDocumentDesignRules(docId, { protectedNodeIds: ["p1", "p2"] });
+        const fp4 = rulesFingerprintFor(docId);
+        expect(fp4).not.toBe(fp3);
+
+        nowSpy.mockRestore();
+    });
+
+    test("rules change while plan card is pending makes Approve stale", () => {
+        const doc = stubDocWithNodes([{ id: "wall-1" }], { id: "rules-pending-doc" });
+        resetSourceProtectionForTests(doc);
+        refreshSourceProtection(doc);
+        saveDocumentDesignRules(doc.id, { guidanceMarkdown: "Protect north wall" });
+
+        const card = bindTaskPlanProposal(
+            {
+                goal: "edit wall",
+                allowedModifiedNodeIds: ["wall-1"],
+                allowedDeletedNodeIds: [],
+                allowedConsumedNodeIds: [],
+                allowedTreeNodeIds: [],
+            },
+            doc,
+        );
+
+        // Same-length guidance rewrite while the card is open.
+        saveDocumentDesignRules(doc.id, { guidanceMarkdown: "Protect south wall" });
+        expect(() => confirmProposedPlan(card, { document: doc })).toThrow(/PROPOSAL_STALE|rules changed/i);
+        expect(getActiveTaskProfile(doc)).toBeUndefined();
+
+        const card2 = bindTaskPlanProposal(
+            {
+                goal: "edit wall",
+                allowedModifiedNodeIds: ["wall-1"],
+                allowedDeletedNodeIds: [],
+                allowedConsumedNodeIds: [],
+                allowedTreeNodeIds: [],
+            },
+            doc,
+        );
+        saveDocumentDesignRules(doc.id, {
+            guidanceMarkdown: "Protect south wall",
+            protectedNodeIds: ["wall-1"],
+        });
+        expect(() => confirmProposedPlan(card2, { document: doc })).toThrow(/PROPOSAL_STALE|rules changed/i);
+        expect(getActiveTaskProfile(doc)).toBeUndefined();
+    });
+
+    test("rules change after approval revokes write rights and requires a new plan", () => {
+        const doc = stubDocWithNodes([{ id: "wall-1" }], { id: "rules-after-doc" });
+        resetSourceProtectionForTests(doc);
+        refreshSourceProtection(doc);
+        saveDocumentDesignRules(doc.id, { guidanceMarkdown: "Keep AAA form" });
+
+        const bound = bindTaskPlanProposal(
+            {
+                goal: "modify wall",
+                allowedModifiedNodeIds: ["wall-1"],
+                allowedDeletedNodeIds: [],
+                allowedConsumedNodeIds: [],
+                allowedTreeNodeIds: [],
+            },
+            doc,
+        );
+        const profile = confirmProposedPlan(bound, { document: doc });
+        expect(profile.rulesFingerprint).toBe(rulesFingerprintFor(doc.id));
+        expect(checkToolPermission("transform_node", { id: "wall-1" }, doc).decision.allowed).toBe(true);
+
+        // Other-tab style update: same-length Markdown rewrite re-read before the next write.
+        saveDocumentDesignRules(doc.id, { guidanceMarkdown: "Keep BBB form" });
+        expect(getActiveTaskProfile(doc)).toBeUndefined();
+        expect(getTaskProfile()?.status).toBe("invalidated");
+        expect(getTaskProfile()?.haltReason).toMatch(/Design rules changed|propose_task_plan/i);
+
+        const blocked = checkToolPermission("transform_node", { id: "wall-1" }, doc);
+        expect(blocked.decision.allowed).toBe(false);
+        expect(blocked.decision.code).toBe("PLAN_INVALIDATED");
+
+        // Fresh plan after re-evaluation restores rights under the new fingerprint.
+        const rebound = bindTaskPlanProposal(
+            {
+                goal: "modify wall again",
+                allowedModifiedNodeIds: ["wall-1"],
+                allowedDeletedNodeIds: [],
+                allowedConsumedNodeIds: [],
+                allowedTreeNodeIds: [],
+            },
+            doc,
+        );
+        confirmProposedPlan(rebound, { document: doc });
+        expect(checkToolPermission("transform_node", { id: "wall-1" }, doc).decision.allowed).toBe(true);
+
+        // Adding a protected id alone also revokes.
+        saveDocumentDesignRules(doc.id, { protectedNodeIds: ["extra-protect"] });
+        const blockedAgain = checkToolPermission("transform_node", { id: "wall-1" }, doc);
+        expect(blockedAgain.decision.allowed).toBe(false);
+        expect(blockedAgain.decision.code).toBe("PLAN_INVALIDATED");
     });
 });

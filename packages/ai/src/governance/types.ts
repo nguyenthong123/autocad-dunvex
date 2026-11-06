@@ -68,6 +68,11 @@ export interface TaskScope {
     allowDocumentVariables?: boolean;
     /** Document revision (history undo count + top identity) when the plan was approved. */
     approvedAtMark?: string;
+    /**
+     * Content fingerprint of effective design rules at approval.
+     * Re-checked before every write; drift invalidates the plan.
+     */
+    rulesFingerprint?: string;
 }
 
 export interface TaskProfile extends TaskScope {
@@ -91,6 +96,11 @@ export interface DesignRules {
     guidanceMarkdown?: string;
     /** Explicit protected tags or ids the user applied; empty means default-protect-all-sources. */
     protectedNodeIds?: string[];
+    /**
+     * Monotonic content revision bumped on every save (survives same-millisecond updates).
+     * Fingerprints still hash full guidance + protected ids; this is not a Date.now stand-in.
+     */
+    contentRevision: number;
     /** When true, missing link / uncertain binding activates default source protection. */
     missingLinkFallback: true;
     /**

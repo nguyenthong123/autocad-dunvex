@@ -256,11 +256,11 @@ Dữ liệu thực nghiệm thực tế tại thời điểm hoàn thiện Đợ
 Xem `BATCH_B_TOOL_MATRIX` trong `packages/ai/src/governance/toolMatrix.ts` (gated / supported / read).
 
 ### 9.3. Kiểm thử
-`packages/ai/test/governance/batchBGovernance.test.ts` (+ `host.test.ts`): vượt quyền ChatPanel + bridge, mutation query metadata, ownership theo document, thẻ stale (đổi tài liệu / sửa nguồn / hủy / thay thẻ), ghi sau xen kẽ → `PLAN_INVALIDATED`.
+`packages/ai/test/governance/batchBGovernance.test.ts` (+ `host.test.ts`): vượt quyền ChatPanel + bridge, mutation query metadata, ownership theo document, thẻ stale (đổi tài liệu / sửa nguồn / hủy / thay thẻ), ghi sau xen kẽ → `PLAN_INVALIDATED`, fingerprint quy tắc (cùng độ dài Markdown / cùng `Date.now` / thêm `protectedNodeIds`), đổi quy tắc khi thẻ chờ và sau duyệt.
 
 ### 9.4. Chưa làm (đúng phạm vi)
 - Đợt C: tiêu chí / hậu kiểm / bảng dung sai
 - Deploy VPS: **chờ Reviewer nghiệm thu SHA** — chưa báo Đợt B đã bảo vệ phạm vi cho đến khi các đường trên được duyệt
 
 ---
-*Đợt B: vòng đời quyền kế hoạch đã hoàn tất trong mã. Chờ nghiệm thu SHA trước khi triển khai VPS.*
+*Đợt B: vòng đời quyền kế hoạch + phiên bản quy tắc đã hoàn tất trong mã. Chờ nghiệm thu SHA trước khi triển khai VPS.*

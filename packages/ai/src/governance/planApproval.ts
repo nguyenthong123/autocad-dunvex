@@ -5,7 +5,7 @@ import type { IDocument, IHistoryRecord } from "@chili3d/core";
 import { Id } from "@chili3d/core";
 import type { Tool } from "../llm/types";
 import { getDocument } from "../tools/documentContext";
-import { loadEffectiveDesignRules } from "./rulesStore";
+import { rulesFingerprintFor } from "./rulesStore";
 import { approveTaskPlan } from "./taskProfile";
 import type { TaskProfile, TaskScope } from "./types";
 
@@ -95,10 +95,8 @@ export function documentStateMark(doc: IDocument): string | undefined {
     return markIdentity(doc.history.undoTop());
 }
 
-export function rulesFingerprintFor(documentId: string): string {
-    const { rules, scope, missingLink } = loadEffectiveDesignRules(documentId);
-    return `${scope}|missing=${missingLink}|v=${rules.version}|at=${rules.updatedAt}|g=${rules.guidanceMarkdown?.length ?? 0}`;
-}
+// Re-export content fingerprint so plan callers keep a single import path.
+export { rulesFingerprintFor } from "./rulesStore";
 
 /**
  * Bind a proposal to the open document and current history/rules marks.
@@ -182,7 +180,12 @@ export function confirmProposedPlan(
     }
 
     const profile = approveTaskPlan(
-        { ...proposalToScope(proposal), documentId: proposal.documentId },
+        {
+            ...proposalToScope(proposal),
+            documentId: proposal.documentId,
+            // Snapshot the fingerprint that just validated — later writes re-read storage.
+            rulesFingerprint: proposal.rulesFingerprint,
+        },
         active,
     );
     pendingProposal = undefined;

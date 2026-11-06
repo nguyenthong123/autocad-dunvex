@@ -4,8 +4,12 @@
 import type { IDocument, IHistoryRecord } from "@chili3d/core";
 import { Id } from "@chili3d/core";
 import { getDocument } from "../tools/documentContext";
+import { rulesFingerprintFor } from "./rulesStore";
 import { refreshSourceProtection } from "./sourceProtection";
 import type { TaskProfile, TaskScope } from "./types";
+
+export const RULES_CHANGED_MESSAGE =
+    "PLAN_INVALIDATED: Design rules changed since this plan was approved. Prior plan rights are revoked. Re-read the document and call propose_task_plan again for the needed scope.";
 
 let activeProfile: TaskProfile | undefined;
 
@@ -36,6 +40,8 @@ export function approveTaskPlan(
         );
     }
     refreshSourceProtection(active);
+    // Always snapshot current ObjectStorage contents (other tabs may have written).
+    const rulesFingerprint = input.rulesFingerprint ?? rulesFingerprintFor(active.id);
     const profile: TaskProfile = {
         taskId: input.taskId ?? Id.generate(),
         documentId: active.id,
@@ -47,6 +53,7 @@ export function approveTaskPlan(
         allowMaterialLibrary: Boolean(input.allowMaterialLibrary),
         allowDocumentVariables: Boolean(input.allowDocumentVariables),
         approvedAtMark: markIdentity(active.history.undoTop()),
+        rulesFingerprint,
         status: "active",
         taskOwnedNodeIds: [],
         preTaskUndoTop: active.history.undoTop(),
@@ -64,7 +71,7 @@ export function getTaskProfile(): TaskProfile | undefined {
 
 /**
  * Active approved profile for the current document only.
- * Document mismatch auto-invalidates; invalidated profiles never grant rights.
+ * Document mismatch or rules-content drift auto-invalidates; invalidated profiles never grant rights.
  */
 export function getActiveTaskProfile(doc?: IDocument): TaskProfile | undefined {
     if (!activeProfile) return undefined;
@@ -77,7 +84,36 @@ export function getActiveTaskProfile(doc?: IDocument): TaskProfile | undefined {
         );
         return undefined;
     }
+    if (detectRulesDrift(active)) {
+        return undefined;
+    }
     return activeProfile;
+}
+
+/**
+ * Re-read effective rules from ObjectStorage and compare to the fingerprint stored at approval.
+ * When rules changed (including same-length Markdown or other-tab writes), revoke rights.
+ */
+export function detectRulesDrift(doc?: IDocument): boolean {
+    if (!activeProfile || activeProfile.status !== "active") return false;
+    const documentId = activeProfile.documentId;
+    const expected = activeProfile.rulesFingerprint;
+    if (!expected) {
+        // Legacy / incomplete profiles without a snapshot cannot keep write rights.
+        invalidateTaskProfile(RULES_CHANGED_MESSAGE);
+        return true;
+    }
+    const active = doc ?? getDocument();
+    if (active && active.id !== documentId) {
+        // Document mismatch is handled by getActiveTaskProfile; do not treat as rules drift here.
+        return false;
+    }
+    const current = rulesFingerprintFor(documentId);
+    if (current !== expected) {
+        invalidateTaskProfile(RULES_CHANGED_MESSAGE);
+        return true;
+    }
+    return false;
 }
 
 export function clearTaskProfile(): void {
