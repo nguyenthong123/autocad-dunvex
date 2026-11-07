@@ -1,0 +1,114 @@
+{
+    "kind": "automated",
+    "at": "2026-11-07T00:03:25.954Z",
+    "baseUrl": "http://136.66.95.155",
+    "cases": [
+        {
+            "name": "version.endpoint",
+            "pass": true,
+            "status": 200,
+            "body": {
+                "tipSha": "376c131482d22321b4db71bea728acdd3534ff09",
+                "tipShort": "376c131482d2",
+                "codeSha": "3f82747d4e2ca63be40c1f3e1ebbd260977d9ac3",
+                "codeShort": "3f82747d",
+                "branch": "dev",
+                "batch": "TASK-41",
+                "deployedAt": "2026-11-07T00:01:18Z",
+                "documentVersion": "0.7.1",
+                "appVersion": "0.8.0"
+            }
+        },
+        {
+            "name": "deploy-version.endpoint",
+            "pass": true,
+            "status": 200,
+            "body": {
+                "tipSha": "376c131482d22321b4db71bea728acdd3534ff09",
+                "tipShort": "376c131482d2",
+                "codeSha": "3f82747d4e2ca63be40c1f3e1ebbd260977d9ac3",
+                "codeShort": "3f82747d",
+                "branch": "dev",
+                "batch": "TASK-41",
+                "deployedAt": "2026-11-07T00:01:18Z",
+                "documentVersion": "0.7.1",
+                "appVersion": "0.8.0"
+            }
+        },
+        {
+            "name": "register.A",
+            "pass": true,
+            "status": 200,
+            "userId": "c9dbab449a8e3e7defb25c286685e9b9"
+        },
+        {
+            "name": "register.B",
+            "pass": true,
+            "status": 200,
+            "userId": "7fd6bf3a78db04b01aca6b1ca8017022"
+        },
+        {
+            "name": "A.save.serverAck",
+            "pass": true,
+            "status": 200,
+            "body": {
+                "ok": true,
+                "version": 1
+            }
+        },
+        {
+            "name": "B.sameAccount.listSeesDoc",
+            "pass": true,
+            "status": 200,
+            "ids": ["task41_dual_1794009806710"]
+        },
+        {
+            "name": "B.sameAccount.openCorrectVersion",
+            "pass": true,
+            "status": 200,
+            "nameField": "TASK41-ACK-1794009806710",
+            "serverVersion": 1
+        },
+        {
+            "name": "expiredToken.requiresRelogin.401",
+            "pass": true,
+            "status": 401,
+            "body": {
+                "error": "UNAUTHORIZED",
+                "message": "Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại."
+            }
+        },
+        {
+            "name": "auth.me.expired.401",
+            "pass": true,
+            "status": 401
+        },
+        {
+            "name": "ownerIsolation.B.cannotSeeA",
+            "pass": true,
+            "status": 404
+        },
+        {
+            "name": "guest.cannotSeeA",
+            "pass": true,
+            "status": 404
+        },
+        {
+            "name": "A.edit.B.seesVersion2",
+            "pass": true,
+            "putStatus": 200,
+            "putVersion": 2,
+            "getVersion": 2,
+            "getName": "TASK41-ACK-1794009806710-v2"
+        }
+    ],
+    "note": "Synthetic users only — does not touch production drawings or private backups.",
+    "macWinReal": {
+        "status": "separate",
+        "note": "Record Mac/Win browser results below after manual/device check; not filled by this script.",
+        "cases": []
+    },
+    "passed": 12,
+    "failed": 0,
+    "allPass": true
+}

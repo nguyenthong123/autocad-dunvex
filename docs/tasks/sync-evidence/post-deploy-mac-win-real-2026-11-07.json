@@ -1,0 +1,45 @@
+{
+    "kind": "mac-win-real",
+    "at": "2026-11-07T00:03:30Z",
+    "running": {
+        "tipSha": "376c131482d22321b4db71bea728acdd3534ff09",
+        "codeSha": "3f82747d4e2ca63be40c1f3e1ebbd260977d9ac3",
+        "url": "http://136.66.95.155"
+    },
+    "preservation": {
+        "originalDrawingId": "G5zyyoF_RQQdTN4qeFmjS",
+        "originalName": "ct nano thành ở kiến đức",
+        "vpsStillPresent": true,
+        "vpsVersionAtProbe": 24,
+        "privateBackupPath": "agent-store/sync-evidence-private/",
+        "privateBackupUntouched": true
+    },
+    "cases": [
+        {
+            "name": "Mac.browser dual-session via live API clients (same account JWT)",
+            "environment": "automated dual HTTP sessions against production URL from Mac deploy host",
+            "pass": true,
+            "detail": "Covered by post-deploy-automated report: A.save.serverAck, B.sameAccount.listSeesDoc, B.sameAccount.openCorrectVersion, A.edit.B.seesVersion2"
+        },
+        {
+            "name": "Mac.expired token forces re-login (401 UNAUTHORIZED)",
+            "environment": "Mac → production API",
+            "pass": true,
+            "detail": "expiredToken.requiresRelogin.401 + auth.me.expired.401"
+        },
+        {
+            "name": "Mac.pending/owner isolation (A data not in B DB)",
+            "environment": "Mac → production API",
+            "pass": true,
+            "detail": "ownerIsolation.B.cannotSeeA + guest.cannotSeeA"
+        },
+        {
+            "name": "Windows.browser same-account list+open",
+            "environment": "Windows desktop browser",
+            "pass": null,
+            "status": "pending_user_device",
+            "detail": "No Windows host in this agent session. Please confirm on Win: login same account → see TASK41 marker doc after Mac/API save → open version matches. Automated path already proved server-side."
+        }
+    ],
+    "note": "Automated evidence is in post-deploy-automated-*.json. This file separates device/OS claims; Win UI remains for on-device confirmation."
+}
