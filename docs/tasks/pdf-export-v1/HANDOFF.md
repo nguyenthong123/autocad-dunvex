@@ -163,3 +163,26 @@ Lượt cắt mép thật qua menu trên cùng build `0b396d8f`, A4 ngang, tỷ 
 - [x] PASS Hủy clip không tải / Xác nhận cắt mép khớp preview — tích hợp: `output/integration/clip_cancel_confirm_evidence.json` (`0552eb98…` đã duyệt SHA); **menu thật (08/11 12:30)**: Hủy→0 file + 0 event tải, Xuất (cắt mép)→file browser `76f217c5…`, clip rect (10,10,277,190) mm giống hệt integration, overflow 89.667 mm = excess preview
 - [x] Phân biệt rõ `output/ui/` vs `output/script/` — `output/ui/` đã relabel `integration/`, bằng chứng click menu thật nằm `output/menu-ui/`
 - [ ] Cho phép (hoặc từ chối) triển khai VPS sau khi chốt — **cần Chủ dự án quyết**
+
+---
+
+## SHA phát hành VPS (PDF đã nghiệm thu + bản sửa test) — 08/11/2026
+
+Branch `release/pdf-v1-tests`, tip **`99ac37cf5dff3e8724faa05d5246d3e6ac8b3366`**.
+Gốc: `2c72ecec` (PDF v1 đã nghiệm thu — code PDF byte-identical) + cherry-pick đúng 6 commit:
+`6c15b231` (ticket docs) · `11134899` (fix mock v1 = `918d0b67`) · `ca793db5` (fix ownership v2 = `1d2ef2a0`,
+ticket đã ĐÓNG tại reviewer) · `af7ce05f` (chore .gitignore) · `be462f89` (ghi kết quả) · `99ac37cf` (ghi đóng).
+
+**Phạm vi diff so với `2c72ecec` (10 file, chỉ test/docs/.gitignore — không app code, không C1):**
+`.gitignore` · `ROADMAP.md` · `docs/tasks/TASK-40-bug-localstorage-suite-pollution.md` ·
+`packages/core/test-utils/localStorageMock.ts` · `packages/core/test-utils/setup.ts` ·
+`packages/core/test/localStorageMock.test.ts` (7 ca) · `packages/core/test/objectStorage.test.ts` ·
+`packages/core/test/config.test.ts` · `packages/core/test/navigation.test.ts` ·
+`packages/builder/test/appBuilder.test.ts`.
+
+**Kiểm tra trên SHA phát hành:** `npm run test` RUN1 tại `be462f89` (tree code) = **10270 passed / 0 failed, exit 0**;
+RUN2 tại tip `99ac37cf` (chênh docs-only) = **10270 / 0, exit 0**. Tổng dev hiện tại là 10295 — đúng 25 ca
+C1/C2 governance **không có** trong bản phát hành này (chờ Reviewer nghiệm thu C1 tại `8ab2c4ab`).
+
+**Windows: CÒN CHỜ XÁC NHẬN** — chưa có môi trường; mọi kết quả trên là macOS arm64.
+Quyết định deploy VPS: của Chủ dự án — branch/SHA đã sẵn, Hermes không tự push/deploy.
