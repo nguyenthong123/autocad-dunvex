@@ -2,7 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 import { ObjectStorage } from "../src";
-import { mockLocalStorage } from "../test-utils";
+import { mockLocalStorage, restoreLocalStorage } from "../test-utils";
 
 describe("ObjectStorage class", () => {
     let localStorageMock: any;
@@ -12,10 +12,9 @@ describe("ObjectStorage class", () => {
     });
 
     afterEach(() => {
-        Object.defineProperty(global, "localStorage", {
-            value: undefined,
-            writable: true,
-        });
+        // Hand the realm its original localStorage back — `undefined` poisoned
+        // every test file that shared this worker afterwards.
+        restoreLocalStorage();
     });
 
     describe("constructor", () => {

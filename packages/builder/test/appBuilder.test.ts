@@ -2,7 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 import type { IApplication, IWindow } from "@chili3d/core";
-import { mockLocalStorage } from "@chili3d/core/test-utils";
+import { mockLocalStorage, restoreLocalStorage } from "@chili3d/core/test-utils";
 import { ThreeVisulFactory } from "@chili3d/three";
 import { MainWindow } from "@chili3d/ui";
 import { OccShapeProvider } from "@chili3d/wasm";
@@ -47,10 +47,7 @@ describe("AppBuilder", () => {
     });
 
     afterEach(() => {
-        Object.defineProperty(global, "localStorage", {
-            value: undefined,
-            writable: true,
-        });
+        restoreLocalStorage();
     });
 
     describe("constructor", () => {
