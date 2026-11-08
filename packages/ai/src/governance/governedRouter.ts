@@ -3,10 +3,12 @@
 
 import type { Tool, ToolResult } from "../llm/types";
 import { getDocument } from "../tools/documentContext";
+import { analyzeToolImpact } from "./impactAnalysis";
 import { checkToolPermission, permissionDeniedPayload } from "./permissionGate";
 import { ensureSourceProtection } from "./sourceProtection";
 import { getActiveTaskProfile, recordTaskOwnedNodes } from "./taskProfile";
 import { checkAgentUndoAllowed, detectInterleaving, noteGovernedMutation } from "./undoTask";
+import { invalidateAllTaskEvidence, invalidateEvidenceForNodeIds } from "./verification";
 
 const WRITE_TOOLS = new Set([
     "run_program",
@@ -57,14 +59,18 @@ export function governTool(tool: Tool): Tool {
 
             const result = await inner(cleanArgs, signal);
             if (WRITE_TOOLS.has(tool.name)) {
-                afterSuccessfulWrite(tool.name, result);
+                afterSuccessfulWrite(tool.name, cleanArgs, result);
             }
             return result;
         },
     };
 }
 
-function afterSuccessfulWrite(toolName: string, result: string | ToolResult): void {
+function afterSuccessfulWrite(
+    toolName: string,
+    cleanArgs: Record<string, unknown>,
+    result: string | ToolResult,
+): void {
     const text = typeof result === "string" ? result : result.content;
     if (looksLikeError(text)) return;
 
@@ -78,10 +84,37 @@ function afterSuccessfulWrite(toolName: string, result: string | ToolResult): vo
         if (profile && profile.taskHistoryRecords.length > 0) {
             profile.taskHistoryRecords.pop();
         }
+        // Undo rewinds document geometry as a whole: every recorded criterion result of the
+        // task is stale — re-run the checks after redo/repair before claiming completion.
+        if (profile) {
+            invalidateAllTaskEvidence(
+                profile.taskId,
+                "undo đã tua hình học — bằng chứng cũ không còn hiệu lực",
+            );
+        }
         return;
     }
 
+    // Any write touching geometry invalidates evidence bound to the affected
+    // subjects, so an old pass can never stand in for an unmeasured new state.
+    invalidateEvidenceForNodeIds(affectedNodeIds(toolName, cleanArgs), `${toolName} changed the geometry`);
+
     noteGovernedMutation(getDocument());
+}
+
+/** Node ids a successful write modified/deleted/consumed/moved (create excluded — nothing to invalidate yet). */
+function affectedNodeIds(toolName: string, cleanArgs: Record<string, unknown>): string[] {
+    try {
+        const impact = analyzeToolImpact(toolName, cleanArgs);
+        return impact.impacts
+            .filter((i) => !i.batchCreated)
+            .map((i) => i.nodeId)
+            .filter((id) => typeof id === "string" && id.length > 0);
+    } catch {
+        // Indeterminate impact: fall back to invalidating nothing here — the plan gate
+        // already blocks un-analyzable writes before execution, so this is defence in depth.
+        return [];
+    }
 }
 
 function looksLikeError(text: string): boolean {

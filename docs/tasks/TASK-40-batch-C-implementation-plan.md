@@ -91,3 +91,34 @@ Mỗi runner khai báo `supportNotes` (chuỗi locale) để UI/prompt nói đú
 ---
 
 *Tài liệu phương án — chờ Reviewer duyệt trước khi triển khai mã Đợt C.*
+
+---
+
+## Nhật ký thực thi — C1 + chuẩn bị C2 (08/11/2026, Hermes)
+
+**Trạng thái:** C1 đã code + test; C2 chuẩn bị hai phép kiểm đầu tiên (kích thước, vị trí) — **chờ Reviewer nghiệm thu C1** trước khi mở rộng bộ phép đo / vòng sửa sai C3 / deploy VPS.
+
+**4 quyết định §3 — Chủ dự án chốt bằng chỉ đạo 08/11:**
+1. Dung sai: **phương án C** — runners không có bảng mặc định; thiếu `expected`/`toleranceMm` theo task → `unknown`, không bao giờ pass im lặng.
+2. C2 tối thiểu: `dimension_match` + `position_match` (world bbox, mm) — đã code + test kernel thật.
+3. Ngân sách sửa sai C3: **tối đa 2 lần**, dừng khi không tiến triển (chưa code — thuộc vòng C3, chờ duyệt C1).
+4. UI: chỉ **thanh trạng thái + thẻ bằng chứng trong chat** (không thêm khu vực riêng).
+
+**C1 đã triển khai (`packages/ai/src/governance/verification/`):**
+- `types.ts` — `CriterionSpec` (id, kind, required, subjectNodeIds, expected, toleranceMm, source) / `CriterionEvidence` / `CriterionStatus pass|fail|unknown` / `TaskCriteriaEvaluation`.
+- `evidenceStore.ts` — `registerCriterionRunner`, `defineTaskCriteria`, `recordCriterionEvidence` (tự gắn documentId + rulesFingerprint + thời điểm lúc ghi), `invalidateEvidenceForNodeIds`, `invalidateAllTaskEvidence`, `evaluateTaskCriteria` (bằng chứng stale đọc lại `unknown`, không dùng lại pass cũ), `onTaskEvidenceChanged`, `resetVerificationForTests`.
+- `status.ts` — `criteriaVerification: active` chỉ khi ≥1 runner đăng ký; dòng trạng thái hiển thị `⏳ còn N/M tiêu chí bắt buộc chưa đạt` hoặc `✔ đủ tiêu chí bắt buộc`; `toleranceTable: not_applied` giữ nguyên.
+- `governedRouter.ts` — write thành tiện ích gated → invalidate bằng chứng theo node tác động (dùng `analyzeToolImpact` Đợt B); undo → invalidate toàn bộ bằng chứng task; write bị từ chối **không** đụng bằng chứng.
+- `chatPanel.ts` + css — thẻ bằng chứng render mỗi tiêu chí (✅/❌/❓ + số đo + lý do + `supportNotes` + dòng stale); badge hoàn tất chỉ hiện khi store báo `completable`.
+- `web/src/index.ts` — `__chiliTest.governance` (dev/preview) cho reviewer demo trên app thật; production build **không** auto-register runner nào → trạng thái Đợt C vẫn `deferred` thành thật cho tới khi Reviewer duyệt bật C2.
+
+**C2-chuẩn-bị (`verification/runners/geometry.ts`):**
+- `dimension_match`: cạnh bbox world từng trục, dung sai [X,Y,Z] do task; sai → fail kèm "trục nào, đo bao nhiêu, lệch bao nhiêu".
+- `position_match`: tâm bbox world từng trục; cùng luật.
+-supportNotes công khai giới hạn: bbox **không** chứng minh lỗ/rãnh/hình dạng; **không** suy quan hệ xuyên từ điểm mẫu; tâm bbox ≠ centroid hình bất đối xứng.
+
+**Test mới (25 ca):** `batchC1Evidence.test.ts` (13 — binding, unknown≠pass, optional-fail không chặn, required-fail chặn, invalidate node/rules/document/plan, router invalidate khi write + không invalidate khi bị chặn, listener), `batchC2SizePosition.kernel.test.ts` (8 — kernel OCCT thật: pass khớp phép đo độc lập, **sai kích thước → fail**, **sai vị trí → fail**, thiếu dung sai/NaN/subject mất → **unknown**, sửa hình rồi thì pass cũ stale), `batchC1Card.dom.test.ts` (6 — mỗi trạng thái UI một ca: pass/fail/unknown/stale/plan-mất-hiệu-lực/class trạng thái).
+
+**Bằng chứng chạy:** `tsc -p` exit 0 · `biome check` 0 error · `npm run build` exit 0 · `npm run test` exit 0 (10294 passed / 0 failed). Sau commit C1: thêm 2 lần `npm run test` liên tiếp trên đúng SHA (ghi ở §5 guide).
+**Ticket localStorage:** tách riêng trước C1 — ticket `28ca0283`, fix `918d0b67`, ghi 2 lần full-suite xanh `4ecb89ed`.
+**CHƯA KIỂM:** screenshot ChatPanel thật trên trình duyệt (ca CDP demo đang chạy — nếu xong sẽ ghi vào docs/tasks/TASK-40-batch-C-evidence/); LLM thật end-to-end (ma trận §11.11 — thuộc đợt D); Windows (không có môi trường).

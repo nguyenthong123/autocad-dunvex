@@ -142,6 +142,24 @@ function exposeTestSurface(): void {
                     boxInFolder,
                 };
             },
+            /**
+             * Đợt C1 surface for the reviewer: drive the evidence store on the live page
+             * (register the prepared runners, declare criteria, run checks, read status).
+             * Dev/preview only, like everything else here.
+             */
+            governance: async () => {
+                const ai = await import("@chili3d/ai");
+                return {
+                    registerDefaultGeometryRunners: ai.registerDefaultGeometryRunners,
+                    getGovernanceStatus: ai.getGovernanceStatus,
+                    formatGovernanceStatusLine: ai.formatGovernanceStatusLine,
+                    defineTaskCriteria: ai.defineTaskCriteria,
+                    runTaskCriterionChecks: ai.runTaskCriterionChecks,
+                    evaluateTaskCriteria: ai.evaluateTaskCriteria,
+                    approveTaskPlan: ai.approveTaskPlan,
+                    invalidateEvidenceForNodeIds: ai.invalidateEvidenceForNodeIds,
+                };
+            },
         },
         configurable: true,
     });

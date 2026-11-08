@@ -1236,3 +1236,61 @@
 .askAnswer {
     color: var(--foreground-muted-color);
 }
+
+/* Đợt C1 — evidence card (per-criterion pass/fail/unknown + store-gated completion). */
+.governanceCard {
+    flex: 0 0 auto;
+    max-height: 32%;
+    overflow-y: auto;
+    border-top: 1px solid var(--border-color);
+    padding: 6px 10px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.governanceInner {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.governanceHeader {
+    font-weight: 600;
+    color: var(--foreground-color);
+    margin-bottom: 2px;
+}
+
+.governanceRow {
+    display: block;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.governancePass {
+    color: var(--success-color, #1a7f37);
+}
+
+.governanceFail {
+    color: var(--error-color, #c62828);
+}
+
+.governanceUnknown {
+    color: var(--foreground-muted-color);
+}
+
+.governanceStale {
+    color: var(--warning-color, #8d6e00);
+    font-style: italic;
+}
+
+.governanceBadgeComplete {
+    margin-top: 4px;
+    font-weight: 700;
+    color: var(--success-color, #1a7f37);
+}
+
+.governanceBadgeOutstanding {
+    margin-top: 4px;
+    font-weight: 600;
+    color: var(--foreground-muted-color);
+}

@@ -33,9 +33,13 @@ import { isStreamParseError, listRuntimeErrorReports, recordRuntimeError } from 
 import {
     type BoundTaskPlanProposal,
     confirmProposedPlan,
+    evaluateTaskCriteria,
     formatGovernanceStatusLine,
+    getTaskProfile,
     invalidatePendingProposals,
     invalidateTaskProfile,
+    onTaskEvidenceChanged,
+    renderEvidenceCard,
     setPlanApprovalHandler,
 } from "./governance";
 import {
@@ -585,6 +589,9 @@ export class ChatPanel extends HTMLElement {
     private memoryStatusBar!: HTMLElement;
     private memoryTextEl!: HTMLElement;
     private memoryErrorBtn!: HTMLButtonElement;
+    /** Đợt C1: per-criterion evidence card; completion badge is store-gated, never free text. */
+    private governanceCardEl!: HTMLElement;
+    private unsubscribeEvidence?: () => void;
 
     constructor() {
         super();
@@ -600,6 +607,8 @@ export class ChatPanel extends HTMLElement {
         this.header = this.createHeader();
         this.imagePreview = div({ className: style.imagePreview });
         this.memoryStatusBar = this.createMemoryStatusBar();
+        this.governanceCardEl = div({ className: style.governanceCard, style: "display: none" });
+        this.refreshGovernanceCard();
 
         const fileInput = this.createFileInput();
         this.composer = this.createComposer(fileInput);
@@ -611,6 +620,7 @@ export class ChatPanel extends HTMLElement {
             this.emptyState,
             this.imagePreview,
             this.memoryStatusBar,
+            this.governanceCardEl,
             this.composer,
             fileInput,
             this.buildSettingsOverlay(),
@@ -625,6 +635,8 @@ export class ChatPanel extends HTMLElement {
         // Subscribed once, for the panel's whole life: floating mode detaches by moving this node
         // between parents, so a connect/disconnect pair would re-subscribe on every drag.
         PubSub.default.sub("activeViewChanged", this.onActiveViewChanged);
+        // Đợt C1: the evidence card follows the store (record/invalidate/registration).
+        this.unsubscribeEvidence = onTaskEvidenceChanged(() => this.refreshGovernanceCard());
     }
 
     private createInput(): HTMLTextAreaElement {
@@ -908,6 +920,40 @@ export class ChatPanel extends HTMLElement {
         } else {
             this.memoryErrorBtn.style.display = "none";
         }
+
+        this.refreshGovernanceCard();
+    }
+
+    /**
+     * Đợt C1 evidence card: only an active plan with a valid pass on every required
+     * criterion may show completion; a missing/stale proof keeps showing as unknown
+     * instead of disappearing (spec §9 — failures must stay visible).
+     */
+    private refreshGovernanceCard(): void {
+        // createMemoryStatusBar() runs updateMemoryStatusBar() during construction,
+        // before governanceCardEl exists — bail until the card is mounted.
+        if (!this.governanceCardEl) return;
+        const profile = getTaskProfile();
+        if (!profile) {
+            this.governanceCardEl.style.display = "none";
+            this.governanceCardEl.replaceChildren();
+            return;
+        }
+        const evaluation = evaluateTaskCriteria(profile.taskId, this.document);
+        this.governanceCardEl.style.display = "";
+        this.governanceCardEl.replaceChildren(
+            renderEvidenceCard(evaluation, {
+                root: style.governanceInner,
+                header: style.governanceHeader,
+                row: style.governanceRow,
+                pass: style.governancePass,
+                fail: style.governanceFail,
+                unknown: style.governanceUnknown,
+                stale: style.governanceStale,
+                badgeComplete: style.governanceBadgeComplete,
+                badgeOutstanding: style.governanceBadgeOutstanding,
+            }),
+        );
     }
 
     private buildSettingsOverlay(): HTMLElement {

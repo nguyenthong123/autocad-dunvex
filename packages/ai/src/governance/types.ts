@@ -116,12 +116,14 @@ export interface GovernanceStatus {
     sourceProtection: "active";
     permissionGate: "active";
     contiguousUndoTask: "active";
-    /** Batch C — not active yet. */
-    criteriaVerification: "deferred";
-    /** Proposed tolerance table from Đợt A — not adopted. */
+    /** Đợt C spec C1.4: "active" only while at least one criterion runner is registered. */
+    criteriaVerification: "deferred" | "active";
+    /** Proposed tolerance table from Đợt A — not adopted until the Reviewer picks A/B/C. */
     toleranceTable: "not_applied";
     activeTaskId?: string;
     protectedNodeCount: number;
     rulesScope?: "account" | "document" | "default_safe";
     rulesMissingLink: boolean;
+    /** Registered criterion runner kinds, e.g. ["dimension_match", "position_match"]. */
+    runnerKinds?: string[];
 }
