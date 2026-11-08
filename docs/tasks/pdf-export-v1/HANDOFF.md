@@ -3,7 +3,7 @@
 **Trạng thái:** chờ reviewer duyệt VPS sau bằng chứng UI. **Chưa** triển khai VPS.  
 **Survey SHA:** `3c450e85`  
 **Implementation SHA (feat):** `a109d26e4892a89d24a14df1c822e45986a9603a`  
-**UI-acceptance fix SHA:** _(commit chứa sau khi ghi handoff — textHeight ÷ scale + dashed-by-name)_  
+**UI-acceptance fix SHA:** `0b396d8ffcef76d5d6dc72c06834f534c6ccd504`  
 **Thư mục:** `docs/tasks/pdf-export-v1/`
 
 ## Phân loại file (UI vs script)
