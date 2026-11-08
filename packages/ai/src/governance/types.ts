@@ -85,6 +85,12 @@ export interface TaskProfile extends TaskScope {
     taskHistoryRecords: object[];
     interleaved: boolean;
     haltReason?: string;
+    /**
+     * C2: acceptance criteria captured WITH the plan (from user requirement values),
+     * shown on the approval card and rebound by `finalizeTaskVerification` after the
+     * last write. Absent = nothing to verify; the card must not claim completion.
+     */
+    criteria?: import("./verification/types").CriterionSpec[];
 }
 
 /** Minimal structured design rules for Batch B (no approved tolerance table). */

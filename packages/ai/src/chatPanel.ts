@@ -34,11 +34,14 @@ import {
     type BoundTaskPlanProposal,
     confirmProposedPlan,
     evaluateTaskCriteria,
+    finalizeTaskVerification,
     formatGovernanceStatusLine,
+    getCriterionRunner,
     getTaskProfile,
     invalidatePendingProposals,
     invalidateTaskProfile,
     onTaskEvidenceChanged,
+    registerDefaultGeometryRunners,
     renderEvidenceCard,
     setPlanApprovalHandler,
 } from "./governance";
@@ -644,6 +647,10 @@ export class ChatPanel extends HTMLElement {
         // re-evaluate on both signals (the state markers decide the outcome).
         PubSub.default.sub("executeCommand", this.onDocStateSignal);
         PubSub.default.sub("closeCommandContext", this.onDocStateSignal);
+        // Đợt C2 runtime: measuring runners are live in the app (Reviewer accepted C1.3 as
+        // the C2 baseline). Registration enables MEASUREMENT only — it grants no write
+        // rights; the Batch B permission gates stay exactly as they were.
+        registerDefaultGeometryRunners();
     }
 
     private createInput(): HTMLTextAreaElement {
@@ -1738,6 +1745,10 @@ export class ChatPanel extends HTMLElement {
             showFooter = this.handleSendError(err);
         } finally {
             this.endTurn(showFooter, assistantEl);
+            // C2: after the turn's LAST write, run the checks in-app against real geometry
+            // and bind fresh evidence to the current document state. Failures stay silent
+            // here because the card re-reads unknown — a measurement error never fakes pass.
+            void finalizeTaskVerification().catch(() => {});
         }
     }
 
@@ -2730,6 +2741,12 @@ export class ChatPanel extends HTMLElement {
                 : undefined,
             proposal.allowMaterialLibrary ? "Material library: yes" : undefined,
             proposal.allowDocumentVariables ? "Document variables: yes" : undefined,
+            ...(proposal.criteriaDiscarded
+                ? [
+                      `⚠ ${proposal.criteriaDiscarded} mục tiêu chí bị loại (đơn vị khác mm / hệ khác world / thiếu id-kind-đối tượng)`,
+                  ]
+                : []),
+            ...criteriaLinesOf(proposal),
         ].filter(Boolean) as string[];
 
         const body = div({ className: style.askQuestion });
@@ -2957,6 +2974,30 @@ function toChatMessage(message: StoredMessage): ChatMessage {
         return { role: "user", content: message.text, images: message.images };
     }
     return { role: "assistant", content: message.text };
+}
+
+/**
+ * Approval-card lines for C2 criteria. Values come from the (sanitized) user requirement;
+ * missing pieces are shown verbatim as unknown wording so the user confirms what they approve.
+ */
+function criteriaLinesOf(proposal: BoundTaskPlanProposal): string[] {
+    const out: string[] = [];
+    for (const c of proposal.criteria ?? []) {
+        const label = getCriterionRunner(c.kind)?.label ?? c.kind;
+        const want = Object.entries(c.expected)
+            .map(([k, v]) => `${k}=[${v.join(", ")}]`)
+            .join(" ");
+        const tol = c.toleranceMm ? `± ${c.toleranceMm.join("/")} mm` : "CHƯA NÊU DUNG SAI → unknown";
+        const subj = c.subjectNodeIds.length
+            ? c.subjectNodeIds.join(", ")
+            : c.subjectHint
+              ? `kết quả tạo mới khớp “${c.subjectHint}”`
+              : "chưa xác định đối tượng → unknown";
+        out.push(
+            `Tiêu chí ${c.required ? "bắt buộc" : "tuỳ chọn"} — ${label} · ${c.id}: mong đợi ${want || "(chưa có → unknown)"} ${tol} · đo trên: ${subj}${c.source ? ` · nguồn: ${c.source}` : ""}`,
+        );
+    }
+    return out;
 }
 
 customElements.define("chili-ai-chat", ChatPanel);

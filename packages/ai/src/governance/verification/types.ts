@@ -21,6 +21,13 @@ export interface CriterionSpec {
     required: boolean;
     /** Exact subject nodes the evidence is bound to — ids, never names-by-guess. */
     subjectNodeIds: string[];
+    /**
+     * C2 runtime: criteria are declared BEFORE the result object exists (the agent builds it
+     * inside the approved plan). At finalize time the hint resolves against nodes the task
+     * CREATED (last match wins = result of the last write). Nothing resolves → the criterion
+     * keeps no subjects and reads unknown — never a silent pass.
+     */
+    subjectHint?: string;
     /** Runner-defined expectation keys, e.g. { sizeMm: [800, 600, 300] }. */
     expected: Record<string, number[]>;
     /** Per-axis tolerance in mm from the task requirement; missing → unknown. */
@@ -70,6 +77,8 @@ export interface CriterionRunner {
      * Runners that do not touch the subjects (test stubs) leave this unset.
      */
     requiresSubjectProof?: boolean;
+    /** Human label for the UI. Bounding-box-based checks MUST name the box ("bao"). */
+    label?: string;
     supportNotes: string;
     measure(spec: CriterionSpec, doc?: IDocument): Promise<CriterionMeasurement>;
 }

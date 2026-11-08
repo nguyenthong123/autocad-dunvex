@@ -15,12 +15,14 @@ import {
     defineTaskCriteria,
     dimensionMatchRunner,
     evaluateTaskCriteria,
+    finalizeTaskVerification,
     getGovernanceStatus,
     getLatestEvidence,
     historyMarkOf,
     invalidateEvidenceForNodeIds,
     positionMatchRunner,
     recordCriterionEvidence,
+    recordTaskOwnedNodes,
     registerDefaultGeometryRunners,
     resetTaskProfileForTests,
     resetVerificationForTests,
@@ -278,6 +280,45 @@ describe("TASK-40 Đợt C2 prep — kích thước & vị trí trên kernel th�
         const sizeAfterHole = independentBox(node).size;
         expect(sizeAfterHole[0]).toBeCloseTo(800, 3); // hộp bao giữ nguyên thật
         expect(sizeAfterHole[2]).toBeCloseTo(2500, 3);
+    });
+
+    test("C2 runtime kernel: propose criteria→finalize (hint) trên hình THẬT→pass; move tiếp → unknown, mất badge", async () => {
+        const node = addBox("Tấm C2", 800, 300, 2500);
+        registerDefaultGeometryRunners();
+        // Plan được duyệt TRƯỚC khi có id kết quả: criteria mang hint, không id.
+        const profile = approveTaskPlan(
+            {
+                taskId: "c2-run-k",
+                allowedModifiedNodeIds: [],
+                criteria: [
+                    {
+                        id: "kich",
+                        kind: "dimension_match",
+                        required: true,
+                        subjectNodeIds: [],
+                        subjectHint: "Tấm C2",
+                        expected: { sizeMm: [800, 300, 2500] },
+                        toleranceMm: [2, 2, 2],
+                        source: "yêu cầu: tấm 800×300×2500 mm ±2",
+                    },
+                ],
+            },
+            doc,
+        );
+        // Router ghi thật sẽ tự record; bản sao unit: node do task tạo.
+        recordTaskOwnedNodes([node.id], doc);
+
+        const done = await finalizeTaskVerification(doc);
+        expect(done).toBeTruthy();
+        expect(done!.rows[0].status).toBe("pass"); // runner THẬT đo kernel THẬT qua hint resolve
+        expect(done!.rows[0].measured?.[`${node.id}:sizeMm`]?.[0]).toBeCloseTo(800, 2);
+        expect(done!.completable).toBe(true);
+
+        // Người dùng (không phải agent) di chuyển tấm — cùng turn app:
+        node.transform = Matrix4.fromTranslation(0, 400, 0);
+        const after = evaluateTaskCriteria("c2-run-k", doc);
+        expect(after.rows[0].status).toBe("unknown");
+        expect(after.completable).toBe(false); // badge hoàn tất rơi ngay khi đọc lại
     });
 
     test("runners công khai giới hạn: bbox không tự tuyên bố chứng minh lỗ/hình dạng", () => {

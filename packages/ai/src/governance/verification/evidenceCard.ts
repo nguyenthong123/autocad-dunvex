@@ -2,7 +2,8 @@
 // See LICENSE file in the project root for full license information.
 
 import { div, span } from "@chili3d/element";
-import type { TaskCriteriaEvaluation } from "./types";
+import { getCriterionRunner } from "./evidenceStore";
+import type { CriterionSpec, TaskCriteriaEvaluation } from "./types";
 
 /** Class tokens injected by the host (chatPanel.module.css) so the card stays testable. */
 export interface EvidenceCardClasses {
@@ -33,6 +34,18 @@ function formatMeasured(measured?: Record<string, number[]>): string {
     return ` · ${parts.join(" · ")}`;
 }
 
+/** C2 card: state the REQUIREMENT next to the measurement — "mong đợi … ± … mm". */
+function formatExpected(spec: CriterionSpec): string {
+    const want = Object.entries(spec.expected ?? {})
+        .map(([key, values]) => `${key}=[${values.join(", ")}]`)
+        .join(" ");
+    if (!want) {
+        return " · yêu cầu: (chưa có giá trị → không đo được)";
+    }
+    const tol = spec.toleranceMm ? `± ${spec.toleranceMm.join("/")} mm` : "dung sai CHƯA NÊU → unknown";
+    return ` · yêu cầu: ${want} mm ${tol}`;
+}
+
 /**
  * Evidence card for the chat panel — the only completion signal it may show is
  * `completable` from the store (every required criterion passing with VALID
@@ -54,7 +67,7 @@ export function renderEvidenceCard(
         return div(
             attrs,
             span({
-                textContent: `${STATUS_ICON[row.status]} [${row.spec.required ? "bắt buộc" : "tuỳ chọn"}] ${row.spec.kind} · ${row.spec.id}`,
+                textContent: `${STATUS_ICON[row.status]} [${row.spec.required ? "bắt buộc" : "tuỳ chọn"}] ${getCriterionRunner(row.spec.kind)?.label ?? row.spec.kind} · ${row.spec.id}${formatExpected(row.spec)}`,
             }),
             span({ textContent: ` — ${row.reason}${formatMeasured(row.measured)}` }),
             ...(row.stale && row.evidence

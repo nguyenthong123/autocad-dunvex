@@ -8,10 +8,15 @@ import { getDocument } from "../tools/documentContext";
 import { rulesFingerprintFor } from "./rulesStore";
 import { approveTaskPlan } from "./taskProfile";
 import type { TaskProfile, TaskScope } from "./types";
+import type { CriterionSpec } from "./verification/types";
 
 /** Proposed plan fields before document/rules binding. */
 export interface TaskPlanProposal {
     goal?: string;
+    /** C2 acceptance criteria carried with the plan — sanitized at parse, user-confirmed at approval. */
+    criteria?: CriterionSpec[];
+    /** Proposal entries dropped by sanitization (malformed / non-mm units / non-world frame). */
+    criteriaDiscarded?: number;
     allowedModifiedNodeIds: string[];
     allowedDeletedNodeIds: string[];
     allowedConsumedNodeIds: string[];
@@ -67,9 +72,12 @@ export function getPendingProposal(): BoundTaskPlanProposal | undefined {
 
 /** Normalize proposal fields; ignore any model-supplied approved/force flags. */
 export function parseTaskPlanProposal(raw: Record<string, unknown>): TaskPlanProposal {
+    const { criteria, discarded } = sanitizeProposalCriteria(raw["criteria"]);
     return {
         goal: typeof raw["goal"] === "string" ? raw["goal"] : undefined,
         summary: typeof raw["summary"] === "string" ? raw["summary"] : undefined,
+        criteria,
+        criteriaDiscarded: discarded > 0 ? discarded : undefined,
         allowedModifiedNodeIds: stringIds(raw["allowedModifiedNodeIds"]),
         allowedDeletedNodeIds: stringIds(raw["allowedDeletedNodeIds"]),
         allowedConsumedNodeIds: stringIds(raw["allowedConsumedNodeIds"]),
@@ -183,6 +191,8 @@ export function confirmProposedPlan(
         {
             ...proposalToScope(proposal),
             documentId: proposal.documentId,
+            // C2: criteria ride the approval — the user confirmed these exact numbers by clicking.
+            criteria: proposal.criteria,
             // Snapshot the fingerprint that just validated — later writes re-read storage.
             rulesFingerprint: proposal.rulesFingerprint,
         },
@@ -237,6 +247,16 @@ export function buildProposeTaskPlanTool(): Tool {
                     type: "boolean",
                     description: "Request permission to set/remove document variables",
                 },
+                criteria: {
+                    type: "array",
+                    description:
+                        "Post-build acceptance criteria from the USER REQUIREMENT (not invented). Each: " +
+                        "{ id, kind ('dimension_match' | 'position_match'), required?, subjectNodeIds? (existing ids) " +
+                        "OR subjectHint (name of the object the task will create), expected: { sizeMm | centerMm: [x,y,z] }, " +
+                        "toleranceMm: [x,y,z] in mm, unit must be 'mm', coordRef 'world', source: quote of the requirement }. " +
+                        "If tolerance or expected is unknown, ASK the user (ask_user) instead of guessing; missing values will read 'unknown'.",
+                    items: { type: "object" },
+                },
             },
         },
         handler: async (args, signal) => {
@@ -251,10 +271,13 @@ export function buildProposeTaskPlanTool(): Tool {
                 proposal.allowedConsumedNodeIds.length > 0 ||
                 proposal.allowedTreeNodeIds.length > 0 ||
                 proposal.allowMaterialLibrary ||
-                proposal.allowDocumentVariables;
+                proposal.allowDocumentVariables ||
+                // C2: a create-only task with verification criteria is still a real plan —
+                // finalize needs the approved profile to bind its evidence to.
+                (proposal.criteria?.length ?? 0) > 0;
             if (!hasScope) {
                 return JSON.stringify({
-                    error: "propose_task_plan requires at least one scope entry (node ids or library/variable flags)",
+                    error: "propose_task_plan requires at least one scope entry (node ids, library/variable flags, or verification criteria)",
                     approved: false,
                 });
             }
@@ -282,6 +305,8 @@ export function buildProposeTaskPlanTool(): Tool {
                 taskId: decision.profile.taskId,
                 documentId: decision.profile.documentId,
                 proposalId: bound.proposalId,
+                criteriaCount: decision.profile.criteria?.length ?? 0,
+                criteriaDiscarded: bound.criteriaDiscarded ?? 0,
                 allowedModifiedNodeIds: decision.profile.allowedModifiedNodeIds,
                 allowedDeletedNodeIds: decision.profile.allowedDeletedNodeIds,
                 allowedConsumedNodeIds: decision.profile.allowedConsumedNodeIds,
@@ -296,6 +321,76 @@ export function buildProposeTaskPlanTool(): Tool {
 function stringIds(value: unknown): string[] {
     if (!Array.isArray(value)) return [];
     return [...new Set(value.filter((item): item is string => typeof item === "string" && item.length > 0))];
+}
+
+function finiteNumberArray(value: unknown): number[] | undefined {
+    if (!Array.isArray(value)) return undefined;
+    const nums = value.map((item) => (typeof item === "string" ? Number(item) : item));
+    if (nums.length === 0 || !nums.every((n) => typeof n === "number" && Number.isFinite(n)))
+        return undefined;
+    return nums as number[];
+}
+
+/**
+ * Sanitize model-supplied criteria. Structural garbage, non-mm units or non-world frames
+ * are DISCARDED (counted, surfaced on the approval card) rather than silently reinterpreted.
+ * Semantically missing information (no tolerance, no expected) is KEPT — the runner reads
+ * those as unknown; that honesty is the point (Reviewer C4-C decision).
+ */
+function sanitizeProposalCriteria(value: unknown): { criteria: CriterionSpec[]; discarded: number } {
+    if (!Array.isArray(value)) return { criteria: [], discarded: 0 };
+    const criteria: CriterionSpec[] = [];
+    let discarded = 0;
+    for (const entry of value) {
+        if (!entry || typeof entry !== "object") {
+            discarded++;
+            continue;
+        }
+        const e = entry as Record<string, unknown>;
+        const id = typeof e["id"] === "string" ? e["id"].trim() : "";
+        const kind = typeof e["kind"] === "string" ? e["kind"].trim() : "";
+        const subjects = stringIds(e["subjectNodeIds"]);
+        const hint = typeof e["subjectHint"] === "string" ? e["subjectHint"].trim() : "";
+        if (!id || !kind || (subjects.length === 0 && !hint)) {
+            discarded++;
+            continue;
+        }
+        if (e["unit"] !== undefined && String(e["unit"]).trim().toLowerCase() !== "mm") {
+            discarded++;
+            continue;
+        }
+        if (e["coordRef"] !== undefined && String(e["coordRef"]).trim().toLowerCase() !== "world") {
+            discarded++;
+            continue;
+        }
+        const expected: Record<string, number[]> = {};
+        if (e["expected"] && typeof e["expected"] === "object") {
+            for (const [key, arr] of Object.entries(e["expected"] as Record<string, unknown>)) {
+                const nums = finiteNumberArray(arr);
+                if (nums) expected[key] = nums;
+            }
+        }
+        const toleranceMm = finiteNumberArray(e["toleranceMm"]);
+        if (toleranceMm && toleranceMm.some((n) => n < 0)) {
+            discarded++;
+            continue;
+        }
+        const spec: CriterionSpec = {
+            id,
+            kind,
+            required: e["required"] !== false,
+            subjectNodeIds: subjects,
+            expected,
+            source:
+                typeof e["source"] === "string" && e["source"].trim()
+                    ? String(e["source"]).trim()
+                    : undefined,
+            subjectHint: subjects.length === 0 && hint ? hint : undefined,
+            toleranceMm,
+        };
+        criteria.push(spec);
+    }
+    return { criteria, discarded };
 }
 
 function markIdentity(mark: IHistoryRecord | undefined): string | undefined {

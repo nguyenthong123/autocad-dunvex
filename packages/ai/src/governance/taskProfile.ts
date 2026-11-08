@@ -26,7 +26,11 @@ const agentCreatedByDocument = new Map<string, Set<string>>();
  * Self-grant fields inside a plan object are ignored — only the listed id sets matter.
  */
 export function approveTaskPlan(
-    input: Partial<TaskScope> & { documentId?: string; goal?: string },
+    input: Partial<TaskScope> & {
+        documentId?: string;
+        goal?: string;
+        criteria?: import("./verification/types").CriterionSpec[];
+    },
     doc?: IDocument,
 ): TaskProfile {
     const active = doc ?? getDocument();
@@ -59,6 +63,7 @@ export function approveTaskPlan(
         preTaskUndoTop: active.history.undoTop(),
         taskHistoryRecords: [],
         interleaved: false,
+        criteria: input.criteria?.length ? [...input.criteria] : undefined,
     };
     activeProfile = profile;
     return profile;
