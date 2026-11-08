@@ -2,7 +2,7 @@
 
 **Trạng thái:** chờ reviewer nghiệm thu. **Chưa** triển khai VPS.  
 **Survey SHA:** `3c450e85`  
-**Implementation tip (commit handoff):** xem `git log -1` sau khi merge commit bàn giao.  
+**Implementation SHA:** `a109d26e4892a89d24a14df1c822e45986a9603a`  
 **Thư mục:** `docs/tasks/pdf-export-v1/`
 
 ## Quyết định đã thi công (§6 HANDOFF spike)
