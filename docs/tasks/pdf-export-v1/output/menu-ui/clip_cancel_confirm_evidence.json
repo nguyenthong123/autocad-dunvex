@@ -1,0 +1,48 @@
+{
+    "channel": "menu/ribbon clicks (menu_clip_acceptance.mjs)",
+    "build_ref": "0b396d8f",
+    "options": {
+        "pageSize": "A4",
+        "landscape": true,
+        "scale": 15
+    },
+    "cancel": {
+        "files_before": 0,
+        "files_after": 0,
+        "downloadWillBegin_events": 0,
+        "noDownload": true
+    },
+    "confirm": {
+        "downloadWillBegin_events": ["edge-bottom-5100.pdf"],
+        "downloaded_filename": "edge-bottom-5100.pdf"
+    },
+    "clip_analysis": {
+        "total_segments": 16,
+        "full_340mm_segments_in_stream": 3,
+        "clip_rects_menu_pdf": [
+            {
+                "xMm": 10,
+                "yMm": 10,
+                "wMm": 277,
+                "hMm": 190
+            }
+        ],
+        "clip_rect_equals_print_frame_A4": true,
+        "full_edge_visible_after_clip_mm": 250.333,
+        "full_edge_overflow_past_frame_mm": 89.667,
+        "visible_plus_overflow_equals_full": true,
+        "clip_rects_integration_pdf": [
+            {
+                "xMm": 10,
+                "yMm": 10,
+                "wMm": 277,
+                "hMm": 190
+            }
+        ],
+        "integration_clip_rect_equals_print_frame_A4": true,
+        "clip_rects_identical_menu_vs_integration": true,
+        "longest_segment_mm": 340,
+        "visible_length_note": "340 mm edge kept in stream; overflow past the 277 mm frame rect is clip-cut"
+    },
+    "sha256": "76f217c50f54e7767ea8dda8f4094fd2b2f9425de27e3913691d42a8becb6c05"
+}

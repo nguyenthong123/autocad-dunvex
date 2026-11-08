@@ -1,0 +1,13 @@
+{
+    "edge_paper_mm": 102.0,
+    "edge_tol_ok": true,
+    "Tf_pt": [9.921259842519685, 8.503937007874017, 11.338582677165356],
+    "sha256": {
+        "from_ui_A3_1to50.pdf": "5a7ab574a16c5b56a91341ffd00e69053087313189856051628095ce4233c7bc",
+        "from_ui_A3_1to50_preview.png": "946dc44400d7f6e42310c852d28f0cf9c3e4314ccc2ec46d1f6ee8ac2735cbf4",
+        "from_ui_A3_1to50_render-1.png": "9c524ec8066c22d52fee11e4ed3cbe94caf00b61dd953b0c1b1c73f61bdbdc25",
+        "from_ui_A4_1to15_CLIP.pdf": "0552eb9870c271b2bc9c2dceeea3f1df752e5e99d87262f1a6db2acf5dbcdace",
+        "from_ui_A4_1to15_CLIP_preview.png": "f186581aecfb03a7e7d5e884cfd0e6c27c403d233c32872a6b5bbf53c33328a3",
+        "from_ui_A4_1to15_CLIP_render-1.png": "59a78707d0ca5eadf05955b976de538f8423513b22dd898d08075d037f07695e"
+    }
+}

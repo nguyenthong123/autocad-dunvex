@@ -115,10 +115,49 @@ npx serve dist -l 8080
 - `DefaultDataExchange` — `.pdf` trong `exportFormats`, `planPdfExport`, `preloadPdfWriter`
 - `Export` command — thuộc tính trang (dependency `format=.pdf`), dialog preview/clip
 
+## Menu / ribbon run (08/11 — Hermes chạy nốt ca dở của thợ, build 0b396d8f)
+
+Harness mới: `menu_ui_acceptance.mjs` — click thật qua CDP Input (chuột thật), không gọi thẳng `planPdfExport`.
+
+- Bấm ribbon **Xuất bản vẽ (Export)** → mở panel `CommandContext`.
+- Danh sách format thật có 10 mục chứa `.pdf` (dump trong report) → chọn `.pdf` → nhóm thuộc tính PDF hiện (dependency hoạt động).
+- Chọn/điền thật trên panel: Khổ giấy=A3, Hướng giấy=Ngang, Chế độ tỷ lệ=cố định, Tỷ lệ 1:n=50, Lề=10; **đọc lại object lệnh** trước khi xác nhận (`pdfPageSize=A3`, `orientation=landscape`, `scale=50`).
+- Bấm ✓ xác nhận selection (10 đối tượng) → dialog **Xem trước PDF**: `1:50.00 · A3 landscape`, `Longest edge on paper: 102.000 mm`, `Max arc deviation 0.0021 mm`.
+- Bấm **Xác nhận** → **trình duyệt tự lưu file tải xuống** `downloads/edge-bottom-5100.pdf` (8.952 B; `Page.setDownloadBehavior`, không phải blob-hook).
+
+**Đo trên chính file tải xuống** (content stream vector `m`/`l`, không phải giá trị plan):
+- 3 đoạn ngang 102.000 mm giấy = 289.134 pt (đúng 5100 mm @ 1:50), delta **0.000 mm** (dung sai ±0,2).
+- Hai đoạn ngang dài nhất (2× 400 mm) + dọc 277 mm là **khung lề trang**, không phải cạnh hình vẽ — loại khỏi phép đo cạnh.
+- `pdfinfo`: 1 page, 1190.55 × 841.89 pts (A3). `pdffonts`: NotoSans CID TrueType emb=yes uni=yes. `pdftotext`: đủ tiêu đề, số "5100", ghi chú "Ghi chú: cạnh dài 5.100 mm · tỷ lệ 1:50 · kiểm tra in 100%" — không cắt chữ.
+- Render 150 dpi: ghi chú nằm riêng dưới đường kích thước, **không chồng nhãn** (fix `0b396d8f` thể hiện trên bản menu).
+
+**SHA256** `from_menu_A3_1to50.pdf`: `a7a7e913dbceaae7097cce026cfa0b46bc8330ee1421c6a7f8f0a65ca70a9a11`. Khác PDF integration (`5a7ab574…`) do PDF lưu CreationDate/ModDate theo lần chạy (8.952 vs 8.951 byte); **hình học khớp** (cạnh 102.000 mm cả hai). SHA thay đổi theo mỗi lần re-run (timestamp trong PDF); bản chốt là lần chạy 08/11 12:30 bằng đúng code harness sau khi biome format — report `menu_acceptance_report.json` (mtime 12:30:13) mới hơn harness (12:29:32). (Bản gốc trong `downloads/` bị lượt clip ghi đè vì trùng tên `edge-bottom-5100.pdf`; bản copy `from_menu_A3_1to50.pdf` giữ nguyên SHA ở trên.)
+
+## Menu clip run (08/11 12:30 — `menu_clip_acceptance.mjs`, full-green EXIT=0)
+
+Lượt cắt mép thật qua menu trên cùng build `0b396d8f`, A4 ngang, tỷ lệ cố định 1:15 (nội dung 340 mm vượt khung in 277 mm):
+
+- Panel khai báo thật: `format=.pdf`, `Khổ giấy=A4`, `Hướng giấy=Ngang`, `Chế độ tỷ lệ=Tỷ lệ cố định`, `Tỷ lệ 1:n=15` (gõ phím thật + Enter), **đọc lại object lệnh** trước xác nhận.
+- Dialog preview hiện đúng: `Nội dung vượt khổ — thừa: 89.7 × 56.7 mm`, hai nút `Xuất (cắt mép)` / `Hủy bỏ` (ảnh 05/06).
+- **Hủy bỏ trước:** file tải 0→0 **và** `Page.downloadWillBegin` = 0 sự kiện → không có lượt tải (khớp bằng chứng integration).
+- **Chạy lại → Xuất (cắt mép):** trình duyệt tự lưu `edge-bottom-5100.pdf` → `from_menu_A4_1to15_CLIP.pdf` (11.077 B; integration 11.076 B — lệch 1 byte do timestamp).
+  **SHA256:** `76f217c50f54e7767ea8dda8f4094fd2b2f9425de27e3913691d42a8becb6c05` (= bản gốc trong `downloads/`).
+- **So file tải với preview (đo từ content stream):**
+  - Clip rect `W n` trong file = **(10, 10, 277, 190) mm** — **giống hệt** clip rect của PDF integration (preview canvas dùng chung `clipRect` primitive, `ctx.clip()` ↔ `clip()` operator).
+  - Cạnh 5100 @ 1:15 giữ tọa độ 340.000 mm trong stream; phần **hiển thị 250.333 mm** + **tràn khung 89.667 mm** = đúng `clipExcessMm[0]` integration (89.6667) → cắt mép khớp preview tới µm.
+  - pdfinfo A4 landscape 841.89 × 595.276 pts; render 150 dpi thấy nét cắt (tâm nét đứt cụt, dòng ghi chú hết ngay mép khung).
+- Ghi chú harness: hai runner giờ **từ chối chạy nếu CDP port còn daemon cũ** (chống dính trạng thái Chrome mồ côi).
+
+**Windows vẫn CHƯA được thử** — round này vẫn chỉ macOS (không có môi trường Windows); web bundle không phụ thuộc font hệ thống/Python, nhưng cần máy Windows xác nhận khi Chủ dự án yêu cầu.
+
+**Bundle lazy đo lại trên dist vừa rebuild (11:36, chứa fix):** `dist/576.js` 173.183 B + `66ca43b066485d1d.ttf` 31.284 B (gzip -9) = 204.467 B ≈ **199.7 KiB** < mốc 250 KB — khớp số thợ báo.
+
+**Hạn chế ghi rõ:** trường format là `<select>` native — popup do OS vẽ, CDP không chụp được; ảnh `02_format_list_with_pdf.png` mở đúng element đó ở chế độ listbox (still the real live DOM list) để thấy dòng `.pdf`. Chrome chạy headful + `--enable-unsafe-swiftshader` (WebGL bắt buộc cho ThreeView; headless fail "Could not create a WebGL context").
+
 ## Việc reviewer cần xác nhận
 
-- [ ] PASS tỷ lệ 102.0 ± 0.2 mm trên **PDF từ UI** + Poppler/render checklist
-- [ ] PASS bundle lazy ~200 KiB gzip (đo lại 199.7)
-- [ ] PASS Hủy clip không tải / Xác nhận cắt mép khớp preview
-- [ ] Phân biệt rõ `output/ui/` vs `output/script/`
-- [ ] Cho phép (hoặc từ chối) triển khai VPS sau khi chốt
+- [x] PASS tỷ lệ 102.0 ± 0.2 mm trên **PDF từ UI** + Poppler/render checklist — integration `5a7ab574…` (đã duyệt SHA) + menu run đo vector 102.000 mm, delta 0.000 (08/11)
+- [x] PASS bundle lazy ~200 KiB gzip (đo lại 199.7 — re-measure 08/11 trên dist mới: 204.467 B gzip)
+- [x] PASS Hủy clip không tải / Xác nhận cắt mép khớp preview — tích hợp: `output/integration/clip_cancel_confirm_evidence.json` (`0552eb98…` đã duyệt SHA); **menu thật (08/11 12:30)**: Hủy→0 file + 0 event tải, Xuất (cắt mép)→file browser `76f217c5…`, clip rect (10,10,277,190) mm giống hệt integration, overflow 89.667 mm = excess preview
+- [x] Phân biệt rõ `output/ui/` vs `output/script/` — `output/ui/` đã relabel `integration/`, bằng chứng click menu thật nằm `output/menu-ui/`
+- [ ] Cho phép (hoặc từ chối) triển khai VPS sau khi chốt — **cần Chủ dự án quyết**

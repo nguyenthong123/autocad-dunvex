@@ -1,0 +1,69 @@
+{
+    "source": "MENU/ribbon UI — real file.export button click → CommandContext panel select/inputs → selection confirm → preview dialog Xác nhận → browser download",
+    "not_source": "not exporter-API direct; output/integration/* is that path",
+    "build_ref": "0b396d8f",
+    "head": "0aca9ed052b44a44f035b5abb1151aef9d515810",
+    "served": "http://127.0.0.1:8080 (node http server on production dist/)",
+    "built": {
+        "count": 10,
+        "names": [
+            "edge-bottom-5100",
+            "edge-right",
+            "edge-top",
+            "edge-left",
+            "centerline-dash",
+            "fillet-arc",
+            "transformed-edge",
+            "dim-5100",
+            "note-vi",
+            "title-vi"
+        ],
+        "transformTx": 110
+    },
+    "downloaded_bytes": 8952,
+    "downloaded_filename": "edge-bottom-5100.pdf",
+    "edge": {
+        "method": "vector segments parsed from the downloaded PDF content streams",
+        "modelMm": 5100,
+        "scale": 50,
+        "expectedPaperMm": 102,
+        "expectedPaperPt": 289.134,
+        "totalLineSegments": 16,
+        "matchingHorizontalSegments": 3,
+        "measuredPaperMm": 102,
+        "measuredPt": 289.134,
+        "deltaMm": 0,
+        "allMatchesMm": [102, 102, 102],
+        "longestSegmentIsFrameMm": 400,
+        "frameNote": "longest horizontal lines are the page-margin frame, excluded from edge target",
+        "within_0_2": true,
+        "found": true
+    },
+    "pdfinfo_excerpt": "Pages:           1 | Page size:       1190.55 x 841.89 pts (A3)",
+    "pdftotext_excerpt": "Bản vẽ mẫu PDF kỹ thuật — Dunvex CAD\n\n\n\n\n                                     5100\n\nGhi chú: cạnh dài 5.100 mm · tỷ lệ 1:50 · kiểm tra in 100%\n\f",
+    "sha256_downloaded": "a7a7e913dbceaae7097cce026cfa0b46bc8330ee1421c6a7f8f0a65ca70a9a11",
+    "sha256_screenshots": {
+        "01_export_panel_before_pdf.png": "ea6382b284fdf8d4999903f068ecd9c0886e02d5a7794cba99cdf159d8b4bdd7",
+        "02_format_list_with_pdf.png": "c1021dd9339c1ce8b56e3ebd1b311618884ea72fbef8278c09ca38b0e44d363d",
+        "03_panel_pdf_properties_A3_1to50.png": "1cabf4e67ffc87b1a8d97384214a66d9936e441bcbbb6b6cbbefd77d89519ca7",
+        "04_preview_dialog_A3_1to50.png": "849f40370cb01c35a4c9d249a9e2076b40bb5c2c07488f18cb9c1e74c75913e2"
+    },
+    "format_options": [
+        ".dxf",
+        ".pdf",
+        ".step",
+        ".iges",
+        ".brep",
+        ".stl",
+        ".stl binary",
+        ".ply",
+        ".ply binary",
+        ".obj"
+    ],
+    "platform": {
+        "os": "darwin",
+        "arch": "arm64",
+        "node": "v22.16.0"
+    },
+    "ok": true
+}

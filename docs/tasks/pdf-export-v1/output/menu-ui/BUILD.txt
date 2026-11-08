@@ -1,0 +1,8 @@
+build_ref=0b396d8f
+head=0aca9ed052b44a44f035b5abb1151aef9d515810
+dist rebuilt 08/11 11:36 (SKIP_TYPECHECK=true npm run build, exit 0)
+served=http://127.0.0.1:8080 (node http server on production dist/)
+chrome=headful CDP + --enable-unsafe-swiftshader (headless cannot create WebGL)
+runs: A3 menu 08/11 12:30 (menu_acceptance_report.json ok=true)
+      clip menu 08/11 12:30 (menu_clip_report.json ok=true)
+windows=untested (no environment)

@@ -1,0 +1,18 @@
+Creator:         pdf-lib (https://github.com/Hopding/pdf-lib)
+Producer:        pdf-lib (https://github.com/Hopding/pdf-lib)
+CreationDate:    Sun Nov  8 12:30:34 2026 +07
+ModDate:         Sun Nov  8 12:30:34 2026 +07
+Custom Metadata: no
+Metadata Stream: no
+Tagged:          no
+UserProperties:  no
+Suspects:        no
+Form:            none
+JavaScript:      no
+Pages:           1
+Encrypted:       no
+Page size:       841.89 x 595.276 pts (A4)
+Page rot:        0
+File size:       11077 bytes
+Optimized:       no
+PDF version:     1.7

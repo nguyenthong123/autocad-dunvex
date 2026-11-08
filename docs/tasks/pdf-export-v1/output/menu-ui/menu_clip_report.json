@@ -1,0 +1,116 @@
+{
+    "source": "MENU/ribbon UI — real clicks; clip flow A4 fixed 1:15 (oversize) on build 0b396d8f",
+    "build_ref": "0b396d8f",
+    "head": "0aca9ed052b44a44f035b5abb1151aef9d515810",
+    "served": "http://127.0.0.1:8080 (node http server on production dist/)",
+    "options": {
+        "pageSize": "A4",
+        "landscape": true,
+        "scale": 15
+    },
+    "opened": {
+        "ok": true,
+        "attempts": 1,
+        "clicks": 1
+    },
+    "built": {
+        "count": 10,
+        "names": [
+            "edge-bottom-5100",
+            "edge-right",
+            "edge-top",
+            "edge-left",
+            "centerline-dash",
+            "fillet-arc",
+            "transformed-edge",
+            "dim-5100",
+            "note-vi",
+            "title-vi"
+        ],
+        "transformTx": 110
+    },
+    "props_phase1": {
+        "format": ".pdf",
+        "pageSize": "A4",
+        "orientation": "pdf.orientation.landscape",
+        "scaleMode": "pdf.scaleMode.fixed",
+        "scale": 15,
+        "marginMm": 10
+    },
+    "dialog_text_phase1": "Xem trước PDF1:15.00 · A4 landscape Longest edge on paper: 340.000 mm Max arc deviation on paper: 0.0069 mm Nội dung vượt khổ — thừa: 89.7 × 56.7 mmXuất (cắt mép)Hủy bỏ",
+    "dialog_clip_excess_mm": {
+        "x": 89.7,
+        "y": 56.7
+    },
+    "dialog_buttons_phase1": ["Xuất (cắt mép)", "Hủy bỏ"],
+    "cancel_phase": {
+        "files_before": 0,
+        "files_after": 0,
+        "downloadWillBegin_events": 0,
+        "noDownload": true
+    },
+    "props_phase2": {
+        "format": ".pdf",
+        "pageSize": "A4",
+        "orientation": "pdf.orientation.landscape",
+        "scaleMode": "pdf.scaleMode.fixed",
+        "scale": 15,
+        "marginMm": 10
+    },
+    "confirm_phase": {
+        "downloadWillBegin_events": ["edge-bottom-5100.pdf"],
+        "downloaded_filename": "edge-bottom-5100.pdf"
+    },
+    "clip_analysis": {
+        "total_segments": 16,
+        "full_340mm_segments_in_stream": 3,
+        "clip_rects_menu_pdf": [
+            {
+                "xMm": 10,
+                "yMm": 10,
+                "wMm": 277,
+                "hMm": 190
+            }
+        ],
+        "clip_rect_equals_print_frame_A4": true,
+        "full_edge_visible_after_clip_mm": 250.333,
+        "full_edge_overflow_past_frame_mm": 89.667,
+        "visible_plus_overflow_equals_full": true,
+        "clip_rects_integration_pdf": [
+            {
+                "xMm": 10,
+                "yMm": 10,
+                "wMm": 277,
+                "hMm": 190
+            }
+        ],
+        "integration_clip_rect_equals_print_frame_A4": true,
+        "clip_rects_identical_menu_vs_integration": true,
+        "longest_segment_mm": 340,
+        "visible_length_note": "340 mm edge kept in stream; overflow past the 277 mm frame rect is clip-cut"
+    },
+    "agreement_with_integration_evidence": {
+        "integration_excess_mm": [89.66666666666669, 56.66666666666666],
+        "menu_dialog_excess_mm": {
+            "x": 89.7,
+            "y": 56.7
+        },
+        "menu_file_overflow_past_frame_mm": 89.667,
+        "file_overflow_matches_dialog_excess": true,
+        "excess_match": true,
+        "integration_clip_pdf_bytes": 11076,
+        "menu_clip_pdf_bytes": 11077
+    },
+    "downloaded_bytes": 11077,
+    "sha256_downloaded": "76f217c50f54e7767ea8dda8f4094fd2b2f9425de27e3913691d42a8becb6c05",
+    "sha256_screenshots": {
+        "05_clip_dialog_A4_1to15_before_cancel.png": "4a564be994aba2f8aa093ce410ad01eb0edf6d4c2bfa183620c4b3e81e416045",
+        "06_clip_dialog_A4_1to15_before_export_clip.png": "fd26f34cb8958e8378bc1ec585411939be6b07860f6ae9f3e7895f0fe72a3fa1",
+        "from_menu_A4_1to15_CLIP_render-1.png": "59a78707d0ca5eadf05955b976de538f8423513b22dd898d08075d037f07695e"
+    },
+    "log": [
+        "command props before confirm: {\"format\":\".pdf\",\"pageSize\":\"A4\",\"orientation\":\"pdf.orientation.landscape\",\"scaleMode\":\"pdf.scaleMode.fixed\",\"scale\":15,\"marginMm\":10}",
+        "command props before confirm: {\"format\":\".pdf\",\"pageSize\":\"A4\",\"orientation\":\"pdf.orientation.landscape\",\"scaleMode\":\"pdf.scaleMode.fixed\",\"scale\":15,\"marginMm\":10}"
+    ],
+    "ok": true
+}
