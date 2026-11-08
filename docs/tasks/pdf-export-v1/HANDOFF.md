@@ -135,6 +135,8 @@ Harness mới: `menu_ui_acceptance.mjs` — click thật qua CDP Input (chuột 
 
 ## Menu clip run (08/11 12:30 — `menu_clip_acceptance.mjs`, full-green EXIT=0)
 
+**Commit bàn giao bằng chứng menu (A3 + clip, harness + output/menu-ui + relabel integration):** `3e7aead395a490bd68548e2adc11d43172a52df4` — HEAD `dev`, chưa push.
+
 Lượt cắt mép thật qua menu trên cùng build `0b396d8f`, A4 ngang, tỷ lệ cố định 1:15 (nội dung 340 mm vượt khung in 277 mm):
 
 - Panel khai báo thật: `format=.pdf`, `Khổ giấy=A4`, `Hướng giấy=Ngang`, `Chế độ tỷ lệ=Tỷ lệ cố định`, `Tỷ lệ 1:n=15` (gõ phím thật + Enter), **đọc lại object lệnh** trước xác nhận.
