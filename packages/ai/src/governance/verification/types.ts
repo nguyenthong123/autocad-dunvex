@@ -39,8 +39,10 @@ export interface CriterionEvidence {
     documentId: string;
     /** Bound at record time — stale when effective design rules drifted. */
     rulesFingerprint: string;
-    /** Document history identity at record time, for audit. */
+    /** History undo-top identity (record object + depth) at record time — re-checked on every read. */
     historyMark?: string;
+    /** World-bbox signature of the subjects at record time — re-checked on every read. */
+    stateSignature?: string;
     status: CriterionStatus;
     measured?: Record<string, number[]>;
     reason: string;

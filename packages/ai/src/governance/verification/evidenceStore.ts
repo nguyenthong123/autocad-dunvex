@@ -5,6 +5,7 @@ import type { IDocument } from "@chili3d/core";
 import { getDocument } from "../../tools/documentContext";
 import { rulesFingerprintFor } from "../rulesStore";
 import { getTaskProfile } from "../taskProfile";
+import { historyMarkOf, subjectsSignatureOf } from "./stateMarker";
 import type {
     CriterionEvidence,
     CriterionMeasurement,
@@ -84,6 +85,11 @@ export function recordCriterionEvidence(input: EvidenceInput): CriterionEvidence
         ...input,
         documentId: doc.id,
         rulesFingerprint: rulesFingerprintFor(doc.id),
+        // Reviewer C1 follow-up: bind the proof to a document state the app can
+        // re-verify on read (history position + subject bbox signature), so edits
+        // made outside the governed agent path still invalidate at next evaluation.
+        historyMark: input.historyMark ?? historyMarkOf(doc),
+        stateSignature: subjectsSignatureOf(doc, input.subjectNodeIds),
         recordedAt: Date.now(),
     };
     let byCriterion = evidenceByTask.get(input.taskId);
@@ -141,25 +147,55 @@ export function getTaskEvidence(taskId: string): CriterionEvidence[] {
     return [...(evidenceByTask.get(taskId)?.values() ?? [])];
 }
 
-function isFresh(evidence: CriterionEvidence, docId: string): boolean {
+/**
+ * Fresh = same document, same rules version, AND the state marker still matches.
+ * The marker check is what catches changes made without going through the agent
+ * router (ribbon UI, direct command execution, another panel) — the app re-verifies
+ * the marker on every read instead of trusting the recorded pass.
+ */
+function isFresh(evidence: CriterionEvidence, doc: IDocument): boolean {
     if (evidence.invalidatedAt) {
         return false;
     }
-    if (evidence.documentId !== docId) {
+    if (evidence.documentId !== doc.id) {
         return false;
     }
-    return evidence.rulesFingerprint === rulesFingerprintFor(docId);
+    if (evidence.rulesFingerprint !== rulesFingerprintFor(doc.id)) {
+        return false;
+    }
+    if (evidence.historyMark && evidence.historyMark !== historyMarkOf(doc)) {
+        return false;
+    }
+    if (
+        evidence.stateSignature &&
+        evidence.stateSignature !== subjectsSignatureOf(doc, evidence.subjectNodeIds)
+    ) {
+        return false;
+    }
+    return true;
 }
 
-function staleReason(evidence: CriterionEvidence | undefined, docId: string): string {
+function staleReason(evidence: CriterionEvidence | undefined, doc: IDocument): string {
     if (!evidence) {
         return "no-valid-evidence";
     }
     if (evidence.invalidatedAt) {
         return `invalidated: ${evidence.invalidatedReason ?? "hình học/đối tượng đã thay đổi"}`;
     }
-    if (evidence.documentId !== docId) {
+    if (evidence.documentId !== doc.id) {
         return "document-changed";
+    }
+    if (evidence.rulesFingerprint !== rulesFingerprintFor(doc.id)) {
+        return "rules-changed";
+    }
+    if (evidence.historyMark && evidence.historyMark !== historyMarkOf(doc)) {
+        return "history-changed: tài liệu đã có lệnh mới (UI hoặc ngoài agent) sau khi đo";
+    }
+    if (
+        evidence.stateSignature &&
+        evidence.stateSignature !== subjectsSignatureOf(doc, evidence.subjectNodeIds)
+    ) {
+        return "state-changed: hình học đối tượng đã khác so với lúc ghi bằng chứng";
     }
     return "rules-changed";
 }
@@ -180,11 +216,11 @@ export function evaluateTaskCriteria(taskId: string, doc?: IDocument): TaskCrite
         if (!evidence) {
             return { spec, status: "unknown", reason: "no-valid-evidence", stale: false };
         }
-        if (!isFresh(evidence, active.id)) {
+        if (!isFresh(evidence, active)) {
             return {
                 spec,
                 status: "unknown",
-                reason: staleReason(evidence, active.id),
+                reason: staleReason(evidence, active),
                 measured: evidence.measured,
                 evidence,
                 stale: true,

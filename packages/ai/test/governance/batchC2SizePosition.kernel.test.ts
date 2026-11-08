@@ -193,6 +193,39 @@ describe("TASK-40 Đợt C2 prep — kích thước & vị trí trên kernel th�
         expect(rechecked.completable).toBe(false);
     });
 
+    test("NGOẠI BIÊN router: sửa hình không gọi invalidate → đọc lại stale, đo lại thì phục hồi", async () => {
+        const node = addBox("slab", 800, 300, 2500);
+        approveTaskPlan({ taskId: "c2-ext", allowedModifiedNodeIds: [node.id] }, doc);
+        defineTaskCriteria("c2-ext", [
+            {
+                id: "kich",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: [node.id],
+                expected: { sizeMm: [800, 300, 2500] },
+                toleranceMm: [2, 2, 2],
+                source: "yêu cầu: tấm 800×300×2500 ±2 mm",
+            },
+        ]);
+        const before = await runTaskCriterionChecks("c2-ext", doc);
+        expect(before.completable).toBe(true);
+
+        // Như thao tác trên UI / lệnh ngoài agent: ĐỔI TRANSFORM thôi —
+        // không router, không invalidateEvidenceForNodeIds, không run lại check.
+        node.transform = Matrix4.fromTranslation(0, 500, 0);
+
+        const after = evaluateTaskCriteria("c2-ext", doc);
+        expect(after.rows[0].status).toBe("unknown");
+        expect(after.rows[0].stale).toBe(true);
+        expect(after.rows[0].reason).toMatch(/state-changed|history-changed/);
+        expect(after.completable).toBe(false);
+
+        // Đo lại thật sự → bằng chứng mới gắn marker mới; kích thước không đổi nên pass hợp lệ trở lại.
+        const repaired = await runTaskCriterionChecks("c2-ext", doc);
+        expect(repaired.rows[0].status).toBe("pass");
+        expect(repaired.completable).toBe(true);
+    });
+
     test("runners công khai giới hạn: bbox không tự tuyên bố chứng minh lỗ/hình dạng", () => {
         expect(dimensionMatchRunner.kind).toBe("dimension_match");
         expect(dimensionMatchRunner.supportNotes).toContain("hộp bao");

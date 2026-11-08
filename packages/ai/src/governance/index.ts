@@ -1,7 +1,7 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
-export { governTool, governTools } from "./governedRouter";
+export { applySuccessfulWriteForTests, governTool, governTools } from "./governedRouter";
 export { analyzeToolImpact } from "./impactAnalysis";
 export { checkToolPermission, permissionDeniedPayload } from "./permissionGate";
 export {

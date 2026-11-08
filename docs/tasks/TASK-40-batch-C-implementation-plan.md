@@ -124,3 +124,13 @@ Mỗi runner khai báo `supportNotes` (chuỗi locale) để UI/prompt nói đú
 **Ticket localStorage:** tách riêng trước C1 — ticket `28ca0283`, fix `918d0b67`, ghi 2 lần full-suite xanh `4ecb89ed`.
 **ĐÃ KIỂM UI:** 3 trạng thái thật quay trên ChatPanel (store + component thật, build DEV qua `__chiliTest.governance`; trigger scripted, KHÔNG phải vòng LLM end-to-end): `docs/tasks/TASK-40-batch-C-evidence/c1-ui/` — 6 ảnh PNG + `c1_ui_states.json` (cardText may-doc) + README quy trình.
 **CHƯA KIỂM:** vòng LLM thật end-to-end (ma trận §11.11 — thuộc Đợt D); Windows (không có môi trường).
+
+
+## C1.1 — Review follow-up 08/11 (marker đọc-lại + bảo thủ + timing)
+
+1. `verification/stateMarker.ts` mới: `historyMarkOf` (undo-top object identity qua WeakMap + stack depth — hai record cùng tên là hai trạng thái khác nhau) và `subjectsSignatureOf` (world-bbox size+center mỗi subject, lưới 1/1000 mm; node unreadable/gone cho tag ổn định để không tự đổi marker).
+2. `recordCriterionEvidence` gắn cả hai marker lúc ghi; `isFresh`/`staleReason` đối chiếu MỖI LẦN đọc: `history-changed` (tài liệu có lệnh mới ngoài agent) hoặc `state-changed` (hình học subject khác lúc đo). Không cần router biết — UI/lệnh trực tiếp cũng bị bắt; đo lại (`runTaskCriterionChecks`) thì phục hồi với binding mới.
+3. `governedRouter.affectedNodeIds` → `null` khi impact `indeterminate`/`document_variable`/exception ⇒ `invalidateAllTaskEvidence(task, "…vô hiệu hóa bảo thủ…")`; write phân tích được giữ invalidate đúng subject (test chứng minh cả hai nhánh).
+4. `chatPanel`: sub `executeCommand` + `closeCommandContext` (kênh core hiện có — core không có model-changed pub, không sửa core) → rAF-coalesce `refreshGovernanceCard` — badge rơi ⏳ ngay frame sau lệnh UI, không chờ agent cycle.
+5. Seam test `applySuccessfulWriteForTests` (router) để kiểm hậu-thuật-write không phải qua cổng quyền.
+6. Test mới: `batchC1StateMarker.test.ts` 6 ca, kernel ngoài-biên 1 ca, `chatPanel.test.ts` mount thật 1 ca (✔→⏳). Tổng targeted 172/0; full suite 10303/0; build/tsc/biome sạch. GIỮ NGUYÊN các ca rules-đổi / Undo / write-bị-từ-chối của C1.

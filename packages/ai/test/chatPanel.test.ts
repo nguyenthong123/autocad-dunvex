@@ -2,9 +2,25 @@
 // See LICENSE file in the project root for full license information.
 
 import { type IDocument, type IHistoryRecord, PubSub } from "@chili3d/core";
-import { createMockDocument, createPlainNode, mockLocalStorage } from "@chili3d/core/test-utils";
+import {
+    createMockApplication,
+    createMockDocument,
+    createPlainNode,
+    mockLocalStorage,
+} from "@chili3d/core/test-utils";
 import { rs } from "@rstest/core";
 import { ChatPanel } from "../src/chatPanel";
+import {
+    approveTaskPlan,
+    clearDesignRulesForTests,
+    clearTaskProfile,
+    defineTaskCriteria,
+    registerCriterionRunner,
+    resetPlanApprovalForTests,
+    resetTaskProfileForTests,
+    resetVerificationForTests,
+    runTaskCriterionChecks,
+} from "../src/governance";
 import {
     readConversations,
     type StoredConversation,
@@ -2814,6 +2830,57 @@ describe("ChatPanel questions", () => {
 
             const textEl = panel.querySelector(".memoryText");
             expect(textEl?.textContent).toContain("Chưa kiểm chứng");
+        });
+    });
+
+    describe("governance card follows out-of-band document edits", () => {
+        beforeEach(() => {
+            resetVerificationForTests();
+            resetTaskProfileForTests();
+            clearTaskProfile();
+        });
+
+        afterEach(() => {
+            resetVerificationForTests();
+            resetTaskProfileForTests();
+            resetPlanApprovalForTests();
+            clearDesignRulesForTests();
+            rs.unstubAllGlobals();
+        });
+
+        test("✔ badge drops to ⏳ on the frame after executeCommand, without any agent write", async () => {
+            const doc = createMockDocument({ id: "doc-ui-marker" });
+            (doc.visual as any).update = rs.fn();
+            const undos: IHistoryRecord[] = [];
+            (doc.history as any).undoTop = () => undos[undos.length - 1];
+            (doc.history as any).undoCount = () => undos.length;
+            const app = createMockApplication();
+            (app as any).activeView = { document: doc };
+            rs.stubGlobal("app", app);
+
+            const panel = new ChatPanel();
+            registerCriterionRunner({
+                kind: "stub_check",
+                supportNotes: "stub",
+                measure: async () => ({ status: "pass", reason: "đạt" }),
+            });
+            approveTaskPlan({ taskId: "ui-card", allowedModifiedNodeIds: ["n1"] }, doc);
+            defineTaskCriteria("ui-card", [
+                { id: "kich", kind: "stub_check", required: true, subjectNodeIds: ["n1"], expected: {} },
+            ]);
+            await runTaskCriterionChecks("ui-card", doc);
+
+            const card = (panel as any).governanceCardEl as HTMLElement;
+            expect(card.textContent).toContain("✔ HOÀN TẤT");
+
+            // User runs a command through the UI (no agent involved): history grows, channel fires.
+            undos.push({ name: "move_tool_ui" } as unknown as IHistoryRecord);
+            PubSub.default.pub("executeCommand", "doc.new");
+            await nextFrame();
+
+            expect(card.textContent).toContain("⏳ CHƯA HOÀN TẤT");
+            expect(card.textContent).not.toContain("✔ HOÀN TẤT");
+            expect(card.textContent).toContain("history-changed");
         });
     });
 });

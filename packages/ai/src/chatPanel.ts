@@ -592,6 +592,7 @@ export class ChatPanel extends HTMLElement {
     /** Đợt C1: per-criterion evidence card; completion badge is store-gated, never free text. */
     private governanceCardEl!: HTMLElement;
     private unsubscribeEvidence?: () => void;
+    private governanceRefreshPending = 0;
 
     constructor() {
         super();
@@ -637,6 +638,12 @@ export class ChatPanel extends HTMLElement {
         PubSub.default.sub("activeViewChanged", this.onActiveViewChanged);
         // Đợt C1: the evidence card follows the store (record/invalidate/registration).
         this.unsubscribeEvidence = onTaskEvidenceChanged(() => this.refreshGovernanceCard());
+        // Đợt C1 (reviewer follow-up): external edits — ribbon commands, direct execution —
+        // change verified state too. Core has no model-changed channel, but commands run
+        // through executeCommand and every command closes its context on completion;
+        // re-evaluate on both signals (the state markers decide the outcome).
+        PubSub.default.sub("executeCommand", this.onDocStateSignal);
+        PubSub.default.sub("closeCommandContext", this.onDocStateSignal);
     }
 
     private createInput(): HTMLTextAreaElement {
@@ -929,6 +936,16 @@ export class ChatPanel extends HTMLElement {
      * criterion may show completion; a missing/stale proof keeps showing as unknown
      * instead of disappearing (spec §9 — failures must stay visible).
      */
+    private readonly onDocStateSignal = () => {
+        if (this.governanceRefreshPending) {
+            return;
+        }
+        this.governanceRefreshPending = requestAnimationFrame(() => {
+            this.governanceRefreshPending = 0;
+            this.refreshGovernanceCard();
+        });
+    };
+
     private refreshGovernanceCard(): void {
         // createMemoryStatusBar() runs updateMemoryStatusBar() during construction,
         // before governanceCardEl exists — bail until the card is mounted.

@@ -66,6 +66,15 @@ export function governTool(tool: Tool): Tool {
     };
 }
 
+/** Test-only seam: exercise post-success bookkeeping without re-running the permission gate. */
+export function applySuccessfulWriteForTests(
+    toolName: string,
+    args: Record<string, unknown>,
+    resultText: string,
+): void {
+    afterSuccessfulWrite(toolName, args, resultText);
+}
+
 function afterSuccessfulWrite(
     toolName: string,
     cleanArgs: Record<string, unknown>,
@@ -97,23 +106,43 @@ function afterSuccessfulWrite(
 
     // Any write touching geometry invalidates evidence bound to the affected
     // subjects, so an old pass can never stand in for an unmeasured new state.
-    invalidateEvidenceForNodeIds(affectedNodeIds(toolName, cleanArgs), `${toolName} changed the geometry`);
+    const affected = affectedNodeIds(toolName, cleanArgs);
+    if (affected === null) {
+        // Reviewer C1 follow-up: when the impacted subjects cannot be determined,
+        // invalidate CONSERVATIVELY — the whole task's evidence, not nothing.
+        const profile = getActiveTaskProfile();
+        if (profile) {
+            invalidateAllTaskEvidence(
+                profile.taskId,
+                `${toolName}: không xác định được đối tượng bị ảnh hưởng — vô hiệu hóa bảo thủ toàn bộ bằng chứng task`,
+            );
+        }
+    } else {
+        invalidateEvidenceForNodeIds(affected, `${toolName} changed the geometry`);
+    }
 
     noteGovernedMutation(getDocument());
 }
 
-/** Node ids a successful write modified/deleted/consumed/moved (create excluded — nothing to invalidate yet). */
-function affectedNodeIds(toolName: string, cleanArgs: Record<string, unknown>): string[] {
+/**
+ * Node ids a successful write modified/deleted/consumed/moved (create excluded — nothing
+ * to invalidate yet). `null` means impact could not be determined — the caller must then
+ * invalidate conservatively (Reviewer 08/11: unknown subjects must not leave old passes standing).
+ */
+function affectedNodeIds(toolName: string, cleanArgs: Record<string, unknown>): string[] | null {
     try {
         const impact = analyzeToolImpact(toolName, cleanArgs);
+        if (impact.kind === "indeterminate" || impact.kind === "document_variable") {
+            // Impact analysed but deliberately unspecified — the affected subjects are
+            // unknown by design, so the conservative rule applies.
+            return null;
+        }
         return impact.impacts
             .filter((i) => !i.batchCreated)
             .map((i) => i.nodeId)
             .filter((id) => typeof id === "string" && id.length > 0);
     } catch {
-        // Indeterminate impact: fall back to invalidating nothing here — the plan gate
-        // already blocks un-analyzable writes before execution, so this is defence in depth.
-        return [];
+        return null;
     }
 }
 
