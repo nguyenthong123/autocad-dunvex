@@ -2,7 +2,7 @@
 
 **Người nhận:** AI phụ trách TASK-40 (packages/ai governance).
 **Trạng thái PDF v1:** đã nghiệm thu tại tip `2c72ecec` — phạm vi `docs/tasks/pdf-export-v1` + `packages/*/pdf` **không được đụng tới** khi sửa bug này.
-**Chốt VPS:** chỉ gửi khi `npm run test` toàn repo xanh — hiện CHƯA xanh vì bug này.
+**Chốt VPS:** chỉ gửi khi `npm run test` toàn repo xanh — hiện CHƯA xanh vì bug này. *(cập nhật 08/11: đã xanh — ticket ĐÓNG, xem mục chốt dưới)*
 
 ## Triệu chứng (bằng chứng thật, không suy đoán)
 - `hermes verify --json` tại tip `2c72ecec`: phase `test` exit 1; **đúng 1 test fail**:
@@ -89,3 +89,16 @@ Windows chưa có môi trường.
 - `hermes verify --json` trên HEAD chốt (`1d2ef2a0` + chore `.gitignore` ignore `.hermes/`): **ok=true** — bootstrap 0, build 0, `npm run test` 0 (kể cả stage `node --test` server), `npm run check` 0, readiness `http://127.0.0.1:8080/` = **HTTP 200** rồi graceful teardown.
 - Phát sinh khi verify: recipe auto-detect xếp `npm run format` vào nhóm test; script này là MUTATOR (biome --write, clang-format -i) và clang-format@1.8.0 chỉ bundle binary `darwin_x64` → spawn lỗi errno -86 trên host arm64 (chưa có Rosetta) — crash xảy ra TRƯỚC khi đụng file cpp (git status sạch). Manifest curated `.hermes/environment.json` (local, không commit) loại `format` khỏi verification, giữ `test` + `check`.
 - Trạng thái ticket: **ĐÃ XỬ LÝ — chờ Reviewer đóng.** Phạm vi: test-utils/test/docs/.gitignore; app code và vùng PDF `2c72ecec` không đổi. Windows: chưa có môi trường, ghi nhận chờ.
+
+
+---
+
+## ĐÓNG TICKET — 08/11/2026 (Reviewer xác nhận)
+
+Reviewer đóng ticket tại fix SHA **`1d2ef2a0b77055cc91266e2dbfb58db660f8410c`**:
+- Hai log toàn repo (RUN1/RUN2 trên đúng `1d2ef2a0`, 10295 passed / 0 failed, exit 0/0) đã được **đối chiếu**.
+- **126 ca liên quan** (mock isolation + objectStorage/config/navigation/appBuilder + governance) chạy lại **đều qua**.
+- Điều kiện "toàn repo xanh để chốt VPS": ĐẠT (`hermes verify --json` ok=true, readiness HTTP 200 — ghi nhận `d55f961f`).
+- Windows vẫn chờ môi trường xác nhận (không chặn đóng ticket — flake là tầng test realm).
+
+Trạng thái: **ĐÓNG**. Người đóng: Reviewer. Ghi sổ: Hermes 08/11/2026.
