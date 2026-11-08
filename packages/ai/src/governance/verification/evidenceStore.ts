@@ -201,6 +201,21 @@ function staleReason(evidence: CriterionEvidence | undefined, doc: IDocument): s
 }
 
 /**
+ * A proof-requiring runner's evidence is only trustworthy when its subject marker is
+ * itself verifiable NOW: absent signature, empty subject list, or any subject reading
+ * `unreadable`/`handle-err` means the app cannot prove the measured state at read time
+ * (Reviewer C1.3: unreadable chains that stay identical across reads must NOT preserve
+ * an old pass). Such rows downgrade to unknown — completion drops with them.
+ */
+function subjectMarkerUnverifiable(evidence: CriterionEvidence): boolean {
+    const sig = evidence.stateSignature;
+    if (!sig) {
+        return true;
+    }
+    return sig === "no-subjects" || sig.includes(":unreadable") || sig.includes("handle-err");
+}
+
+/**
  * Evaluate every declared criterion. A criterion with no valid evidence reads
  * `unknown` — absence of proof is never proof, and an optional fail does not
  * block completion while any required non-pass does (§3.9, §7).
@@ -224,6 +239,21 @@ export function evaluateTaskCriteria(taskId: string, doc?: IDocument): TaskCrite
                 measured: evidence.measured,
                 evidence,
                 stale: true,
+            };
+        }
+        const runner = runners.get(evidence.kind);
+        if (
+            runner?.requiresSubjectProof &&
+            evidence.status !== "unknown" &&
+            subjectMarkerUnverifiable(evidence)
+        ) {
+            return {
+                spec,
+                status: "unknown",
+                reason: `state-unverifiable: chủ thể không đọc được ở lần đọc lại — tiêu chí cần phép đo không được giữ ${evidence.status}`,
+                measured: evidence.measured,
+                evidence,
+                stale: false,
             };
         }
         return {

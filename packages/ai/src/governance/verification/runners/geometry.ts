@@ -92,6 +92,7 @@ function makeReader(doc: IDocument | undefined, pick: "sizeMm" | "centerMm") {
 /** C2 check #1 — kích thước (world bbox cạnh từng trục, mm). */
 export const dimensionMatchRunner: CriterionRunner = {
     kind: "dimension_match",
+    requiresSubjectProof: true,
     supportNotes:
         "Đo cạnh hộp bao theo trục X/Y/Z (mm, hệ world). Đủ cho khối hộp hướng trục; " +
         "KHÔNG chứng minh hình dạng/rãnh/lỗ bên trong hay hình xoay xiên — các quan hệ đó cần tiêu chí khác. " +
@@ -105,6 +106,7 @@ export const dimensionMatchRunner: CriterionRunner = {
 /** C2 check #2 — vị trí (tâm hộp bao world, mm). */
 export const positionMatchRunner: CriterionRunner = {
     kind: "position_match",
+    requiresSubjectProof: true,
     supportNotes:
         "Đo tâm hộp bao (mm, hệ world) từng đối tượng. Với hình đối xứng, tâm bbox trùng centroid; " +
         "hình bất đối xứng cần tiêu chí tâm riêng. Không suy ra quan hệ xuyên/không xuyên từ vị trí mẫu. " +

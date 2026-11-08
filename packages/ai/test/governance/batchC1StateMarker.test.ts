@@ -146,6 +146,49 @@ describe("TASK-40 Đợt C1 (review follow-up) — state markers & conservative 
         expect(after.completable).toBe(false);
     });
 
+    test("C1.3: proof-runner với subject unreadable — chuỗi ổn định qua các lần đọc VẪN phải là unknown", async () => {
+        registerCriterionRunner({
+            kind: "geo_stub",
+            requiresSubjectProof: true,
+            supportNotes: "đo subject",
+            measure: async () => ({ status: "pass", reason: "đạt" }),
+        });
+        defineTaskCriteria("marker-task", [
+            { id: "kich", kind: "geo_stub", required: true, subjectNodeIds: ["ghost-1"], expected: {} },
+        ]);
+        const run = await runTaskCriterionChecks("marker-task", doc);
+        expect(run.rows[0].status).toBe("unknown");
+        expect(run.rows[0].reason).toContain("state-unverifiable");
+        expect(run.completable).toBe(false);
+        // Lần đọc sau: chuỗi unreadable GIỐNG HỆT cũng không được dựng lại pass.
+        const again = evaluateTaskCriteria("marker-task", doc);
+        expect(again.rows[0].status).toBe("unknown");
+        expect(again.completable).toBe(false);
+    });
+
+    test("C1.3: thiếu marker bắt buộc (no-subjects / signature absent) → unknown, không hoàn tất", async () => {
+        registerCriterionRunner({
+            kind: "geo_stub",
+            requiresSubjectProof: true,
+            supportNotes: "đo subject",
+            measure: async () => ({ status: "pass", reason: "đạt" }),
+        });
+        defineTaskCriteria("marker-task", [
+            { id: "kich", kind: "geo_stub", required: true, subjectNodeIds: [], expected: {} },
+        ]);
+        const run = await runTaskCriterionChecks("marker-task", doc);
+        expect(run.rows[0].status).toBe("unknown");
+        expect(run.rows[0].reason).toContain("state-unverifiable");
+        expect(run.completable).toBe(false);
+    });
+
+    test("runner không đòi proof giữ semantics cũ: subject giả vẫn pass — hồi quy tương thích", async () => {
+        defineTaskCriteria("marker-task", [kich]);
+        const run = await runTaskCriterionChecks("marker-task", doc);
+        expect(run.rows[0].status).toBe("pass");
+        expect(run.completable).toBe(true);
+    });
+
     test("analyzed write invalidates precisely: only evidence bound to the affected subject", async () => {
         await runTaskCriterionChecks("marker-task", doc);
         applySuccessfulWriteForTests("transform_node", { id: "wall-1", translation: [0, 0, 0] }, "ok");

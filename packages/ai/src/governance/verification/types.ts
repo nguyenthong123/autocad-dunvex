@@ -62,6 +62,14 @@ export interface CriterionMeasurement {
 /** A published-scope geometric check. `supportNotes` must state what it cannot prove. */
 export interface CriterionRunner {
     kind: string;
+    /**
+     * Reviewer C1.2/1.3: the runner's verdict MEASURES the subjects' geometry. Evidence
+     * for such a runner must carry a verifiable subject marker — if the subject cannot be
+     * read at evaluation time (unreadable/missing/no-subjects), a recorded pass/fail is
+     * downgraded to `unknown` on every read, even when the unreadable chain is stable.
+     * Runners that do not touch the subjects (test stubs) leave this unset.
+     */
+    requiresSubjectProof?: boolean;
     supportNotes: string;
     measure(spec: CriterionSpec, doc?: IDocument): Promise<CriterionMeasurement>;
 }

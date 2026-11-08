@@ -20,6 +20,7 @@ import {
     historyMarkOf,
     invalidateEvidenceForNodeIds,
     positionMatchRunner,
+    recordCriterionEvidence,
     registerDefaultGeometryRunners,
     resetTaskProfileForTests,
     resetVerificationForTests,
@@ -285,6 +286,35 @@ describe("TASK-40 Đợt C2 prep — kích thước & vị trí trên kernel th�
         expect(dimensionMatchRunner.supportNotes).toContain("KHÔNG chứng minh");
         expect(positionMatchRunner.supportNotes).toContain("tâm hộp bao");
         expect(positionMatchRunner.supportNotes).toContain("Không suy ra quan hệ xuyên");
+    });
+
+    test("C1.3 kernel: ghi pass trực tiếp trên subject không tồn tại → runner proof hạ về unknown mọi lần đọc", () => {
+        approveTaskPlan({ taskId: "c2-ghost", allowedModifiedNodeIds: ["anything"] }, doc);
+        defineTaskCriteria("c2-ghost", [
+            {
+                id: "k",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: ["ghost-node"],
+                expected: { sizeMm: [1, 1, 1] },
+                toleranceMm: [0.1, 0.1, 0.1],
+            },
+        ]);
+        // Đường ghi TRỰC TIẾP (bỏ qua runner): pass tự khai trên subject ma — chứng minh evaluate
+        // không tin lời khai mà tin MARKER đọc lại được từ chính app.
+        recordCriterionEvidence({
+            taskId: "c2-ghost",
+            criterionId: "k",
+            kind: "dimension_match",
+            subjectNodeIds: ["ghost-node"],
+            status: "pass",
+            reason: "tự khai",
+        });
+        const ev = evaluateTaskCriteria("c2-ghost", doc);
+        expect(ev.rows[0].status).toBe("unknown");
+        expect(ev.rows[0].reason).toContain("state-unverifiable");
+        expect(ev.completable).toBe(false);
+        expect(evaluateTaskCriteria("c2-ghost", doc).rows[0].status).toBe("unknown");
     });
 
     test("registerDefaultGeometryRunners → status active đúng 2 bộ kiểm", () => {

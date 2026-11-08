@@ -146,8 +146,8 @@ Mỗi runner khai báo `supportNotes` (chuỗi locale) để UI/prompt nói đú
 
 - Lần chạy `hermes verify` thứ nhất tại `d3d09640`: `npm run test` đỏ đúng 1 ca ở tầng `node --test`:
   `server/test/llmProxy.test.mjs :: successfully streams 19MB request body without buffering in RAM` —
-  đo RSS delta **10.20MB** ngưỡng **<10MB** (mục tiêu test là không đệm 19MB; 10.2 vẫn chứng minh streaming,
-  ngưỡng sát gây nhiễu khi chạy sát suite 10k test + build cùng chu kỳ).
+  đo RSS delta **10.20MB** ngưỡng **<10MB**. Nguyên nhân **chưa xác nhận**; chỉ ghi nhận tương quan:
+  stage đỏ khi chạy ngay sau build+suite cùng chu kỳ verify, xanh khi chạy độc lập.
 - Đặc tính: chạy riêng file 3 lần liên tiếp **18/18 xanh cả 3**; hai lần full `npm run test` trực tiếp trên
   `d3d09640` xanh; `hermes verify` lần 2 **ok=true toàn pha exit 0**.
 - Kết luận trung thực: flake ngưỡng RSS **có trước**, không liên quan C1.1 (không đụng `server/` hay llmProxy).
@@ -193,6 +193,22 @@ lần deploy (bài học version.json TASK-41 stale — xem pdf HANDOFF).
 - **SHA C1.2 = `863e708964edf1003304ad633e0240d3582c239b`** (dev; cây sạch — file `TASK-40-cad-agent-standard.md` untracked là sản phẩm AI khác chạy song song, **giữ nguyên, không commit**).
 - Hai lần `npm run test` LIÊN TIẾP trên đúng SHA: **10304 passed / 0 failed, exit 0** cả hai.
 - `hermes verify --json --skip-start` trên SHA: **ok=true** (bootstrap 2s · build 59s · `npm run test` 99s · check 5s — exit 0 toàn bộ).
-- **Flake RSS báo riêng (theo yêu cầu Reviewer):** `server/test/llmProxy.test.mjs :: streams 19MB without buffering in RAM` — ngưỡng RSS-delta <10MB; hôm nay đo **10.20MB** (ca đỏ 1, verify đầu tại `d3d09640`) và **14.03MB** (ca đỏ 2, verify đầu tại `863e7089`); các lần chạy lại đều xanh (standalone 18/18 ×3; verify #2 cả hai SHA xanh). Nguyên nhân khả nghi: đo RSS khi bộ nhớ hệ thống còn áp lực sau build/rstest — delta phình do allocator/GC, không phải buffering thật (19MB mới là mức failure thật). Khuyến nghị chủ file (AI1/server) cân nhắc tách stage này chạy riêng hoặc nới ngưỡng kèm ghi chú — **tôi không tự sửa kỳ vọng**.
+- **Flake RSS báo riêng (theo yêu cầu Reviewer):** `server/test/llmProxy.test.mjs :: streams 19MB without buffering in RAM` — ngưỡng RSS-delta <10MB; hôm nay đo **10.20MB** (ca đỏ 1, verify đầu tại `d3d09640`) và **14.03MB** (ca đỏ 2, verify đầu tại `863e7089`); các lần chạy lại đều xanh (standalone 18/18 ×3; verify #2 cả hai SHA xanh). Nguyên nhân: **CHƯA XÁC NHẬN** — chỉ có quan sát: delta 10.20–14.03MB khi stage chạy ngay sau build+suite trong cùng verify; chạy độc lập luôn dưới ngưỡng. Không quy kết khi chưa đo phân tích. Khuyến nghị chủ file (AI1/server) cân nhắc tách stage này chạy riêng hoặc nới ngưỡng kèm ghi chú — **tôi không tự sửa kỳ vọng**.
 - Trạng thái C1/C1.1/C1.2: **chờ nghiệm thu VPS** — chưa xin duyệt triển khai.
 - PDF/VPS: `version.json` đã đồng bộ `99ac37cf` (sha256 file `7ff822a3…` khớp host=container=HTTP; `main.js` giữ `07cf9ee4…`); script deploy tự sinh version.json từ SHA thật cho các lần sau. **Windows vẫn chờ thử — không có môi trường.**
+
+
+## C1.3 — Review follow-up 08/11 (bất khả chứng → unknown, kể cả chuỗi unreadable ổn định)
+
+- `CriterionRunner.requiresSubjectProof`: runner đo trực tiếp trên subject (dimension/position đặt `true`).
+- `evaluateTaskCriteria`: dòng có bằng chứng **pass/fail** (khẳng định) của proof-runner mà marker subject
+  không verify được lúc đọc — `stateSignature` thiếu, `no-subjects`, chứa `:unreadable` hoặc `handle-err` —
+  **hạ xuống `unknown`** với reason `state-unverifiable…`, kể cả khi chuỗi unreadable giống hệt qua nhiều lần đọc;
+  badge hoàn tất mất theo. Bằng chứng đã `unknown` giữ lý do gốc của runner (không ghi đè — hồi quy ca C2
+  "thiếu dữ liệu" đã bắt đúng case này).
+- Ca mới (4): unit — proof-runner + subject ma (unreadable ổn định, đọc lần 2 vẫn unknown), no-subjects,
+  hồi quy runner thường vẫn pass; kernel — `recordCriterionEvidence` TỰ KHAI pass trên subject không tồn tại,
+  evaluate từ chối tin lời khai, mọi lần đọc unknown + không completable.
+- Nguyên tắc chốt cho đợt mở rộng lỗ/tô-pô: **tiêu chí cần phép đo nào thì marker của phép đo đó phải đọc lại
+  được ở thời điểm đánh giá; không đọc lại được → unknown**, không có đường "pass cũ + chuỗi lỗi ổn định".
+- Test: targeted 177/0 (tăng 4); pre-commit full 10308/0; build 0 lỗi; tsc 0; biome 0 error.
