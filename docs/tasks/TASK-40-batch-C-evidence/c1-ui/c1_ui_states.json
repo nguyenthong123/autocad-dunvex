@@ -1,0 +1,76 @@
+{
+    "note": "dev-build (__chiliTest.governance) drives the SAME store + real ChatPanel component; trigger is scripted, not a natural LLM turn (LLM end-to-end = Đợt D). Box node 100x50x20 from __chiliTest.createTestModel.",
+    "init": "🛡️ Đợt B: bảo vệ nguồn · cổng quyền · Undo chuỗi liên tiếp · 🔎 Đợt C: hậu kiểm tiêu chí đang bật (2 bộ kiểm) · chưa áp bảng dung sai · quy tắc: default-safe · protected=0",
+    "model": {
+        "box1Id": "7cCZij5mhlLDjVFN0Lc2X",
+        "box1Name": "Box 100x50x20"
+    },
+    "chatToggle": {
+        "found": true,
+        "before": 1677,
+        "after": 1677,
+        "editors": 1,
+        "bodyTail": "_css-button\" type=\"button\" title=\"Xem chi tiết lỗi\" data-chili18n=\"statusBar.errors{0}_:_textContent\" data-count=\"0\">Lỗi: 0</button></chili-error-status></div></chili-statusbar></div></chili-editor></chili3d-main-window>"
+    },
+    "statusAfterRegister": "🛡️ Đợt B: bảo vệ nguồn · cổng quyền · Undo chuỗi liên tiếp · 🔎 Đợt C: hậu kiểm tiêu chí đang bật (2 bộ kiểm) · chưa áp bảng dung sai · quy tắc: default-safe · protected=0",
+    "stateA_mixed": {
+        "rows": [
+            {
+                "id": "kich-thuoc",
+                "s": "pass",
+                "reason": "kích thước đạt: mọi trục trong dung sai 2/2/2 mm"
+            },
+            {
+                "id": "vi-tri",
+                "s": "fail",
+                "reason": "vị trí sai — 7cCZij5mhlLDjVFN0Lc2X trục Y: đo 25 mm, mong 500 mm, lệch -475 mm vượt dung s"
+            },
+            {
+                "id": "thieu-dung-sai",
+                "s": "unknown",
+                "reason": "task chưa nêu dung sai cho kích thước (toleranceMm [X,Y,Z]) — thiếu dung sai là unknown"
+            }
+        ],
+        "completable": false,
+        "statusLine": "🛡️ Đợt B: bảo vệ nguồn · cổng quyền · Undo chuỗi liên tiếp · 🔎 Đợt C: hậu kiểm tiêu chí đang bật (2 bộ kiểm) · chưa áp bảng dung sai · quy tắc: default-safe · task demo-c1 · ⏳ còn 2/3 tiêu chí bắt buộc chưa đạt · protected=4",
+        "cardText": "Bằng chứng hậu kiểm (Đợt C) · task demo-c1 · pass 1 / fail 1 / unknown 1\n✅ [bắt buộc] dimension_match · kich-thuoc — kích thước đạt: mọi trục trong dung sai 2/2/2 mm · 7cCZij5mhlLDjVFN0Lc2X:sizeMm=[100, 50, 20] mm\ngiới hạn: Đo cạnh hộp bao theo trục X/Y/Z (mm, hệ world). Đủ cho khối hộp hướng trục; KHÔNG chứng minh hình dạng/rãnh/lỗ bên trong hay hình xoay xiên — các quan hệ đó cần tiêu chí khác.\n❌ [bắt buộc] position_match · vi-tri — vị trí sai — 7cCZij5mhlLDjVFN0Lc2X trục Y: đo 25 mm, mong 500 mm, lệch -475 mm vượt dung sai 5 mm · 7cCZij5mhlLDjVFN0Lc2X:centerMm=[50, 25, 10] mm\ngiới hạn: Đo tâm hộp bao (mm, hệ world) từng đối tượng. Với hình đối xứng, tâm bbox trùng centroid; hình bất đối xứng cần tiêu chí tâm riêng. Không suy ra quan hệ xuyên/không xuyên từ vị trí mẫu.\n❓ [bắt buộc] dimension_match · thieu-dung-sai — task chưa nêu dung sai cho kích thước (toleranceMm [X,Y,Z]) — thiếu dung sai là unknown\ngiới hạn: Đo cạnh hộp bao theo trục X/Y/Z (mm, hệ world). Đủ cho khối hộp hướng trục; KHÔNG chứng minh hình dạng/rãnh/lỗ bên trong hay hình xoay xiên — các quan hệ đó cần tiêu chí khác.\n⏳ CHƯA HOÀN TẤT — còn 2/3 tiêu chí bắt buộc chưa đạt"
+    },
+    "stateB_stale": {
+        "rows": [
+            {
+                "id": "kich-thuoc",
+                "s": "unknown",
+                "stale": true
+            },
+            {
+                "id": "vi-tri",
+                "s": "unknown",
+                "stale": true
+            },
+            {
+                "id": "thieu-dung-sai",
+                "s": "unknown",
+                "stale": true
+            }
+        ],
+        "completable": false,
+        "statusLine": "🛡️ Đợt B: bảo vệ nguồn · cổng quyền · Undo chuỗi liên tiếp · 🔎 Đợt C: hậu kiểm tiêu chí đang bật (2 bộ kiểm) · chưa áp bảng dung sai · quy tắc: default-safe · task demo-c1 · ⏳ còn 3/3 tiêu chí bắt buộc chưa đạt · protected=4",
+        "cardText": "Bằng chứng hậu kiểm (Đợt C) · task demo-c1 · pass 0 / fail 0 / unknown 3\n❓ [bắt buộc] dimension_match · kich-thuoc — invalidated: demo: đối tượng vừa bị sửa hình · 7cCZij5mhlLDjVFN0Lc2X:sizeMm=[100, 50, 20] mm (bằng chứng cũ 17:31:06)\ngiới hạn: Đo cạnh hộp bao theo trục X/Y/Z (mm, hệ world). Đủ cho khối hộp hướng trục; KHÔNG chứng minh hình dạng/rãnh/lỗ bên trong hay hình xoay xiên — các quan hệ đó cần tiêu chí khác.\n❓ [bắt buộc] position_match · vi-tri — invalidated: demo: đối tượng vừa bị sửa hình · 7cCZij5mhlLDjVFN0Lc2X:centerMm=[50, 25, 10] mm (bằng chứng cũ 17:31:06)\ngiới hạn: Đo tâm hộp bao (mm, hệ world) từng đối tượng. Với hình đối xứng, tâm bbox trùng centroid; hình bất đối xứng cần tiêu chí tâm riêng. Không suy ra quan hệ xuyên/không xuyên từ vị trí mẫu.\n❓ [bắt buộc] dimension_match · thieu-dung-sai — invalidated: demo: đối tượng vừa bị sửa hình (bằng chứng cũ 17:31:06)\ngiới hạn: Đo cạnh hộp bao theo trục X/Y/Z (mm, hệ world). Đủ cho khối hộp hướng trục; KHÔNG chứng minh hình dạng/rãnh/lỗ bên trong hay hình xoay xiên — các quan hệ đó cần tiêu chí khác.\n⏳ CHƯA HOÀN TẤT — còn 3/3 tiêu chí bắt buộc chưa đạt"
+    },
+    "stateC_complete": {
+        "rows": [
+            {
+                "id": "kich-thuoc",
+                "s": "pass"
+            },
+            {
+                "id": "vi-tri",
+                "s": "pass"
+            }
+        ],
+        "completable": true,
+        "statusLine": "🛡️ Đợt B: bảo vệ nguồn · cổng quyền · Undo chuỗi liên tiếp · 🔎 Đợt C: hậu kiểm tiêu chí đang bật (2 bộ kiểm) · chưa áp bảng dung sai · quy tắc: default-safe · task demo-c1 · ✔ đủ tiêu chí bắt buộc · protected=4",
+        "cardText": "Bằng chứng hậu kiểm (Đợt C) · task demo-c1 · pass 2 / fail 0 / unknown 0\n✅ [bắt buộc] dimension_match · kich-thuoc — kích thước đạt: mọi trục trong dung sai 2/2/2 mm · 7cCZij5mhlLDjVFN0Lc2X:sizeMm=[100, 50, 20] mm\ngiới hạn: Đo cạnh hộp bao theo trục X/Y/Z (mm, hệ world). Đủ cho khối hộp hướng trục; KHÔNG chứng minh hình dạng/rãnh/lỗ bên trong hay hình xoay xiên — các quan hệ đó cần tiêu chí khác.\n✅ [bắt buộc] position_match · vi-tri — vị trí đạt: mọi trục trong dung sai 5/5/5 mm · 7cCZij5mhlLDjVFN0Lc2X:centerMm=[50, 25, 10] mm\ngiới hạn: Đo tâm hộp bao (mm, hệ world) từng đối tượng. Với hình đối xứng, tâm bbox trùng centroid; hình bất đối xứng cần tiêu chí tâm riêng. Không suy ra quan hệ xuyên/không xuyên từ vị trí mẫu.\n✔ HOÀN TẤT — mọi tiêu chí bắt buộc đều pass với bằng chứng hợp lệ"
+    },
+    "capturedAt": "2026-11-08T10:31:08.450Z"
+}

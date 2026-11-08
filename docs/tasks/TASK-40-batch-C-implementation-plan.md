@@ -119,6 +119,8 @@ Mỗi runner khai báo `supportNotes` (chuỗi locale) để UI/prompt nói đú
 
 **Test mới (25 ca):** `batchC1Evidence.test.ts` (13 — binding, unknown≠pass, optional-fail không chặn, required-fail chặn, invalidate node/rules/document/plan, router invalidate khi write + không invalidate khi bị chặn, listener), `batchC2SizePosition.kernel.test.ts` (8 — kernel OCCT thật: pass khớp phép đo độc lập, **sai kích thước → fail**, **sai vị trí → fail**, thiếu dung sai/NaN/subject mất → **unknown**, sửa hình rồi thì pass cũ stale), `batchC1Card.dom.test.ts` (6 — mỗi trạng thái UI một ca: pass/fail/unknown/stale/plan-mất-hiệu-lực/class trạng thái).
 
-**Bằng chứng chạy:** `tsc -p` exit 0 · `biome check` 0 error · `npm run build` exit 0 · `npm run test` exit 0 (10294 passed / 0 failed). Sau commit C1: thêm 2 lần `npm run test` liên tiếp trên đúng SHA (ghi ở §5 guide).
+**Bằng chứng chạy:** `tsc -p` exit 0 · `biome check` 0 error · `npm run build` exit 0.
+**SHA C1 = `8ab2c4ab888eca686cca58028e551098415ddd39`. Hai lần `npm run test` LIÊN TIẾP trên đúng SHA đó: RUN1 10294 passed / 0 failed (exit 0), RUN2 10294 / 0 (exit 0). Commit bằng chứng UI nối tiếp chỉ thêm docs/ảnh, không đổi code.**
 **Ticket localStorage:** tách riêng trước C1 — ticket `28ca0283`, fix `918d0b67`, ghi 2 lần full-suite xanh `4ecb89ed`.
-**CHƯA KIỂM:** screenshot ChatPanel thật trên trình duyệt (ca CDP demo đang chạy — nếu xong sẽ ghi vào docs/tasks/TASK-40-batch-C-evidence/); LLM thật end-to-end (ma trận §11.11 — thuộc đợt D); Windows (không có môi trường).
+**ĐÃ KIỂM UI:** 3 trạng thái thật quay trên ChatPanel (store + component thật, build DEV qua `__chiliTest.governance`; trigger scripted, KHÔNG phải vòng LLM end-to-end): `docs/tasks/TASK-40-batch-C-evidence/c1-ui/` — 6 ảnh PNG + `c1_ui_states.json` (cardText may-doc) + README quy trình.
+**CHƯA KIỂM:** vòng LLM thật end-to-end (ma trận §11.11 — thuộc Đợt D); Windows (không có môi trường).
