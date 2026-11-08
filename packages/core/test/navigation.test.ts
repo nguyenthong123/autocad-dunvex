@@ -3,7 +3,7 @@
 
 import { Config } from "../src/config";
 import { Navigation3D, Navigation3DTypes } from "../src/navigation";
-import { mockLocalStorage } from "../test-utils";
+import { mockLocalStorage, restoreLocalStorage } from "../test-utils";
 
 describe("Navigation3DTypes", () => {
     test("should contain Chili3d", () => {
@@ -98,6 +98,7 @@ describe("Navigation3D.navigationKeyMap", () => {
 
     afterEach(() => {
         Config.instance.init("config");
+        restoreLocalStorage();
     });
 
     describe("Chili3d", () => {

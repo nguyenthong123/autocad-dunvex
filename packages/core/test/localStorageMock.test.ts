@@ -60,4 +60,32 @@ describe("mockLocalStorage realm isolation", () => {
         restoreLocalStorage();
         expect(descriptorOf()).toEqual(before);
     });
+
+    test("a restore never rewinds or deletes a binding the mock no longer owns", () => {
+        // Ownership contract v2: when another consumer installs over us (or a
+        // foreign file owns the realm), restoreLocalStorage() must leave that
+        // binding untouched — rewinding/deleting blindly is what wiped the
+        // storage for later files sharing the worker.
+        const original = descriptorOf();
+        const foreign = {
+            getItem: () => null,
+            setItem: () => {},
+            removeItem: () => {},
+            clear: () => {},
+            length: 0,
+            key: () => null,
+        };
+        mockLocalStorage();
+        Object.defineProperty(global, "localStorage", { value: foreign, configurable: true, writable: true });
+        restoreLocalStorage();
+        expect((global as any).localStorage).toBe(foreign);
+        // The next install records the CURRENT (foreign) state, not the stale original.
+        mockLocalStorage();
+        restoreLocalStorage();
+        expect((global as any).localStorage).toBe(foreign);
+        // Hand the realm back exactly as the test found it.
+        if (original) Object.defineProperty(global, "localStorage", original);
+        else delete (global as { localStorage?: unknown }).localStorage;
+        expect(typeof (global as any).localStorage?.getItem).toBe("function");
+    });
 });

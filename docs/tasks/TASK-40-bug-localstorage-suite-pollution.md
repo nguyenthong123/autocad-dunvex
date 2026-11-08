@@ -54,3 +54,29 @@ Bàn giao: commit `ID`/prefix 🐛+📝 như quy ước repo, kèm lệnh + exit
 - **Tiêu chí 2:** không còn `defineProperty(..."localStorage"...)` thiếu `configurable` trong test-utils; các file test chỉ dùng install/restore cặp đôi.
 - Phạm vi: chỉ test-utils + 3 file test + 1 file test mới; **0 dòng app code**; PDF v1 (`2c72ecec`) không đụng.
 - LLM/`batchBGovernance`: không sửa gì phía ai — victim pass trong full suite nhờ gốc được sửa.
+
+## Follow-up — 08/11/2026 sau: ticket MỞ LẠI vì `hermes verify` vẫn đỏ (Hermes)
+
+`hermes verify` chạy `npm run test` với phân công file→worker đông hơn (74s so với ~200s),
+bắt gặp collision mà hai lần chạy xanh trên `918d0b67` chưa chạm phải:
+`batchBGovernance > approved plan then interleaved edit...` vẫn `localStorage` undefined.
+→ Fix v1 chưa đủ: **capture một lần per module-instance vẫn khóa "bản gốc" sai** khi file
+đầu tiên trong worker capture lúc binding đã bẩn, và `config.test.ts`/`navigation.test.ts`
+install mock mà **không bao giờ restore**.
+
+Đã làm (test-utils/test-only, không app code):
+1. `localStorageMock.ts` — hợp đồng v2 THEOWNSHIP: re-capture mỗi lần realm không còn
+   giữ đúng mock của mình; `restoreLocalStorage()` chỉ rewind binding do mình cài,
+   không bao giờ xóa/thay binding lạ (đường dẫn `delete` mù đã bị cắt).
+2. `config.test.ts` + `navigation.test.ts`: thêm `afterEach(restoreLocalStorage)`.
+3. `setup.ts` (global setup, chạy cho MỌI file): `beforeEach` repair — nếu realm mất
+   storage khả dụng thì gắn lại in-memory mới; binding lành không bị đụng. Đây là lưới
+   an toàn chống mọi file gây nhiễm tương lai, không thay điều tra gốc.
+4. Test ghim mới trong `localStorageMock.test.ts`: restore không được rewind/xóa binding
+   đã bị chủ khác chiếm (7 ca).
+
+Bằng chứng: probe tổng hợp (file cài `localStorage = undefined` + governance suite,
+`--pool.maxWorkers 1`) → 51/51 xanh nhờ repair; combo 12 file nhiễm/tải 303/303 xanh;
+`tsc` 0, `biome` 0, `npm run test` exit 0 (10295 passed / 0 failed). CHƯA KIỂM (tiếp):
+danh tính file gây nhiễm gốc trong full-suite — đã được repair chặn đứng ở biên test;
+Windows chưa có môi trường.
