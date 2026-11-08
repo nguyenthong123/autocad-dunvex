@@ -48,6 +48,14 @@ function compareAgainstExpected(
             reason: `task chưa nêu dung sai cho ${label} (toleranceMm [X,Y,Z]) — thiếu dung sai là unknown`,
         };
     }
+    if (spec.subjectNodeIds.length === 0) {
+        return {
+            status: "unknown",
+            reason: spec.resolutionNote
+                ? `không có đối tượng để đo ${label} — ${spec.resolutionNote}`
+                : `không có đối tượng để đo ${label} — tiêu chí chưa resolve được subject (hint không khớp)`,
+        };
+    }
     const measured: Record<string, number[]> = {};
     const deviations: string[] = [];
     for (const nodeId of spec.subjectNodeIds) {

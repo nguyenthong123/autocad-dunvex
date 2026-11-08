@@ -26,23 +26,26 @@ Tài liệu này quy định cách agent tiếp nhận, thực hiện và kiểm
 
 Các nhóm dưới đây là phạm vi rà soát bắt buộc. Mỗi chế độ phải được đánh dấu là đã hỗ trợ, hỗ trợ có giới hạn hoặc chưa hỗ trợ theo mã và test thực tế.
 
-| Nhóm | Điều kiện trước thao tác | Bằng chứng sau thao tác |
-| --- | --- | --- |
-| Đọc, chọn, đo | Đúng tài liệu, đúng kiểu đối tượng và hệ tọa độ. Phân biệt node, body, subshape và ref tạm | Kết quả thuộc đúng ID, đơn vị và trạng thái. Đọc tài liệu không xác nhận đã dựng |
-| Vẽ và sửa 2D | Chọn mặt phẳng, điểm, kiểu đường và ràng buộc. Kiểm tra đầu mút, cạnh trùng, chiều dài tối thiểu khi phù hợp | Tọa độ, chiều dài, góc, bán kính, kết nối và ràng buộc đúng |
-| Tạo wire, mặt và vùng | Phân tích cạnh nối, khe hở, nhánh, đồng phẳng, tự giao. Phân biệt vòng ngoài, vòng trong, vách và đường tham chiếu | Vùng đúng biên, số vòng, vị trí và diện tích. Vách nhánh không bị đưa vào vòng đơn |
-| Đùn, xoay, sweep, loft | Kiểm kiểu profile theo chế độ, hướng, trục, đường dẫn, thứ tự tiết diện và điểm dừng | Loại hình học, cao độ, hướng, tiết diện và kết thúc đúng yêu cầu |
-| Vách, gân, thành mỏng | Xác định vùng có bề dày hoặc đường dẫn, bề dày, phía vật liệu và cách nối góc | Bề dày và vị trí đúng, phần lõm được giữ và kích thước thông thủy không đổi |
-| Thêm, trừ, giao vật liệu | Xác định từng body được tác động, hình công cụ, giao vật liệu và mục tiêu giữ lịch sử | Hình hợp lệ, thay đổi vật liệu ở đúng vùng, body khác và lịch sử theo yêu cầu |
-| Khoan, khoét, phay hốc | Chọn kiểu xuyên, mù hoặc tới mặt, vị trí, tiết diện, hướng và độ sâu. Xác định bề dày tại vùng cắt | Xuyên theo hướng cắt hoặc đạt độ sâu và còn đáy theo yêu cầu. Xác nhận vùng xung quanh cần giữ |
-| Cắt tách, xén, ghép mặt và làm vỏ | Chọn hướng hoặc phía cần giữ, kiểu mặt/vỏ, điều kiện biên và dung sai nối | Số phần đúng, phía giữ đúng, biên kín khi cần tạo solid và phần nguồn được giữ theo phạm vi |
-| Bo góc, vát mép, offset, shell | Chọn đúng cạnh/mặt, hướng, tham số và kiểm tra tự giao hoặc bề dày tối thiểu | Cạnh/mặt đã chọn có thông số đúng, không làm biến dạng ngoài phạm vi |
-| Biến đổi, sao chép, đối xứng và mảng | Chốt mốc, hệ trục, thứ tự phép biến đổi, giữ hay sửa nguồn, số lượng và bước | Vị trí, hướng, số bản sao, khoảng cách và bất biến nguồn |
-| Sửa feature, biến và ràng buộc | Tính ảnh hưởng lên lịch sử, feature sau, liên kết chéo và body khác | Rebuild hợp lệ, ràng buộc được giữ, không mất tham chiếu ngoài phạm vi |
-| Cây bản vẽ, ẩn/hiện, xóa, Undo/Redo | Phân biệt tác động lên hình học và hiển thị, kiểm phạm vi nhóm/con cháu, phụ thuộc và lịch sử xen kẽ | Chỉ đối tượng đã duyệt bị tác động, việc thủ công độc lập được bảo toàn |
-| Vật liệu, thuộc tính và BOM | Chọn đúng đối tượng, xác định tài nguyên dùng chung, phạm vi thống kê và đơn vị | Đúng vật liệu, số lượng, giá trị và phạm vi. BOM không tự chứng minh hình học đã đúng |
-| Nhập và chuyển đổi | Xác định định dạng, đơn vị, tọa độ, cách xử lý ID trùng và dữ liệu có thể mất | Đọc lại được, phạm vi và tỷ lệ đúng, các phần không chuyển được được báo |
-| Xuất, in và chia sẻ | Chọn định dạng, đối tượng, khổ, tỷ lệ, mục đích và quyền chia sẻ theo yêu cầu | File mở được. Kiểm phạm vi, đơn vị, tỷ lệ và nội dung. PDF kỹ thuật kiểm thêm vector, chữ, lề và vùng cắt |
+| Nhóm | Điều kiện trước thao tác | Bằng chứng sau thao tác | Trạng thái sau Đợt C2 (theo mã + test thật) |
+| --- | --- | --- | --- |
+| Đọc, chọn, đo | Đúng tài liệu, đúng kiểu đối tượng và hệ tọa độ. Phân biệt node, body, subshape và ref tạm | Kết quả thuộc đúng ID, đơn vị và trạng thái. Đọc tài liệu không xác nhận đã dựng | 🟡 Hậu kiểm đo **kích thước bao + tâm vị trí** của đúng ID kết quả qua criteria (unit 7/7, kernel 13/13, tổng 20 test runtime/kernel; ca thật S1–S5 qua ChatPanel). Khi có ID xác định được: dùng đúng ID; khi chỉ có tên gợi ý và nhiều node cùng khớp: trả `unknown` làm rõ đối tượng (tránh xác nhận nhầm); khi không có đối tượng để đo: trả `unknown`. Chưa có công cụ "đo" cho giá trị trung gian của agent. |
+| Vẽ và sửa 2D | Chọn mặt phẳng, điểm, kiểu đường và ràng buộc. Kiểm tra đầu mút, cạnh trùng, chiều dài tối thiểu khi phù hợp | Tọa độ, chiều dài, góc, bán kính, kết nối và ràng buộc đúng | ⬜ Chỉ cổng quyền Đợt B; chưa có tiêu chí hậu kiểm 2D (đo dài/góc/radius riêng). |
+| Tạo wire, mặt và vùng | Phân tích cạnh nối, khe hở, nhánh, đồng phẳng, tự giao. Phân biệt vòng ngoài, vòng trong, vách và đường tham chiếu | Vùng đúng biên, số vòng, vị trí và diện tích. Vách nhánh không bị đưa vào vòng đơn | ⬜ Chưa có runner số vòng/diện tích. |
+| Đùn, xoay, sweep, loft | Kiểm kiểu profile theo chế độ, hướng, trục, đường dẫn, thứ tự tiết diện và điểm dừng | Loại hình học, cao độ, hướng, tiết diện và kết thúc đúng yêu cầu | 🟡 Dựng chạy được qua run_program với cổng B; hậu kiểm chỉ kết luận được bằng **kích thước/tâm hộp bao** — UI đã ghi rõ "hộp bao", không chứng minh hướng trục hay tiết diện. |
+| Vách, gân, thành mỏng | Xác định vùng có bề dày hoặc đường dẫn, bề dày, phía vật liệu và cách nối góc | Bề dày và vị trí đúng, phần lõm được giữ và kích thước thông thủy không đổi | ⬜ Bề dày/thông thủy là phép đo trong lòng — bbox không suy ra được; chờ bộ mở rộng. |
+| Thêm, trừ, giao vật liệu | Xác định từng body được tác động, hình công cụ, giao vật liệu và mục tiêu giữ lịch sử | Hình hợp lệ, thay đổi vật liệu ở đúng vùng, body khác và lịch sử theo yêu cầu | 🟡 Chạy được + cổng B. Ca kernel C1.2 chứng minh **lỗ trong lòng giữ nguyên bbox vẫn làm bằng chứng stale→unknown** (phát hiện đổi hình, chưa kết luận đúng/sai vùng cắt). |
+| Khoan, khoét, phay hốc | Chọn kiểu xuyên, mù hoặc tới mặt, vị trí, tiết diện, hướng và độ sâu. Xác định bề dày tại vùng cắt | Xuyên theo hướng cắt hoặc đạt độ sâu và còn đáy theo yêu cầu. Xác nhận vùng xung quanh cần giữ | ⬜ Runner từ chối suy xuyên/mù từ bbox hoặc điểm mẫu — cần phép đo độ sâu/mặt đáy riêng (ưu tiên 2). |
+| Cắt tách, xén, ghép mặt và làm vỏ | Chọn hướng hoặc phía cần giữ, kiểu mặt/vỏ, điều kiện biên và dung sai nối | Số phần đúng, phía giữ đúng, biên kín khi cần tạo solid và phần nguồn được giữ theo phạm vi | ⬜ Chưa đo số body/độ kín biên. |
+| Bo góc, vát mép, offset, shell | Chọn đúng cạnh/mặt, hướng, tham số và kiểm tra tự giao hoặc bề dày tối thiểu | Cạnh/mặt đã chọn có thông số đúng, không làm biến dạng ngoài phạm vi | ⬜ Chưa có tiêu chí bán kính vát/cạnh chọn. |
+| Biến đổi, sao chép, đối xứng và mảng | Chốt mốc, hệ trục, thứ tự phép biến đổi, giữ hay sửa nguồn, số lượng và bước | Vị trí, hướng, số bản sao, khoảng cách và bất biến nguồn | 🟡 Tiêu chí vị trí bắt được lệch tâm thật (ca S3: ❌ trục Y đo 550 mm, mong 150 mm, lệch 400 mm ngoài dung sai 5 mm; giữ kích thước bao 800×300×2500 mm ✅). Số bản sao/bất biến nguồn chưa đo. |
+| Sửa feature, biến và ràng buộc | Tính ảnh hưởng lên lịch sử, feature sau, liên kết chéo và body khác | Rebuild hợp lệ, ràng buộc được giữ, không mất tham chiếu ngoài phạm vi | 🟡 Đổi hình/tham số làm bằng chứng stale (unit C1.1–C1.3); bản thân rebuild hợp lệ chưa là tiêu chí. |
+| Cây bản vẽ, ẩn/hiện, xóa, Undo/Redo | Phân biệt tác động lên hình học và hiển thị, kiểm phạm vi nhóm/con cháu, phụ thuộc và lịch sử xen kẽ | Chỉ đối tượng đã duyệt bị tác động, việc thủ công độc lập được bảo toàn | 🟡 Undo, lệnh ghi ngoài agent và ghi-không-xác-định-đối-tượng đều vô hiệu hóa bảo thủ (test C1); thẻ UI thật chuyển ⏳ ngay khi trạng thái lật (kể cả move bằng UI — S5). |
+| Vật liệu, thuộc tính và BOM | Chọn đúng đối tượng, xác định tài nguyên dùng chung, phạm vi thống kê và đơn vị | Đúng vật liệu, số lượng, giá trị và phạm vi. BOM không tự chứng minh hình học đã đúng | ⬜ Ngoài phạm vi Đợt C2. |
+| Nhập và chuyển đổi | Xác định định dạng, đơn vị, tọa độ, cách xử lý ID trùng và dữ liệu có thể mất | Đọc lại được, phạm vi và tỷ lệ đúng, các phần không chuyển được được báo | ⬜ Ngoài phạm vi Đợt C2. |
+| Xuất, in và chia sẻ | Chọn định dạng, đối tượng, khổ, tỷ lệ, mục đích và quyền chia sẻ theo yêu cầu | File mở được. Kiểm phạm vi, đơn vị, tỷ lệ và nội dung. PDF kỹ thuật kiểm thêm vector, chữ, lề và vùng cắt | ⬜ Ngoài phạm vi TASK-40 (PDF v1 nghiệm thu độc lập, đã deploy). |
+
+**Chú giải:** ✅ hỗ trợ đầy đủ kèm phép kiểm thật · 🟡 hỗ trợ một phần, giới hạn ghi rõ trong ô · ⬜ chưa hỗ trợ (chỉ còn cổng quyền chung Đợt B).
+**Thứ tự làm tiếp:** (1) giữ hai tiêu chí bbox chung cho mọi nhóm solid; (2) mở rộng bộ đo cho nhóm nặng rủi ro — Khoan/khoét (độ sâu/mặt đáy), Bool (thể tích delta vùng), Biến đổi (số bản sao); (3) vòng C3 sửa theo sai lệch đo được (phương án riêng `TASK-40-batch-C3-repair-plan.md`, tối đa 2 lần); (4) tiêu chí 2D/ràng buộc sau khi cổng quyền feature-editing hoàn tất.
 
 ## Quy tắc chống áp dụng máy móc
 

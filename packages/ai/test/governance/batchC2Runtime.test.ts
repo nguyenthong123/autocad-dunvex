@@ -175,6 +175,63 @@ describe("TASK-40 C2 runtime — criteria gắn vào plan, đo sau ghi, finalize
         expect(evaluation!.completable).toBe(false);
     });
 
+    test("hai node cùng khớp tên gợi ý → unknown cần làm rõ đối tượng, tránh xác nhận nhầm; khi có ID dùng đúng ID", async () => {
+        setPlanApprovalHandler(async (bound) => ({ approved: true, profile: confirmProposedPlan(bound) }));
+        const tool = buildProposeTaskPlanTool();
+        await tool.handler!(
+            {
+                goal: "tạo tấm",
+                allowedModifiedNodeIds: [],
+                criteria: [
+                    { ...validCriteria[0], id: "k-hint", subjectHint: "Tấm C2", subjectNodeIds: [] },
+                    { ...validCriteria[0], id: "k-id", subjectHint: "Tấm C2", subjectNodeIds: ["prod-1"] },
+                ],
+            },
+            undefined,
+        );
+
+        // Giả lập tài liệu có 2 node cùng mang tên "Tấm C2" do task tạo
+        const list = [
+            { id: "wall-1", name: "Tường cũ", visible: true },
+            { id: "prod-1", name: "Tấm C2", visible: true },
+            { id: "prod-2", name: "Tấm C2", visible: true },
+        ];
+        (doc.modelManager as any).findNodes = (pred?: (n: any) => boolean) =>
+            typeof pred === "function" ? list.filter(pred) : [...list];
+
+        applySuccessfulWriteForTests(
+            "run_program",
+            { ops: [] },
+            JSON.stringify({ created: [{ nodeId: "prod-1" }, { nodeId: "prod-2" }] }),
+        );
+
+        registerCriterionRunner({
+            kind: "dimension_match",
+            label: "Kích thước bao (hộp bao world, mm)",
+            supportNotes: "stub runtime",
+            measure: async (spec) =>
+                spec.subjectNodeIds.length > 0
+                    ? { status: "pass", measured: { sizeMm: [800, 300, 2500] }, reason: "đạt theo yêu cầu" }
+                    : { status: "unknown", reason: spec.resolutionNote ?? "không resolve được đối tượng" },
+        });
+
+        const evaluation = await finalizeTaskVerification(doc);
+        expect(evaluation).toBeTruthy();
+
+        // Tiêu chí k-hint chỉ có tên gợi ý và có 2 node khớp → unknown, không được xác nhận nhầm
+        const rowHint = evaluation!.rows.find((r) => r.spec.id === "k-hint")!;
+        expect(rowHint.status).toBe("unknown");
+        expect(rowHint.reason).toContain("cần làm rõ đối tượng");
+
+        // Tiêu chí k-id có ID xác định được ("prod-1") → dùng đúng ID đó và pass
+        const rowId = evaluation!.rows.find((r) => r.spec.id === "k-id")!;
+        expect(rowId.status).toBe("pass");
+        expect(rowId.spec.subjectNodeIds).toEqual(["prod-1"]);
+
+        // Tổng thể không hoàn tất vì k-hint còn unknown
+        expect(evaluation!.completable).toBe(false);
+    });
+
     test("finalize không có plan/criteria → undefined (không tự bày đặt đo)", async () => {
         expect(await finalizeTaskVerification(doc)).toBeUndefined();
     });

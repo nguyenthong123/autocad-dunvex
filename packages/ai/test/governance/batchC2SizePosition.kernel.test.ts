@@ -321,6 +321,80 @@ describe("TASK-40 Đợt C2 prep — kích thước & vị trí trên kernel th�
         expect(after.completable).toBe(false); // badge hoàn tất rơi ngay khi đọc lại
     });
 
+    test("C2 guard (nguồn): runner thật + hint không resolve → unknown 'không có đối tượng để đo', không pass ảo", async () => {
+        const node = addBox("Tấm chuẩn", 800, 300, 2500);
+        registerDefaultGeometryRunners();
+        approveTaskPlan(
+            {
+                taskId: "c2-empty",
+                allowedModifiedNodeIds: [],
+                criteria: [
+                    {
+                        id: "k",
+                        kind: "dimension_match",
+                        required: true,
+                        subjectNodeIds: [],
+                        subjectHint: "Không tồn tại",
+                        expected: { sizeMm: [800, 300, 2500] },
+                        toleranceMm: [2, 2, 2],
+                    },
+                ],
+            },
+            doc,
+        );
+        recordTaskOwnedNodes([node.id], doc);
+        const ev = await finalizeTaskVerification(doc);
+        expect(ev!.rows[0].status).toBe("unknown");
+        expect(ev!.rows[0].reason).toContain("không có đối tượng để đo");
+        expect(ev!.completable).toBe(false);
+    });
+
+    test("C2 guard: hai node cùng khớp hint → unknown cần làm rõ đối tượng; có ID xác định → dùng đúng ID", async () => {
+        const box1 = addBox("Tấm trùng", 800, 300, 2500);
+        const box2 = addBox("Tấm trùng", 800, 300, 2500);
+        registerDefaultGeometryRunners();
+        approveTaskPlan(
+            {
+                taskId: "c2-duplicate-hint",
+                allowedModifiedNodeIds: [],
+                criteria: [
+                    {
+                        id: "k-hint",
+                        kind: "dimension_match",
+                        required: true,
+                        subjectNodeIds: [],
+                        subjectHint: "Tấm trùng",
+                        expected: { sizeMm: [800, 300, 2500] },
+                        toleranceMm: [2, 2, 2],
+                    },
+                    {
+                        id: "k-id",
+                        kind: "dimension_match",
+                        required: true,
+                        subjectNodeIds: [box1.id],
+                        subjectHint: "Tấm trùng",
+                        expected: { sizeMm: [800, 300, 2500] },
+                        toleranceMm: [2, 2, 2],
+                    },
+                ],
+            },
+            doc,
+        );
+        recordTaskOwnedNodes([box1.id, box2.id], doc);
+        const ev = await finalizeTaskVerification(doc);
+        expect(ev).toBeTruthy();
+
+        const rowHint = ev!.rows.find((r) => r.spec.id === "k-hint")!;
+        expect(rowHint.status).toBe("unknown");
+        expect(rowHint.reason).toContain("cần làm rõ đối tượng");
+
+        const rowId = ev!.rows.find((r) => r.spec.id === "k-id")!;
+        expect(rowId.status).toBe("pass");
+        expect(rowId.spec.subjectNodeIds).toEqual([box1.id]);
+
+        expect(ev!.completable).toBe(false);
+    });
+
     test("runners công khai giới hạn: bbox không tự tuyên bố chứng minh lỗ/hình dạng", () => {
         expect(dimensionMatchRunner.kind).toBe("dimension_match");
         expect(dimensionMatchRunner.supportNotes).toContain("hộp bao");

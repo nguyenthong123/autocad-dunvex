@@ -34,6 +34,8 @@ export interface CriterionSpec {
     toleranceMm?: number[];
     /** Quote/location of the originating user requirement, for audit. */
     source?: string;
+    /** Note set during finalize time if subject resolution failed or was ambiguous. */
+    resolutionNote?: string;
 }
 
 /** Evidence recorded by a runner, bound to task + document + rules + subjects. */
