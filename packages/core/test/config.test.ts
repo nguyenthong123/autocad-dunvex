@@ -11,7 +11,7 @@ import {
     VisualConfig,
     VisualItemConfig,
 } from "../src/config";
-import { mockLocalStorage } from "../test-utils";
+import { mockLocalStorage, restoreLocalStorage } from "../test-utils";
 
 describe("VisualItemConfig", () => {
     let config: VisualItemConfig;
@@ -79,6 +79,12 @@ describe("Config", () => {
             }),
             writable: true,
         });
+    });
+
+    afterEach(() => {
+        // Hand the realm's own storage back — files scheduled later in this
+        // worker must not run against our mock (ticket TASK-40 pollution).
+        restoreLocalStorage();
     });
 
     describe("instance", () => {

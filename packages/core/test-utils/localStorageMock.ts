@@ -4,15 +4,23 @@
 // The install/restore pair must leave the realm exactly as it was found: earlier
 // versions defined `localStorage` without `configurable` (locking the property for
 // the whole worker) and tests then reset it to `undefined`, so any file scheduled
-// next in the same worker hit "Cannot read properties of undefined". Capture the
-// original descriptor on first install and hand it back on restore.
+// next in the same worker hit "Cannot read properties of undefined".
+// Contract v2 (ticket reopened after `hermes verify` still reddened batchBGovernance):
+// the capture is OWNERSHIP-based, not first-time. Whenever the realm stops holding
+// exactly our installed mock (another file's leftover, a foreign delete, a fresh
+// module instance), the next install re-captures the current descriptor, and a
+// restore only ever rewinds a binding we still own — it can no longer delete
+// happy-dom's storage that it never installed.
+let installedMock: unknown;
 let savedDescriptor: PropertyDescriptor | undefined;
-let descriptorCaptured = false;
+
+const weOwnTheBinding = () =>
+    installedMock !== undefined &&
+    Object.getOwnPropertyDescriptor(global, "localStorage")?.value === installedMock;
 
 export const mockLocalStorage = () => {
-    if (!descriptorCaptured) {
+    if (!weOwnTheBinding()) {
         savedDescriptor = Object.getOwnPropertyDescriptor(global, "localStorage");
-        descriptorCaptured = true;
     }
     const localStorageData: Record<string, string> = {};
     const localStorage = new Proxy(
@@ -66,18 +74,27 @@ export const mockLocalStorage = () => {
         // never be swapped again cleanly within the worker realm.
         configurable: true,
     });
+    installedMock = localStorage;
 
     return localStorage;
 };
 
-/** Put the realm's own `localStorage` back exactly as the first mock found it. */
+/**
+ * Rewind to the descriptor this install found — but ONLY while we still own the
+ * binding. If another consumer installed over us, or the realm never handed us a
+ * binding to rewind to, touching `localStorage` here is exactly the wipe that
+ * poisoned later files in the worker; so we leave the current binding alone.
+ */
 export const restoreLocalStorage = () => {
-    if (!descriptorCaptured) {
+    if (!weOwnTheBinding()) {
         return;
     }
     if (savedDescriptor) {
         Object.defineProperty(global, "localStorage", savedDescriptor);
     } else {
+        // We installed into a realm that had no localStorage binding at all —
+        // removing our mock returns it to that same absent state.
         delete (global as { localStorage?: unknown }).localStorage;
     }
+    installedMock = undefined;
 };
