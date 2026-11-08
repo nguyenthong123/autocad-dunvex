@@ -2,7 +2,7 @@
 // See LICENSE file in the project root for full license information.
 
 import type { IDocument } from "@chili3d/core";
-import { readSubjectWorldBox } from "./measure";
+import { readSubjectShapeProbe } from "./measure";
 
 /**
  * Reviewer 08/11 (C1 follow-up): evidence must carry a marker the app itself can
@@ -53,9 +53,13 @@ function mm(v: number): string {
 }
 
 /**
- * Coarse world-bbox signature over the criterion's subjects. Readable geometry
- * contributes numbers; unreadable or missing nodes contribute a stable tag so the
- * signature itself never flips between reads unless the document really changed.
+ * Per-subject signature: world-bbox (size + center) + shape volume + the identity of
+ * the node's CACHED shape object. Rebuilding geometry — e.g. moving a hole that keeps
+ * the outer bounding box untouched — swaps the cached object, so the marker flips even
+ * when every measured extent is unchanged. Volume additionally catches rebuilds that
+ * somehow reuse the handle. Unreadable or missing nodes contribute a STABLE tag so the
+ * signature never flips between quiet reads; and a criterion whose subjects cannot be
+ * probed at all never gains a "proven fresh" binding from this function.
  */
 export function subjectsSignatureOf(doc: IDocument, nodeIds: readonly string[]): string {
     if (nodeIds.length === 0) {
@@ -63,14 +67,16 @@ export function subjectsSignatureOf(doc: IDocument, nodeIds: readonly string[]):
     }
     const parts: string[] = [];
     for (const id of nodeIds) {
-        const reading = readSubjectWorldBox(doc, id);
-        if (!reading.found || !reading.box) {
+        const probe = readSubjectShapeProbe(doc, id);
+        if (!probe.found || !probe.box) {
             parts.push(`${id}:unreadable`);
             continue;
         }
-        const { sizeMm, centerMm } = reading.box;
+        const { sizeMm, centerMm } = probe.box;
+        const vol = probe.volumeMm3 === undefined ? "vol-err" : mm(probe.volumeMm3);
+        const handle = probe.shapeHandle === undefined ? "handle-err" : `h${identityOf(probe.shapeHandle)}`;
         parts.push(
-            `${id}:${mm(sizeMm[0])},${mm(sizeMm[1])},${mm(sizeMm[2])}|${mm(centerMm[0])},${mm(centerMm[1])},${mm(centerMm[2])}`,
+            `${id}:${mm(sizeMm[0])},${mm(sizeMm[1])},${mm(sizeMm[2])}|${mm(centerMm[0])},${mm(centerMm[1])},${mm(centerMm[2])}|${vol}|${handle}`,
         );
     }
     return parts.join(";");

@@ -172,3 +172,17 @@ Lượt cắt mép thật qua menu trên cùng build `0b396d8f`, A4 ngang, tỷ 
 - **Kiểm menu thật trên VPS** (headful Chrome CDP, script `vps_menu_check.mjs`): mở hộp thoại "Xuất bản vẽ", `<select>` Format chứa `.pdf` (danh sách đủ: .dxf, .pdf, .step, .iges, .brep, .stl, .stl binary, .ply, .ply binary, .obj); chọn `.pdf` → panel tính chất PDF render (Khổ giấy A3/A4, Hướng, Lề, Chế độ tỷ lệ 1:n) — ảnh `output/menu-ui/vps/`. KHÔNG bấm Xác nhận (0 Đã chọn) — chỉ kiểm menu, không xuất file.
 - **Windows: KHÔNG có kết quả để báo — vẫn chưa có môi trường Windows** (mọi kiểm trên là macOS arm64 + VPS Linux serving).
 - Trạng thái PDF v1: đã deploy public tại `http://136.66.95.155` từ SHA đã nghiệm thu `99ac37cf` (content PDF ≡ `2c72ecec`).
+
+### version.json đồng bộ SHA triển khai — 08/11/2026 (chỉ đạo Reviewer)
+
+- Phát hiện: `http://136.66.95.155/version.json` vẫn trả bản **cũ** (`376c1314`, TASK-41, 07/11) — file nằm
+  trong `dist/` trên host do AI trước đặt tay, re-deploy bằng `tar` không xoá file thừa + Dockerfile COPY baked
+  nó vào image. Endpoint phiên bản phía storage-api không tồn tại (`/api/version` 404; grep server không có route).
+- Đã đồng bộ `version.json` = **`99ac37cf`** (branch `release/pdf-v1-tests`, `deployedAt` lấy từ `docker inspect`
+  container đang chạy = `2026-11-08T12:03:07Z`, kèm `servedMainJsSha256` `07cf9ee4…` để đối chiếu bundle):
+  sha256 file `7ff822a3f31a9da00dea496bbfc4146b18b7bb710dc1587fbe6c8faf58dea7ef` khớp **3 tầng**
+  (host `/opt/autocad-dunvex/dist` = `/usr/share/nginx/html` trong container = HTTP response); `main.js`
+  vẫn `07cf9ee4…` — bundle triển khai không đổi.
+- Phòng tái diễn: `scripts/deploy-vps.sh` (dev) nay sinh `dist/version.json` từ `git rev-parse HEAD` + branch +
+  timestamp + version package.json trước mỗi upload (BATCH_LABEL env tuỳ chọn). `bash -n` OK, dry-run cập nhật.
+- Windows: **vẫn chờ thử — chưa có môi trường**, kể cả sau sync version.

@@ -5,4 +5,5 @@ export * from "./evidenceCard";
 export * from "./evidenceStore";
 export * from "./measure";
 export * from "./runners/geometry";
+export * from "./stateMarker";
 export * from "./types";

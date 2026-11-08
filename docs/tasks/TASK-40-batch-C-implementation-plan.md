@@ -152,3 +152,37 @@ Mỗi runner khai báo `supportNotes` (chuỗi locale) để UI/prompt nói đú
   `d3d09640` xanh; `hermes verify` lần 2 **ok=true toàn pha exit 0**.
 - Kết luận trung thực: flake ngưỡng RSS **có trước**, không liên quan C1.1 (không đụng `server/` hay llmProxy).
   Không tự nâng ngưỡng (rule: không sửa acceptance để che lỗi); giao Reviewer/AI1 quyết nếu cần nới threshold.
+
+
+## C1.2 — Review follow-up 08/11 (đổi hình học giữ hộp bao; đường History khuyết; bất khả chứng → unknown)
+
+**Yêu cầu Reviewer:** trước khi mở rộng sang lỗ/tô-pô/bảo toàn hình dạng, phải có ca "thay đổi hình học nhưng
+giữ nguyên hộp bao"; làm rõ phép thay đổi nào History ghi nhận và cơ chế vô hiệu cho đường còn thiếu;
+không chứng minh được trạng thái thì `unknown`.
+
+**Marker mở rộng (`stateMarker.subjectsSignatureOf`)** — mỗi subject giờ ký signature gồm 4 thành phần:
+`cạnh hộp bao | tâm hộp bao | thể tích (vol-err nếu kernel không đọc được) | identity object shape đã cache (h#N)`.
+- `measure.readSubjectShapeProbe` mới: đọc **object shape cache của node** (`node.shape.value` — không phải
+  bản `transformedMul` tạo mới mỗi lần đọc) + `volume()`. `ShapeNode.setShape` có guard `isEqual`: hình học
+  **giống hệt** thì giữ object cũ (signature ổn định qua đọc lại nhiều lần — không tự sinh stale giả);
+  hình học **khác** (dù bbox y nguyên) thì object mới → identity lật → stale.
+- Chủ đề không probe được (node mất / không phải ShapeNode / shape err / null) → tag `unreadable` **ổn định**
+  trong signature, và runner tương ứng đã trả `unknown` khi không đọc được dữ liệu — không có đường nào
+  "không chứng minh được mà vẫn pass".
+
+**Ma trận History (đọc source `foundation/transaction.ts` + `model/shapeNode.ts`, không phỏng đoán):**
+| Đường thay đổi | History ghi? | Cơ chế vô hiệu hoạt động |
+|---|---|---|
+| Lệnh core qua commandService/stepRunner, thao tác UI (ribbon, property panel), write của agent qua governed router — tất cả đi `Transaction.add`/`addToHistory` | ✅ có record mới | `historyMark` lật (undo-top identity + depth) + router invalidate theo subject/bảo thủ |
+| `undo`/`redo` | ✅ stack đổi top | router `invalidateAllTaskEvidence` (ca cũ giữ nguyên) + historyMark |
+| Gán trực tiếp `node.shape = Result` / `node.transform = Matrix4` **ngoài** Transaction mở (parametric tự rebuild trong giao dịch của nó; caller raw thì không) | ❌ không record | `stateSignature` (identity + volume + bbox) — kernel test `c2-hole` chứng minh: khoét lỗ lệch tâm giữ nguyên 800×300×2500, signature lật, đọc lại `unknown`, đo lại mới pass hợp lệ |
+| `history.disabled = true` (rollback/nạp redo nội bộ) | ❌ | `stateSignature` (rollback khôi phục hình giống hệt → isEqual giữ object → signature không lật = ĐÚNG, trạng thái thật sự trở lại như cũ) |
+| Mutation in-place của cùng handle TopoDS không qua `setShape` | ❌ | **Blind spot tài liệu**: không có đường public API nào trong core làm vậy (setShape là cửa duy nhất, hoặc giữ object khi isEqual hoặc swap object); khi C2 thêm tiêu chí bên-trong, runner đó PHẢI tự đọc mạnh hơn (topology/volume riêng) — chưa đọc được thì trả `unknown`, không借用 bbox cũ. Ghi rõ để Reviewer xét trước khi mở rộng lỗ/tô-pô.
+
+**Ca mới:** `batchC2SizePosition.kernel.test.ts :: C1.2 KHOÉT LỖ` (booleanCut cylinder xuyên tấm; assert signature
+lật bằng `subjectsSignatureOf` trực tiếp, reason `/state-changed|history-changed/`, nếu history KHÔNG đổi thì buộc
+phải là `state-changed`; đo lại pass + hộp bao verification 800/2500 y nguyên). Export `historyMarkOf`/
+`subjectsSignatureOf` qua verification index cho test/diagnostic.
+
+**Ghi chú vận hành (ngoài TASK-40):** `scripts/deploy-vps.sh` từ nay sinh `dist/version.json` mang SHA thật mỗi
+lần deploy (bài học version.json TASK-41 stale — xem pdf HANDOFF).

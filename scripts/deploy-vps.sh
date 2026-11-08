@@ -32,6 +32,7 @@ if [ "$DRY_RUN" -eq 1 ]; then
     echo ""
     echo "Các lệnh sẽ được chạy:"
     echo "1. Build local: SKIP_TYPECHECK=true NODE_ENV=production npm run build"
+echo "1.5. Ghi dist/version.json: git SHA thật + branch + timestamp UTC (chống version stale)"
     echo "2. SSH kiểm tra Swap 2GB & Docker trên VPS: ssh -i ${VPS_SSH_KEY_PATH} -p ${VPS_PORT:-22} ${VPS_USER}@${VPS_HOST} '...'"
     echo "3. Đồng bộ gói tài nguyên: tar -czf - dist server Dockerfile nginx.conf compose.yml .env.example | ssh ... 'tar -xzf - -C ${VPS_DEPLOY_DIR}'"
     echo "4. Khởi chạy Docker Compose: ssh ... 'cd ${VPS_DEPLOY_DIR} && sudo docker compose up -d --build --remove-orphans && sudo docker compose ps'"
@@ -51,6 +52,29 @@ if [ ! -d "dist" ] || [ "${FORCE_BUILD:-0}" = "1" ]; then
 else
     echo "📦 [1/5] Đã có sẵn thư mục dist/ (Đặt FORCE_BUILD=1 nếu muốn build lại)."
 fi
+
+# Version đồng bộ SHA THẬT đang triển khai — bài học 08/11: version.json cũ (TASK-41)
+# sống sót qua re-deploy vì tar không xoá file thừa và Dockerfile COPY baked nó vào image.
+echo "🏷️  Ghi dist/version.json từ SHA thật..."
+TIP_SHA="$(git rev-parse HEAD)"
+BRANCH_NAME="$(git symbolic-ref -q --short HEAD || echo "detached@${TIP_SHA:0:8}")"
+DEPLOYED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+APP_VER="$(node -p "require('./package.json').version")"
+DOC_VER="$(node -p "require('./package.json').documentVersion")"
+cat > dist/version.json <<JSONEOF
+{
+  "tipSha": "$TIP_SHA",
+  "tipShort": "${TIP_SHA:0:12}",
+  "codeSha": "$TIP_SHA",
+  "codeShort": "${TIP_SHA:0:8}",
+  "branch": "$BRANCH_NAME",
+  "batch": "${BATCH_LABEL:-release}",
+  "deployedAt": "$DEPLOYED_AT",
+  "documentVersion": "$DOC_VER",
+  "appVersion": "$APP_VER"
+}
+JSONEOF
+echo "   -> version.json: $BRANCH_NAME @ ${TIP_SHA:0:8} ($DEPLOYED_AT)"
 
 SSH_OPTS="-i ${VPS_SSH_KEY_PATH} -p ${VPS_PORT:-22} -o StrictHostKeyChecking=accept-new"
 

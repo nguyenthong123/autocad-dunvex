@@ -94,7 +94,9 @@ export const dimensionMatchRunner: CriterionRunner = {
     kind: "dimension_match",
     supportNotes:
         "Đo cạnh hộp bao theo trục X/Y/Z (mm, hệ world). Đủ cho khối hộp hướng trục; " +
-        "KHÔNG chứng minh hình dạng/rãnh/lỗ bên trong hay hình xoay xiên — các quan hệ đó cần tiêu chí khác.",
+        "KHÔNG chứng minh hình dạng/rãnh/lỗ bên trong hay hình xoay xiên — các quan hệ đó cần tiêu chí khác. " +
+        "Ràng buộc bằng chứng gắn thêm identity-shape + thể tích: đổi hình học trong lòng dù hộp bao giữ nguyên " +
+        "vẫn làm bằng chứng stale và phải đo lại; bản thân tiêu chí này không phát biểu gì về bên trong chi tiết.",
     async measure(spec, doc) {
         return compareAgainstExpected("kích thước", "sizeMm", spec, makeReader(doc, "sizeMm"));
     },
@@ -105,7 +107,8 @@ export const positionMatchRunner: CriterionRunner = {
     kind: "position_match",
     supportNotes:
         "Đo tâm hộp bao (mm, hệ world) từng đối tượng. Với hình đối xứng, tâm bbox trùng centroid; " +
-        "hình bất đối xứng cần tiêu chí tâm riêng. Không suy ra quan hệ xuyên/không xuyên từ vị trí mẫu.",
+        "hình bất đối xứng cần tiêu chí tâm riêng. Không suy ra quan hệ xuyên/không xuyên từ vị trí mẫu. " +
+        "Ràng buộc bằng chứng gắn identity-shape + thể tích: hình đổi mà hộp bao không đổi vẫn stale cho tới khi đo lại.",
     async measure(spec, doc) {
         return compareAgainstExpected("vị trí", "centerMm", spec, makeReader(doc, "centerMm"));
     },

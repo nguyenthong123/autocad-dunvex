@@ -3,7 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { EditableShapeNode, Matrix4, Plane, Result } from "@chili3d/core";
+import { EditableShapeNode, Matrix4, Plane, Result, XYZ } from "@chili3d/core";
 import { createMockApplication, TestDocument } from "@chili3d/core/test-utils";
 import { initWasm, ShapeFactory } from "@chili3d/wasm";
 import { afterEach, beforeAll, beforeEach, describe, expect, rs, test } from "@rstest/core";
@@ -16,12 +16,15 @@ import {
     dimensionMatchRunner,
     evaluateTaskCriteria,
     getGovernanceStatus,
+    getLatestEvidence,
+    historyMarkOf,
     invalidateEvidenceForNodeIds,
     positionMatchRunner,
     registerDefaultGeometryRunners,
     resetTaskProfileForTests,
     resetVerificationForTests,
     runTaskCriterionChecks,
+    subjectsSignatureOf,
 } from "../../src/governance";
 
 // Real OCCT/WASM kernel (same pattern as devAppDoorFlow.kernel) — geometry truth,
@@ -224,6 +227,56 @@ describe("TASK-40 Đợt C2 prep — kích thước & vị trí trên kernel th�
         const repaired = await runTaskCriterionChecks("c2-ext", doc);
         expect(repaired.rows[0].status).toBe("pass");
         expect(repaired.completable).toBe(true);
+    });
+
+    test("C1.2: KHOÉT LỖ lệch tâm — hộp bao GIỮ NGUYÊN, binding vẫn lật sang unknown rồi phục hồi khi đo lại", async () => {
+        const node = addBox("panel", 800, 300, 2500);
+        approveTaskPlan({ taskId: "c2-hole", allowedModifiedNodeIds: [node.id] }, doc);
+        defineTaskCriteria("c2-hole", [
+            {
+                id: "kich",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: [node.id],
+                expected: { sizeMm: [800, 300, 2500] },
+                toleranceMm: [2, 2, 2],
+                source: "yêu cầu: tấm 800×300×2500 ±2 mm (chỉ hộp bao)",
+            },
+        ]);
+        const before = await runTaskCriterionChecks("c2-hole", doc);
+        expect(before.completable).toBe(true);
+        const boundSig = getLatestEvidence("c2-hole", "kich")?.stateSignature;
+        const boundMark = getLatestEvidence("c2-hole", "kich")?.historyMark;
+        expect(boundSig).toBeTruthy();
+
+        // Khoét lỗ trụ xiên qua thân — hộp bao ngoài KHÔNG đổi, volume + shape rebuild.
+        const drill = factory.cylinder(new XYZ(0, 0, 1), new XYZ(100, 50, -10), 20, 2520);
+        expect(drill.isOk).toBe(true);
+        const holed = factory.booleanCut([node.shape.value], [drill.value], true);
+        expect(holed.isOk).toBe(true);
+
+        // Gán công khai qua setter, NGOÀI Transaction/History và ngoài router — đường "History khuyết".
+        node.shape = holed;
+
+        const after = evaluateTaskCriteria("c2-hole", doc);
+        expect(after.rows[0].status).toBe("unknown");
+        expect(after.rows[0].stale).toBe(true);
+        expect(after.rows[0].reason).toMatch(/state-changed|history-changed/);
+        expect(after.completable).toBe(false);
+        // Bằng chứng cơ chế: signature (identity + volume) CHẮC CHẮN lật dù mọi cạnh hộp bao y nguyên.
+        expect(subjectsSignatureOf(doc, [node.id])).not.toBe(boundSig);
+        if (historyMarkOf(doc) === boundMark) {
+            // Đường History khuyết → chính state signature phải là lý do stale:
+            expect(after.rows[0].reason).toContain("state-changed");
+        }
+
+        // Đo lại: phép kiểm hộp bao vẫn đúng trên hình mới → pass với binding mới, không phải pass cũ.
+        const re = await runTaskCriterionChecks("c2-hole", doc);
+        expect(re.rows[0].status).toBe("pass");
+        expect(re.completable).toBe(true);
+        const sizeAfterHole = independentBox(node).size;
+        expect(sizeAfterHole[0]).toBeCloseTo(800, 3); // hộp bao giữ nguyên thật
+        expect(sizeAfterHole[2]).toBeCloseTo(2500, 3);
     });
 
     test("runners công khai giới hạn: bbox không tự tuyên bố chứng minh lỗ/hình dạng", () => {
