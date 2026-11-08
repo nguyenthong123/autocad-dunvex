@@ -32,7 +32,7 @@ if [ "$DRY_RUN" -eq 1 ]; then
     echo ""
     echo "Các lệnh sẽ được chạy:"
     echo "1. Build local: SKIP_TYPECHECK=true NODE_ENV=production npm run build"
-echo "1.5. Bằng chứng build dist/.build-meta.json; version.json + deploy-version.json CÙNG NGUỒN từ SHA đã build (thiếu/mismatch bằng chứng → DỪNG, không ghi HEAD vào gói cũ)"
+echo "1.5. scripts/version-sync.sh: kiểm SHA BÊN TRONG version.json + deploy-version.json so với .build-meta.json; lệch/thiếu → sinh lại cả hai TỪ metadata build đã xác minh; thiếu bằng chứng → DỪNG. Kịch bản: bash scripts/version-sync.test.sh"
     echo "2. SSH kiểm tra Swap 2GB & Docker trên VPS: ssh -i ${VPS_SSH_KEY_PATH} -p ${VPS_PORT:-22} ${VPS_USER}@${VPS_HOST} '...'"
     echo "3. Đồng bộ gói tài nguyên: tar -czf - dist server Dockerfile nginx.conf compose.yml .env.example | ssh ... 'tar -xzf - -C ${VPS_DEPLOY_DIR}'"
     echo "4. Khởi chạy Docker Compose: ssh ... 'cd ${VPS_DEPLOY_DIR} && sudo docker compose up -d --build --remove-orphans && sudo docker compose ps'"
@@ -56,47 +56,14 @@ else
     echo "📦 [1/5] Đã có sẵn thư mục dist/ (Đặt FORCE_BUILD=1 nếu muốn build lại)."
 fi
 
-# Version metadata MỘT NGUỒN cho version.json + deploy-version.json — kèm bằng chứng SHA
-# của bundle thật sự đã build. Bài học 08/11 (Review): không tái phạm (a) hai file lệch nhau,
-# (b) ghi HEAD hiện tại vào dist cũ build từ commit khác.
-echo "🏷️  Kiểm bằng chứng build của dist/ và ghi version metadata..."
+# Version hygiene (Reviewer 08/11 điểm 1): hai file phải ghi ĐÚNG SHA của bundle —
+# kiểm nội dung BÊN TRONG từng file so với .build-meta.json, không chỉ so hai file với nhau;
+# lệch → sinh lại CẢ HAI từ metadata build đã xác minh; thiếu bằng chứng build → DỪNG.
+echo "🏷️  Kiểm bằng chứng build + đồng bộ version metadata (scripts/version-sync.sh)..."
 TIP_SHA="$(git rev-parse HEAD)"
 BRANCH_NAME="$(git symbolic-ref -q --short HEAD || echo "detached@${TIP_SHA:0:8}")"
-BUILD_META="dist/.build-meta.json"
-if [ ! -f "$BUILD_META" ]; then
-    echo "❌ dist/ không có .build-meta.json — không chứng minh được bundle này build từ SHA nào."
-    echo "   Chạy: FORCE_BUILD=1 bash scripts/deploy-vps.sh  (build lại để gắn bằng chứng)"
-    exit 1
-fi
-META_SHA="$(node -p "JSON.parse(require('fs').readFileSync('$BUILD_META','utf8')).sha" 2>/dev/null || echo "")"
-if [ "$META_SHA" != "$TIP_SHA" ]; then
-    echo "❌ dist được build từ ${META_SHA:-không rõ}, trong khi HEAD là $TIP_SHA — KHÔNG ghi SHA hiện tại vào gói cũ."
-    echo "   Chọn: build lại (FORCE_BUILD=1) hoặc checkout đúng SHA đã build rồi deploy."
-    exit 1
-fi
-if [ ! -f dist/version.json ] || [ ! -f dist/deploy-version.json ] || \
-   [ "$(sha256sum < dist/version.json)" != "$(sha256sum < dist/deploy-version.json)" ]; then
-    DEPLOYED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    APP_VER="$(node -p "require('./package.json').version")"
-    DOC_VER="$(node -p "require('./package.json').documentVersion")"
-    cat > dist/version.json <<JSONEOF
-{
-  "tipSha": "$TIP_SHA",
-  "tipShort": "${TIP_SHA:0:12}",
-  "codeSha": "$TIP_SHA",
-  "codeShort": "${TIP_SHA:0:8}",
-  "branch": "$BRANCH_NAME",
-  "batch": "${BATCH_LABEL:-release}",
-  "deployedAt": "$DEPLOYED_AT",
-  "documentVersion": "$DOC_VER",
-  "appVersion": "$APP_VER"
-}
-JSONEOF
-    cp dist/version.json dist/deploy-version.json
-    echo "   -> version.json + deploy-version.json (cùng nguồn): $BRANCH_NAME @ ${TIP_SHA:0:8}"
-else
-    echo "   -> version metadata đã khớp SHA build ($TIP_SHA) — giữ nguyên cả hai file."
-fi
+source "$ROOT_DIR/scripts/version-sync.sh"
+sync_version_files "dist" "$ROOT_DIR" "$TIP_SHA" "$BRANCH_NAME" || exit 1
 
 SSH_OPTS="-i ${VPS_SSH_KEY_PATH} -p ${VPS_PORT:-22} -o StrictHostKeyChecking=accept-new"
 

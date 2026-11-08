@@ -198,3 +198,17 @@ Lượt cắt mép thật qua menu trên cùng build `0b396d8f`, A4 ngang, tỷ 
   làm bằng chứng; version.json + deploy-version.json sinh từ cùng một khối, copy từ nhau. **Giữ dist cũ mà thiếu
   bằng chứng SHA hoặc SHA khác HEAD → script DỪNG (exit 1) yêu cầu FORCE_BUILD hoặc checkout đúng SHA** — tuyệt đối
   không ghi HEAD hiện tại vào gói build từ commit khác. `bash -n` OK.
+
+### Sửa theo Review (điểm 1, lượt 2): kiểm SHA BÊN TRONG, không chỉ so hai file
+
+- Lỗi được chỉ ra: logic cũ chỉ bắt buộc `version.json` ≡ `deploy-version.json` (giữa hai file) — nếu
+  **cả hai cùng ghi SHA cũ** thì vẫn "đạt" sai.
+- `scripts/version-sync.sh` (mới): đối chiếu `codeSha`/`tipSha` **bên trong từng file** với
+  `.build-meta.json`; nếu lệch/thiếu/hỏng → **sinh lại cả hai từ metadata build đã xác minh** (SHA bundle
+  thật, không phải HEAD trần); thiếu bằng chứng build hoặc meta ≠ HEAD → **từ chối deploy, không ghi gì**.
+  Hậu kiểm sau ghi: cả hai file parse được, cùng nhúng SHA bundle, cùng bytes.
+- `scripts/version-sync.test.sh`: 5 kịch bản — A) meta đúng + hai file SHA cũ → regen đúng SHA bundle,
+  cùng bytes; B) đã đúng → giữ nguyên bytes; C) thiếu một file → regen; D) không meta → từ chối;
+  E) meta ≠ HEAD → từ chối + file cũ không bị ghi đè. **5/5 PASS.**
+- `deploy-vps.sh` gọi hàm chung; dry-run mô tả đúng cơ chế. Probe trên dist thật (chưa có meta):
+  từ chối rc=1, không sửa file — hành vi mong đợi.
