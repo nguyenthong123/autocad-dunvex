@@ -134,3 +134,10 @@ Mỗi runner khai báo `supportNotes` (chuỗi locale) để UI/prompt nói đú
 4. `chatPanel`: sub `executeCommand` + `closeCommandContext` (kênh core hiện có — core không có model-changed pub, không sửa core) → rAF-coalesce `refreshGovernanceCard` — badge rơi ⏳ ngay frame sau lệnh UI, không chờ agent cycle.
 5. Seam test `applySuccessfulWriteForTests` (router) để kiểm hậu-thuật-write không phải qua cổng quyền.
 6. Test mới: `batchC1StateMarker.test.ts` 6 ca, kernel ngoài-biên 1 ca, `chatPanel.test.ts` mount thật 1 ca (✔→⏳). Tổng targeted 172/0; full suite 10303/0; build/tsc/biome sạch. GIỮ NGUYÊN các ca rules-đổi / Undo / write-bị-từ-chối của C1.
+
+### Ghi sổ bàn giao C1.1 — 08/11/2026
+
+- **SHA C1.1 = `d3d09640e6f85823c7dea0f04ec5b35e2dcd33bd`** (dev, sau `8ab2c4ab`; working tree sạch — hai lần chạy đúng commit content).
+- Hai lần `npm run test` LIÊN TIẾP trên đúng SHA: **10303 passed / 0 failed, exit 0** cả hai (`/tmp/c11_r1.log`, `/tmp/c11_r2.log`).
+- `hermes verify --json --skip-start` trên SHA: ok=true (bootstrap/build/test/check exit 0).
+- C1 + C1.1 bàn giao kèm nhau cho Reviewer: C1 `8ab2c4ab` + evidence `3de3d40a`; C1.1 `d3d09640` (marker đọc-lại, bảo thủ, cập nhật ngoài agent). CHƯA xin duyệt triển khai C1 — chờ kết quả review.
