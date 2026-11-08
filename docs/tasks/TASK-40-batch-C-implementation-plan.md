@@ -212,3 +212,17 @@ lần deploy (bài học version.json TASK-41 stale — xem pdf HANDOFF).
 - Nguyên tắc chốt cho đợt mở rộng lỗ/tô-pô: **tiêu chí cần phép đo nào thì marker của phép đo đó phải đọc lại
   được ở thời điểm đánh giá; không đọc lại được → unknown**, không có đường "pass cũ + chuỗi lỗi ổn định".
 - Test: targeted 177/0 (tăng 4); pre-commit full 10308/0; build 0 lỗi; tsc 0; biome 0 error.
+
+### Ghi sổ bàn giao C1.3 — 08/11/2026
+
+- **SHA C1.3 = `9f6beda9ab481c87b79ebf1ebce00bd67be72d70`** (dev). Commit tách bạch theo chỉ đạo:
+  mốc tài liệu chuẩn CAD `9d48d07d` (riêng) · version hygiene `e6c876f2` · C1.3 `9f6beda9`.
+- Hai lần `npm run test` LIÊN TIẾP trên đúng `9f6beda9`: **10308 passed / 0 failed, exit 0** cả hai.
+- `hermes verify --json --skip-start`: run 1 ĐỎ đúng 1 ca RSS (delta **13.09MB**); run 2 **ok=true** toàn pha exit 0.
+- **Báo flake RSS (số đo + chạy lại, nguyên nhân CHƯA XÁC NHẬN):** 3 lần đỏ trong verify — `10.20MB` (verify #1
+  tại `d3d09640`), `14.03MB` (verify #1 tại `863e7089`), `13.09MB` (verify #1 tại `9f6beda9`); mọi lần chạy lại
+  độc lập/xen kẽ đều xanh (standalone 18/18 ×3; 4/4 lần `npm run test` trực tiếp tại các SHA; verify run 2 cả ba
+  SHA). Tương quan duy nhất quan sát được: đỏ khi stage chạy ngay sau build+suite trong cùng verify. Không kết luận
+  nguyên nhân; kỳ vọng không sửa; đề xuất chủ file (AI1/server) tách stage hoặc đo phân tích trước khi nới ngưỡng.
+- VPS: `version.json` ≡ `deploy-version.json` (sha256 `7ff822a3…`, chỉ `99ac37cf`) — xác minh host/container/HTTP
+  cả hai endpoint. **Windows vẫn chờ thử.** C1.2 + C1.3 **chờ nghiệm thu — chưa triển khai**.
