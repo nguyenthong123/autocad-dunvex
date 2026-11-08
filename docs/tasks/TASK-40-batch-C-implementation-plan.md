@@ -141,3 +141,14 @@ Mỗi runner khai báo `supportNotes` (chuỗi locale) để UI/prompt nói đú
 - Hai lần `npm run test` LIÊN TIẾP trên đúng SHA: **10303 passed / 0 failed, exit 0** cả hai (`/tmp/c11_r1.log`, `/tmp/c11_r2.log`).
 - `hermes verify --json --skip-start` trên SHA: ok=true (bootstrap/build/test/check exit 0).
 - C1 + C1.1 bàn giao kèm nhau cho Reviewer: C1 `8ab2c4ab` + evidence `3de3d40a`; C1.1 `d3d09640` (marker đọc-lại, bảo thủ, cập nhật ngoài agent). CHƯA xin duyệt triển khai C1 — chờ kết quả review.
+
+### Ghi chú flake server-test phát hiện khi ghi sổ C1.1 (ngoài phạm vi, KHÔNG sửa kỳ vọng)
+
+- Lần chạy `hermes verify` thứ nhất tại `d3d09640`: `npm run test` đỏ đúng 1 ca ở tầng `node --test`:
+  `server/test/llmProxy.test.mjs :: successfully streams 19MB request body without buffering in RAM` —
+  đo RSS delta **10.20MB** ngưỡng **<10MB** (mục tiêu test là không đệm 19MB; 10.2 vẫn chứng minh streaming,
+  ngưỡng sát gây nhiễu khi chạy sát suite 10k test + build cùng chu kỳ).
+- Đặc tính: chạy riêng file 3 lần liên tiếp **18/18 xanh cả 3**; hai lần full `npm run test` trực tiếp trên
+  `d3d09640` xanh; `hermes verify` lần 2 **ok=true toàn pha exit 0**.
+- Kết luận trung thực: flake ngưỡng RSS **có trước**, không liên quan C1.1 (không đụng `server/` hay llmProxy).
+  Không tự nâng ngưỡng (rule: không sửa acceptance để che lỗi); giao Reviewer/AI1 quyết nếu cần nới threshold.
