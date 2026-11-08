@@ -186,3 +186,15 @@ Lượt cắt mép thật qua menu trên cùng build `0b396d8f`, A4 ngang, tỷ 
 - Phòng tái diễn: `scripts/deploy-vps.sh` (dev) nay sinh `dist/version.json` từ `git rev-parse HEAD` + branch +
   timestamp + version package.json trước mỗi upload (BATCH_LABEL env tuỳ chọn). `bash -n` OK, dry-run cập nhật.
 - Windows: **vẫn chờ thử — chưa có môi trường**, kể cả sau sync version.
+
+### deploy-version.json đồng bộ một nguồn — 08/11/2026 (Review điểm 1)
+
+- `http://136.66.95.155/deploy-version.json` (consumer: `TASK-41-post-deploy-verify.mjs` của AI1, mã hoá SHA
+  TASK-41 — script đó thuộc AI1, bằng chứng JSON 07/11 vẫn đúng lịch sử; khi chạy lại cho release mới AI1 cần
+  cập nhật SHA, tôi không sửa file của TASK-41) vẫn trả bản TASK-41 cũ.
+- Đã sync: `deploy-version.json` = nội dung **y hệt** `version.json` (sha256 `7ff822a3…` khớp host = container =
+  HTTP trên CẢ HAI endpoint; cùng chỉ `99ac37cf`).
+- `scripts/deploy-vps.sh` nâng thành MỘT NGUỒN metadata: build xong ghi `dist/.build-meta.json` {sha, builtAt}
+  làm bằng chứng; version.json + deploy-version.json sinh từ cùng một khối, copy từ nhau. **Giữ dist cũ mà thiếu
+  bằng chứng SHA hoặc SHA khác HEAD → script DỪNG (exit 1) yêu cầu FORCE_BUILD hoặc checkout đúng SHA** — tuyệt đối
+  không ghi HEAD hiện tại vào gói build từ commit khác. `bash -n` OK.
