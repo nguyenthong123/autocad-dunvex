@@ -43,3 +43,14 @@
 2. Không còn `defineProperty(... "localStorage" ...)` nào thiếu `configurable` trong test-utils.
 3. Không đổi hành vi runtime (src app) ngoài test; PDF v1 không đổi.
 Bàn giao: commit `ID`/prefix 🐛+📝 như quy ước repo, kèm lệnh + exit code thật.
+
+---
+
+## Nhật ký xử lý (Hermes, 08/11/2026)
+
+- **SHA fix:** `918d0b670f57c8a8c83c490835298e20c613f347` — 🐛 fix(core): cô lập mock + restore descriptor gốc (`localStorageMock.ts` capture descriptor lần install đầu, `configurable: true`, export `restoreLocalStorage()`; `objectStorage.test.ts` + `appBuilder.test.ts` bỏ gán `undefined`, dùng restore; test hồi quy mới `packages/core/test/localStorageMock.test.ts` 5 ca, gồm ràng buộc accessor của happy-dom).
+- **npm run test trên đúng SHA đó (tree sạch):** RUN 1 → `failedFiles: 0, failedTests: 0, passedTests: 10269`, exit 0 · RUN 2 (liền sau đó, `git status` 0 thay đổi) → cùng số, exit 0. Server tests (`node --test`) gộp trong `npm run test` cũng exit 0.
+- `tsc -p tsconfig.json --noEmit` exit 0 (trước commit) · `biome check` no fixes.
+- **Tiêu chí 2:** không còn `defineProperty(..."localStorage"...)` thiếu `configurable` trong test-utils; các file test chỉ dùng install/restore cặp đôi.
+- Phạm vi: chỉ test-utils + 3 file test + 1 file test mới; **0 dòng app code**; PDF v1 (`2c72ecec`) không đụng.
+- LLM/`batchBGovernance`: không sửa gì phía ai — victim pass trong full suite nhờ gốc được sửa.
