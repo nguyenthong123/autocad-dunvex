@@ -1,7 +1,19 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
+// The install/restore pair must leave the realm exactly as it was found: earlier
+// versions defined `localStorage` without `configurable` (locking the property for
+// the whole worker) and tests then reset it to `undefined`, so any file scheduled
+// next in the same worker hit "Cannot read properties of undefined". Capture the
+// original descriptor on first install and hand it back on restore.
+let savedDescriptor: PropertyDescriptor | undefined;
+let descriptorCaptured = false;
+
 export const mockLocalStorage = () => {
+    if (!descriptorCaptured) {
+        savedDescriptor = Object.getOwnPropertyDescriptor(global, "localStorage");
+        descriptorCaptured = true;
+    }
     const localStorageData: Record<string, string> = {};
     const localStorage = new Proxy(
         {
@@ -50,7 +62,22 @@ export const mockLocalStorage = () => {
     Object.defineProperty(global, "localStorage", {
         value: localStorage,
         writable: true,
+        // The previous installs left this non-configurable — the mock then could
+        // never be swapped again cleanly within the worker realm.
+        configurable: true,
     });
 
     return localStorage;
+};
+
+/** Put the realm's own `localStorage` back exactly as the first mock found it. */
+export const restoreLocalStorage = () => {
+    if (!descriptorCaptured) {
+        return;
+    }
+    if (savedDescriptor) {
+        Object.defineProperty(global, "localStorage", savedDescriptor);
+    } else {
+        delete (global as { localStorage?: unknown }).localStorage;
+    }
 };
