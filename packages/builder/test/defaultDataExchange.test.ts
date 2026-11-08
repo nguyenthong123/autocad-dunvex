@@ -49,6 +49,7 @@ describe("DefaultDataExchange", () => {
         test("should return supported export formats", () => {
             const formats = exchange.exportFormats();
             expect(formats).toContain(".dxf");
+            expect(formats).toContain(".pdf");
             expect(formats).toContain(".step");
             expect(formats).toContain(".iges");
             expect(formats).toContain(".brep");

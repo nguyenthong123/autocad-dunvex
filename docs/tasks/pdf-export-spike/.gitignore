@@ -1,0 +1,6 @@
+.venv/
+tmp/
+__pycache__/
+*.pyc
+output/sample_A_opt_*.pdf
+output/sample_B_svg_A4_1to50_CLIP.pdf

@@ -2,18 +2,24 @@
 // See LICENSE file in the project root for full license information.
 
 import {
+    type DataExchangeExportOptions,
+    DEFAULT_PDF_PAGE_OPTIONS,
     EditableShapeNode,
     I18n,
     type IDataExchange,
     type IDocument,
     type INode,
     type IShape,
+    type PdfExportPlan,
+    type PdfPageOptions,
     PubSub,
     Result,
     ShapeNode,
     type VisualNode,
 } from "@chili3d/core";
 import { DxfConverter } from "./dxfConverter";
+import { planPdfFromNodes } from "./pdf/collectDrawing";
+import { writePdfPlan } from "./pdf/pdfWriter";
 
 export class DefaultDataExchange implements IDataExchange {
     importFormats(): string[] {
@@ -21,7 +27,27 @@ export class DefaultDataExchange implements IDataExchange {
     }
 
     exportFormats(): string[] {
-        return [".dxf", ".step", ".iges", ".brep", ".stl", ".stl binary", ".ply", ".ply binary", ".obj"];
+        return [
+            ".dxf",
+            ".pdf",
+            ".step",
+            ".iges",
+            ".brep",
+            ".stl",
+            ".stl binary",
+            ".ply",
+            ".ply binary",
+            ".obj",
+        ];
+    }
+
+    planPdfExport(nodes: VisualNode[], options: PdfPageOptions): PdfExportPlan | undefined {
+        return planPdfFromNodes(nodes, options);
+    }
+
+    async preloadPdfWriter(): Promise<void> {
+        const { loadPdfFontBytes, loadPdfLib } = await import("./pdf/pdfWriter");
+        await Promise.all([loadPdfLib(), loadPdfFontBytes()]);
     }
 
     async import(document: IDocument, files: FileList | File[]): Promise<void> {
@@ -90,8 +116,16 @@ export class DefaultDataExchange implements IDataExchange {
         return shapeConverter.convertFromSTEP(document, content);
     }
 
-    async export(type: string, nodes: VisualNode[]): Promise<BlobPart[] | undefined> {
+    async export(
+        type: string,
+        nodes: VisualNode[],
+        options?: DataExchangeExportOptions,
+    ): Promise<BlobPart[] | undefined> {
         if (nodes.length === 0) return undefined;
+
+        if (type === ".pdf") {
+            return this.exportPdf(nodes, options);
+        }
 
         const document = nodes[0].document;
         let shapeResult: Result<BlobPart> | undefined;
@@ -161,5 +195,25 @@ export class DefaultDataExchange implements IDataExchange {
             return undefined;
         }
         return [result.value];
+    }
+
+    private async exportPdf(
+        nodes: VisualNode[],
+        options?: DataExchangeExportOptions,
+    ): Promise<BlobPart[] | undefined> {
+        const page = options?.pdf ?? DEFAULT_PDF_PAGE_OPTIONS;
+        const plan = options?.pdfPlan ?? this.planPdfExport(nodes, page);
+        if (!plan) {
+            PubSub.default.pub("showToast", "error.export.noNodeCanBeExported");
+            return undefined;
+        }
+        try {
+            const bytes = await writePdfPlan(plan);
+            // Copy into a standalone ArrayBuffer so BlobPart typing accepts it (TS ArrayBufferLike).
+            return [bytes.slice().buffer];
+        } catch (err) {
+            PubSub.default.pub("showToast", "error.default:{0}", String(err));
+            return undefined;
+        }
     }
 }

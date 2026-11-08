@@ -1,0 +1,14 @@
+{
+    "pdfPath": "/Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/pdf-export-v1/output/sample_app_A3_1to50.pdf",
+    "bytes": 9693,
+    "elapsed_ms": 16.87,
+    "page_mm": [420, 297],
+    "edge_pdf_coords_mm": 102,
+    "edge_tolerance_ok": true,
+    "green_bar_mm": 102,
+    "pdfinfo": "Creator:         pdf-lib (https://github.com/Hopding/pdf-lib)\nProducer:        pdf-lib (https://github.com/Hopding/pdf-lib)\nCreationDate:    Sun Nov  8 07:19:51 2026 +07\nModDate:         Sun Nov  8 07:19:51 2026 +07\nCustom Metadata: no\nMetadata Stream: no\nTagged:          no\nUserProperties:  no\nSuspects:        no\nForm:            none\nJavaScript:      no\nPages:           1\nEncrypted:       no\nPage size:       1190.55 x 841.89 pts (A3)\nPage rot:        0\nFile size:       9693 bytes\nOptimized:       no\nPDF version:     1.7\n",
+    "pdffonts": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nNotoSans-Regular-7572                CID TrueType      Identity-H       yes no  yes      4  0\n",
+    "pdftotext": "Bản vẽ mẫu PDF kỹ thuật — Dunvex CAD\n\n\n\n\nThanh kiểm: cạnh 5.100 @ 1:50 = 102.000 mm giấy\n\n\nGhi chú: cạnh dài 5.100 mm · tỷ lệ 1:50 · kiểm tra in 100%\n                                    5.100\n\f",
+    "preview_png": "/Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/pdf-export-v1/output/preview_app_A3_1to50-1.png",
+    "has_contents": true
+}

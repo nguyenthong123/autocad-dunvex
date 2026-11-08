@@ -1,0 +1,446 @@
+[
+  {
+    "file": "sample_A_direct_A3_1to50.pdf",
+    "bytes": 33760,
+    "pdfinfo": {
+      "Title": "Bản vẽ mẫu PDF kỹ thuật — Dunvex CAD",
+      "Subject": "unspecified",
+      "Keywords": "",
+      "Author": "Dunvex CAD PDF spike",
+      "Creator": "anonymous",
+      "Producer": "ReportLab PDF Library - (opensource)",
+      "CreationDate": "Sun Nov  8 06:59:12 2026 +07",
+      "ModDate": "Sun Nov  8 06:59:12 2026 +07",
+      "Custom Metadata": "no",
+      "Metadata Stream": "no",
+      "Tagged": "no",
+      "UserProperties": "no",
+      "Suspects": "no",
+      "Form": "none",
+      "JavaScript": "no",
+      "Pages": "1",
+      "Encrypted": "no",
+      "Page size": "1190.55 x 841.89 pts (A3)",
+      "Page rot": "0",
+      "File size": "33760 bytes",
+      "Optimized": "no",
+      "PDF version": "1.4"
+    },
+    "page_mm": [
+      419.9995833333333,
+      297.0000833333333
+    ],
+    "fonts_raw": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nHelvetica                            Type 1            WinAnsi          no  no  no       2  0\nAAAAAA+ArialUnicodeMS                TrueType          WinAnsi          yes yes yes      7  0\n",
+    "fonts_embedded": true,
+    "text_excerpt": "Bản vẽ mẫu PDF kỹ thuật — Dunvex CAD\n\n\n\n\n                                      5.100\n\n\n\n\nThanh kiem: canh 5.100 @ 1:50 = 102.000 mm giay\n\n\n\nGhi chú: cạnh dài 5.100 mm · tỷ lệ 1:50 · kiểm tra in 100%\n\f",
+    "has_vietnamese_or_dim": true,
+    "has_dim_5100": true,
+    "scale_bar_mentions_102": true,
+    "vector": {
+      "has_contents": true,
+      "has_moveto": true,
+      "has_lineto": true,
+      "has_curve": true,
+      "has_text": true,
+      "has_image": false,
+      "stream_bytes": 1232
+    },
+    "pngs": [
+      "/Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/pdf-export-spike/tmp/sample_A_direct_A3_1to50-1.png"
+    ]
+  },
+  {
+    "file": "sample_A_direct_A4_1to15_CLIP.pdf",
+    "bytes": 33865,
+    "pdfinfo": {
+      "Title": "Bản vẽ mẫu PDF kỹ thuật — Dunvex CAD",
+      "Subject": "unspecified",
+      "Keywords": "",
+      "Author": "Dunvex CAD PDF spike",
+      "Creator": "anonymous",
+      "Producer": "ReportLab PDF Library - (opensource)",
+      "CreationDate": "Sun Nov  8 06:59:13 2026 +07",
+      "ModDate": "Sun Nov  8 06:59:13 2026 +07",
+      "Custom Metadata": "no",
+      "Metadata Stream": "no",
+      "Tagged": "no",
+      "UserProperties": "no",
+      "Suspects": "no",
+      "Form": "none",
+      "JavaScript": "no",
+      "Pages": "1",
+      "Encrypted": "no",
+      "Page size": "841.89 x 595.276 pts (A4)",
+      "Page rot": "0",
+      "File size": "33865 bytes",
+      "Optimized": "no",
+      "PDF version": "1.4"
+    },
+    "page_mm": [
+      297.0000833333333,
+      210.0001444444444
+    ],
+    "fonts_raw": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nHelvetica                            Type 1            WinAnsi          no  no  no       2  0\nAAAAAA+ArialUnicodeMS                TrueType          WinAnsi          yes yes yes      7  0\n",
+    "fonts_embedded": true,
+    "text_excerpt": "Bản vẽ mẫu PDF kỹ thuật — Dunvex CAD\nCANH BAO: ty le 1:15 khong vua giay — cat thua ~ 63.0x0.0 mm. Chon A3 ngang hoac vua trang.\n\n\n\n\nThanh kiem: canh 5.100 @ 1:15 = 340.000 mm giay\n                                                                                              5.100\n\nGhi chú: cạnh dài 5.100 mm · tỷ lệ 1:50 · kiểm tra in 100%\n\f",
+    "has_vietnamese_or_dim": true,
+    "has_dim_5100": true,
+    "scale_bar_mentions_102": false,
+    "vector": {
+      "has_contents": true,
+      "has_moveto": true,
+      "has_lineto": true,
+      "has_curve": true,
+      "has_text": true,
+      "has_image": false,
+      "stream_bytes": 1396
+    },
+    "pngs": [
+      "/Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/pdf-export-spike/tmp/sample_A_direct_A4_1to15_CLIP-1.png"
+    ]
+  },
+  {
+    "file": "sample_A_direct_A4_fit.pdf",
+    "bytes": 33764,
+    "pdfinfo": {
+      "Title": "Bản vẽ mẫu PDF kỹ thuật — Dunvex CAD",
+      "Subject": "unspecified",
+      "Keywords": "",
+      "Author": "Dunvex CAD PDF spike",
+      "Creator": "anonymous",
+      "Producer": "ReportLab PDF Library - (opensource)",
+      "CreationDate": "Sun Nov  8 06:59:13 2026 +07",
+      "ModDate": "Sun Nov  8 06:59:13 2026 +07",
+      "Custom Metadata": "no",
+      "Metadata Stream": "no",
+      "Tagged": "no",
+      "UserProperties": "no",
+      "Suspects": "no",
+      "Form": "none",
+      "JavaScript": "no",
+      "Pages": "1",
+      "Encrypted": "no",
+      "Page size": "841.89 x 595.276 pts (A4)",
+      "Page rot": "0",
+      "File size": "33764 bytes",
+      "Optimized": "no",
+      "PDF version": "1.4"
+    },
+    "page_mm": [
+      297.0000833333333,
+      210.0001444444444
+    ],
+    "fonts_raw": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nHelvetica                            Type 1            WinAnsi          no  no  no       2  0\nAAAAAA+ArialUnicodeMS                TrueType          WinAnsi          yes yes yes      7  0\n",
+    "fonts_embedded": true,
+    "text_excerpt": "Bản vẽ mẫu PDF kỹ thuật — Dunvex CAD\n\n\n\n\n                                                             5.100\n\n\n\n\nThanh kiem: canh 5.100 @ 1:18 = 277.000 mm giay\n\n\n\nGhi chú: cạnh dài 5.100 mm · tỷ lệ 1:50 · kiểm tra in 100%\n\f",
+    "has_vietnamese_or_dim": true,
+    "has_dim_5100": true,
+    "scale_bar_mentions_102": false,
+    "vector": {
+      "has_contents": true,
+      "has_moveto": true,
+      "has_lineto": true,
+      "has_curve": true,
+      "has_text": true,
+      "has_image": false,
+      "stream_bytes": 1233
+    },
+    "pngs": [
+      "/Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/pdf-export-spike/tmp/sample_A_direct_A4_fit-1.png"
+    ]
+  },
+  {
+    "file": "sample_B_svg_A3_1to50.pdf",
+    "bytes": 35847,
+    "pdfinfo": {
+      "Title": "",
+      "Subject": "unspecified",
+      "Keywords": "",
+      "Author": "anonymous",
+      "Creator": "anonymous",
+      "Producer": "ReportLab PDF Library - (opensource)",
+      "CreationDate": "Sun Nov  8 06:59:53 2026 +07",
+      "ModDate": "Sun Nov  8 06:59:53 2026 +07",
+      "Custom Metadata": "no",
+      "Metadata Stream": "no",
+      "Tagged": "no",
+      "UserProperties": "no",
+      "Suspects": "no",
+      "Form": "none",
+      "JavaScript": "no",
+      "Pages": "1",
+      "Encrypted": "no",
+      "Page size": "1190.55 x 841.89 pts (A3)",
+      "Page rot": "0",
+      "File size": "35847 bytes",
+      "Optimized": "no",
+      "PDF version": "1.4"
+    },
+    "page_mm": [
+      419.9995833333333,
+      297.0000833333333
+    ],
+    "fonts_raw": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nHelvetica                            Type 1            WinAnsi          no  no  no       2  0\nAAAAAA+ArialMT                       TrueType          WinAnsi          yes yes yes      7  0\n",
+    "fonts_embedded": true,
+    "text_excerpt": "Bản vẽ mẫu PDF kỹ thuật — Dunvex CAD\n\n\n\n\n                                      5.100\n\n\n\n\nThanh kiem: canh 5.100 @ 1:50 = 102.000 mm giay\n\nGhi chú: cạnh dài 5.100 mm · tỷ lệ 1:50 · kiểm tra in 100%\n\f",
+    "has_vietnamese_or_dim": true,
+    "has_dim_5100": true,
+    "scale_bar_mentions_102": true,
+    "vector": {
+      "has_contents": true,
+      "has_moveto": true,
+      "has_lineto": true,
+      "has_curve": true,
+      "has_text": true,
+      "has_image": false,
+      "stream_bytes": 1654
+    },
+    "pngs": [
+      "/Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/pdf-export-spike/tmp/sample_B_svg_A3_1to50-1.png"
+    ]
+  },
+  {
+    "file": "sample_B_svg_A4_1to15_CLIP.pdf",
+    "bytes": 35903,
+    "pdfinfo": {
+      "Title": "",
+      "Subject": "unspecified",
+      "Keywords": "",
+      "Author": "anonymous",
+      "Creator": "anonymous",
+      "Producer": "ReportLab PDF Library - (opensource)",
+      "CreationDate": "Sun Nov  8 06:59:54 2026 +07",
+      "ModDate": "Sun Nov  8 06:59:54 2026 +07",
+      "Custom Metadata": "no",
+      "Metadata Stream": "no",
+      "Tagged": "no",
+      "UserProperties": "no",
+      "Suspects": "no",
+      "Form": "none",
+      "JavaScript": "no",
+      "Pages": "1",
+      "Encrypted": "no",
+      "Page size": "841.89 x 595.276 pts (A4)",
+      "Page rot": "0",
+      "File size": "35903 bytes",
+      "Optimized": "no",
+      "PDF version": "1.4"
+    },
+    "page_mm": [
+      297.0000833333333,
+      210.0001444444444
+    ],
+    "fonts_raw": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nHelvetica                            Type 1            WinAnsi          no  no  no       2  0\nAAAAAA+ArialMT                       TrueType          WinAnsi          yes yes yes      7  0\n",
+    "fonts_embedded": true,
+    "text_excerpt": "Bản\nCANHvẽ mẫu\n     BAO:    PDF\n          ty le 1:15kỹ\n                     catthuật\n                         thua ~— Dunvex\n                               63.0x0.0 mmCAD\n\n\n\n\n                                                             5.100\nThanh kiem: canh 5.100 @ 1:15 = 340.000 mm giay\n\nGhi chú: cạnh dài 5.100 mm · tỷ lệ 1:50 · kiểm tra in 100%\n\f",
+    "has_vietnamese_or_dim": true,
+    "has_dim_5100": true,
+    "scale_bar_mentions_102": false,
+    "vector": {
+      "has_contents": true,
+      "has_moveto": true,
+      "has_lineto": true,
+      "has_curve": true,
+      "has_text": true,
+      "has_image": false,
+      "stream_bytes": 1782
+    },
+    "pngs": [
+      "/Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/pdf-export-spike/tmp/sample_B_svg_A4_1to15_CLIP-1.png"
+    ]
+  },
+  {
+    "file": "sample_B_svg_A4_1to50_CLIP.pdf",
+    "bytes": 35879,
+    "pdfinfo": {
+      "Title": "",
+      "Subject": "unspecified",
+      "Keywords": "",
+      "Author": "anonymous",
+      "Creator": "anonymous",
+      "Producer": "ReportLab PDF Library - (opensource)",
+      "CreationDate": "Sun Nov  8 06:58:32 2026 +07",
+      "ModDate": "Sun Nov  8 06:58:32 2026 +07",
+      "Custom Metadata": "no",
+      "Metadata Stream": "no",
+      "Tagged": "no",
+      "UserProperties": "no",
+      "Suspects": "no",
+      "Form": "none",
+      "JavaScript": "no",
+      "Pages": "1",
+      "Encrypted": "no",
+      "Page size": "631.417 x 446.457 pts",
+      "Page rot": "0",
+      "File size": "35879 bytes",
+      "Optimized": "no",
+      "PDF version": "1.4"
+    },
+    "page_mm": [
+      222.7498861111111,
+      157.50010833333332
+    ],
+    "fonts_raw": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nHelvetica                            Type 1            WinAnsi          no  no  no       2  0\nAAAAAA+ArialMT                       TrueType          WinAnsi          yes yes yes      7  0\n",
+    "fonts_embedded": true,
+    "text_excerpt": "Bản vẽ mẫu PDF kỹ thuật — Dunvex CAD\n\n\n\n\n                                      5.100\n\n\n\n\nThanh kiem: canh 5.100 @ 1:50 = 102.000 mm giay\n\nGhi chú: cạnh dài 5.100 mm · tỷ lệ 1:50 · kiểm tra in 100%\n\f",
+    "has_vietnamese_or_dim": true,
+    "has_dim_5100": true,
+    "scale_bar_mentions_102": true,
+    "vector": {
+      "has_contents": true,
+      "has_moveto": true,
+      "has_lineto": true,
+      "has_curve": true,
+      "has_text": true,
+      "has_image": false,
+      "stream_bytes": 1696
+    },
+    "pngs": [
+      "/Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/pdf-export-spike/tmp/sample_B_svg_A4_1to50_CLIP-1.png"
+    ]
+  },
+  {
+    "file": "sample_B_svg_A4_fit.pdf",
+    "bytes": 35848,
+    "pdfinfo": {
+      "Title": "",
+      "Subject": "unspecified",
+      "Keywords": "",
+      "Author": "anonymous",
+      "Creator": "anonymous",
+      "Producer": "ReportLab PDF Library - (opensource)",
+      "CreationDate": "Sun Nov  8 06:59:54 2026 +07",
+      "ModDate": "Sun Nov  8 06:59:54 2026 +07",
+      "Custom Metadata": "no",
+      "Metadata Stream": "no",
+      "Tagged": "no",
+      "UserProperties": "no",
+      "Suspects": "no",
+      "Form": "none",
+      "JavaScript": "no",
+      "Pages": "1",
+      "Encrypted": "no",
+      "Page size": "841.89 x 595.276 pts (A4)",
+      "Page rot": "0",
+      "File size": "35848 bytes",
+      "Optimized": "no",
+      "PDF version": "1.4"
+    },
+    "page_mm": [
+      297.0000833333333,
+      210.0001444444444
+    ],
+    "fonts_raw": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nHelvetica                            Type 1            WinAnsi          no  no  no       2  0\nAAAAAA+ArialMT                       TrueType          WinAnsi          yes yes yes      7  0\n",
+    "fonts_embedded": true,
+    "text_excerpt": "Bản vẽ mẫu PDF kỹ thuật — Dunvex CAD\n\n\n\n\n                                                             5.100\n\n\n\n\nThanh kiem: canh 5.100 @ 1:18 = 277.000 mm giay\n\nGhi chú: cạnh dài 5.100 mm · tỷ lệ 1:50 · kiểm tra in 100%\n\f",
+    "has_vietnamese_or_dim": true,
+    "has_dim_5100": true,
+    "scale_bar_mentions_102": false,
+    "vector": {
+      "has_contents": true,
+      "has_moveto": true,
+      "has_lineto": true,
+      "has_curve": true,
+      "has_text": true,
+      "has_image": false,
+      "stream_bytes": 1652
+    },
+    "pngs": [
+      "/Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/pdf-export-spike/tmp/sample_B_svg_A4_fit-1.png"
+    ]
+  },
+  {
+    "file": "sample_C_pdflib_A3_1to50.pdf",
+    "bytes": 1812,
+    "pdfinfo": {
+      "Creator": "pdf-lib (https://github.com/Hopding/pdf-lib)",
+      "Producer": "pdf-lib (https://github.com/Hopding/pdf-lib)",
+      "CreationDate": "Sun Nov  8 06:59:27 2026 +07",
+      "ModDate": "Sun Nov  8 06:59:27 2026 +07",
+      "Custom Metadata": "no",
+      "Metadata Stream": "no",
+      "Tagged": "no",
+      "UserProperties": "no",
+      "Suspects": "no",
+      "Form": "none",
+      "JavaScript": "no",
+      "Pages": "1",
+      "Encrypted": "no",
+      "Page size": "1190.55 x 841.89 pts (A3)",
+      "Page rot": "0",
+      "File size": "1812 bytes",
+      "Optimized": "no",
+      "PDF version": "1.7"
+    },
+    "page_mm": [
+      419.9995833333333,
+      297.0000833333333
+    ],
+    "fonts_raw": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nHelvetica                            Type 1            WinAnsi          no  no  no       5  0\n",
+    "fonts_embedded": false,
+    "text_excerpt": "Dunvex CAD PDF spike — pdf-lib (browser path)\n\n\n\n\n                                      5.100\n\n\n\n\nThanh kiem: canh 5.100 @ 1:50 = 102.000 mm giay\n\n\n\nGhi chu (ASCII fallback): canh dai 5.100 mm, ty le 1:50\n\f",
+    "has_vietnamese_or_dim": true,
+    "has_dim_5100": true,
+    "scale_bar_mentions_102": true,
+    "vector": {
+      "has_contents": true,
+      "has_moveto": true,
+      "has_lineto": true,
+      "has_curve": false,
+      "has_text": true,
+      "has_image": false,
+      "stream_bytes": 4273
+    },
+    "pngs": [
+      "/Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/pdf-export-spike/tmp/sample_C_pdflib_A3_1to50-1.png"
+    ]
+  },
+  {
+    "file": "sample_C_pdflib_A4_1to50_CLIP.pdf",
+    "bytes": 1892,
+    "pdfinfo": {
+      "Creator": "pdf-lib (https://github.com/Hopding/pdf-lib)",
+      "Producer": "pdf-lib (https://github.com/Hopding/pdf-lib)",
+      "CreationDate": "Sun Nov  8 06:59:27 2026 +07",
+      "ModDate": "Sun Nov  8 06:59:27 2026 +07",
+      "Custom Metadata": "no",
+      "Metadata Stream": "no",
+      "Tagged": "no",
+      "UserProperties": "no",
+      "Suspects": "no",
+      "Form": "none",
+      "JavaScript": "no",
+      "Pages": "1",
+      "Encrypted": "no",
+      "Page size": "841.89 x 595.276 pts (A4)",
+      "Page rot": "0",
+      "File size": "1892 bytes",
+      "Optimized": "no",
+      "PDF version": "1.7"
+    },
+    "page_mm": [
+      297.0000833333333,
+      210.0001444444444
+    ],
+    "fonts_raw": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nHelvetica                            Type 1            WinAnsi          no  no  no       5  0\n",
+    "fonts_embedded": false,
+    "text_excerpt": "Dunvex CAD PDF spike — pdf-lib (browser path)\nCANH BAO: ty le co dinh khong vua giay (clip).\n\n\n\n\n                                      5.100\n\n\n\n\nThanh kiem: canh 5.100 @ 1:50 = 102.000 mm giay\n\n\n\nGhi chu (ASCII fallback): canh dai 5.100 mm, ty le 1:50\n\f",
+    "has_vietnamese_or_dim": true,
+    "has_dim_5100": true,
+    "scale_bar_mentions_102": true,
+    "vector": {
+      "has_contents": true,
+      "has_moveto": true,
+      "has_lineto": true,
+      "has_curve": false,
+      "has_text": true,
+      "has_image": false,
+      "stream_bytes": 4494
+    },
+    "pngs": [
+      "/Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/pdf-export-spike/tmp/sample_C_pdflib_A4_1to50_CLIP-1.png"
+    ]
+  }
+]
+
+Wrote /Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/pdf-export-spike/output/validation_report.json

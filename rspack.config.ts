@@ -40,6 +40,11 @@ export default defineConfig({
                 type: "asset",
             },
             {
+                // OFL font subset for PDF export — URL asset so the writer can lazy-fetch it.
+                test: /\.ttf$/,
+                type: "asset/resource",
+            },
+            {
                 test: /\.(j|t)s$/,
                 loader: "builtin:swc-loader",
                 options: {

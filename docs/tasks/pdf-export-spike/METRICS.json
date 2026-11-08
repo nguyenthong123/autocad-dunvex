@@ -1,0 +1,51 @@
+{
+    "survey_sha": "3c450e85e9ba08e8e3585563fa7a92e23386c9b2",
+    "model_edge_mm": 5100,
+    "scale_1_to": 50,
+    "expected_paper_mm": 102.0,
+    "measured_green_bar_mm_at_150dpi": {
+        "A_A3": 101.94,
+        "B_A3": 101.94,
+        "C_A3": 101.94
+    },
+    "backends": {
+        "A_reportlab_direct_A3_1to50": {
+            "bytes": 33760,
+            "elapsed_ms": 10.75,
+            "page_mm": [420.0, 297.0],
+            "curve_ops": 3,
+            "vietnamese_native": true,
+            "font_embedded_subset": true
+        },
+        "B_svg_svglib_A3_1to50": {
+            "bytes": 35847,
+            "elapsed_ms": 45.08,
+            "page_mm": [420.0, 297.0],
+            "curve_ops": 3,
+            "vietnamese_native": true,
+            "font_embedded_subset": true,
+            "note": "Requires 96dpi→72pt rescale or MediaBox shrinks to 0.75×"
+        },
+        "C_pdf_lib_A3_1to50": {
+            "bytes": 1812,
+            "elapsed_ms": 16.79,
+            "page_mm": [420.0, 297.0],
+            "curve_ops": 0,
+            "vietnamese_native": false,
+            "font_embedded_subset": false,
+            "note": "Helvetica ASCII fallback; arcs are polylines"
+        },
+        "A_opt_noembed": { "bytes": 2281, "vietnamese_native": false },
+        "A_opt_embed": { "bytes": 33760, "vietnamese_native": true }
+    },
+    "clip_demo_A4_1to15": {
+        "clip_excess_mm": [63.0, 0.0],
+        "expected_edge_paper_mm": 340.0
+    },
+    "pdf_lib_bundle_estimate": {
+        "esm_min_bytes": 523417,
+        "esm_min_gzip_bytes": 205707,
+        "package_status": "extraneous in node_modules; not in package.json"
+    },
+    "recommendation": "Browser pdf-lib (or svg2pdf) + embedded OFL font + cubic arcs; reuse Layout proven by backend A; defer 3D HLR / multi-sheet / PDF layers"
+}

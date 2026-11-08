@@ -1,0 +1,22 @@
+[
+    {
+        "backend": "C_pdf_lib",
+        "path": "/Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/pdf-export-spike/output/sample_C_pdflib_A3_1to50.pdf",
+        "bytes": 1812,
+        "elapsed_ms": 16.79,
+        "expected_edge_paper_mm": 102,
+        "vietnamese_native": false,
+        "arc_exact": false,
+        "note": "StandardFonts.Helvetica — no VN glyphs; arcs are polyline approximations"
+    },
+    {
+        "backend": "C_pdf_lib",
+        "path": "/Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/pdf-export-spike/output/sample_C_pdflib_A4_1to50_CLIP.pdf",
+        "bytes": 1892,
+        "elapsed_ms": 4.96,
+        "expected_edge_paper_mm": 102,
+        "vietnamese_native": false,
+        "arc_exact": false,
+        "note": "StandardFonts.Helvetica — no VN glyphs; arcs are polyline approximations"
+    }
+]
