@@ -186,3 +186,13 @@ phải là `state-changed`; đo lại pass + hộp bao verification 800/2500 y n
 
 **Ghi chú vận hành (ngoài TASK-40):** `scripts/deploy-vps.sh` từ nay sinh `dist/version.json` mang SHA thật mỗi
 lần deploy (bài học version.json TASK-41 stale — xem pdf HANDOFF).
+
+
+### Ghi sổ bàn giao C1.2 — 08/11/2026
+
+- **SHA C1.2 = `863e708964edf1003304ad633e0240d3582c239b`** (dev; cây sạch — file `TASK-40-cad-agent-standard.md` untracked là sản phẩm AI khác chạy song song, **giữ nguyên, không commit**).
+- Hai lần `npm run test` LIÊN TIẾP trên đúng SHA: **10304 passed / 0 failed, exit 0** cả hai.
+- `hermes verify --json --skip-start` trên SHA: **ok=true** (bootstrap 2s · build 59s · `npm run test` 99s · check 5s — exit 0 toàn bộ).
+- **Flake RSS báo riêng (theo yêu cầu Reviewer):** `server/test/llmProxy.test.mjs :: streams 19MB without buffering in RAM` — ngưỡng RSS-delta <10MB; hôm nay đo **10.20MB** (ca đỏ 1, verify đầu tại `d3d09640`) và **14.03MB** (ca đỏ 2, verify đầu tại `863e7089`); các lần chạy lại đều xanh (standalone 18/18 ×3; verify #2 cả hai SHA xanh). Nguyên nhân khả nghi: đo RSS khi bộ nhớ hệ thống còn áp lực sau build/rstest — delta phình do allocator/GC, không phải buffering thật (19MB mới là mức failure thật). Khuyến nghị chủ file (AI1/server) cân nhắc tách stage này chạy riêng hoặc nới ngưỡng kèm ghi chú — **tôi không tự sửa kỳ vọng**.
+- Trạng thái C1/C1.1/C1.2: **chờ nghiệm thu VPS** — chưa xin duyệt triển khai.
+- PDF/VPS: `version.json` đã đồng bộ `99ac37cf` (sha256 file `7ff822a3…` khớp host=container=HTTP; `main.js` giữ `07cf9ee4…`); script deploy tự sinh version.json từ SHA thật cho các lần sau. **Windows vẫn chờ thử — không có môi trường.**
