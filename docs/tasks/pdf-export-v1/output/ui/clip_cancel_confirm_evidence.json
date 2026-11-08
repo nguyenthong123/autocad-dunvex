@@ -1,0 +1,11 @@
+{
+    "cancelNoDownload": true,
+    "beforeBlobs": 1,
+    "afterCancelBlobs": 1,
+    "clip": true,
+    "clipExcessMm": [89.66666666666669, 56.66666666666666],
+    "scale": 15,
+    "page": "A4 landscape",
+    "nodes": 10,
+    "confirmBytes": 11076
+}

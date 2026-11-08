@@ -1,0 +1,4 @@
+Error: Error: document did not open
+    at <anonymous>:14:19
+    at Cdp.evaluate (file:///Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/pdf-export-v1/ui_export_acceptance.mjs:79:19)
+    at async main (file:///Volumes/DATA_SSD/Projects/autocad-dunvex/docs/tasks/pdf-export-v1/ui_export_acceptance.mjs:360:9)

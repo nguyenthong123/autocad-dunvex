@@ -77,7 +77,12 @@ function addUv(state: CollectState, u: number, v: number) {
     state.bounds = expandBounds(state.bounds, u, v);
 }
 
-function collectEdges(state: CollectState, shape: IShape, plane: Plane) {
+function collectEdges(
+    state: CollectState,
+    shape: IShape,
+    plane: Plane,
+    weight: "continuous" | "thin" | "dashed" = "continuous",
+) {
     const edges = shape.findSubShapes(ShapeTypes.edge) as IEdge[];
     for (const edge of edges) {
         let trimmed: IEdge["curve"] | undefined;
@@ -103,7 +108,7 @@ function collectEdges(state: CollectState, shape: IShape, plane: Plane) {
             state.modelPaths.push({
                 kind: "line",
                 uvs: [u1, v1, u2, v2],
-                weight: "continuous",
+                weight,
             });
         } else if (CurveUtils.isCircle(basis)) {
             const circle = basis as ICircle;
@@ -133,7 +138,7 @@ function collectEdges(state: CollectState, shape: IShape, plane: Plane) {
             state.modelPaths.push({
                 kind: "arc",
                 uvs: [cu, cv, r, a0, a1],
-                weight: "continuous",
+                weight: weight === "dashed" ? "thin" : "continuous",
                 color: "#1a1a8c",
             });
         } else {
@@ -149,7 +154,7 @@ function collectEdges(state: CollectState, shape: IShape, plane: Plane) {
                 addUv(state, u, v);
                 uvs.push(u, v);
             }
-            state.modelPaths.push({ kind: "poly", uvs, weight: "continuous" });
+            state.modelPaths.push({ kind: "poly", uvs, weight });
         }
         trimmed.dispose?.();
     }
@@ -315,11 +320,12 @@ function buildPrimitives(
 
     for (const t of state.texts) {
         const p = toPaper(t.u, t.v);
+        // textHeight is model-mm (same as geometry); scale onto paper like edges.
         prims.push({
             kind: "text",
             x: p.x,
             y: p.y,
-            sizePt: mmToPt(t.heightMm),
+            sizePt: mmToPt(t.heightMm / layout.scale),
             text: t.text,
             color: t.color,
         });
@@ -363,7 +369,10 @@ export function planPdfFromNodes(nodes: VisualNode[], options: PdfPageOptions): 
                 continue;
             }
             const shape = node.shape.value.transformedMul(node.worldTransform());
-            collectEdges(state, shape, plane);
+            const dashed =
+                /center|centre|dash|truc|nét\s*đứt|net\s*dut/i.test(node.name) ||
+                node.name.toLowerCase().includes("centerline");
+            collectEdges(state, shape, plane, dashed ? "dashed" : "continuous");
             // Solids/faces contribute edges only — no hidden-line removal in v1.
             if (ShapeTypeUtils.hasFace(shape.shapeType) || ShapeTypeUtils.hasSolid(shape.shapeType)) {
                 noteSkip(state, "solid-edges-only(no-hlr)");

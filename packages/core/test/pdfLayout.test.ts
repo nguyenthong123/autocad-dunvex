@@ -38,6 +38,9 @@ describe("pdf layout", () => {
         const a = modelToPaper(layout, 0, 0);
         const b = modelToPaper(layout, 5100, 0);
         expect(ptToMm(b.x - a.x)).toBeCloseTo(102, 5);
+        // Annotation textHeight is model-mm; paper size must divide by layout.scale.
+        expect(paperDistanceMm(layout, 175)).toBeCloseTo(3.5, 6);
+        expect(mmToPt(175 / layout.scale)).toBeCloseTo(mmToPt(3.5), 6);
     });
 
     test("fixed 1:15 on A4 landscape clips with ~63 mm excess width", () => {
