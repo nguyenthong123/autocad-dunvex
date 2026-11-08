@@ -23,3 +23,6 @@ types
 docs/tasks/sync-evidence/BACKUP-*.json
 docs/tasks/sync-evidence/doc-*.json
 docs/tasks/sync-evidence/recents-*.json
+
+# Hermes agent local runtime artifacts (verify manifests, caches) — not project config
+.hermes/
