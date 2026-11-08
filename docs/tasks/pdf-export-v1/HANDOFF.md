@@ -163,3 +163,12 @@ Lượt cắt mép thật qua menu trên cùng build `0b396d8f`, A4 ngang, tỷ 
 - [x] PASS Hủy clip không tải / Xác nhận cắt mép khớp preview — tích hợp: `output/integration/clip_cancel_confirm_evidence.json` (`0552eb98…` đã duyệt SHA); **menu thật (08/11 12:30)**: Hủy→0 file + 0 event tải, Xuất (cắt mép)→file browser `76f217c5…`, clip rect (10,10,277,190) mm giống hệt integration, overflow 89.667 mm = excess preview
 - [x] Phân biệt rõ `output/ui/` vs `output/script/` — `output/ui/` đã relabel `integration/`, bằng chứng click menu thật nằm `output/menu-ui/`
 - [ ] Cho phép (hoặc từ chối) triển khai VPS sau khi chốt — **cần Chủ dự án quyết**
+
+## Triển khai VPS — 08/11/2026 (Reviewer duyệt, SHA phát hành `99ac37cf`)
+
+- Push `release/pdf-v1-tests` lên origin (GitHub tip `9e652a4f`; API GitHub xác nhận commit `99ac37cf5` tồn tại — repo public).
+- `git checkout --detach 99ac37cf` → `FORCE_BUILD=1 bash scripts/deploy-vps.sh` → exit 0: build production từ đúng SHA, upload dist/server/nginx/compose, container `autocad-dunvex-chili3d-1` recreate, storage-api restart, llm-proxy 401 như kỳ vọng.
+- **Kiểm SHA đang phục vụ:** `main.js` sha256 `07cf9ee4d901393d1c70602cea4dfa66928496355f3452b74a5302c702dbd5ea` khớp 4 tầng: build local từ tree `99ac37cf` = file trên `/opt/autocad-dunvex/dist` = trong container `/usr/share/nginx/html` = nội dung HTTP `http://136.66.95.155/main.js`; index trả 200.
+- **Kiểm menu thật trên VPS** (headful Chrome CDP, script `vps_menu_check.mjs`): mở hộp thoại "Xuất bản vẽ", `<select>` Format chứa `.pdf` (danh sách đủ: .dxf, .pdf, .step, .iges, .brep, .stl, .stl binary, .ply, .ply binary, .obj); chọn `.pdf` → panel tính chất PDF render (Khổ giấy A3/A4, Hướng, Lề, Chế độ tỷ lệ 1:n) — ảnh `output/menu-ui/vps/`. KHÔNG bấm Xác nhận (0 Đã chọn) — chỉ kiểm menu, không xuất file.
+- **Windows: KHÔNG có kết quả để báo — vẫn chưa có môi trường Windows** (mọi kiểm trên là macOS arm64 + VPS Linux serving).
+- Trạng thái PDF v1: đã deploy public tại `http://136.66.95.155` từ SHA đã nghiệm thu `99ac37cf` (content PDF ≡ `2c72ecec`).

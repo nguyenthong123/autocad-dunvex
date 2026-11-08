@@ -1,0 +1,26 @@
+{
+    "url": "http://136.66.95.155",
+    "servedMainJsSha256": "07cf9ee4d901393d1c70602cea4dfa66928496355f3452b74a5302c702dbd5ea",
+    "deployedFromSha": "99ac37cf5dff3e8724faa05d5246d3e6ac8b3366",
+    "branch": "release/pdf-v1-tests",
+    "menuClicked": true,
+    "formatOptions": [
+        ".dxf",
+        ".pdf",
+        ".step",
+        ".iges",
+        ".brep",
+        ".stl",
+        ".stl binary",
+        ".ply",
+        ".ply binary",
+        ".obj"
+    ],
+    "hasPdf": true,
+    "pdfSelected": {
+        "value": ".pdf",
+        "panelHasPageSize": true,
+        "panelHasScale": true
+    },
+    "checkedAt": "2026-11-08T12:09:51.761Z"
+}
