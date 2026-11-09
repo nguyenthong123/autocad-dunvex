@@ -12,6 +12,11 @@ export const RULES_CHANGED_MESSAGE =
     "PLAN_INVALIDATED: Design rules changed since this plan was approved. Prior plan rights are revoked. Re-read the document and call propose_task_plan again for the needed scope.";
 
 let activeProfile: TaskProfile | undefined;
+const profilesByTaskId = new Map<string, TaskProfile>();
+
+export function getTaskProfileById(taskId: string): TaskProfile | undefined {
+    return profilesByTaskId.get(taskId);
+}
 
 /**
  * Nodes the agent created in the current browser session, keyed by document id.
@@ -68,6 +73,7 @@ export function approveTaskPlan(
         isRepairExecuting: false,
     };
     activeProfile = profile;
+    profilesByTaskId.set(profile.taskId, profile);
     return profile;
 }
 
@@ -125,16 +131,14 @@ export function detectRulesDrift(doc?: IDocument): boolean {
 
 export function clearTaskProfile(): void {
     activeProfile = undefined;
+    profilesByTaskId.clear();
 }
 
 export function invalidateTaskProfile(reason: string): void {
     if (!activeProfile) return;
     if (activeProfile.status === "invalidated" && activeProfile.haltReason === reason) return;
-    activeProfile = {
-        ...activeProfile,
-        status: "invalidated",
-        haltReason: reason,
-    };
+    activeProfile.status = "invalidated";
+    activeProfile.haltReason = reason;
 }
 
 /**
@@ -179,12 +183,9 @@ export function isTaskOwned(nodeId: string, doc?: IDocument): boolean {
 export function markTaskInterleaved(reason: string): void {
     if (!activeProfile || activeProfile.status !== "active") return;
     const message = `${reason} Re-read the document and call propose_task_plan again for the needed scope.`;
-    activeProfile = {
-        ...activeProfile,
-        status: "invalidated",
-        interleaved: true,
-        haltReason: message,
-    };
+    activeProfile.status = "invalidated";
+    activeProfile.interleaved = true;
+    activeProfile.haltReason = message;
 }
 
 export function recordTaskHistoryEntry(record: IHistoryRecord | object | undefined, doc?: IDocument): void {
@@ -231,5 +232,6 @@ function markIdentity(mark: IHistoryRecord | undefined): string | undefined {
 /** Test helper. */
 export function resetTaskProfileForTests(): void {
     activeProfile = undefined;
+    profilesByTaskId.clear();
     agentCreatedByDocument.clear();
 }

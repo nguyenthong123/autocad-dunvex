@@ -905,4 +905,179 @@ describe("TASK-40 Đợt C3 — Tự sửa sai theo sai lệch đo được trê
 
         panel.remove();
     });
+
+    // =========================================================================
+    // C3-async-1: Đổi quy tắc hoặc tài liệu sau bước kiểm đầu nhưng trước khi ghi
+    // =========================================================================
+    test("C3-async-1: đổi quy tắc sau bước kiểm đầu nhưng trước khi ghi -> từ chối, giữ nguyên hình học và số lượt", async () => {
+        const box = addBox("box_async_rules", 700, 200, 100);
+        const criteria: CriterionSpec[] = [
+            {
+                id: "c-dim",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: [box.id],
+                expected: { sizeMm: [800, 200, 100] },
+                toleranceMm: [2, 2, 2],
+            },
+        ];
+
+        const profile = approveTaskPlan({
+            documentId: doc.id,
+            allowedModifiedNodeIds: [box.id],
+            criteria,
+        });
+
+        const eval1 = await finalizeTaskVerification(doc);
+        const proposal = eval1!.activeProposal!;
+        expect(proposal).toBeDefined();
+
+        // Chủ động giữ bước chờ và đổi rules tại ranh giới ghi
+        let delayExecuted = false;
+        const res = await executeRepairProposal(proposal, doc, undefined, {
+            preWriteDelay: async () => {
+                delayExecuted = true;
+                saveDocumentDesignRules(doc.id, {
+                    version: 1,
+                    scope: "document",
+                    guidanceMarkdown: "Quy tắc bị đổi ngay trước ranh giới ghi",
+                    contentRevision: 888,
+                });
+            },
+        });
+
+        expect(delayExecuted).toBe(true);
+        expect(res.success).toBe(false);
+        expect(res.error).toContain("proposal-invalidated-by-drift");
+        // Hình học không đổi: box.dx vẫn là 700
+        expect(box.dx).toBe(700);
+        // Số lượt sửa giữ nguyên = 0
+        expect(profile.executedRepairs).toBe(0);
+    });
+
+    test("C3-async-1b: đổi tài liệu đang mở sau bước kiểm đầu nhưng trước khi ghi -> từ chối, giữ nguyên hình học và số lượt", async () => {
+        const box = addBox("box_async_doc", 700, 200, 100);
+        const criteria: CriterionSpec[] = [
+            {
+                id: "c-dim",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: [box.id],
+                expected: { sizeMm: [800, 200, 100] },
+                toleranceMm: [2, 2, 2],
+            },
+        ];
+
+        const profile = approveTaskPlan({
+            documentId: doc.id,
+            allowedModifiedNodeIds: [box.id],
+            criteria,
+        });
+
+        const eval1 = await finalizeTaskVerification(doc);
+        const proposal = eval1!.activeProposal!;
+        expect(proposal).toBeDefined();
+
+        const doc2 = new TestDocument({
+            selection: { clearSelection: rs.fn(), getSelectedNodes: () => [] } as any,
+        });
+        doc2.id = "test_doc_2";
+
+        let delayExecuted = false;
+        const res = await executeRepairProposal(proposal, doc, undefined, {
+            preWriteDelay: async () => {
+                delayExecuted = true;
+                // Chuyển tài liệu đang mở sang doc2
+                ((globalThis as any).app.activeView as any).document = doc2;
+            },
+        });
+
+        expect(delayExecuted).toBe(true);
+        expect(res.success).toBe(false);
+        expect(res.error).toContain("proposal-invalidated-by-drift");
+        // Hình học trên doc giữ nguyên: box.dx vẫn là 700
+        expect(box.dx).toBe(700);
+        // Số lượt sửa giữ nguyên = 0
+        expect(profile.executedRepairs).toBe(0);
+    });
+
+    // =========================================================================
+    // C3-async-2: Đổi profile sau khi giao lệnh ghi nhưng trước khi xử lý kết quả
+    // =========================================================================
+    test("C3-async-2: đổi profile sau khi giao lệnh ghi nhưng trước khi xử lý kết quả -> giữ nguyên profile mới, ghi nhận đúng 1 lượt cho tác vụ cũ", async () => {
+        const boxA = addBox("box_task_A", 700, 200, 100);
+        const boxB = addBox("box_task_B", 300, 300, 300);
+
+        const criteriaA: CriterionSpec[] = [
+            {
+                id: "c-dim-A",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: [boxA.id],
+                expected: { sizeMm: [800, 200, 100] },
+                toleranceMm: [2, 2, 2],
+            },
+        ];
+
+        const profileA = approveTaskPlan({
+            taskId: "task_A_uuid",
+            documentId: doc.id,
+            allowedModifiedNodeIds: [boxA.id],
+            criteria: criteriaA,
+        });
+
+        const evalA = await finalizeTaskVerification(doc);
+        const proposalA = evalA!.activeProposal!;
+        expect(proposalA).toBeDefined();
+        expect(proposalA.taskId).toBe("task_A_uuid");
+
+        let profileB: any;
+        const criteriaB: CriterionSpec[] = [
+            {
+                id: "c-dim-B",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: [boxB.id],
+                expected: { sizeMm: [300, 300, 300] },
+                toleranceMm: [2, 2, 2],
+            },
+        ];
+
+        // Thực thi đề xuất của Task A, nhả bước postWriteDelay để chuyển sang Task B
+        let delayExecuted = false;
+        const res = await executeRepairProposal(proposalA, doc, undefined, {
+            postWriteDelay: async () => {
+                delayExecuted = true;
+                // Mở tác vụ mới Task B khi lệnh ghi của Task A đã được dispatch vào document
+                profileB = approveTaskPlan({
+                    taskId: "task_B_uuid",
+                    documentId: doc.id,
+                    allowedModifiedNodeIds: [boxB.id],
+                    criteria: criteriaB,
+                });
+            },
+        });
+
+        expect(delayExecuted).toBe(true);
+        expect(res.success).toBe(true);
+        // Lệnh ghi boxA đã thực sự commit vào model:
+        expect(boxA.dx).toBe(800);
+
+        // 1. Tác vụ cũ (Task A) phải được ghi nhận ĐÚNG 1 lượt sửa
+        expect(profileA.executedRepairs).toBe(1);
+        expect(profileA.activeProposal).toBeUndefined();
+
+        // 2. Tác vụ mới (Task B) phải được GIỮ NGUYÊN
+        expect(profileB).toBeDefined();
+        expect(profileB.taskId).toBe("task_B_uuid");
+        expect(profileB.status).toBe("active");
+        expect(profileB.executedRepairs).toBe(0); // Chưa sửa lần nào
+        expect(profileB.activeProposal).toBeUndefined(); // Không bị đề xuất của Task A đè vào
+        expect(profileB.criteria).toEqual(criteriaB); // Tiêu chí của Task B nguyên vẹn
+
+        // Tác vụ hiện hành trên app vẫn là Task B
+        const activeProfile = getTaskProfile();
+        expect(activeProfile?.taskId).toBe("task_B_uuid");
+        expect(activeProfile?.executedRepairs).toBe(0);
+    });
 });

@@ -226,3 +226,42 @@ lần deploy (bài học version.json TASK-41 stale — xem pdf HANDOFF).
   nguyên nhân; kỳ vọng không sửa; đề xuất chủ file (AI1/server) tách stage hoặc đo phân tích trước khi nới ngưỡng.
 - VPS: `version.json` ≡ `deploy-version.json` (sha256 `7ff822a3…`, chỉ `99ac37cf`) — xác minh host/container/HTTP
   cả hai endpoint. **Windows vẫn chờ thử.** C1.2 + C1.3 **chờ nghiệm thu — chưa triển khai**.
+
+---
+
+## C3 — Nhật ký thực thi sửa sai theo sai lệch đo được (09/11/2026)
+
+### C3 v1.2 — Bảo vệ ranh giới ghi & Cách ly tác vụ gốc khi có bước chờ bất đồng bộ
+
+1. **Ranh giới ghi tức thời (Immediate Pre-write Recheck)**:
+   - Ngay sau bước chờ bất đồng bộ (tải tool qua governedRouter, import động hoặc độ trễ bất đồng bộ), `executeRepairProposal` thực hiện kiểm tra lại toàn diện trước khi gọi `tool.handler`:
+     - Tài liệu đang mở: `getDocument() === activeDoc && getDocument()?.id === snapshot.documentId`.
+     - Tác vụ gốc: `getTaskProfileById(snapshot.taskId)?.status === "active"`.
+     - Đề xuất hiện hành: `rootProfile.activeProposal?.proposalId === snapshot.proposalId`.
+     - Lượt sửa: `snapshot.attemptIndex === (rootProfile.executedRepairs ?? 0) + 1`.
+     - Tác vụ hiện hành trên app: `getTaskProfile()?.taskId === snapshot.taskId`.
+     - Quy tắc thiết kế: `rulesFingerprintFor(activeDoc.id) === snapshot.rulesFingerprint`.
+     - Dấu lịch sử: `historyMarkOf(activeDoc) === snapshot.historyMark`.
+     - Dấu hình học: `subjectsSignatureOf(activeDoc, snapshot.subjectNodeIds) === snapshot.stateSignature`.
+     - Quyền tại ranh giới ghi: `checkToolPermission`.
+   - Nếu bất kỳ yếu tố nào thay đổi trong khoảng chờ: từ chối thực thi ngay lập tức TRƯỚC KHI hình học thay đổi, giữ nguyên mô hình và số lượt sửa.
+
+2. **Cách ly tác vụ gốc & Ghi nhận số lượt chuẩn xác**:
+   - Quản lý profile theo ID qua `profilesByTaskId` map và `getTaskProfileById(taskId)` trong `taskProfile.ts`.
+   - Xác nhận commit dựa trên kết quả ghi của tool và transaction thực tế (`historyAfter !== historyBefore`).
+   - Cập nhật số lượt sửa và trạng thái đề xuất trực tiếp trên chính tác vụ gốc đã duyệt (`targetRootProfile.executedRepairs = currentExecuted + 1`).
+   - Nếu tác vụ mới đã mở trong lúc chờ: bảo toàn nguyên vẹn tác vụ mới (giữ `executedRepairs = 0`, giữ criteria, không remeasure đè lên tác vụ mới).
+   - Nếu ghi thành công nhưng hậu kiểm bị lỗi hoặc hủy: bảo toàn số lượt đã tính trên tác vụ gốc.
+
+3. **Bộ test kiểm soát độ trễ bất đồng bộ (Controlled Delays)**:
+   - `C3-async-1`: Đổi quy tắc thiết kế trong `preWriteDelay` $\implies$ từ chối do rules drift, giữ nguyên hình học và số lượt.
+   - `C3-async-1b`: Đổi tài liệu đang mở trong `preWriteDelay` $\implies$ từ chối do document drift, giữ nguyên hình học và số lượt.
+   - `C3-async-2`: Đổi profile sang tác vụ B trong `postWriteDelay` $\implies$ giữ nguyên profile B (0 lượt, criteria nguyên vẹn), tác vụ A được ghi nhận đúng 1 lượt.
+
+4. **Kết quả kiểm chứng**:
+   - `batchC3Repair.kernel.test.ts`: 21/21 passed (18 ca gốc + 3 ca async lifecycle).
+   - `packages/ai/test/`: 55/55 test files passed (826 tests).
+   - Full repository test suite: 10,346 tests passed (1 skipped) + 35 backend tests passed = 10,381 tests passed.
+   - Typecheck (`tsc --noEmit`): 0 error.
+   - Biome (`npm run check`): 0 error.
+   - Trạng thái: `WAITING_REVIEW`, chưa triển khai VPS.

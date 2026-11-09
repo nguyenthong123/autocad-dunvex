@@ -5,7 +5,7 @@ import { type IDocument, Id, type INode, Matrix4, Plane, XYZ } from "@chili3d/co
 import { findNode, getDocument } from "../../tools/documentContext";
 import { checkToolPermission } from "../permissionGate";
 import { rulesFingerprintFor } from "../rulesStore";
-import { getActiveTaskProfile, getTaskProfile } from "../taskProfile";
+import { getActiveTaskProfile, getTaskProfile, getTaskProfileById } from "../taskProfile";
 import { historyMarkOf, subjectsSignatureOf } from "./stateMarker";
 import type { CriterionStructuredDelta, RepairProposal, TaskCriteriaEvaluation } from "./types";
 
@@ -478,20 +478,29 @@ export function generateRepairProposal(
     return {};
 }
 
+export interface ExecuteRepairTestHooks {
+    /** Hook invoked immediately after initial check, before loading tools & write boundary */
+    preWriteDelay?: () => Promise<void>;
+    /** Hook invoked immediately after tool execution returns, before processing commit & task bindings */
+    postWriteDelay?: () => Promise<void>;
+}
+
 /**
  * Execute an approved repair proposal:
  * 1. Checks execution mutex and single-use flag.
  * 2. Checks hard lifetime quota (max 2 attempts on root task).
  * 3. Re-verifies state token (doc, history, rules, geometry signature).
  * 4. Checks permission through Batch B router.
- * 5. Executes mutation via governedRouter (standard set_node_properties / transform_node).
- * 6. Immediately increments executedRepairs after successful transaction commit.
- * 7. Remeasures all criteria via finalizeTaskVerification.
+ * 5. Loads tools and rechecks state at write boundary.
+ * 6. Executes mutation via governedRouter (standard set_node_properties / transform_node).
+ * 7. Confirms transaction commit and binds attempt count strictly to root task.
+ * 8. Remeasures all criteria via finalizeTaskVerification if root task is still active.
  */
 export async function executeRepairProposal(
     proposalOrId: string | RepairProposal,
     doc?: IDocument,
     remeasureFn?: (d: IDocument) => Promise<TaskCriteriaEvaluation | undefined>,
+    testHooks?: ExecuteRepairTestHooks,
 ): Promise<{ success: boolean; error?: string; evaluation?: TaskCriteriaEvaluation }> {
     const activeDoc = doc ?? getDocument();
     if (!activeDoc) {
@@ -512,16 +521,29 @@ export async function executeRepairProposal(
     }
     profile.isRepairExecuting = true;
 
-    try {
-        const proposalId = typeof proposalOrId === "string" ? proposalOrId : proposalOrId.proposalId;
-        const snapshot = proposalSnapshotStore.get(proposalId);
-        if (!snapshot) {
-            return {
-                success: false,
-                error: "proposal-not-found: không tìm thấy bản ghi đề xuất bất biến trong ứng dụng",
-            };
-        }
+    const proposalId = typeof proposalOrId === "string" ? proposalOrId : proposalOrId.proposalId;
+    const snapshot = proposalSnapshotStore.get(proposalId);
+    if (!snapshot) {
+        profile.isRepairExecuting = false;
+        return {
+            success: false,
+            error: "proposal-not-found: không tìm thấy bản ghi đề xuất bất biến trong ứng dụng",
+        };
+    }
 
+    const rootTaskId = snapshot.taskId;
+    const rootProfile =
+        getTaskProfileById(rootTaskId) ?? (profile.taskId === rootTaskId ? profile : undefined);
+    if (!rootProfile || rootProfile.status !== "active") {
+        profile.isRepairExecuting = false;
+        return {
+            success: false,
+            error: "tác vụ gốc không còn hiệu lực hoặc đã thay đổi",
+        };
+    }
+    rootProfile.isRepairExecuting = true;
+
+    try {
         // Nếu truyền đối tượng proposal từ bên ngoài: đối chiếu với snapshot bất biến
         if (typeof proposalOrId !== "string") {
             if (proposalOrId.attemptIndex !== snapshot.attemptIndex) {
@@ -562,7 +584,7 @@ export async function executeRepairProposal(
         }
 
         // 4. Đối chiếu với đề xuất hiện hành: chặn đề xuất cũ khi đã có đề xuất mới
-        if (profile.activeProposal?.proposalId !== snapshot.proposalId) {
+        if (rootProfile.activeProposal?.proposalId !== snapshot.proposalId) {
             return {
                 success: false,
                 error: "stale-proposal: đề xuất cũ khi đã có đề xuất mới hoặc đề xuất không khớp với phiên bản hiện hành",
@@ -570,12 +592,12 @@ export async function executeRepairProposal(
         }
 
         // 5. Đối chiếu tác vụ gốc
-        if (profile.taskId !== snapshot.taskId) {
+        if (profile.taskId !== rootTaskId) {
             return { success: false, error: "task-mismatch: đề xuất không thuộc tác vụ gốc hiện hành" };
         }
 
         // 6. Đối chiếu lượt kế tiếp của tác vụ (attemptIndex)
-        const currentExecuted = profile.executedRepairs ?? 0;
+        const currentExecuted = rootProfile.executedRepairs ?? 0;
         const expectedAttemptIndex = currentExecuted + 1;
         if (snapshot.attemptIndex !== expectedAttemptIndex) {
             return {
@@ -592,7 +614,7 @@ export async function executeRepairProposal(
             };
         }
 
-        // 8. Token validation: Kiểm tra tài liệu, quy tắc, history, và chữ ký hình học ngay trước khi ghi
+        // 8. Token validation sơ bộ: Kiểm tra tài liệu, quy tắc, history, và chữ ký hình học
         if (activeDoc.id !== snapshot.documentId) {
             (snapshot as { invalidated?: boolean }).invalidated = true;
             (snapshot as { invalidationReason?: string }).invalidationReason =
@@ -632,11 +654,11 @@ export async function executeRepairProposal(
             };
         }
 
-        // Lưu snapshot deltas trước khi ghi để dùng so sánh hội tụ ở lần sau
-        const liveBeforeWrite = getTaskProfile() ?? profile;
-        liveBeforeWrite.lastDeltas = [...snapshot.deltas];
+        // 10. Tải tool (bước chờ bất đồng bộ)
+        if (testHooks?.preWriteDelay) {
+            await testHooks.preWriteDelay();
+        }
 
-        // 10. Tuyến ghi chuẩn qua governedRouter
         const { buildTools } = await import("../../tools");
         const tools = buildTools();
         const tool = tools.find((t) => t.name === snapshot.toolName);
@@ -647,6 +669,104 @@ export async function executeRepairProposal(
             };
         }
 
+        // =========================================================================
+        // Yêu cầu 1: Ranh giới ghi — Kiểm tra lại toàn diện trước khi hình học thay đổi
+        // =========================================================================
+        // a. Tài liệu đang mở
+        const currentOpenDoc = getDocument();
+        if (
+            !currentOpenDoc ||
+            currentOpenDoc !== activeDoc ||
+            currentOpenDoc.id !== snapshot.documentId ||
+            currentOpenDoc.id !== activeDoc.id
+        ) {
+            (snapshot as { invalidated?: boolean }).invalidated = true;
+            (snapshot as { invalidationReason?: string }).invalidationReason =
+                "proposal-invalidated-by-drift: tài liệu đang mở đã thay đổi hoặc không khớp với tài liệu được duyệt trước khi ghi";
+            return { success: false, error: snapshot.invalidationReason };
+        }
+
+        // b. Tác vụ gốc & trạng thái
+        const rootAtBoundary = getTaskProfileById(rootTaskId) ?? rootProfile;
+        if (!rootAtBoundary || rootAtBoundary.status !== "active") {
+            (snapshot as { invalidated?: boolean }).invalidated = true;
+            (snapshot as { invalidationReason?: string }).invalidationReason =
+                "proposal-invalidated-by-drift: tác vụ gốc không còn hiệu lực trước khi ghi";
+            return { success: false, error: snapshot.invalidationReason };
+        }
+
+        // c. Đề xuất hiện hành của tác vụ gốc
+        if (rootAtBoundary.activeProposal?.proposalId !== snapshot.proposalId) {
+            (snapshot as { invalidated?: boolean }).invalidated = true;
+            (snapshot as { invalidationReason?: string }).invalidationReason =
+                "stale-proposal: đề xuất đã bị thay đổi hoặc hủy trước khi ghi";
+            return { success: false, error: snapshot.invalidationReason };
+        }
+
+        // d. Lượt sửa của tác vụ gốc
+        const currentExecutedBoundary = rootAtBoundary.executedRepairs ?? 0;
+        if (snapshot.attemptIndex !== currentExecutedBoundary + 1 || currentExecutedBoundary >= 2) {
+            return {
+                success: false,
+                error: `invalid-attempt-index: số lượt sửa của tác vụ gốc đã thay đổi trước khi ghi (${currentExecutedBoundary})`,
+            };
+        }
+
+        // e. Tác vụ hiện hành trên app
+        const activeAtBoundary = getTaskProfile();
+        if (
+            !activeAtBoundary ||
+            activeAtBoundary.taskId !== rootTaskId ||
+            activeAtBoundary.status !== "active"
+        ) {
+            (snapshot as { invalidated?: boolean }).invalidated = true;
+            (snapshot as { invalidationReason?: string }).invalidationReason =
+                "proposal-invalidated-by-drift: tác vụ hiện hành đã thay đổi sang tác vụ khác trước khi ghi";
+            return { success: false, error: snapshot.invalidationReason };
+        }
+
+        // f. Quy tắc thiết kế
+        if (rulesFingerprintFor(activeDoc.id) !== snapshot.rulesFingerprint) {
+            (snapshot as { invalidated?: boolean }).invalidated = true;
+            (snapshot as { invalidationReason?: string }).invalidationReason =
+                "proposal-invalidated-by-drift: quy tắc thiết kế đã thay đổi trước khi ghi";
+            return { success: false, error: snapshot.invalidationReason };
+        }
+
+        // g. Dấu lịch sử
+        if (historyMarkOf(activeDoc) !== snapshot.historyMark) {
+            (snapshot as { invalidated?: boolean }).invalidated = true;
+            (snapshot as { invalidationReason?: string }).invalidationReason =
+                "proposal-invalidated-by-drift: mô hình đã có thao tác chỉnh sửa mới trước khi ghi";
+            return { success: false, error: snapshot.invalidationReason };
+        }
+
+        // h. Dấu hình học
+        const boundarySig = subjectsSignatureOf(activeDoc, snapshot.subjectNodeIds);
+        if (
+            boundarySig !== snapshot.stateSignature ||
+            boundarySig.includes("unreadable") ||
+            boundarySig.includes("err")
+        ) {
+            (snapshot as { invalidated?: boolean }).invalidated = true;
+            (snapshot as { invalidationReason?: string }).invalidationReason =
+                "proposal-invalidated-by-drift: hình học đối tượng đã thay đổi trước khi ghi";
+            return { success: false, error: snapshot.invalidationReason };
+        }
+
+        // i. Quyền tại ranh giới ghi
+        const boundaryPerm = checkToolPermission(snapshot.toolName, snapshot.toolArgs, activeDoc);
+        if (!boundaryPerm.decision.allowed) {
+            return {
+                success: false,
+                error: `permission-denied: ${boundaryPerm.decision.message}`,
+            };
+        }
+
+        // Lưu snapshot deltas trước khi ghi
+        rootAtBoundary.lastDeltas = [...snapshot.deltas];
+
+        // 11. Tuyến ghi chuẩn qua governedRouter
         const historyBefore = historyMarkOf(activeDoc);
         let toolResult: unknown;
         try {
@@ -656,6 +776,10 @@ export async function executeRepairProposal(
                 success: false,
                 error: `tool-execution-error: ${String(toolErr)}`,
             };
+        }
+
+        if (testHooks?.postWriteDelay) {
+            await testHooks.postWriteDelay();
         }
 
         const text =
@@ -686,14 +810,28 @@ export async function executeRepairProposal(
             };
         }
 
-        // QUAN TRỌNG: Ghi thành công -> TÍNH LƯỢT NGAY LẬP TỨC
-        // "Chỉ tính lượt sau khi xác nhận transaction đã ghi thành công. Nếu đã ghi mà hậu kiểm bị hủy, lượt đó vẫn được tính."
+        // =========================================================================
+        // Yêu cầu 2: Ghi thành công -> Gắn kết quả và số lượt với tác vụ gốc đã duyệt
+        // =========================================================================
         (snapshot as { executed: boolean }).executed = true;
-        const liveAfterWrite = getTaskProfile() ?? profile;
-        liveAfterWrite.executedRepairs = currentExecuted + 1;
-        liveAfterWrite.activeProposal = undefined;
+        const targetRootProfile = getTaskProfileById(rootTaskId) ?? rootProfile;
+        if (targetRootProfile) {
+            targetRootProfile.executedRepairs = currentExecuted + 1;
+            targetRootProfile.activeProposal = undefined;
+            targetRootProfile.lastDeltas = [...snapshot.deltas];
+        }
 
-        // 11. Đo lại độc lập toàn bộ tiêu chí
+        // Kiểm tra xem tác vụ hiện hành có còn là tác vụ gốc hay không
+        const currentActive = getTaskProfile();
+        if (!currentActive || currentActive.taskId !== rootTaskId) {
+            // Tác vụ mới đã mở: GIỮ NGUYÊN số lượt, thẻ và bằng chứng của tác vụ mới!
+            return {
+                success: true,
+                error: "task-context-switched: đã ghi nhận thành công một lượt sửa cho tác vụ gốc",
+            };
+        }
+
+        // 12. Đo lại độc lập toàn bộ tiêu chí (chỉ khi tác vụ gốc vẫn đang mở)
         let evalResult: TaskCriteriaEvaluation | undefined;
         try {
             if (remeasureFn) {
@@ -703,7 +841,7 @@ export async function executeRepairProposal(
                 evalResult = await finalizeTaskVerification(activeDoc);
             }
         } catch (measureErr) {
-            // Lần đo sau bị hủy/lỗi -> lượt ghi vẫn đã được tính!
+            // Nếu đã ghi thành công rồi hậu kiểm bị hủy, vẫn tính một lượt cho tác vụ gốc
             return {
                 success: true,
                 error: `ghi-thanh-cong-nhung-do-lai-loi: ${String(measureErr)}`,
@@ -715,10 +853,14 @@ export async function executeRepairProposal(
             evaluation: evalResult,
         };
     } finally {
-        const live = getTaskProfile();
-        if (live) {
-            live.isRepairExecuting = false;
+        const boundRoot = getTaskProfileById(rootTaskId) ?? rootProfile;
+        if (boundRoot) {
+            boundRoot.isRepairExecuting = false;
         }
         profile.isRepairExecuting = false;
+        const live = getTaskProfile();
+        if (live && live.taskId === rootTaskId) {
+            live.isRepairExecuting = false;
+        }
     }
 }

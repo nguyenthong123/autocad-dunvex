@@ -54,6 +54,7 @@ export {
     getActiveTaskProfile,
     getAgentCreatedNodeIds,
     getTaskProfile,
+    getTaskProfileById,
     invalidateTaskProfile,
     isNodeAllowed,
     isTaskOwned,
