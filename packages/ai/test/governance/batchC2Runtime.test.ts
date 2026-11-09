@@ -10,6 +10,7 @@ import {
     clearDesignRulesForTests,
     clearTaskProfile,
     confirmProposedPlan,
+    evaluateTaskCriteria,
     finalizeTaskVerification,
     getActiveTaskProfile,
     getTaskCriteria,
@@ -376,6 +377,76 @@ describe("TASK-40 C2 runtime — criteria gắn vào plan, đo sau ghi, finalize
         expect(row.reason).toContain("state-drift-during-measurement");
         expect(row.reason).toContain("thao tác chỉnh sửa mới trong lúc chờ đo");
         expect(evaluation!.completable).toBe(false);
+    });
+
+    test("đổi tài liệu sang B trong lúc runner chờ → bỏ kết quả pass cũ, cả A và B đều không hoàn tất", async () => {
+        setPlanApprovalHandler(async (bound) => ({ approved: true, profile: confirmProposedPlan(bound) }));
+        const tool = buildProposeTaskPlanTool();
+
+        const docA = doc;
+        const docB = createMockDocument({ id: "doc-B" });
+
+        const proposeResult = JSON.parse(
+            (await tool.handler!(
+                {
+                    goal: "tạo tấm trên doc A",
+                    allowedModifiedNodeIds: [],
+                    criteria: [{ ...validCriteria[0], id: "kich-A", subjectNodeIds: ["prod-1"] }],
+                },
+                undefined,
+            )) as string,
+        );
+        const taskId = proposeResult.taskId;
+
+        applySuccessfulWriteForTests(
+            "run_program",
+            { ops: [] },
+            JSON.stringify({ created: [{ nodeId: "prod-1" }] }),
+        );
+
+        let resolveRunner!: (val: any) => void;
+        const runnerPromise = new Promise((res) => {
+            resolveRunner = res;
+        });
+
+        registerCriterionRunner({
+            kind: "dimension_match",
+            label: "Kích thước bao (hộp bao world, mm)",
+            supportNotes: "runner giả lập trễ trên doc A",
+            measure: async () => {
+                await runnerPromise;
+                return {
+                    status: "pass",
+                    measured: { sizeMm: [800, 300, 2500] },
+                    reason: "kết quả đo tính trên doc A trước khi đổi",
+                };
+            },
+        });
+
+        // Bắt đầu đo A qua finalizeTaskVerification
+        const verifyPromise = finalizeTaskVerification(docA);
+
+        // Trong lúc runner đang chờ, người dùng chuyển sang tài liệu B
+        const app = (globalThis as any).app;
+        app.activeView = { document: docB };
+
+        // Runner trả kết quả pass cũ
+        resolveRunner(undefined);
+
+        const evalA = await verifyPromise;
+        expect(evalA).toBeDefined();
+
+        // Kết quả pass cũ bị bỏ vì tài liệu đang mở đã thay đổi trong lúc chờ đo
+        const rowA = evalA!.rows[0];
+        expect(rowA.status).toBe("unknown");
+        expect(rowA.reason).toContain("state-drift-during-measurement");
+        expect(rowA.reason).toContain("tài liệu đang mở đã thay đổi hoặc đóng trong lúc chờ đo");
+        expect(evalA!.completable).toBe(false);
+
+        // Tài liệu B cũng không hoàn tất (bằng chứng không khớp tài liệu B)
+        const evalB = evaluateTaskCriteria(taskId, docB);
+        expect(evalB.completable).toBe(false);
+        expect(evalB.rows[0].status).toBe("unknown");
     });
 
     test("finalize không có plan/criteria → undefined (không tự bày đặt đo)", async () => {

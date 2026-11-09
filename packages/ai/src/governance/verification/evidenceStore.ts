@@ -70,26 +70,36 @@ export interface EvidenceInput {
     measured?: Record<string, number[]>;
     supportNotes?: string;
     historyMark?: string;
+    documentId?: string;
+    rulesFingerprint?: string;
+    stateSignature?: string;
+    doc?: IDocument;
 }
 
 /**
- * Record binds the evidence to the CURRENT document, rules fingerprint and time —
+ * Record binds the evidence to the target document, rules fingerprint and time —
  * so later drift shows up as staleness instead of a silent pass (§6 "Ghi và kiểm tra").
  */
 export function recordCriterionEvidence(input: EvidenceInput): CriterionEvidence {
-    const doc = getDocument();
-    if (!doc) {
+    const doc = input.doc ?? getDocument();
+    const docId = input.documentId ?? doc?.id;
+    if (!docId) {
         throw new Error("Cannot record criterion evidence without an open document");
     }
     const evidence: CriterionEvidence = {
-        ...input,
-        documentId: doc.id,
-        rulesFingerprint: rulesFingerprintFor(doc.id),
-        // Reviewer C1 follow-up: bind the proof to a document state the app can
-        // re-verify on read (history position + subject bbox signature), so edits
-        // made outside the governed agent path still invalidate at next evaluation.
-        historyMark: input.historyMark ?? historyMarkOf(doc),
-        stateSignature: subjectsSignatureOf(doc, input.subjectNodeIds),
+        taskId: input.taskId,
+        criterionId: input.criterionId,
+        kind: input.kind,
+        subjectNodeIds: input.subjectNodeIds,
+        status: input.status,
+        measured: input.measured,
+        reason: input.reason,
+        supportNotes: input.supportNotes,
+        documentId: docId,
+        rulesFingerprint: input.rulesFingerprint ?? (doc ? rulesFingerprintFor(docId) : ""),
+        historyMark: input.historyMark ?? (doc ? historyMarkOf(doc) : undefined),
+        stateSignature:
+            input.stateSignature ?? (doc ? subjectsSignatureOf(doc, input.subjectNodeIds) : undefined),
         recordedAt: Date.now(),
     };
     let byCriterion = evidenceByTask.get(input.taskId);
@@ -300,7 +310,8 @@ export async function runTaskCriterionChecks(
     taskId: string,
     doc?: IDocument,
 ): Promise<TaskCriteriaEvaluation> {
-    const active = doc ?? getDocument();
+    const preOpenDoc = getDocument();
+    const target = doc ?? preOpenDoc;
     for (const spec of getTaskCriteria(taskId)) {
         const runner = runners.get(spec.kind);
         if (!runner) {
@@ -312,48 +323,58 @@ export async function runTaskCriterionChecks(
                 status: "unknown",
                 reason:
                     spec.resolutionNote ?? `runner-not-registered: chưa có bộ kiểm cho loại "${spec.kind}"`,
+                doc: target,
+                documentId: target?.id,
             });
             continue;
         }
 
-        // Reviewer C2 #2: Chụp mốc tài liệu, hình học, task và quy tắc TRƯỚC khi đo
-        const preDoc = active;
-        const preDocId = active?.id;
-        const preHistoryMark = active ? historyMarkOf(active) : undefined;
-        const preRulesFingerprint = active ? rulesFingerprintFor(active.id) : undefined;
+        // Reviewer C2: Chụp mốc tài liệu được đo, tài liệu đang mở, hình học, task và quy tắc TRƯỚC khi đo
+        const preDocId = target?.id;
+        const preOpenDocId = preOpenDoc?.id;
+        const preHistoryMark = target ? historyMarkOf(target) : undefined;
+        const preRulesFingerprint = target ? rulesFingerprintFor(target.id) : undefined;
         const preProfile = getTaskProfile();
         const preTaskStatus = preProfile?.status;
         const preTaskId = preProfile?.taskId;
-        const preSubjectsSignature = active ? subjectsSignatureOf(active, spec.subjectNodeIds) : undefined;
+        const preSubjectsSignature = target ? subjectsSignatureOf(target, spec.subjectNodeIds) : undefined;
 
         let measurement: CriterionMeasurement = {
             status: "unknown",
             reason: "runner-threw",
         };
         try {
-            measurement = await runner.measure(spec, active);
+            measurement = await runner.measure(spec, target);
         } catch (error) {
             measurement = { status: "unknown", reason: `runner-threw: ${String(error)}` };
         }
 
-        // Kiểm tra lại SAU khi runner.measure trả về
-        const currentDoc = doc ?? getDocument();
+        // Post-measure: đọc lại tài liệu đang mở (qua getDocument()) và đối chiếu với tài liệu đã chụp lúc bắt đầu
+        const currentlyOpenDoc = getDocument();
         const currentProfile = getTaskProfile();
         let driftReason: string | undefined;
+        let isFatalDrift = false;
 
-        if (!currentDoc || currentDoc !== preDoc || currentDoc.id !== preDocId) {
-            driftReason = "tài liệu đã đổi hoặc đóng trong lúc chờ đo";
+        const openDocChanged =
+            preOpenDoc !== currentlyOpenDoc ||
+            preOpenDocId !== currentlyOpenDoc?.id ||
+            (target && currentlyOpenDoc && (currentlyOpenDoc !== target || currentlyOpenDoc.id !== preDocId));
+
+        if (openDocChanged) {
+            driftReason = "tài liệu đang mở đã thay đổi hoặc đóng trong lúc chờ đo";
+            isFatalDrift = true;
         } else if (
             !currentProfile ||
             currentProfile.status !== preTaskStatus ||
             currentProfile.taskId !== preTaskId
         ) {
-            driftReason = "kế hoạch đã đổi hoặc bị hủy trong lúc chờ đo";
-        } else if (rulesFingerprintFor(currentDoc.id) !== preRulesFingerprint) {
+            driftReason = "tác vụ đã đổi hoặc mất hiệu lực trong lúc chờ đo";
+            isFatalDrift = true;
+        } else if (target && rulesFingerprintFor(target.id) !== preRulesFingerprint) {
             driftReason = "quy tắc thiết kế đã đổi trong lúc chờ đo";
-        } else if (historyMarkOf(currentDoc) !== preHistoryMark) {
+        } else if (target && historyMarkOf(target) !== preHistoryMark) {
             driftReason = "tài liệu đã có thao tác chỉnh sửa mới trong lúc chờ đo";
-        } else if (subjectsSignatureOf(currentDoc, spec.subjectNodeIds) !== preSubjectsSignature) {
+        } else if (target && subjectsSignatureOf(target, spec.subjectNodeIds) !== preSubjectsSignature) {
             driftReason = "hình học đối tượng đã thay đổi trong lúc chờ đo";
         }
 
@@ -362,7 +383,7 @@ export async function runTaskCriterionChecks(
         let reasonToRecord = measurement.reason;
 
         if (driftReason) {
-            // Có chỉnh sửa, đổi tài liệu, đổi kế hoạch hoặc hủy trong lúc chờ → bỏ kết quả cũ, giữ trạng thái chưa kiểm chứng
+            // Khi đổi tài liệu, tác vụ mất hiệu lực, hoặc hình học thay đổi trong lúc chờ → bỏ kết quả cũ, giữ trạng thái chưa kiểm chứng
             statusToRecord = "unknown";
             measuredToRecord = undefined;
             reasonToRecord = `state-drift-during-measurement: ${driftReason} — bỏ kết quả đo cũ, giữ trạng thái chưa kiểm chứng`;
@@ -377,9 +398,18 @@ export async function runTaskCriterionChecks(
             measured: measuredToRecord,
             reason: reasonToRecord,
             supportNotes: runner.supportNotes,
+            doc: target,
+            documentId: preDocId,
+            rulesFingerprint: target ? rulesFingerprintFor(target.id) : preRulesFingerprint,
+            historyMark: target ? historyMarkOf(target) : preHistoryMark,
+            stateSignature: target ? subjectsSignatureOf(target, spec.subjectNodeIds) : preSubjectsSignature,
         });
+
+        if (isFatalDrift) {
+            break;
+        }
     }
-    return evaluateTaskCriteria(taskId, active);
+    return evaluateTaskCriteria(taskId, target);
 }
 
 export function resetVerificationForTests(): void {
