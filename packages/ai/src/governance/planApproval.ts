@@ -17,6 +17,8 @@ export interface TaskPlanProposal {
     criteria?: CriterionSpec[];
     /** Proposal entries dropped by sanitization (malformed / non-mm units / non-world frame). */
     criteriaDiscarded?: number;
+    /** Error message if proposal criteria contains duplicate criterion IDs. */
+    duplicateIdError?: string;
     allowedModifiedNodeIds: string[];
     allowedDeletedNodeIds: string[];
     allowedConsumedNodeIds: string[];
@@ -72,12 +74,13 @@ export function getPendingProposal(): BoundTaskPlanProposal | undefined {
 
 /** Normalize proposal fields; ignore any model-supplied approved/force flags. */
 export function parseTaskPlanProposal(raw: Record<string, unknown>): TaskPlanProposal {
-    const { criteria, discarded } = sanitizeProposalCriteria(raw["criteria"]);
+    const { criteria, discarded, duplicateIdError } = sanitizeProposalCriteria(raw["criteria"]);
     return {
         goal: typeof raw["goal"] === "string" ? raw["goal"] : undefined,
         summary: typeof raw["summary"] === "string" ? raw["summary"] : undefined,
         criteria,
         criteriaDiscarded: discarded > 0 ? discarded : undefined,
+        duplicateIdError,
         allowedModifiedNodeIds: stringIds(raw["allowedModifiedNodeIds"]),
         allowedDeletedNodeIds: stringIds(raw["allowedDeletedNodeIds"]),
         allowedConsumedNodeIds: stringIds(raw["allowedConsumedNodeIds"]),
@@ -158,6 +161,9 @@ export function confirmProposedPlan(
     }
     if (proposal.documentId !== pendingProposal.documentId) {
         throw new Error("PROPOSAL_STALE: Proposal document binding mismatch.");
+    }
+    if (proposal.duplicateIdError) {
+        throw new Error(`INVALID_PROPOSAL: ${proposal.duplicateIdError}`);
     }
 
     const active = options?.document ?? getDocument();
@@ -265,6 +271,12 @@ export function buildProposeTaskPlanTool(): Tool {
                 return JSON.stringify({ error: "no document is open", approved: false });
             }
             const proposal = parseTaskPlanProposal(args ?? {});
+            if (proposal.duplicateIdError) {
+                return JSON.stringify({
+                    error: `propose_task_plan thất bại: ${proposal.duplicateIdError}`,
+                    approved: false,
+                });
+            }
             const hasScope =
                 proposal.allowedModifiedNodeIds.length > 0 ||
                 proposal.allowedDeletedNodeIds.length > 0 ||
@@ -332,53 +344,104 @@ function finiteNumberArray(value: unknown): number[] | undefined {
 }
 
 /**
- * Sanitize model-supplied criteria. Structural garbage, non-mm units or non-world frames
- * are DISCARDED (counted, surfaced on the approval card) rather than silently reinterpreted.
- * Semantically missing information (no tolerance, no expected) is KEPT — the runner reads
- * those as unknown; that honesty is the point (Reviewer C4-C decision).
+ * Sanitize model-supplied criteria.
+ * - Phát hiện trùng lặp ID (chặn hoặc yêu cầu sửa kế hoạch, không cho phép 2 tiêu chí trùng ID).
+ * - Mục rác cấu trúc không phải object hoặc tiêu chí tuỳ chọn không hợp lệ bị LOẠI BỎ (đếm discarded).
+ * - TIÊU CHÍ BẮT BUỘC: bảo toàn toàn bộ, không âm thầm loại bỏ để pass ảo. Nếu không hợp lệ hoặc
+ *   chưa hỗ trợ (unit khác mm, coordRef khác world, dung sai âm, thiếu subject/kind), giữ lại kèm
+ *   `resolutionNote` để runner trả `unknown` và chặn hoàn tất cho tới khi làm rõ / sửa kế hoạch.
+ * - Thiếu expected hoặc toleranceMm vẫn được giữ (runner sẽ đọc là unknown).
  */
-function sanitizeProposalCriteria(value: unknown): { criteria: CriterionSpec[]; discarded: number } {
+function sanitizeProposalCriteria(value: unknown): {
+    criteria: CriterionSpec[];
+    discarded: number;
+    duplicateIdError?: string;
+} {
     if (!Array.isArray(value)) return { criteria: [], discarded: 0 };
     const criteria: CriterionSpec[] = [];
+    const seenIds = new Set<string>();
+    const duplicateIds = new Set<string>();
     let discarded = 0;
+
     for (const entry of value) {
         if (!entry || typeof entry !== "object") {
             discarded++;
             continue;
         }
         const e = entry as Record<string, unknown>;
-        const id = typeof e["id"] === "string" ? e["id"].trim() : "";
+        const rawId = typeof e["id"] === "string" ? e["id"].trim() : "";
+        const isRequired = e["required"] !== false;
+
+        if (rawId) {
+            if (seenIds.has(rawId)) {
+                duplicateIds.add(rawId);
+            } else {
+                seenIds.add(rawId);
+            }
+        }
+
         const kind = typeof e["kind"] === "string" ? e["kind"].trim() : "";
         const subjects = stringIds(e["subjectNodeIds"]);
         const hint = typeof e["subjectHint"] === "string" ? e["subjectHint"].trim() : "";
-        if (!id || !kind || (subjects.length === 0 && !hint)) {
-            discarded++;
+
+        let invalidReason: string | undefined;
+        if (!rawId) {
+            invalidReason = "tiêu chí thiếu ID";
+        } else if (!kind) {
+            invalidReason = "tiêu chí thiếu loại kiểm tra (kind)";
+        } else if (subjects.length === 0 && !hint) {
+            invalidReason = "tiêu chí chưa nêu đối tượng kiểm tra (thiếu cả subjectNodeIds và subjectHint)";
+        } else if (e["unit"] !== undefined && String(e["unit"]).trim().toLowerCase() !== "mm") {
+            invalidReason = `đơn vị '${e["unit"]}' không hợp lệ hoặc chưa hỗ trợ (chỉ chấp nhận 'mm')`;
+        } else if (e["coordRef"] !== undefined && String(e["coordRef"]).trim().toLowerCase() !== "world") {
+            invalidReason = `hệ toạ độ '${e["coordRef"]}' chưa hỗ trợ (chỉ chấp nhận 'world')`;
+        } else if (finiteNumberArray(e["toleranceMm"])?.some((n) => n < 0)) {
+            invalidReason = "dung sai có giá trị âm không hợp lệ";
+        }
+
+        if (invalidReason) {
+            if (!isRequired) {
+                discarded++;
+                continue;
+            }
+            // Tiêu chí bắt buộc không hợp lệ: bảo toàn mục tiêu chí kèm note để chặn hoàn tất
+            const id = rawId || `invalid_required_${criteria.length + 1}`;
+            const expected: Record<string, number[]> = {};
+            if (e["expected"] && typeof e["expected"] === "object") {
+                for (const [k, arr] of Object.entries(e["expected"] as Record<string, unknown>)) {
+                    const nums = finiteNumberArray(arr);
+                    if (nums) expected[k] = nums;
+                }
+            }
+            criteria.push({
+                id,
+                kind: kind || "unsupported_criterion",
+                required: true,
+                subjectNodeIds: subjects,
+                subjectHint: subjects.length === 0 && hint ? hint : undefined,
+                expected,
+                toleranceMm: finiteNumberArray(e["toleranceMm"]),
+                source:
+                    typeof e["source"] === "string" && e["source"].trim()
+                        ? String(e["source"]).trim()
+                        : undefined,
+                resolutionNote: invalidReason,
+            });
             continue;
         }
-        if (e["unit"] !== undefined && String(e["unit"]).trim().toLowerCase() !== "mm") {
-            discarded++;
-            continue;
-        }
-        if (e["coordRef"] !== undefined && String(e["coordRef"]).trim().toLowerCase() !== "world") {
-            discarded++;
-            continue;
-        }
+
         const expected: Record<string, number[]> = {};
         if (e["expected"] && typeof e["expected"] === "object") {
-            for (const [key, arr] of Object.entries(e["expected"] as Record<string, unknown>)) {
+            for (const [k, arr] of Object.entries(e["expected"] as Record<string, unknown>)) {
                 const nums = finiteNumberArray(arr);
-                if (nums) expected[key] = nums;
+                if (nums) expected[k] = nums;
             }
         }
         const toleranceMm = finiteNumberArray(e["toleranceMm"]);
-        if (toleranceMm && toleranceMm.some((n) => n < 0)) {
-            discarded++;
-            continue;
-        }
         const spec: CriterionSpec = {
-            id,
+            id: rawId,
             kind,
-            required: e["required"] !== false,
+            required: isRequired,
             subjectNodeIds: subjects,
             expected,
             source:
@@ -390,7 +453,13 @@ function sanitizeProposalCriteria(value: unknown): { criteria: CriterionSpec[]; 
         };
         criteria.push(spec);
     }
-    return { criteria, discarded };
+
+    const duplicateIdError =
+        duplicateIds.size > 0
+            ? `kế hoạch có ID tiêu chí trùng lặp (${[...duplicateIds].map((i) => `"${i}"`).join(", ")}) — yêu cầu sửa kế hoạch với ID duy nhất cho từng tiêu chí`
+            : undefined;
+
+    return { criteria, discarded, duplicateIdError };
 }
 
 function markIdentity(mark: IHistoryRecord | undefined): string | undefined {

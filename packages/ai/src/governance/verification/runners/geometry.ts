@@ -34,6 +34,12 @@ function compareAgainstExpected(
     spec: CriterionSpec,
     readNode: (nodeId: string) => NodeReading,
 ): CriterionMeasurement {
+    if (spec.resolutionNote && spec.subjectNodeIds.length > 0) {
+        return {
+            status: "unknown",
+            reason: `tiêu chí chưa hợp lệ để đo ${label} — ${spec.resolutionNote}`,
+        };
+    }
     const expected = spec.expected[expectedKey];
     if (!validTriple(expected)) {
         return {

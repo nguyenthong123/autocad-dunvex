@@ -76,14 +76,23 @@ describe("TASK-40 C2 runtime — criteria gắn vào plan, đo sau ghi, finalize
         rs.unstubAllGlobals();
     });
 
-    test("sanitize proposal: giữ mục đúng, đếm mục loại (unit khác mm / entry rác)", () => {
+    test("sanitize proposal: loại bỏ rác/mục tuỳ chọn sai, bảo toàn tiêu chí bắt buộc kèm resolutionNote", () => {
         const parsed = parseTaskPlanProposal({
             goal: "tạo tấm",
             allowedModifiedNodeIds: ["wall-1"],
-            criteria: [...validCriteria, { ...validCriteria[0], id: "k2", unit: "in" }, "rác", 42],
+            criteria: [
+                ...validCriteria,
+                { ...validCriteria[0], id: "k-optional-bad", required: false, unit: "in" },
+                { ...validCriteria[0], id: "k-req-bad", required: true, unit: "in" },
+                "rác",
+                42,
+            ],
         });
-        expect(parsed.criteria?.length).toBe(1);
+        // 1 mục chuẩn + 1 mục bắt buộc sai đơn vị (được bảo toàn để chặn pass ảo) = 2
+        expect(parsed.criteria?.length).toBe(2);
         expect(parsed.criteria?.[0].subjectHint).toBe("Tấm C2");
+        expect(parsed.criteria?.[1].resolutionNote).toContain("đơn vị 'in' không hợp lệ");
+        // 1 mục tuỳ chọn sai + 2 mục rác primitive = 3 bị loại
         expect(parsed.criteriaDiscarded).toBe(3);
     });
 
@@ -229,6 +238,143 @@ describe("TASK-40 C2 runtime — criteria gắn vào plan, đo sau ghi, finalize
         expect(rowId.spec.subjectNodeIds).toEqual(["prod-1"]);
 
         // Tổng thể không hoàn tất vì k-hint còn unknown
+        expect(evaluation!.completable).toBe(false);
+    });
+
+    test("Point 1: tiêu chí đúng đi cùng tiêu chí bắt buộc trùng ID → tool chặn và yêu cầu sửa kế hoạch", async () => {
+        setPlanApprovalHandler(async (bound) => ({ approved: true, profile: confirmProposedPlan(bound) }));
+        const tool = buildProposeTaskPlanTool();
+
+        const out = JSON.parse(
+            (await tool.handler!(
+                {
+                    goal: "tạo tấm",
+                    allowedModifiedNodeIds: [],
+                    criteria: [
+                        { ...validCriteria[0], id: "kich" },
+                        { ...validCriteria[0], id: "kich" }, // Trùng ID "kich"
+                    ],
+                },
+                undefined,
+            )) as string,
+        );
+
+        expect(out.approved).toBe(false);
+        expect(out.error).toContain("trùng lặp");
+        expect(out.error).toContain("yêu cầu sửa kế hoạch");
+        expect(getActiveTaskProfile()).toBeUndefined();
+    });
+
+    test("Point 1: tiêu chí đúng đi cùng tiêu chí bắt buộc không hợp lệ (unit khác mm) → giữ unknown chặn hoàn tất", async () => {
+        setPlanApprovalHandler(async (bound) => ({ approved: true, profile: confirmProposedPlan(bound) }));
+        const tool = buildProposeTaskPlanTool();
+
+        const out = JSON.parse(
+            (await tool.handler!(
+                {
+                    goal: "tạo tấm",
+                    allowedModifiedNodeIds: [],
+                    criteria: [
+                        { ...validCriteria[0], id: "kich-valid" },
+                        { ...validCriteria[0], id: "kich-invalid-req", required: true, unit: "in" },
+                    ],
+                },
+                undefined,
+            )) as string,
+        );
+
+        expect(out.approved).toBe(true);
+        expect(out.criteriaCount).toBe(2);
+
+        applySuccessfulWriteForTests(
+            "run_program",
+            { ops: [] },
+            JSON.stringify({ created: [{ nodeId: "prod-1" }] }),
+        );
+
+        registerCriterionRunner({
+            kind: "dimension_match",
+            label: "Kích thước bao (hộp bao world, mm)",
+            supportNotes: "stub runtime",
+            measure: async (spec) =>
+                spec.resolutionNote
+                    ? { status: "unknown", reason: spec.resolutionNote }
+                    : { status: "pass", measured: { sizeMm: [800, 300, 2500] }, reason: "đạt" },
+        });
+
+        const evaluation = await finalizeTaskVerification(doc);
+        expect(evaluation).toBeTruthy();
+
+        // Tiêu chí đúng pass
+        const rowValid = evaluation!.rows.find((r) => r.spec.id === "kich-valid")!;
+        expect(rowValid.status).toBe("pass");
+
+        // Tiêu chí bắt buộc sai đơn vị giữ unknown kèm lý do, không bị drop để pass ảo
+        const rowInvalid = evaluation!.rows.find((r) => r.spec.id === "kich-invalid-req")!;
+        expect(rowInvalid.status).toBe("unknown");
+        expect(rowInvalid.reason).toContain("đơn vị 'in' không hợp lệ");
+
+        // App giữ trạng thái chưa hoàn tất
+        expect(evaluation!.completable).toBe(false);
+    });
+
+    test("Point 2: runner bị giữ chờ, tài liệu/hình học bị sửa rồi mới trả pass cũ → bỏ kết quả cũ, giữ unknown", async () => {
+        setPlanApprovalHandler(async (bound) => ({ approved: true, profile: confirmProposedPlan(bound) }));
+        const tool = buildProposeTaskPlanTool();
+
+        await tool.handler!(
+            {
+                goal: "tạo tấm",
+                allowedModifiedNodeIds: [],
+                criteria: [{ ...validCriteria[0], id: "kich", subjectNodeIds: ["prod-1"] }],
+            },
+            undefined,
+        );
+
+        applySuccessfulWriteForTests(
+            "run_program",
+            { ops: [] },
+            JSON.stringify({ created: [{ nodeId: "prod-1" }] }),
+        );
+
+        // Tạo deferred promise để giả lập runner chạy chậm / bị giữ chờ
+        let resolveRunner!: (val: any) => void;
+        const runnerPromise = new Promise((res) => {
+            resolveRunner = res;
+        });
+
+        registerCriterionRunner({
+            kind: "dimension_match",
+            label: "Kích thước bao (hộp bao world, mm)",
+            supportNotes: "runner giả lập trễ",
+            measure: async () => {
+                await runnerPromise;
+                return {
+                    status: "pass",
+                    measured: { sizeMm: [800, 300, 2500] },
+                    reason: "kết quả đo tính trên trạng thái cũ",
+                };
+            },
+        });
+
+        // Bắt đầu chạy kiểm tra tiêu chí
+        const checkPromise = finalizeTaskVerification(doc);
+
+        // Trong lúc runner đang chờ, người dùng hoặc UI sửa tài liệu (thêm lịch sử sửa)
+        const userMoveRecord = { name: "User Move" } as any;
+        (doc.history as any).undoTop = () => userMoveRecord;
+
+        // Runner trả kết quả pass cũ
+        resolveRunner(undefined);
+
+        const evaluation = await checkPromise;
+        expect(evaluation).toBeTruthy();
+
+        // Kết quả pass cũ bị bỏ vì tài liệu đã đổi trong lúc chờ đo → trả unknown
+        const row = evaluation!.rows[0];
+        expect(row.status).toBe("unknown");
+        expect(row.reason).toContain("state-drift-during-measurement");
+        expect(row.reason).toContain("thao tác chỉnh sửa mới trong lúc chờ đo");
         expect(evaluation!.completable).toBe(false);
     });
 

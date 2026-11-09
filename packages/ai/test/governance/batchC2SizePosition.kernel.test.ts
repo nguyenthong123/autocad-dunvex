@@ -23,6 +23,7 @@ import {
     positionMatchRunner,
     recordCriterionEvidence,
     recordTaskOwnedNodes,
+    registerCriterionRunner,
     registerDefaultGeometryRunners,
     resetTaskProfileForTests,
     resetVerificationForTests,
@@ -392,6 +393,65 @@ describe("TASK-40 Đợt C2 prep — kích thước & vị trí trên kernel th�
         expect(rowId.status).toBe("pass");
         expect(rowId.spec.subjectNodeIds).toEqual([box1.id]);
 
+        expect(ev!.completable).toBe(false);
+    });
+
+    test("C2 guard Point 2 (kernel thật): runner bị giữ chờ, đối tượng kernel thật bị sửa rồi mới trả pass → bỏ pass cũ, ghi unknown", async () => {
+        const box = addBox("Tấm trễ", 800, 300, 2500);
+        approveTaskPlan(
+            {
+                taskId: "c2-drift-kernel",
+                allowedModifiedNodeIds: [],
+                criteria: [
+                    {
+                        id: "k-drift",
+                        kind: "dimension_match",
+                        required: true,
+                        subjectNodeIds: [box.id],
+                        expected: { sizeMm: [800, 300, 2500] },
+                        toleranceMm: [2, 2, 2],
+                    },
+                ],
+            },
+            doc,
+        );
+        recordTaskOwnedNodes([box.id], doc);
+
+        let resolveMeasure!: (val: any) => void;
+        const measureGate = new Promise((r) => {
+            resolveMeasure = r;
+        });
+
+        registerCriterionRunner({
+            kind: "dimension_match",
+            requiresSubjectProof: true,
+            supportNotes: "runner giả lập trễ",
+            measure: async () => {
+                await measureGate;
+                return {
+                    status: "pass",
+                    measured: { [`${box.id}:sizeMm`]: [800, 300, 2500] },
+                    reason: "kết quả đo tính trước khi đối tượng đổi",
+                };
+            },
+        });
+
+        const verifyPromise = finalizeTaskVerification(doc);
+
+        // Trong lúc runner đang bị giữ chờ, người dùng đổi hình học của box trên kernel thật
+        box.shape = factory.box(Plane.XY, 900, 300, 2500);
+
+        // Runner trả pass cũ
+        resolveMeasure(undefined);
+
+        const ev = await verifyPromise;
+        expect(ev).toBeTruthy();
+
+        // Kết quả pass cũ bị huỷ vì hình học đã thay đổi trong lúc chờ đo
+        const row = ev!.rows[0];
+        expect(row.status).toBe("unknown");
+        expect(row.reason).toContain("state-drift-during-measurement");
+        expect(row.reason).toMatch(/thao tác chỉnh sửa mới|hình học đối tượng đã thay đổi/);
         expect(ev!.completable).toBe(false);
     });
 

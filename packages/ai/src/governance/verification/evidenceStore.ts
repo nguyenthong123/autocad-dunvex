@@ -310,10 +310,22 @@ export async function runTaskCriterionChecks(
                 kind: spec.kind,
                 subjectNodeIds: spec.subjectNodeIds,
                 status: "unknown",
-                reason: `runner-not-registered: chưa có bộ kiểm cho loại "${spec.kind}"`,
+                reason:
+                    spec.resolutionNote ?? `runner-not-registered: chưa có bộ kiểm cho loại "${spec.kind}"`,
             });
             continue;
         }
+
+        // Reviewer C2 #2: Chụp mốc tài liệu, hình học, task và quy tắc TRƯỚC khi đo
+        const preDoc = active;
+        const preDocId = active?.id;
+        const preHistoryMark = active ? historyMarkOf(active) : undefined;
+        const preRulesFingerprint = active ? rulesFingerprintFor(active.id) : undefined;
+        const preProfile = getTaskProfile();
+        const preTaskStatus = preProfile?.status;
+        const preTaskId = preProfile?.taskId;
+        const preSubjectsSignature = active ? subjectsSignatureOf(active, spec.subjectNodeIds) : undefined;
+
         let measurement: CriterionMeasurement = {
             status: "unknown",
             reason: "runner-threw",
@@ -323,14 +335,47 @@ export async function runTaskCriterionChecks(
         } catch (error) {
             measurement = { status: "unknown", reason: `runner-threw: ${String(error)}` };
         }
+
+        // Kiểm tra lại SAU khi runner.measure trả về
+        const currentDoc = doc ?? getDocument();
+        const currentProfile = getTaskProfile();
+        let driftReason: string | undefined;
+
+        if (!currentDoc || currentDoc !== preDoc || currentDoc.id !== preDocId) {
+            driftReason = "tài liệu đã đổi hoặc đóng trong lúc chờ đo";
+        } else if (
+            !currentProfile ||
+            currentProfile.status !== preTaskStatus ||
+            currentProfile.taskId !== preTaskId
+        ) {
+            driftReason = "kế hoạch đã đổi hoặc bị hủy trong lúc chờ đo";
+        } else if (rulesFingerprintFor(currentDoc.id) !== preRulesFingerprint) {
+            driftReason = "quy tắc thiết kế đã đổi trong lúc chờ đo";
+        } else if (historyMarkOf(currentDoc) !== preHistoryMark) {
+            driftReason = "tài liệu đã có thao tác chỉnh sửa mới trong lúc chờ đo";
+        } else if (subjectsSignatureOf(currentDoc, spec.subjectNodeIds) !== preSubjectsSignature) {
+            driftReason = "hình học đối tượng đã thay đổi trong lúc chờ đo";
+        }
+
+        let statusToRecord = measurement.status;
+        let measuredToRecord = measurement.measured;
+        let reasonToRecord = measurement.reason;
+
+        if (driftReason) {
+            // Có chỉnh sửa, đổi tài liệu, đổi kế hoạch hoặc hủy trong lúc chờ → bỏ kết quả cũ, giữ trạng thái chưa kiểm chứng
+            statusToRecord = "unknown";
+            measuredToRecord = undefined;
+            reasonToRecord = `state-drift-during-measurement: ${driftReason} — bỏ kết quả đo cũ, giữ trạng thái chưa kiểm chứng`;
+        }
+
         recordCriterionEvidence({
             taskId,
             criterionId: spec.id,
             kind: spec.kind,
             subjectNodeIds: spec.subjectNodeIds,
-            status: measurement.status,
-            measured: measurement.measured,
-            reason: measurement.reason,
+            status: statusToRecord,
+            measured: measuredToRecord,
+            reason: reasonToRecord,
             supportNotes: runner.supportNotes,
         });
     }

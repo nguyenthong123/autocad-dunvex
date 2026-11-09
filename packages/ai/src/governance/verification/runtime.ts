@@ -81,6 +81,9 @@ export async function finalizeTaskVerification(doc?: IDocument): Promise<TaskCri
         return undefined;
     }
     const specs: CriterionSpec[] = profile.criteria.map((spec) => {
+        if (spec.resolutionNote) {
+            return spec;
+        }
         const resolved = resolveSpecSubjects(spec, profile.taskOwnedNodeIds, active);
         return {
             ...spec,
