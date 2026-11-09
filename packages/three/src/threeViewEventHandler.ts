@@ -39,18 +39,21 @@ export class ThreeViewHandler implements IEventHandler {
     }
 
     pointerMove(view: IView, event: PointerEvent): void {
+        let changed = false;
         if (event.pointerType === "mouse") {
-            this.handleMouseMove(view, event);
+            changed = this.handleMouseMove(view, event);
         } else {
-            this.handleTouchMove(view, event);
+            changed = this.handleTouchMove(view, event);
         }
 
-        view.update();
+        if (changed) {
+            view.update();
+        }
     }
 
-    private handleMouseMove(view: IView, event: PointerEvent) {
+    private handleMouseMove(view: IView, event: PointerEvent): boolean {
         if (event.buttons !== MOUSE_MIDDLE) {
-            return;
+            return false;
         }
 
         let dx = 0;
@@ -70,17 +73,22 @@ export class ThreeViewHandler implements IEventHandler {
         }
 
         if (dx !== 0 && dy !== 0) this._lastDown = undefined;
+        return true;
     }
 
-    private handleTouchMove(view: IView, event: PointerEvent) {
+    private handleTouchMove(view: IView, event: PointerEvent): boolean {
         if (!this.currentPointerEventMap.has(event.pointerId)) {
             this.currentPointerEventMap.set(event.pointerId, event);
-            return;
+            return false;
         }
 
+        let handled = false;
         if (this.currentPointerEventMap.size === 3 && this.lastPointerEventMap.size === 3) {
             const offset = this.getPrimaryTouchOffset();
-            if (offset) view.cameraController.rotate(offset.dx, offset.dy);
+            if (offset && (offset.dx !== 0 || offset.dy !== 0)) {
+                view.cameraController.rotate(offset.dx, offset.dy);
+                handled = true;
+            }
         } else if (this.currentPointerEventMap.size === 2 && this.lastPointerEventMap.size === 2) {
             const last = this.getCenterAndDistance(this.lastPointerEventMap);
             const current = this.getCenterAndDistance(this.currentPointerEventMap);
@@ -89,14 +97,17 @@ export class ThreeViewHandler implements IEventHandler {
             if (dtCenter > Math.abs(dtDistance) * 0.5) {
                 // 0.5 no meaning, just for scale
                 view.cameraController.pan(current.center.x - last.center.x, current.center.y - last.center.y);
-            } else {
+                handled = true;
+            } else if (Math.abs(dtDistance) > 0.001) {
                 view.cameraController.zoom(current.center.x, current.center.y, -dtDistance);
+                handled = true;
             }
         }
 
         this.lastPointerEventMap.clear();
         this.lastPointerEventMap = this.currentPointerEventMap;
         this.currentPointerEventMap = new Map();
+        return handled;
     }
 
     private getPrimaryTouchOffset() {

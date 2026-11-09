@@ -42,6 +42,7 @@ export class PanEventHandler implements IEventHandler {
         if (!this._isDragging || !this._lastPos) return;
         const dx = event.offsetX - this._lastPos.x;
         const dy = event.offsetY - this._lastPos.y;
+        if (dx === 0 && dy === 0) return;
         this._lastPos = { x: event.offsetX, y: event.offsetY };
         view.cameraController.pan(dx, dy);
         view.update();

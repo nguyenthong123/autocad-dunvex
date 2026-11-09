@@ -81,12 +81,20 @@ export class CameraController extends Observable implements ICameraController {
     private _rotateCenter: Vector3 | undefined;
     private _camera: PerspectiveCamera | OrthographicCamera;
     private _transition?: CameraTransition;
+    private _lastZoomTime = 0;
+    private _cachedZoomX = -1;
+    private _cachedZoomY = -1;
+    private _cachedZoomIntersect: Vector3 | null = null;
+    private _lastZoomDeltaSign = 0;
+    private _cachedChildrenCount = -1;
+    private _cachedVisibleSignature = 0;
 
     get cameraType(): CameraType {
         return this.getPrivateValue("cameraType", "perspective");
     }
     set cameraType(value: CameraType) {
         if (this.setProperty("cameraType", value)) {
+            this.clearZoomCache();
             this._camera = this.createCamera(this._camera.near, this._camera.far);
             if (this.camera instanceof OrthographicCamera) {
                 this.updateOrthographicCamera(this.camera);
@@ -156,6 +164,7 @@ export class CameraController extends Observable implements ICameraController {
 
     pan(dx: number, dy: number): void {
         this.cancelTransition();
+        this.clearZoomCache();
         const ratio = PAN_SPEED_FACTOR * this._target.distanceTo(this._position);
         const direction = this._target.clone().sub(this._position).normalize();
         const hor = direction.clone().cross(this.camera.up).normalize();
@@ -248,6 +257,7 @@ export class CameraController extends Observable implements ICameraController {
             return;
         }
         this.cancelTransition();
+        this.clearZoomCache();
         const newRotation = this.getRotation(dx * ROTATE_SPEED_FACTOR, dy * ROTATE_SPEED_FACTOR);
 
         this._camera.up.copy(new Vector3(0, 1, 0).applyQuaternion(newRotation));
@@ -481,6 +491,12 @@ export class CameraController extends Observable implements ICameraController {
 
     zoom(x: number, y: number, delta: number): void {
         this.cancelTransition();
+        const deltaSign = Math.sign(delta);
+        if (this._lastZoomDeltaSign !== 0 && deltaSign !== 0 && deltaSign !== this._lastZoomDeltaSign) {
+            this.clearZoomCache();
+        }
+        this._lastZoomDeltaSign = deltaSign;
+
         const vector = this._target.clone().sub(this._position);
 
         const zoomFactor = this.caclueZoomFactor(x, y, vector);
@@ -502,10 +518,81 @@ export class CameraController extends Observable implements ICameraController {
         this.updateCameraPosionTarget();
     }
 
-    private caclueZoomFactor(x: number, y: number, direction: Vector3) {
-        const raycaster = new Raycaster();
-        raycaster.setFromCamera(this.view.screenToCameraRect(x, y), this.camera);
-        const intersect = raycaster.intersectObjects(this.view.content.visualShapes.children).at(0)?.point;
+    private isVisualObjectVisible(obj: Object3D): boolean {
+        if (!obj || !obj.visible) return false;
+        const node = (obj as any).node;
+        if (node !== undefined && (!node.visible || !node.parentVisible)) {
+            return false;
+        }
+        return true;
+    }
+
+    private isHitVisible(obj: Object3D | null): boolean {
+        let cur: Object3D | null = obj;
+        while (cur) {
+            if (!cur.visible) return false;
+            const node = (cur as any).node;
+            if (node !== undefined && (!node.visible || !node.parentVisible)) {
+                return false;
+            }
+            if (cur === this.view.content.visualShapes) break;
+            cur = cur.parent;
+        }
+        return true;
+    }
+
+    private caclueZoomFactor(x: number, y: number, direction: Vector3): number {
+        const visualChildren = this.view.content.visualShapes.children;
+        if (visualChildren.length === 0) {
+            return ZOOM_SPEED_FACTOR;
+        }
+
+        const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+        const dt = now - this._lastZoomTime;
+        const dx = Math.abs(x - this._cachedZoomX);
+        const dy = Math.abs(y - this._cachedZoomY);
+
+        let visibleSignature = 0;
+        const candidates: Object3D[] = [];
+        for (let i = 0; i < visualChildren.length; i++) {
+            const child = visualChildren[i];
+            if (this.isVisualObjectVisible(child)) {
+                candidates.push(child);
+                visibleSignature = (visibleSignature * 31 + child.id) | 0;
+            }
+        }
+        const childrenChanged = this._cachedChildrenCount !== visualChildren.length;
+        const visibilityChanged = this._cachedVisibleSignature !== visibleSignature;
+
+        let intersect = this._cachedZoomIntersect;
+        // Invalidate cache if:
+        // - Time gap > 150ms (new gesture)
+        // - Cursor drifted > 4px from the cached raycast anchor
+        // - Scene children count changed (objects added/removed)
+        // - Scene visibility changed (objects shown/hidden even if count is identical)
+        // - No previous cache
+        if (dt > 150 || dx > 4 || dy > 4 || childrenChanged || visibilityChanged || this._cachedZoomX < 0) {
+            intersect = null;
+            if (candidates.length > 0) {
+                const raycaster = new Raycaster();
+                raycaster.setFromCamera(this.view.screenToCameraRect(x, y), this.camera);
+                const hits = raycaster.intersectObjects(candidates);
+                for (const hit of hits) {
+                    if (this.isHitVisible(hit.object)) {
+                        intersect = hit.point.clone();
+                        break;
+                    }
+                }
+            }
+            this._cachedZoomIntersect = intersect;
+            this._cachedZoomX = x;
+            this._cachedZoomY = y;
+            this._cachedChildrenCount = visualChildren.length;
+            this._cachedVisibleSignature = visibleSignature;
+        }
+
+        this._lastZoomTime = now;
+
         let zoomFactor = ZOOM_SPEED_FACTOR;
         if (intersect) {
             zoomFactor = (ZOOM_SPEED_FACTOR * this._position.distanceTo(intersect)) / direction.length();
@@ -595,6 +682,7 @@ export class CameraController extends Observable implements ICameraController {
      * so a caller that chains two pose changes (a lookAt then a fitContent) gets one continuous move.
      */
     private beginTransition(to: CameraPose, duration?: number): void {
+        this.clearZoomCache();
         if (duration === undefined || duration <= 0) {
             this._transition = undefined;
             this.commitPose(to);
@@ -615,11 +703,22 @@ export class CameraController extends Observable implements ICameraController {
     }
 
     private commitPose(pose: CameraPose): void {
+        this.clearZoomCache();
         this._position.copy(pose.position);
         this._target.copy(pose.target);
         this._camera.up.copy(pose.up);
         this.updateLens();
         this.updateCameraPosionTarget();
+    }
+
+    clearZoomCache(): void {
+        this._lastZoomTime = 0;
+        this._cachedZoomX = -1;
+        this._cachedZoomY = -1;
+        this._cachedZoomIntersect = null;
+        this._lastZoomDeltaSign = 0;
+        this._cachedChildrenCount = -1;
+        this._cachedVisibleSignature = 0;
     }
 
     private cancelTransition(): void {

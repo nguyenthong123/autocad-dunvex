@@ -16,6 +16,10 @@ export class Flyout extends HTMLElement {
         return this._input !== undefined;
     }
 
+    get hasContent(): boolean {
+        return this._tip !== undefined || this._input !== undefined;
+    }
+
     constructor() {
         super();
         this.className = style.root;

@@ -11,6 +11,7 @@ import {
     Object3D,
     OrthographicCamera,
     PerspectiveCamera,
+    Raycaster,
     Scene,
     Vector3,
 } from "three";
@@ -265,6 +266,203 @@ describe("CameraController — zoom", () => {
         // delta=0 takes the `delta > 0 ? f : -f` else-branch, so the distance
         // is scaled by (1 - 0.1) instead of staying unchanged.
         expect(cc.cameraPosition.distanceTo(cc.cameraTarget)).toBeCloseTo(origDist * 0.9);
+    });
+
+    describe("zoom raycast cache regressions", () => {
+        let intersectSpy: any;
+
+        beforeEach(() => {
+            intersectSpy = rs.spyOn(Raycaster.prototype, "intersectObjects");
+        });
+
+        afterEach(() => {
+            intersectSpy.mockRestore();
+        });
+
+        function createViewWithObject() {
+            const view = createFakeView();
+            const geom = new BufferGeometry();
+            geom.setAttribute(
+                "position",
+                new BufferAttribute(new Float32Array([0, 0, 0, 10, 0, 0, 0, 10, 0]), 3),
+            );
+            const mesh = new Mesh(geom, new MeshBasicMaterial());
+            view.content.visualShapes.add(mesh);
+            return { view, mesh };
+        }
+
+        test("continuous zoom in same location reuses cached raycast intersection", () => {
+            const { view } = createViewWithObject();
+            const cc = new CameraController(view);
+
+            cc.zoom(400, 300, 120);
+            expect(intersectSpy).toHaveBeenCalledTimes(1);
+
+            // Immediate next zoom at same coordinates within 150ms
+            cc.zoom(400, 300, 120);
+            expect(intersectSpy).toHaveBeenCalledTimes(1);
+
+            cc.zoom(400, 300, 120);
+            expect(intersectSpy).toHaveBeenCalledTimes(1);
+        });
+
+        test("cursor drift > 4px from anchor invalidates cache and triggers new raycast", () => {
+            const { view } = createViewWithObject();
+            const cc = new CameraController(view);
+
+            cc.zoom(400, 300, 120);
+            expect(intersectSpy).toHaveBeenCalledTimes(1);
+
+            // Small drift <= 4px keeps cache
+            cc.zoom(402, 301, 120);
+            expect(intersectSpy).toHaveBeenCalledTimes(1);
+
+            // Cumulative drift > 4px from original anchor (400, 300) -> (405, 300)
+            cc.zoom(405, 300, 120);
+            expect(intersectSpy).toHaveBeenCalledTimes(2);
+        });
+
+        test("reversing zoom direction invalidates cache and triggers new raycast", () => {
+            const { view } = createViewWithObject();
+            const cc = new CameraController(view);
+
+            // Zoom in (positive delta)
+            cc.zoom(400, 300, 120);
+            expect(intersectSpy).toHaveBeenCalledTimes(1);
+
+            // Zoom in again -> cached
+            cc.zoom(400, 300, 120);
+            expect(intersectSpy).toHaveBeenCalledTimes(1);
+
+            // Reverse direction: Zoom out (negative delta) -> cache invalidated!
+            cc.zoom(400, 300, -120);
+            expect(intersectSpy).toHaveBeenCalledTimes(2);
+
+            // Zoom out again -> cached under negative direction
+            cc.zoom(400, 300, -120);
+            expect(intersectSpy).toHaveBeenCalledTimes(2);
+
+            // Reverse back to Zoom in -> cache invalidated!
+            cc.zoom(400, 300, 120);
+            expect(intersectSpy).toHaveBeenCalledTimes(3);
+        });
+
+        test("camera changes (pan, rotate, cameraType) invalidate zoom cache", () => {
+            const { view } = createViewWithObject();
+            const cc = new CameraController(view);
+
+            cc.zoom(400, 300, 120);
+            expect(intersectSpy).toHaveBeenCalledTimes(1);
+
+            // Pan invalidates cache
+            cc.pan(10, 10);
+            cc.zoom(400, 300, 120);
+            expect(intersectSpy).toHaveBeenCalledTimes(2);
+
+            // Rotate invalidates cache
+            cc.rotate(10, 10);
+            cc.zoom(400, 300, 120);
+            expect(intersectSpy).toHaveBeenCalledTimes(3);
+
+            // Changing camera type invalidates cache
+            cc.cameraType = "orthographic";
+            cc.zoom(400, 300, 120);
+            expect(intersectSpy).toHaveBeenCalledTimes(4);
+        });
+
+        test("scene object changes invalidate zoom cache", () => {
+            const { view, mesh } = createViewWithObject();
+            const cc = new CameraController(view);
+
+            cc.zoom(400, 300, 120);
+            expect(intersectSpy).toHaveBeenCalledTimes(1);
+
+            // Add new object to scene -> children count changes -> invalidates cache
+            const mesh2 = new Mesh(mesh.geometry, mesh.material);
+            view.content.visualShapes.add(mesh2);
+
+            cc.zoom(400, 300, 120);
+            expect(intersectSpy).toHaveBeenCalledTimes(2);
+        });
+
+        test("two collinear objects: hiding near object shifts anchor to far object, unhiding restores to near object", () => {
+            const view = createFakeView();
+            const cc = new CameraController(view);
+            // Position camera at (0, 0, 100) looking at (0, 0, 0)
+            cc.lookAt(new Vector3(0, 0, 100), new Vector3(0, 0, 0), new Vector3(0, 1, 0), { duration: 0 });
+
+            // Near mesh at z = 50 (double-sided quad covering [-500, 500] in XY)
+            const geomNear = new BufferGeometry();
+            geomNear.setAttribute(
+                "position",
+                new BufferAttribute(
+                    new Float32Array([
+                        -500, -500, 50, 500, -500, 50, 500, 500, 50, -500, -500, 50, 500, 500, 50, -500, 500,
+                        50,
+                    ]),
+                    3,
+                ),
+            );
+            const matNear = new MeshBasicMaterial({ side: 2 }); // DoubleSide
+            const meshNear = new Mesh(geomNear, matNear);
+
+            // Far mesh at z = 10 (double-sided quad covering [-500, 500] in XY)
+            const geomFar = new BufferGeometry();
+            geomFar.setAttribute(
+                "position",
+                new BufferAttribute(
+                    new Float32Array([
+                        -500, -500, 10, 500, -500, 10, 500, 500, 10, -500, -500, 10, 500, 500, 10, -500, 500,
+                        10,
+                    ]),
+                    3,
+                ),
+            );
+            const matFar = new MeshBasicMaterial({ side: 2 });
+            const meshFar = new Mesh(geomFar, matFar);
+
+            view.content.visualShapes.add(meshNear);
+            view.content.visualShapes.add(meshFar);
+            view.content.visualShapes.updateMatrixWorld(true);
+
+            expect(view.content.visualShapes.children.length).toBe(2);
+
+            // Initial zoom: probes scene -> hits meshNear at z = 50
+            cc.zoom(400, 300, 1);
+            expect(intersectSpy).toHaveBeenCalledTimes(1);
+            let cached = (cc as any)._cachedZoomIntersect as Vector3;
+            expect(cached).not.toBeNull();
+            expect(cached.z).toBeCloseTo(50, 1);
+
+            // Immediate zoom: reuses cached anchor at z = 50 without extra raycast
+            cc.zoom(400, 300, 1);
+            expect(intersectSpy).toHaveBeenCalledTimes(1);
+            expect(((cc as any)._cachedZoomIntersect as Vector3).z).toBeCloseTo(50, 1);
+
+            // Hide near object while total element count in visualShapes.children stays 2
+            meshNear.visible = false;
+            expect(view.content.visualShapes.children.length).toBe(2);
+
+            // Next zoom: MUST discard old hit and re-probe -> raycast count becomes 2
+            // Anchor point MUST shift to far object at z = 10!
+            cc.zoom(400, 300, 1);
+            expect(intersectSpy).toHaveBeenCalledTimes(2);
+            cached = (cc as any)._cachedZoomIntersect as Vector3;
+            expect(cached).not.toBeNull();
+            expect(cached.z).toBeCloseTo(10, 1);
+
+            // Unhide near object while total element count stays 2
+            meshNear.visible = true;
+            expect(view.content.visualShapes.children.length).toBe(2);
+
+            // Next zoom: MUST re-probe -> raycast count becomes 3
+            // Anchor point MUST switch back to near object at z = 50!
+            cc.zoom(400, 300, 1);
+            expect(intersectSpy).toHaveBeenCalledTimes(3);
+            cached = (cc as any)._cachedZoomIntersect as Vector3;
+            expect(cached).not.toBeNull();
+            expect(cached.z).toBeCloseTo(50, 1);
+        });
     });
 });
 

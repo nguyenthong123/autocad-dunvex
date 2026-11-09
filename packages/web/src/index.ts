@@ -18,13 +18,15 @@ document.body.appendChild(loading);
  * flight instead of sleeping on a guess, and there is no reason for a production build to
  * carry the door.
  */
-function exposeTestSurface(): void {
+function exposeTestSurface(app?: IApplication): void {
     if (__IS_PRODUCTION__) return;
     Object.defineProperty(globalThis, "__chiliTest", {
         value: {
             pendingWork,
             quietFrames,
             settled: () => pendingWork.whenIdle().then(() => quietFrames()),
+            app,
+            loadDocument: async (data: any) => (app ? app.loadDocument(data) : undefined),
             // The same door a ribbon button knocks on. A scripted run names commands
             // rather than hunting for the button, so re-arranging the ribbon cannot break
             // a scenario that was not about the ribbon.
@@ -174,7 +176,7 @@ async function handleApplicaionBuilt(app: IApplication) {
     // a page whose document is still loading and be told it had settled.
     const released = pendingWork.begin();
     try {
-        exposeTestSurface();
+        exposeTestSurface(app);
         for (const plugin of plugins) {
             Logger.info(`loading plugin from: ${plugin}`);
             await app.pluginManager.loadFromUrl(plugin);
