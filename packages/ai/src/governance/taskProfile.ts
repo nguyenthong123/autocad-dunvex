@@ -158,7 +158,7 @@ export function recordTaskOwnedNodes(nodeIds: string[], doc?: IDocument): void {
     for (const id of nodeIds) {
         if (id) owned.add(id);
     }
-    activeProfile = { ...profile, taskOwnedNodeIds: [...owned] };
+    profile.taskOwnedNodeIds = [...owned];
 }
 
 export function getAgentCreatedNodeIds(doc?: IDocument): ReadonlySet<string> {
@@ -190,10 +190,7 @@ export function markTaskInterleaved(reason: string): void {
 export function recordTaskHistoryEntry(record: IHistoryRecord | object | undefined, doc?: IDocument): void {
     const profile = getActiveTaskProfile(doc);
     if (!profile || !record) return;
-    activeProfile = {
-        ...profile,
-        taskHistoryRecords: [...profile.taskHistoryRecords, record],
-    };
+    profile.taskHistoryRecords.push(record);
 }
 
 /** Whether `nodeId` may receive the given impact under the active plan / ownership. */

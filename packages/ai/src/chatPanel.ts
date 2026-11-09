@@ -43,6 +43,7 @@ import {
     invalidateTaskProfile,
     onTaskEvidenceChanged,
     registerDefaultGeometryRunners,
+    rejectRepairProposal,
     renderEvidenceCard,
     setPlanApprovalHandler,
 } from "./governance";
@@ -986,18 +987,15 @@ export class ChatPanel extends HTMLElement {
                     btnReject: style.governanceBtnReject,
                 },
                 {
-                    onApproveRepair: async (proposal) => {
-                        const res = await executeRepairProposal(proposal, this.document);
+                    onApproveRepair: async (proposalId) => {
+                        const res = await executeRepairProposal(proposalId, this.document);
                         if (!res.success) {
                             this.appendError(res.error ?? "Lỗi thực thi sửa đề xuất");
                         }
                         this.refreshGovernanceCard();
                     },
-                    onRejectRepair: (proposal) => {
-                        const activeProfile = getTaskProfile();
-                        if (activeProfile && activeProfile.activeProposal === proposal) {
-                            activeProfile.activeProposal = undefined;
-                        }
+                    onRejectRepair: (proposalId) => {
+                        rejectRepairProposal(proposalId);
                         this.refreshGovernanceCard();
                     },
                 },

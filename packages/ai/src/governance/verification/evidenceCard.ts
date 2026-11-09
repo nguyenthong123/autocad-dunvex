@@ -24,8 +24,8 @@ export interface EvidenceCardClasses {
 }
 
 export interface EvidenceCardActions {
-    onApproveRepair?: (proposal: import("./types").RepairProposal) => void;
-    onRejectRepair?: (proposal: import("./types").RepairProposal) => void;
+    onApproveRepair?: (proposalId: string) => void;
+    onRejectRepair?: (proposalId: string) => void;
 }
 
 const STATUS_ICON = { pass: "✅", fail: "❌", unknown: "❓" } as const;
@@ -109,7 +109,7 @@ export function renderEvidenceCard(
                 e.stopPropagation();
                 approveBtn.disabled = true;
                 approveBtn.textContent = "Đang sửa...";
-                actions?.onApproveRepair?.(proposal);
+                actions?.onApproveRepair?.(proposal.proposalId);
             },
             { once: true },
         );
@@ -121,7 +121,7 @@ export function renderEvidenceCard(
         rejectBtn.addEventListener("click", (e) => {
             e.stopPropagation();
             rejectBtn.disabled = true;
-            actions?.onRejectRepair?.(proposal);
+            actions?.onRejectRepair?.(proposal.proposalId);
         });
 
         const btnContainer = div(

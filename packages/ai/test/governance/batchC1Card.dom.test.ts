@@ -177,6 +177,7 @@ describe("TASK-40 Đợt C1 — thẻ bằng chứng trong chat (mỗi trạng t
 
         approveBtn.click();
         expect(onApprove).toHaveBeenCalledTimes(1);
+        expect(onApprove).toHaveBeenCalledWith("p1");
         expect(approveBtn.disabled).toBe(true);
         expect(approveBtn.textContent).toBe("Đang sửa...");
 

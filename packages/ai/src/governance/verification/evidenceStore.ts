@@ -5,7 +5,7 @@ import type { IDocument } from "@chili3d/core";
 import { getDocument } from "../../tools/documentContext";
 import { rulesFingerprintFor } from "../rulesStore";
 import { getTaskProfile } from "../taskProfile";
-import { generateRepairProposal } from "./repairEngine";
+import { clearProposalSnapshotsForTests, generateRepairProposal } from "./repairEngine";
 import { historyMarkOf, subjectsSignatureOf } from "./stateMarker";
 import type {
     CriterionEvidence,
@@ -440,4 +440,5 @@ export function resetVerificationForTests(): void {
     specsByTask.clear();
     evidenceByTask.clear();
     listeners.clear();
+    clearProposalSnapshotsForTests();
 }

@@ -10,7 +10,10 @@ import {
     Matrix4,
     ParameterShapeNode,
     Plane,
+    property,
     type Result,
+    serializable,
+    serialize,
     XYZ,
 } from "@chili3d/core";
 import { createMockApplication, TestDocument } from "@chili3d/core/test-utils";
@@ -32,6 +35,7 @@ import {
     inspectNodeForRepair,
     isPureTranslation,
     registerDefaultGeometryRunners,
+    rejectRepairProposal,
     resetTaskProfileForTests,
     resetVerificationForTests,
     rulesFingerprintFor,
@@ -46,28 +50,36 @@ describe("TASK-40 Đợt C3 — Tự sửa sai theo sai lệch đo được trê
     let doc: TestDocument;
     let factory: ShapeFactory;
 
+    @serializable()
     class TestBoxNode extends ParameterShapeNode {
         override display(): any {
             return "body.box";
         }
+        @serialize()
         get plane(): Plane {
             return this.getPrivateValue("plane");
         }
         set plane(p: Plane) {
             this.setPropertyEmitShapeChanged("plane", p);
         }
+        @serialize()
+        @property("box.dx")
         get dx(): number {
             return this.getPrivateValue("dx");
         }
         set dx(v: number) {
             this.setPropertyEmitShapeChanged("dx", v);
         }
+        @serialize()
+        @property("box.dy")
         get dy(): number {
             return this.getPrivateValue("dy");
         }
         set dy(v: number) {
             this.setPropertyEmitShapeChanged("dy", v);
         }
+        @serialize()
+        @property("box.dz")
         get dz(): number {
             return this.getPrivateValue("dz");
         }
@@ -106,7 +118,7 @@ describe("TASK-40 Đợt C3 — Tự sửa sai theo sai lệch đo được trê
         resetVerificationForTests();
         resetTaskProfileForTests();
         clearTaskProfile();
-        doc = new TestDocument({ selection: { clearSelection: rs.fn() } as any });
+        doc = new TestDocument({ selection: { clearSelection: rs.fn(), getSelectedNodes: () => [] } as any });
         const app = createMockApplication();
         (app as any).activeView = { document: doc };
         rs.stubGlobal("app", app);
@@ -533,7 +545,7 @@ describe("TASK-40 Đợt C3 — Tự sửa sai theo sai lệch đo được trê
     // =========================================================================
     // C3-T10: Chặn bấm duyệt lặp (Anti-Double-Click / 2 yêu cầu đồng thời)
     // =========================================================================
-    test("C3-T10: chặn duyệt lặp hoặc đồng thời qua mutex isRepairExecuting", async () => {
+    test("C3-T10: chặn duyệt lặp hoặc đồng thời qua mutex isRepairExecuting (giữ nguyên số lượt tính đúng 1)", async () => {
         const box = addBox("box_concurrent", 700, 200, 100);
         const criteria: CriterionSpec[] = [
             {
@@ -556,10 +568,10 @@ describe("TASK-40 Đợt C3 — Tự sửa sai theo sai lệch đo được trê
         const proposal = eval1!.activeProposal!;
         expect(proposal).toBeDefined();
 
-        // Chạy đồng thời 2 yêu cầu duyệt cho cùng 1 đề xuất
+        // Chạy đồng thời 2 yêu cầu duyệt cho cùng 1 đề xuất theo proposalId
         const [res1, res2] = await Promise.all([
-            executeRepairProposal(proposal, doc),
-            executeRepairProposal(proposal, doc),
+            executeRepairProposal(proposal.proposalId, doc),
+            executeRepairProposal(proposal.proposalId, doc),
         ]);
 
         // Đúng 1 yêu cầu thành công, yêu cầu thứ 2 bị chặn bởi mutex hoặc cờ executed
@@ -567,6 +579,168 @@ describe("TASK-40 Đợt C3 — Tự sửa sai theo sai lệch đo được trê
         const failures = [res1.success, res2.success].filter((s) => !s).length;
         expect(successes).toBe(1);
         expect(failures).toBe(1);
+
+        // Chứng minh hình học chỉ sửa 1 lần lên 800 và số lượt chỉ tính đúng 1
+        expect(box.dx).toBe(800);
+        expect(getTaskProfile()?.executedRepairs).toBe(1);
+    });
+
+    test("C3-reject-1: từ chối gọi tầng thực thi với đề xuất cũ khi đã có đề xuất mới (giữ nguyên hình học và số lượt)", async () => {
+        const box = addBox("box_stale", 700, 200, 100);
+        const criteria1: CriterionSpec[] = [
+            {
+                id: "c-dim",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: [box.id],
+                expected: { sizeMm: [800, 200, 100] },
+                toleranceMm: [2, 2, 2],
+            },
+        ];
+        const profile = approveTaskPlan({
+            documentId: doc.id,
+            allowedModifiedNodeIds: [box.id],
+            criteria: criteria1,
+        });
+
+        const eval1 = await finalizeTaskVerification(doc);
+        const oldProposal = eval1!.activeProposal!;
+        expect(oldProposal).toBeDefined();
+
+        // Bây giờ phát sinh một đề xuất mới (ví dụ khi cập nhật tiêu chí mới trên task)
+        const criteria2: CriterionSpec[] = [
+            {
+                id: "c-dim",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: [box.id],
+                expected: { sizeMm: [850, 200, 100] },
+                toleranceMm: [2, 2, 2],
+            },
+        ];
+        profile.criteria = criteria2;
+        const eval2 = await finalizeTaskVerification(doc);
+        const newProposal = eval2!.activeProposal!;
+        expect(newProposal).toBeDefined();
+        expect(newProposal.proposalId).not.toBe(oldProposal.proposalId);
+
+        // Gọi tầng thực thi với proposalId của đề xuất cũ
+        const res = await executeRepairProposal(oldProposal.proposalId, doc);
+        expect(res.success).toBe(false);
+        expect(res.error).toContain("stale-proposal");
+
+        // Gọi tầng thực thi với object đề xuất cũ
+        const resObj = await executeRepairProposal(oldProposal, doc);
+        expect(resObj.success).toBe(false);
+        expect(resObj.error).toContain("stale-proposal");
+
+        // Chứng minh hình học và số lượt giữ nguyên
+        expect(box.dx).toBe(700);
+        expect(getTaskProfile()?.executedRepairs).toBe(0);
+    });
+
+    test("C3-reject-2: từ chối đề xuất có attemptIndex sai lệch với lượt kế tiếp của tác vụ (giữ nguyên hình học và số lượt)", async () => {
+        const box = addBox("box_attempt", 700, 200, 100);
+        const criteria: CriterionSpec[] = [
+            {
+                id: "c-dim",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: [box.id],
+                expected: { sizeMm: [800, 200, 100] },
+                toleranceMm: [2, 2, 2],
+            },
+        ];
+        approveTaskPlan({
+            documentId: doc.id,
+            allowedModifiedNodeIds: [box.id],
+            criteria,
+        });
+
+        const eval1 = await finalizeTaskVerification(doc);
+        const proposal = eval1!.activeProposal!;
+        expect(proposal.attemptIndex).toBe(1);
+
+        // Giả mạo đối tượng proposal với attemptIndex: 2 (trong khi tác vụ chưa chạy lần nào, kế tiếp phải là 1)
+        const forgedProposal = { ...proposal, attemptIndex: 2 };
+        const res = await executeRepairProposal(forgedProposal, doc);
+        expect(res.success).toBe(false);
+        expect(res.error).toContain("invalid-attempt-index");
+
+        // Chứng minh hình học và số lượt giữ nguyên
+        expect(box.dx).toBe(700);
+        expect(getTaskProfile()?.executedRepairs).toBe(0);
+    });
+
+    test("C3-reject-3: từ chối khi tham số đề xuất bị sửa sau khi hiện thẻ (tampered toolArgs) (giữ nguyên hình học và số lượt)", async () => {
+        const box = addBox("box_tamper", 700, 200, 100);
+        const criteria: CriterionSpec[] = [
+            {
+                id: "c-dim",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: [box.id],
+                expected: { sizeMm: [800, 200, 100] },
+                toleranceMm: [2, 2, 2],
+            },
+        ];
+        approveTaskPlan({
+            documentId: doc.id,
+            allowedModifiedNodeIds: [box.id],
+            criteria,
+        });
+
+        const eval1 = await finalizeTaskVerification(doc);
+        const proposal = eval1!.activeProposal!;
+        expect(proposal.toolArgs).toEqual({ id: box.id, properties: { dx: 800 } });
+
+        // Đối tượng từ client bị can thiệp/tampered: sửa dx từ 800 lên 9999
+        const tamperedProposal = {
+            ...proposal,
+            toolArgs: { id: box.id, properties: { dx: 9999 } },
+        };
+        const res = await executeRepairProposal(tamperedProposal, doc);
+        expect(res.success).toBe(false);
+        expect(res.error).toContain("tampered-proposal");
+
+        // Chứng minh hình học và số lượt giữ nguyên (không bị đổi thành 9999 hay 800)
+        expect(box.dx).toBe(700);
+        expect(getTaskProfile()?.executedRepairs).toBe(0);
+    });
+
+    test("C3-reject-4: từ chối thực thi đề xuất đã bị người dùng từ chối (giữ nguyên hình học và số lượt)", async () => {
+        const box = addBox("box_rejected", 700, 200, 100);
+        const criteria: CriterionSpec[] = [
+            {
+                id: "c-dim",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: [box.id],
+                expected: { sizeMm: [800, 200, 100] },
+                toleranceMm: [2, 2, 2],
+            },
+        ];
+        approveTaskPlan({
+            documentId: doc.id,
+            allowedModifiedNodeIds: [box.id],
+            criteria,
+        });
+
+        const eval1 = await finalizeTaskVerification(doc);
+        const proposal = eval1!.activeProposal!;
+        expect(proposal).toBeDefined();
+
+        // Người dùng bấm Từ chối đề xuất
+        rejectRepairProposal(proposal.proposalId);
+
+        // Cố thực thi đề xuất đã từ chối (qua proposalId hoặc object)
+        const res = await executeRepairProposal(proposal.proposalId, doc);
+        expect(res.success).toBe(false);
+        expect(res.error).toMatch(/proposal-rejected|stale-proposal|proposal-invalidated/);
+
+        // Chứng minh hình học và số lượt giữ nguyên
+        expect(box.dx).toBe(700);
+        expect(getTaskProfile()?.executedRepairs).toBe(0);
     });
 
     // =========================================================================
@@ -721,7 +895,7 @@ describe("TASK-40 Đợt C3 — Tự sửa sai theo sai lệch đo được trê
         approveBtn!.click();
 
         // Đợi async execution hoàn thành
-        await new Promise((r) => setTimeout(r, 60));
+        await new Promise((r) => setTimeout(r, 120));
 
         // Kiểm tra kết quả sau khi duyệt sửa qua UI ChatPanel
         expect(box.dx).toBe(800);

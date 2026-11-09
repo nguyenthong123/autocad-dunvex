@@ -1,14 +1,40 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
-import { type IDocument, Id, type INode, Matrix4, Plane, Transaction, XYZ } from "@chili3d/core";
+import { type IDocument, Id, type INode, Matrix4, Plane, XYZ } from "@chili3d/core";
 import { findNode, getDocument } from "../../tools/documentContext";
-import { buildTransformMatrix } from "../../tools/transformMatrix";
 import { checkToolPermission } from "../permissionGate";
 import { rulesFingerprintFor } from "../rulesStore";
 import { getActiveTaskProfile, getTaskProfile } from "../taskProfile";
 import { historyMarkOf, subjectsSignatureOf } from "./stateMarker";
 import type { CriterionStructuredDelta, RepairProposal, TaskCriteriaEvaluation } from "./types";
+
+const proposalSnapshotStore = new Map<string, Readonly<RepairProposal>>();
+
+export function getProposalSnapshot(proposalId: string): Readonly<RepairProposal> | undefined {
+    return proposalSnapshotStore.get(proposalId);
+}
+
+export function clearProposalSnapshotsForTests(): void {
+    proposalSnapshotStore.clear();
+}
+
+export function registerProposalSnapshotForTests(proposal: RepairProposal): void {
+    proposalSnapshotStore.set(proposal.proposalId, Object.freeze({ ...proposal }));
+}
+
+export function rejectRepairProposal(proposalId: string): void {
+    const snapshot = proposalSnapshotStore.get(proposalId);
+    if (snapshot) {
+        (snapshot as { invalidated?: boolean }).invalidated = true;
+        (snapshot as { invalidationReason?: string }).invalidationReason =
+            "proposal-rejected: người dùng đã từ chối đề xuất sửa";
+    }
+    const profile = getTaskProfile();
+    if (profile && profile.activeProposal?.proposalId === proposalId) {
+        profile.activeProposal = undefined;
+    }
+}
 
 export interface NodeRepairInspection {
     nodeId: string;
@@ -312,6 +338,26 @@ export function generateRepairProposal(
             return { stopReason: "không xác định được tham số kích thước cần sửa" };
         }
 
+        const toolArgs = {
+            id: subjectId,
+            properties: propertiesUpdate,
+        };
+
+        // Nếu đề xuất hiện hành vẫn khớp hoàn toàn trạng thái hình học, quy tắc và nội dung sửa: tái dùng đề xuất ổn định
+        if (
+            profile.activeProposal &&
+            !profile.activeProposal.executed &&
+            !profile.activeProposal.invalidated &&
+            profile.activeProposal.historyMark === historyMarkOf(doc) &&
+            profile.activeProposal.rulesFingerprint === rulesFingerprintFor(doc.id) &&
+            profile.activeProposal.stateSignature === subjectsSignatureOf(doc, [subjectId]) &&
+            profile.activeProposal.attemptIndex === executedRepairs + 1 &&
+            profile.activeProposal.toolName === "set_node_properties" &&
+            JSON.stringify(profile.activeProposal.toolArgs) === JSON.stringify(toolArgs)
+        ) {
+            return { proposal: profile.activeProposal };
+        }
+
         const subjectNode = findNode(doc, subjectId);
         const nodeName = subjectNode?.name ?? subjectId;
         const displayDescription = `Sửa kích thước ${nodeName} (${descriptions.join(", ")})`;
@@ -325,10 +371,7 @@ export function generateRepairProposal(
             stateSignature: subjectsSignatureOf(doc, [subjectId]),
             subjectNodeIds: [subjectId],
             toolName: "set_node_properties",
-            toolArgs: {
-                id: subjectId,
-                properties: propertiesUpdate,
-            },
+            toolArgs,
             displayDescription,
             phase: "size",
             attemptIndex: executedRepairs + 1,
@@ -337,7 +380,17 @@ export function generateRepairProposal(
             createdAt: Date.now(),
         };
 
-        return { proposal };
+        const storedProposal: RepairProposal = {
+            ...proposal,
+            invalidated: false,
+            invalidationReason: undefined,
+            toolArgs: Object.freeze(JSON.parse(JSON.stringify(proposal.toolArgs))),
+            subjectNodeIds: Object.freeze([...proposal.subjectNodeIds]),
+            deltas: Object.freeze(proposal.deltas.map((d) => Object.freeze({ ...d }))),
+        };
+        proposalSnapshotStore.set(storedProposal.proposalId, storedProposal);
+
+        return { proposal: storedProposal };
     }
 
     if (positionFailRows.length > 0) {
@@ -367,6 +420,26 @@ export function generateRepairProposal(
             }
         }
 
+        const toolArgs = {
+            id: subjectId,
+            translate: translateVec,
+        };
+
+        // Nếu đề xuất hiện hành vẫn khớp hoàn toàn trạng thái hình học, quy tắc và nội dung sửa: tái dùng đề xuất ổn định
+        if (
+            profile.activeProposal &&
+            !profile.activeProposal.executed &&
+            !profile.activeProposal.invalidated &&
+            profile.activeProposal.historyMark === historyMarkOf(doc) &&
+            profile.activeProposal.rulesFingerprint === rulesFingerprintFor(doc.id) &&
+            profile.activeProposal.stateSignature === subjectsSignatureOf(doc, [subjectId]) &&
+            profile.activeProposal.attemptIndex === executedRepairs + 1 &&
+            profile.activeProposal.toolName === "transform_node" &&
+            JSON.stringify(profile.activeProposal.toolArgs) === JSON.stringify(toolArgs)
+        ) {
+            return { proposal: profile.activeProposal };
+        }
+
         const subjectNode = findNode(doc, subjectId);
         const nodeName = subjectNode?.name ?? subjectId;
         const displayDescription = `Dịch chuyển ${nodeName} (${descriptions.join(", ")}) bù sai lệch vị trí`;
@@ -380,10 +453,7 @@ export function generateRepairProposal(
             stateSignature: subjectsSignatureOf(doc, [subjectId]),
             subjectNodeIds: [subjectId],
             toolName: "transform_node",
-            toolArgs: {
-                id: subjectId,
-                translate: translateVec,
-            },
+            toolArgs,
             displayDescription,
             phase: "position",
             attemptIndex: executedRepairs + 1,
@@ -392,7 +462,17 @@ export function generateRepairProposal(
             createdAt: Date.now(),
         };
 
-        return { proposal };
+        const storedProposal: RepairProposal = {
+            ...proposal,
+            invalidated: false,
+            invalidationReason: undefined,
+            toolArgs: Object.freeze(JSON.parse(JSON.stringify(proposal.toolArgs))),
+            subjectNodeIds: Object.freeze([...proposal.subjectNodeIds]),
+            deltas: Object.freeze(proposal.deltas.map((d) => Object.freeze({ ...d }))),
+        };
+        proposalSnapshotStore.set(storedProposal.proposalId, storedProposal);
+
+        return { proposal: storedProposal };
     }
 
     return {};
@@ -404,12 +484,12 @@ export function generateRepairProposal(
  * 2. Checks hard lifetime quota (max 2 attempts on root task).
  * 3. Re-verifies state token (doc, history, rules, geometry signature).
  * 4. Checks permission through Batch B router.
- * 5. Executes mutation inside a Transaction.
- * 6. Immediately increments executedRepairs (even if subsequent measurement throws).
+ * 5. Executes mutation via governedRouter (standard set_node_properties / transform_node).
+ * 6. Immediately increments executedRepairs after successful transaction commit.
  * 7. Remeasures all criteria via finalizeTaskVerification.
  */
 export async function executeRepairProposal(
-    proposal: RepairProposal,
+    proposalOrId: string | RepairProposal,
     doc?: IDocument,
     remeasureFn?: (d: IDocument) => Promise<TaskCriteriaEvaluation | undefined>,
 ): Promise<{ success: boolean; error?: string; evaluation?: TaskCriteriaEvaluation }> {
@@ -419,65 +499,132 @@ export async function executeRepairProposal(
     }
 
     const profile = getTaskProfile();
-    if (!profile || profile.taskId !== proposal.taskId) {
+    if (!profile || profile.status !== "active") {
         return { success: false, error: "tác vụ không còn hiệu lực hoặc đã thay đổi" };
     }
 
-    // 1. Chống double-click / concurrent approval
+    // 1. Chống double-click / concurrent approval: Khóa thực thi TRƯỚC bước chờ bất đồng bộ
     if (profile.isRepairExecuting) {
-        return { success: false, error: "thao tác sửa đang được thực thi — vui lòng không bấm lặp" };
+        return {
+            success: false,
+            error: "concurrent-execution-blocked: thao tác sửa đang được thực thi — vui lòng không bấm lặp",
+        };
     }
     profile.isRepairExecuting = true;
 
     try {
+        const proposalId = typeof proposalOrId === "string" ? proposalOrId : proposalOrId.proposalId;
+        const snapshot = proposalSnapshotStore.get(proposalId);
+        if (!snapshot) {
+            return {
+                success: false,
+                error: "proposal-not-found: không tìm thấy bản ghi đề xuất bất biến trong ứng dụng",
+            };
+        }
+
+        // Nếu truyền đối tượng proposal từ bên ngoài: đối chiếu với snapshot bất biến
+        if (typeof proposalOrId !== "string") {
+            if (proposalOrId.attemptIndex !== snapshot.attemptIndex) {
+                return {
+                    success: false,
+                    error: `invalid-attempt-index: lượt sửa của đề xuất (${proposalOrId.attemptIndex}) không khớp với snapshot (${snapshot.attemptIndex})`,
+                };
+            }
+            if (
+                proposalOrId.toolName !== snapshot.toolName ||
+                JSON.stringify(proposalOrId.toolArgs) !== JSON.stringify(snapshot.toolArgs) ||
+                proposalOrId.taskId !== snapshot.taskId ||
+                proposalOrId.documentId !== snapshot.documentId
+            ) {
+                return {
+                    success: false,
+                    error: "tampered-proposal: tham số đề xuất không khớp với bản ghi bất biến do ứng dụng lưu",
+                };
+            }
+        }
+
         // 2. Chặn dùng lại proposal đã thực thi (single use)
-        if (proposal.executed) {
-            return { success: false, error: "đề xuất này đã được thực thi một lần — không được dùng lại" };
+        if (snapshot.executed) {
+            return {
+                success: false,
+                error: "proposal-already-executed: đề xuất này đã được thực thi một lần — không được dùng lại",
+            };
         }
 
-        // 3. Kiểm tra quota trần cứng: tối đa 2 lần sửa
+        // 3. Chặn đề xuất đã bị hủy (do người dùng từ chối hoặc drift)
+        if (snapshot.invalidated) {
+            return {
+                success: false,
+                error:
+                    snapshot.invalidationReason ??
+                    "proposal-invalidated: đề xuất đã bị hủy hoặc không còn hiệu lực",
+            };
+        }
+
+        // 4. Đối chiếu với đề xuất hiện hành: chặn đề xuất cũ khi đã có đề xuất mới
+        if (profile.activeProposal?.proposalId !== snapshot.proposalId) {
+            return {
+                success: false,
+                error: "stale-proposal: đề xuất cũ khi đã có đề xuất mới hoặc đề xuất không khớp với phiên bản hiện hành",
+            };
+        }
+
+        // 5. Đối chiếu tác vụ gốc
+        if (profile.taskId !== snapshot.taskId) {
+            return { success: false, error: "task-mismatch: đề xuất không thuộc tác vụ gốc hiện hành" };
+        }
+
+        // 6. Đối chiếu lượt kế tiếp của tác vụ (attemptIndex)
         const currentExecuted = profile.executedRepairs ?? 0;
-        if (currentExecuted >= 2) {
-            return { success: false, error: "quota-exceeded: đã thực thi đủ 2/2 lần sửa trên tác vụ gốc" };
+        const expectedAttemptIndex = currentExecuted + 1;
+        if (snapshot.attemptIndex !== expectedAttemptIndex) {
+            return {
+                success: false,
+                error: `invalid-attempt-index: đề xuất có attemptIndex=${snapshot.attemptIndex} nhưng lượt kế tiếp của tác vụ là ${expectedAttemptIndex}`,
+            };
         }
 
-        // 4. Token validation: Kiểm tra tài liệu, quy tắc, history, và chữ ký hình học
-        if (activeDoc.id !== proposal.documentId) {
-            proposal.invalidated = true;
-            proposal.invalidationReason =
+        // 7. Kiểm tra quota trần cứng: tối đa 2 lần sửa trên tác vụ gốc
+        if (currentExecuted >= 2) {
+            return {
+                success: false,
+                error: "quota-exceeded: đã thực thi đủ 2/2 lần sửa trên tác vụ gốc — dừng vòng tự động",
+            };
+        }
+
+        // 8. Token validation: Kiểm tra tài liệu, quy tắc, history, và chữ ký hình học ngay trước khi ghi
+        if (activeDoc.id !== snapshot.documentId) {
+            (snapshot as { invalidated?: boolean }).invalidated = true;
+            (snapshot as { invalidationReason?: string }).invalidationReason =
                 "proposal-invalidated-by-drift: tài liệu đã thay đổi trong lúc chờ duyệt";
-            return { success: false, error: proposal.invalidationReason };
+            return { success: false, error: snapshot.invalidationReason };
         }
-        if (rulesFingerprintFor(activeDoc.id) !== proposal.rulesFingerprint) {
-            proposal.invalidated = true;
-            proposal.invalidationReason =
+        if (rulesFingerprintFor(activeDoc.id) !== snapshot.rulesFingerprint) {
+            (snapshot as { invalidated?: boolean }).invalidated = true;
+            (snapshot as { invalidationReason?: string }).invalidationReason =
                 "proposal-invalidated-by-drift: quy tắc thiết kế đã thay đổi trong lúc chờ duyệt";
-            return { success: false, error: proposal.invalidationReason };
+            return { success: false, error: snapshot.invalidationReason };
         }
-        if (historyMarkOf(activeDoc) !== proposal.historyMark) {
-            proposal.invalidated = true;
-            proposal.invalidationReason =
+        if (historyMarkOf(activeDoc) !== snapshot.historyMark) {
+            (snapshot as { invalidated?: boolean }).invalidated = true;
+            (snapshot as { invalidationReason?: string }).invalidationReason =
                 "proposal-invalidated-by-drift: mô hình đã có thao tác chỉnh sửa mới trong lúc chờ duyệt";
-            return { success: false, error: proposal.invalidationReason };
+            return { success: false, error: snapshot.invalidationReason };
         }
-        const currentSignature = subjectsSignatureOf(activeDoc, proposal.subjectNodeIds);
+        const currentSignature = subjectsSignatureOf(activeDoc, snapshot.subjectNodeIds);
         if (
-            currentSignature !== proposal.stateSignature ||
+            currentSignature !== snapshot.stateSignature ||
             currentSignature.includes("unreadable") ||
             currentSignature.includes("err")
         ) {
-            proposal.invalidated = true;
-            proposal.invalidationReason =
+            (snapshot as { invalidated?: boolean }).invalidated = true;
+            (snapshot as { invalidationReason?: string }).invalidationReason =
                 "proposal-invalidated-by-drift: hình học đối tượng đã thay đổi hoặc không xác minh được dấu hình học";
-            return { success: false, error: proposal.invalidationReason };
+            return { success: false, error: snapshot.invalidationReason };
         }
 
-        if (profile.status !== "active") {
-            return { success: false, error: "tác vụ không còn hiệu lực hoặc đã thay đổi" };
-        }
-
-        // 5. Kiểm tra quyền qua Cổng bảo vệ nguồn Đợt B
-        const permission = checkToolPermission(proposal.toolName, proposal.toolArgs, activeDoc);
+        // 9. Kiểm tra quyền qua Cổng bảo vệ nguồn Đợt B
+        const permission = checkToolPermission(snapshot.toolName, snapshot.toolArgs, activeDoc);
         if (!permission.decision.allowed) {
             return {
                 success: false,
@@ -486,44 +633,67 @@ export async function executeRepairProposal(
         }
 
         // Lưu snapshot deltas trước khi ghi để dùng so sánh hội tụ ở lần sau
-        profile.lastDeltas = [...proposal.deltas];
+        const liveBeforeWrite = getTaskProfile() ?? profile;
+        liveBeforeWrite.lastDeltas = [...snapshot.deltas];
 
-        // 6. Thực thi lệnh ghi
-        if (proposal.toolName === "set_node_properties") {
-            const node = findNode(activeDoc, proposal.toolArgs["id"] as string);
-            if (!node) {
-                return { success: false, error: "không tìm thấy đối tượng để sửa" };
+        // 10. Tuyến ghi chuẩn qua governedRouter
+        const { buildTools } = await import("../../tools");
+        const tools = buildTools();
+        const tool = tools.find((t) => t.name === snapshot.toolName);
+        if (!tool) {
+            return {
+                success: false,
+                error: `governed-tool-not-found: không tìm thấy công cụ "${snapshot.toolName}" trong governedRouter`,
+            };
+        }
+
+        const historyBefore = historyMarkOf(activeDoc);
+        let toolResult: unknown;
+        try {
+            toolResult = await tool.handler(snapshot.toolArgs);
+        } catch (toolErr) {
+            return {
+                success: false,
+                error: `tool-execution-error: ${String(toolErr)}`,
+            };
+        }
+
+        const text =
+            typeof toolResult === "string"
+                ? toolResult
+                : ((toolResult as { content?: string })?.content ?? "");
+        let writeError: string | undefined;
+        try {
+            const parsed = JSON.parse(text) as { error?: string; success?: boolean; code?: string };
+            if (typeof parsed.error === "string") {
+                writeError = parsed.error;
+            } else if (parsed.success === false) {
+                writeError = "thao tác ghi thất bại";
+            } else if (typeof parsed.code === "string" && parsed.code.endsWith("_DENIED")) {
+                writeError = `permission-denied: ${parsed.code}`;
             }
-            const properties = (proposal.toolArgs["properties"] ?? {}) as Record<string, unknown>;
-            Transaction.execute(activeDoc, "AI repair: set properties", () => {
-                for (const [key, val] of Object.entries(properties)) {
-                    (node as unknown as Record<string, unknown>)[key] = val;
-                }
-                activeDoc.visual.update();
-            });
-        } else if (proposal.toolName === "transform_node") {
-            const node = findNode(activeDoc, proposal.toolArgs["id"] as string);
-            if (!node) {
-                return { success: false, error: "không tìm thấy đối tượng để dịch chuyển" };
-            }
-            const matrix = buildTransformMatrix(proposal.toolArgs);
-            if (typeof matrix === "string") {
-                return { success: false, error: `matrix-build-error: ${matrix}` };
-            }
-            Transaction.execute(activeDoc, "AI repair: transform node", () => {
-                const visual = node as unknown as { transform: Matrix4 };
-                visual.transform = visual.transform.multiply(matrix);
-                activeDoc.visual.update();
-            });
+        } catch {
+            // non-JSON
+        }
+
+        const historyAfter = historyMarkOf(activeDoc);
+        const transactionCommitted = historyAfter !== historyBefore;
+
+        if (writeError || !transactionCommitted) {
+            return {
+                success: false,
+                error: writeError ?? "lệnh ghi không ghi nhận transaction thành công trên tài liệu",
+            };
         }
 
         // QUAN TRỌNG: Ghi thành công -> TÍNH LƯỢT NGAY LẬP TỨC
-        // "Một lần ghi thành công vẫn tính lượt nếu lần đo sau bị hủy."
-        proposal.executed = true;
-        profile.executedRepairs = currentExecuted + 1;
-        profile.activeProposal = undefined;
+        // "Chỉ tính lượt sau khi xác nhận transaction đã ghi thành công. Nếu đã ghi mà hậu kiểm bị hủy, lượt đó vẫn được tính."
+        (snapshot as { executed: boolean }).executed = true;
+        const liveAfterWrite = getTaskProfile() ?? profile;
+        liveAfterWrite.executedRepairs = currentExecuted + 1;
+        liveAfterWrite.activeProposal = undefined;
 
-        // 7. Đo lại độc lập toàn bộ tiêu chí
+        // 11. Đo lại độc lập toàn bộ tiêu chí
         let evalResult: TaskCriteriaEvaluation | undefined;
         try {
             if (remeasureFn) {
@@ -545,6 +715,10 @@ export async function executeRepairProposal(
             evaluation: evalResult,
         };
     } finally {
+        const live = getTaskProfile();
+        if (live) {
+            live.isRepairExecuting = false;
+        }
         profile.isRepairExecuting = false;
     }
 }

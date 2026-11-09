@@ -91,13 +91,13 @@ export interface RepairProposal {
     historyMark: string;
     rulesFingerprint: string;
     stateSignature: string;
-    subjectNodeIds: string[];
+    subjectNodeIds: readonly string[];
     toolName: "set_node_properties" | "transform_node";
-    toolArgs: Record<string, unknown>;
+    toolArgs: Readonly<Record<string, unknown>>;
     displayDescription: string;
     phase: "size" | "position";
     attemptIndex: number;
-    deltas: CriterionStructuredDelta[];
+    deltas: readonly CriterionStructuredDelta[];
     executed: boolean;
     invalidated?: boolean;
     invalidationReason?: string;
