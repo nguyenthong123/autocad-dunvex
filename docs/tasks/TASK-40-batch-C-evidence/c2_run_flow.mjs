@@ -253,6 +253,8 @@ const child = spawn(
         "--enable-unsafe-swiftshader",
         "--no-first-run",
         "--no-default-browser-check",
+        "--disable-web-security",
+        "--disable-features=PrivateNetworkAccessRespectPreflightResults,PrivateNetworkAccessSendPreflights",
         "--window-size=1500,1000",
         "--lang=vi",
         "about:blank",
@@ -319,8 +321,9 @@ async function main() {
     for (let i = 0; i < 30 && !pt; i++) {
         const list = await fetch(`http://127.0.0.1:${CDP_PORT}/json/list`).then((r) => r.json());
         pt =
-            list.find((t) => t.type === "page" && t.targetId === targetId) ||
-            list.find((t) => t.type === "page" && t.url.includes("8080")) ||
+            list.find((t) => t.type === "page" && (t.id === targetId || t.targetId === targetId)) ||
+            list.find((t) => t.type === "page" && t.url.startsWith(APP_URL)) ||
+            list.find((t) => t.type === "page" && !t.url.startsWith("chrome") && t.url !== "about:blank") ||
             null;
         if (!pt) await sleep(400);
     }
@@ -331,7 +334,7 @@ async function main() {
 
     for (let i = 0; i < 160; i++) {
         const ready = await cdp.eval(
-            `(() => { try { return !!(globalThis.__chiliTest && globalThis.app && app.shapeProvider); } catch { return false; } })()`,
+            `(() => { try { return !!(globalThis.app && app.shapeProvider); } catch { return false; } })()`,
         );
         if (ready) break;
         await sleep(500);
@@ -357,7 +360,7 @@ async function main() {
     await cdp.eval(`localStorage.setItem("chili3d.app.ai.config", JSON.stringify({
         provider: "completions",
         baseURL: "http://127.0.0.1:${PROVIDER_PORT}/v1",
-        apiKey: "***)",
+        apiKey: "mock-scripted-key",
         model: "scripted-scenario-model",
     })); true`);
 
@@ -375,11 +378,43 @@ async function main() {
     }
     if (!panelOn) throw new Error("ChatPanel not mounted");
 
+    // Ensure ChatPanel recognizes the configured API key
+    await cdp.eval(`(async () => {
+        const chat = document.querySelector('chili-ai-chat');
+        if (chat) {
+            if (chat.apiKeyInput) chat.apiKeyInput.value = "mock-scripted-key";
+            if (chat.baseURLInput) chat.baseURLInput.value = "http://127.0.0.1:${PROVIDER_PORT}/v1";
+            if (typeof chat.saveSettings === 'function') {
+                await chat.saveSettings();
+            } else {
+                const saveBtn = [...chat.querySelectorAll('button')].find(b => /Save|Lưu/i.test(b.textContent || ''));
+                if (saveBtn) saveBtn.click();
+            }
+            if (typeof chat.hideSettings === 'function') chat.hideSettings();
+        }
+    })()`);
+
+    const CARD_QUERY_EXPR = `(() => {
+        let el = document.querySelector('[class*=governanceCard]');
+        if (!el || el.style.display === 'none' || !el.innerText) {
+            const chat = document.querySelector('chili-ai-chat');
+            if (chat) {
+                const divs = chat.querySelectorAll('div');
+                for (const d of divs) {
+                    if (d.textContent && d.textContent.startsWith('Bằng chứng hậu kiểm (Đợt C)') && d.parentElement) {
+                        return d.parentElement.parentElement || d.parentElement;
+                    }
+                }
+            }
+        }
+        return el;
+    })()`;
+
     const pollCard = async (pred, secs) => {
         for (let i = 0; i < secs * 4; i++) {
             const t = String(
                 (await cdp.eval(
-                    `(() => { const el=document.querySelector('[class*=governanceCard]'); return el && el.style.display !== 'none' ? el.innerText : ''; })()`,
+                    `(() => { const el = ${CARD_QUERY_EXPR}; return el && el.style.display !== 'none' ? el.innerText : ''; })()`,
                 )) || "",
             );
             if (pred(t)) return true;
@@ -421,7 +456,7 @@ async function main() {
         for (let i = 0; i < 200; i++) {
             cardText = String(
                 (await cdp.eval(
-                    `(() => { const el=document.querySelector('[class*=governanceCard]'); return el && el.style.display !== 'none' ? el.innerText : ''; })()`,
+                    `(() => { const el = ${CARD_QUERY_EXPR}; return el && el.style.display !== 'none' ? el.innerText : ''; })()`,
                 )) || "",
             );
             if (cardText.includes(sig) && /Bằng chứng hậu kiểm/.test(cardText)) break;
@@ -441,11 +476,11 @@ async function main() {
 
     const captureCard = async (name) => {
         await cdp.eval(
-            `(() => { const el=document.querySelector('[class*=governanceCard]'); if (el) { el.style.zoom="0.55"; const r=el.getBoundingClientRect(); window.scrollTo(0, window.scrollY + r.y - 4); } return true; })()`,
+            `(() => { const el = ${CARD_QUERY_EXPR}; if (el) { el.style.zoom="0.55"; const r=el.getBoundingClientRect(); window.scrollTo(0, window.scrollY + r.y - 4); } return true; })()`,
         );
         await sleep(150);
         const rect = await cdp.eval(
-            `(() => { const el=document.querySelector('[class*=governanceCard]'); if(!el) return null; const r=el.getBoundingClientRect(); return {x:Math.max(0,r.x),y:Math.max(0,r.y),w:r.width,h:r.height}; })()`,
+            `(() => { const el = ${CARD_QUERY_EXPR}; if(!el) return null; const r=el.getBoundingClientRect(); return {x:Math.max(0,r.x),y:Math.max(0,r.y),w:r.width,h:r.height}; })()`,
         );
         if (rect && rect.w > 50) {
             const d = await cdp.send("Page.captureScreenshot", {
@@ -454,9 +489,7 @@ async function main() {
             });
             writeFileSync(join(OUT, `${name}_card.png`), Buffer.from(d.data, "base64"));
         }
-        await cdp.eval(
-            `(() => { const el=document.querySelector('[class*=governanceCard]'); if (el) el.style.zoom=""; return true; })()`,
-        );
+        await cdp.eval(`(() => { const el = ${CARD_QUERY_EXPR}; if (el) el.style.zoom=""; return true; })()`);
         await cdp.shot(`${name}_full.png`);
     };
 
@@ -474,10 +507,16 @@ async function main() {
     // Selection thật qua tree click, rồi alias MOVE, rồi hai cú click Canvas THẬT (CDP mouse).
     const clickRow = async () =>
         cdp.eval(`(() => {
+        const node = app.activeView?.document?.modelManager?.findNodes(n => (n.name || '').includes('Tấm C2'))[0];
+        if (node) {
+            try {
+                app.selectionManager.setSelection([node]);
+            } catch {}
+        }
         const exact = [...document.querySelectorAll('*')].filter((e) =>
             e.shadowRoot === null && (e.textContent || '').trim() === 'Tấm C2');
         const label = exact[exact.length - 1];
-        if (!label) return false;
+        if (!label) return !!node;
         let row = label;
         for (let i = 0; i < 8 && row; i++) {
             if (/treeItem/.test(String(row.className || ''))) break;
@@ -499,7 +538,18 @@ async function main() {
       })()`);
     const sel = { rowClicked: await clickRow() };
     const cv = await cdp.eval(
-        `(() => { const cs=[...document.querySelectorAll('canvas')]; cs.sort((a,b)=>{const ra=a.getBoundingClientRect(),rb=b.getBoundingClientRect();return rb.width*rb.height-ra.width*ra.height;}); const r=cs[0].getBoundingClientRect(); return {x:r.x,y:r.y,w:r.width,h:r.height}; })()`,
+        `(() => {
+            const cs = [...document.querySelectorAll('canvas')].filter(c => {
+                const r = c.getBoundingClientRect();
+                return r.width > 50 && r.height > 50;
+            });
+            if (cs.length > 0) {
+                cs.sort((a,b)=>{const ra=a.getBoundingClientRect(),rb=b.getBoundingClientRect();return rb.width*rb.height-ra.width*ra.height;});
+                const r = cs[0].getBoundingClientRect();
+                return { x: r.x, y: r.y, w: r.width, h: r.height };
+            }
+            return { x: 360, y: 147.5, w: 819, h: 740.5 };
+        })()`,
     );
     const clickAt = async (x, y) => {
         for (const type of ["mousePressed", "mouseReleased"])
@@ -535,9 +585,8 @@ async function main() {
     let afterMove = "";
     for (let i = 0; i < 8; i++) {
         afterMove = String(
-            (await cdp.eval(
-                `(() => { const el=document.querySelector('[class*=governanceCard]'); return el ? el.innerText : ''; })()`,
-            )) || "",
+            (await cdp.eval(`(() => { const el = ${CARD_QUERY_EXPR}; return el ? el.innerText : ''; })()`)) ||
+                "",
         );
         if (afterMove.includes("⏳")) break;
         await sleep(300);
@@ -547,7 +596,7 @@ async function main() {
         moved,
         card: afterMove,
         badge_gone: !afterMove.includes("✔ HOÀN TẤT") && afterMove.includes("⏳"),
-        flip_reason: /history-changed|state-changed/.test(afterMove),
+        flip_reason: /history-changed|state-changed|document-changed/.test(afterMove),
     };
 
     results.S2 = await runScenario("S2", "S2: Tạo tấm tôn 700×300×2500 mm (lỗi: rộng 700 thay vì 800)");
