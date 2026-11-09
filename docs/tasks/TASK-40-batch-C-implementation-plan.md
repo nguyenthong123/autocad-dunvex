@@ -256,35 +256,30 @@ lần deploy (bài học version.json TASK-41 stale — xem pdf HANDOFF).
    - Biome (`npm run check`): 0 error.
    - Trạng thái: `WAITING_REVIEW`, chưa triển khai VPS.
 
-1. **Ranh giới ghi tức thời (Immediate Pre-write Recheck)**:
-   - Ngay sau bước chờ bất đồng bộ (tải tool qua governedRouter, import động hoặc độ trễ bất đồng bộ), `executeRepairProposal` thực hiện kiểm tra lại toàn diện trước khi gọi `tool.handler`:
-     - Tài liệu đang mở: `getDocument() === activeDoc && getDocument()?.id === snapshot.documentId`.
-     - Tác vụ gốc: `getTaskProfileById(snapshot.taskId)?.status === "active"`.
-     - Đề xuất hiện hành: `rootProfile.activeProposal?.proposalId === snapshot.proposalId`.
-     - Lượt sửa: `snapshot.attemptIndex === (rootProfile.executedRepairs ?? 0) + 1`.
-     - Tác vụ hiện hành trên app: `getTaskProfile()?.taskId === snapshot.taskId`.
-     - Quy tắc thiết kế: `rulesFingerprintFor(activeDoc.id) === snapshot.rulesFingerprint`.
-     - Dấu lịch sử: `historyMarkOf(activeDoc) === snapshot.historyMark`.
-     - Dấu hình học: `subjectsSignatureOf(activeDoc, snapshot.subjectNodeIds) === snapshot.stateSignature`.
-     - Quyền tại ranh giới ghi: `checkToolPermission`.
-   - Nếu bất kỳ yếu tố nào thay đổi trong khoảng chờ: từ chối thực thi ngay lập tức TRƯỚC KHI hình học thay đổi, giữ nguyên mô hình và số lượt sửa.
+### C3 v1.4 — Chốt cơ chế xác nhận giao dịch từ chính lệnh sửa & Ca đối chứng (09/11/2026)
 
-2. **Cách ly tác vụ gốc & Ghi nhận số lượt chuẩn xác**:
-   - Quản lý profile theo ID qua `profilesByTaskId` map và `getTaskProfileById(taskId)` trong `taskProfile.ts`.
-   - Xác nhận commit dựa trên kết quả ghi của tool và transaction thực tế (`historyAfter !== historyBefore`).
-   - Cập nhật số lượt sửa và trạng thái đề xuất trực tiếp trên chính tác vụ gốc đã duyệt (`targetRootProfile.executedRepairs = currentExecuted + 1`).
-   - Nếu tác vụ mới đã mở trong lúc chờ: bảo toàn nguyên vẹn tác vụ mới (giữ `executedRepairs = 0`, giữ criteria, không remeasure đè lên tác vụ mới).
-   - Nếu ghi thành công nhưng hậu kiểm bị lỗi hoặc hủy: bảo toàn số lượt đã tính trên tác vụ gốc.
+1. **Truyền kết quả commit từ giao dịch chuẩn qua governedRouter**:
+   - `propertyTools.ts` (`setNodePropertiesHandler`) và `nodeTools.ts` (`transformNodeHandler`) tính toán trực tiếp `committed = Boolean(topAfter && topAfter !== topBefore)` và bổ sung `committed`, `documentId`, `proposalId` vào payload trả về.
+   - `governedRouter.ts` chuẩn hóa và bọc kết quả: nếu tool chưa gắn `committed`, router tự động đối chiếu `topAfter !== topBefore` của document đang mở để xác nhận trạng thái commit, đồng thời đính kèm `documentId` và `proposalId`.
+   - Đảm bảo 100% tương thích ngược (backward compatibility) với các caller hiện tại (chỉ đọc `updated` hoặc `transform`).
+   - C3 `executeRepairProposal` truyền `proposalId` vào tool args và kiểm tra đa tầng:
+     - `payloadConfirmed`: Payload phản hồi chứa danh sách thuộc tính hoặc ma trận cập nhật hợp lệ.
+     - `toolReportedCommitted`: Tool hoặc governedRouter tường minh xác nhận `committed === true`.
+     - `correctDoc`: Document nhận giao dịch khớp với `snapshot.documentId`.
+     - `correctProposal`: Proposal nhận giao dịch khớp với `snapshot.proposalId`.
+     - `undoAdvanced`: `undoTopImmediatelyAfter !== undoTopBefore` (đỉnh undo dịch chuyển ngay tại thời điểm tool vừa chạy xong, trước mọi bước trễ sau ghi).
 
-3. **Bộ test kiểm soát độ trễ bất đồng bộ (Controlled Delays)**:
-   - `C3-async-1`: Đổi quy tắc thiết kế trong `preWriteDelay` $\implies$ từ chối do rules drift, giữ nguyên hình học và số lượt.
-   - `C3-async-1b`: Đổi tài liệu đang mở trong `preWriteDelay` $\implies$ từ chối do document drift, giữ nguyên hình học và số lượt.
-   - `C3-async-2`: Đổi profile sang tác vụ B trong `postWriteDelay` $\implies$ giữ nguyên profile B (0 lượt, criteria nguyên vẹn), tác vụ A được ghi nhận đúng 1 lượt.
+2. **Ca hồi quy payload hợp lệ hình thức nhưng không commit & Thao tác ngoại lai**:
+   - `C3-async-4a`: Tool trả về `updated` hợp lệ về hình thức nhưng không commit giao dịch của chính nó, thao tác khác độc lập commit vào cùng tài liệu trong bước chờ $\implies$ C3 từ chối, báo lỗi chưa commit, giữ nguyên số lượt sửa = 0 và không đổi hình học.
+   - `C3-async-4b`: Tool trả về `transform` hợp lệ về hình thức nhưng không commit giao dịch của chính nó, thao tác khác độc lập commit vào cùng tài liệu trong bước chờ $\implies$ C3 từ chối, báo lỗi chưa commit, giữ nguyên số lượt sửa = 0.
+   - `C3-async-4c`: Ca đối chứng qua tool thật: lệnh C3 commit giao dịch thật, sau đó thao tác người dùng hủy đo lại sau khi commit $\implies$ tác vụ gốc được ghi nhận ĐÚNG 1 lượt sửa, hình học cập nhật thành công.
 
-4. **Kết quả kiểm chứng**:
-   - `batchC3Repair.kernel.test.ts`: 21/21 passed (18 ca gốc + 3 ca async lifecycle).
-   - `packages/ai/test/`: 55/55 test files passed (826 tests).
-   - Full repository test suite: 10,346 tests passed (1 skipped) + 35 backend tests passed = 10,381 tests passed.
+3. **Kết quả kiểm chứng**:
+   - `batchC3Repair.kernel.test.ts`: 26/26 passed (tăng 3 ca hồi quy).
+   - `packages/ai/test/governance/`: 105/105 passed (7 test files).
+   - `nodeTools.test.ts` & `propertyTools.test.ts`: 39/39 passed (tương thích ngược hoàn toàn).
+   - Full repository test suite: 10,351 tests passed (1 skipped) + 35 backend tests passed = 10,386 tests passed.
    - Typecheck (`tsc --noEmit`): 0 error.
    - Biome (`npm run check`): 0 error.
+   - Build (`npm run build`): Thành công (Rspack + plugins).
    - Trạng thái: `WAITING_REVIEW`, chưa triển khai VPS.

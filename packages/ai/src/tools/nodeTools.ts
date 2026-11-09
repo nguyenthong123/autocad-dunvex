@@ -144,6 +144,7 @@ const transformNodeHandler: Tool["handler"] = async (args) => {
     const matrix = buildTransformMatrix(args);
     if (typeof matrix === "string") return JSON.stringify({ error: matrix });
     let accepted = true;
+    const topBefore = doc.history.undoTop();
     Transaction.execute(doc, "AI transform node", () => {
         const apply = (node as { applyTransform?: (value: Matrix4) => boolean }).applyTransform;
         if (apply !== undefined) {
@@ -158,6 +159,8 @@ const transformNodeHandler: Tool["handler"] = async (args) => {
             error: `node refused the transform (only rigid moves, rotations and mirrors are supported): ${id}`,
         });
     }
+    const topAfter = doc.history.undoTop();
+    const committed = accepted && Boolean(topAfter && topAfter !== topBefore);
     doc.visual.update();
     // A parametric body with features records the move as a feature and keeps identity,
     // so report the increment that was applied. A body with no chain yet stores the
@@ -165,7 +168,16 @@ const transformNodeHandler: Tool["handler"] = async (args) => {
     // placement — report whichever one actually holds it.
     const placement = (node as { transform: Matrix4 }).transform;
     const result = transformMode === "feature" && placement.equals(Matrix4.identity()) ? matrix : placement;
-    return JSON.stringify({ id, transform: roundedMatrix(result) });
+    const response: Record<string, unknown> = {
+        id,
+        transform: roundedMatrix(result),
+        committed,
+        documentId: doc.id,
+    };
+    if (typeof args["proposalId"] === "string") {
+        response["proposalId"] = args["proposalId"];
+    }
+    return JSON.stringify(response);
 };
 
 function roundedMatrix(matrix: Matrix4): number[] {

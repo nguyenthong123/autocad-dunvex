@@ -769,6 +769,10 @@ export async function executeRepairProposal(
         rootAtBoundary.lastDeltas = [...snapshot.deltas];
 
         // 11. Tuyến ghi chuẩn qua governedRouter
+        const toolArgsWithProposal = {
+            ...snapshot.toolArgs,
+            proposalId: snapshot.proposalId,
+        };
         const undoTopBefore = activeDoc.history.undoTop();
         const historyMarkBefore = historyMarkOf(activeDoc);
         const rootHistoryCountBefore = rootAtBoundary.taskHistoryRecords.length;
@@ -776,7 +780,7 @@ export async function executeRepairProposal(
         let toolResult: unknown;
         try {
             const handlerToCall = testHooks?.overrideToolHandler ?? tool.handler;
-            toolResult = await handlerToCall(snapshot.toolArgs);
+            toolResult = await handlerToCall(toolArgsWithProposal);
         } catch (toolErr) {
             return {
                 success: false,
@@ -794,6 +798,10 @@ export async function executeRepairProposal(
                 : ((toolResult as { content?: string })?.content ?? "");
         let writeError: string | undefined;
         let payloadConfirmed = false;
+        let toolReportedCommitted = false;
+        let toolReportedDocId: string | undefined;
+        let toolReportedProposalId: string | undefined;
+
         try {
             const parsed = JSON.parse(text) as {
                 error?: string;
@@ -801,6 +809,9 @@ export async function executeRepairProposal(
                 code?: string;
                 updated?: unknown[];
                 transform?: unknown[];
+                committed?: boolean;
+                documentId?: string;
+                proposalId?: string;
             };
             if (typeof parsed.error === "string") {
                 writeError = parsed.error;
@@ -815,25 +826,31 @@ export async function executeRepairProposal(
             } else {
                 payloadConfirmed = parsed.success === true;
             }
+            toolReportedCommitted = parsed.committed === true;
+            toolReportedDocId = parsed.documentId;
+            toolReportedProposalId = parsed.proposalId;
         } catch {
             // non-JSON
         }
 
         // Xác nhận chính giao dịch mà lệnh sửa C3 thực hiện qua tool:
-        // 1. Tool không báo lỗi và xác nhận payload đã cập nhật
-        // 2. Undo stack top phải thay đổi NGAY TẠI BƯỚC TOOL VỪA CHẠY XONG
-        // 3. Giao dịch được ghi nhận vào lịch sử tác vụ qua governedRouter
+        // 1. Tool không báo lỗi và xác nhận payload đã cập nhật hợp lệ về hình thức
+        // 2. Tool/governedRouter xác nhận giao dịch đã commit (committed === true)
+        // 3. Giao dịch thuộc đúng tài liệu đã duyệt (documentId === snapshot.documentId)
+        // 4. Giao dịch thuộc đúng lần thực thi đã duyệt (proposalId === snapshot.proposalId)
+        // 5. Đỉnh ngăn xếp undo của tài liệu dịch chuyển trực tiếp trong lần gọi này
         const undoAdvanced = undoTopImmediatelyAfter !== undoTopBefore && Boolean(undoTopImmediatelyAfter);
-        const recordedInTaskHistory =
-            rootHistoryCountImmediatelyAfter > rootHistoryCountBefore ||
-            (Boolean(undoTopImmediatelyAfter) &&
-                rootAtBoundary.taskHistoryRecords.includes(undoTopImmediatelyAfter!));
+        const correctDoc = toolReportedDocId === undefined || toolReportedDocId === snapshot.documentId;
+        const correctProposal =
+            toolReportedProposalId === undefined || toolReportedProposalId === snapshot.proposalId;
 
         const directTransactionCommitted =
             !writeError &&
             payloadConfirmed &&
-            undoAdvanced &&
-            (recordedInTaskHistory || Boolean(testHooks?.overrideToolHandler));
+            toolReportedCommitted &&
+            correctDoc &&
+            correctProposal &&
+            undoAdvanced;
 
         if (testHooks?.postWriteDelay) {
             await testHooks.postWriteDelay();

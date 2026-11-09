@@ -111,7 +111,8 @@ function setNodePropertiesTool(): Tool {
 }
 
 /** Assign the values and refresh the panel, the way the property panel itself writes. */
-function applyUpdates(doc: IDocument, node: INode, updates: Map<string, unknown>): void {
+function applyUpdates(doc: IDocument, node: INode, updates: Map<string, unknown>): boolean {
+    const topBefore = doc.history.undoTop();
     // Assignment inside one transaction, so a parameter edit is a single undo step and the
     // node re-generates its shape.
     Transaction.execute(doc, "AI set node properties", () => {
@@ -120,10 +121,12 @@ function applyUpdates(doc: IDocument, node: INode, updates: Map<string, unknown>
         }
         doc.visual.update();
     });
+    const topAfter = doc.history.undoTop();
 
     // A property change is not a selection change, which is what the panel rebuilds on, so it
     // has to be republished — otherwise it keeps showing the values it was built with.
     PubSub.default.pub("showProperties", doc, doc.selection.getSelectedNodes());
+    return Boolean(topAfter && topAfter !== topBefore);
 }
 
 const setNodePropertiesHandler: Tool["handler"] = async (args) => {
@@ -144,14 +147,20 @@ const setNodePropertiesHandler: Tool["handler"] = async (args) => {
     const updates = prepareUpdates(node, panelProperties(node), doc, requested, "this node");
     if (typeof updates === "string") return updates;
 
-    applyUpdates(doc, node, updates);
+    const committed = applyUpdates(doc, node, updates);
     if (typeof requested["name"] === "string" && (requested["name"] as string).trim()) {
         onNodeRenamed(id, (requested["name"] as string).trim());
     }
-    return JSON.stringify({
+    const response: Record<string, unknown> = {
         id,
         updated: describeNode(node, doc).properties.filter((p) => updates.has(p.name)),
-    });
+        committed,
+        documentId: doc.id,
+    };
+    if (typeof args["proposalId"] === "string") {
+        response["proposalId"] = args["proposalId"];
+    }
+    return JSON.stringify(response);
 };
 
 export function buildPropertyTools(): Tool[] {

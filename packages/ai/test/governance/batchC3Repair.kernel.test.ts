@@ -1181,4 +1181,159 @@ describe("TASK-40 Đợt C3 — Tự sửa sai theo sai lệch đo được trê
         expect(profile.executedRepairs).toBe(0);
         expect(proposal.executed).toBe(false);
     });
+
+    // =========================================================================
+    // C3-async-4: Tool trả updated/transform hợp lệ về hình thức nhưng không commit giao dịch của chính nó
+    // =========================================================================
+    test("C3-async-4a: tool trả updated hợp lệ về hình thức nhưng không commit giao dịch của chính nó, thao tác khác ghi trước khi C3 nhận kết quả -> báo chưa ghi và giữ nguyên số lượt", async () => {
+        const box = addBox("box_formally_valid_updated", 700, 200, 100);
+        const criteria: CriterionSpec[] = [
+            {
+                id: "c-dim",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: [box.id],
+                expected: { sizeMm: [800, 200, 100] },
+                toleranceMm: [2, 2, 2],
+            },
+        ];
+
+        const profile = approveTaskPlan({
+            taskId: "task_async_4a",
+            documentId: doc.id,
+            allowedModifiedNodeIds: [box.id],
+            criteria,
+        });
+
+        const eval1 = await finalizeTaskVerification(doc);
+        const proposal = eval1!.activeProposal!;
+        expect(proposal).toBeDefined();
+
+        let delayExecuted = false;
+        // Tool trả về payload chứa updated[] hợp lệ về hình thức nhưng không hề commit transaction của chính nó
+        const res = await executeRepairProposal(proposal, doc, undefined, {
+            overrideToolHandler: async () => {
+                return JSON.stringify({
+                    id: box.id,
+                    updated: [{ name: "dx", value: 800 }],
+                });
+            },
+            postWriteDelay: async () => {
+                delayExecuted = true;
+                // Thao tác khác độc lập commit vào cùng tài liệu trước khi C3 xử lý kết quả
+                Transaction.execute(doc, "Thao tác người dùng ngoại lai", () => {
+                    box.dz = 160;
+                });
+            },
+        });
+
+        expect(delayExecuted).toBe(true);
+        // C3 từ chối vì lệnh sửa không có xác nhận giao dịch của chính nó
+        expect(res.success).toBe(false);
+        expect(res.error).toContain("không tạo giao dịch hợp lệ hoặc chưa commit thành công");
+        // Số lượt sửa của tác vụ gốc được bảo toàn = 0
+        expect(profile.executedRepairs).toBe(0);
+        expect(proposal.executed).toBe(false);
+        // Kích thước dx của box vẫn là 700
+        expect(box.dx).toBe(700);
+    });
+
+    test("C3-async-4b: tool trả transform hợp lệ về hình thức nhưng không commit giao dịch của chính nó, thao tác khác ghi trước khi C3 nhận kết quả -> báo chưa ghi và giữ nguyên số lượt", async () => {
+        const box = addBox("box_formally_valid_transform", 800, 200, 100);
+        // Box kích thước đúng 800, nhưng tâm (400, 100, 50) lệch so với kỳ vọng (500, 100, 50)
+        const criteria: CriterionSpec[] = [
+            {
+                id: "c-dim",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: [box.id],
+                expected: { sizeMm: [800, 200, 100] },
+                toleranceMm: [2, 2, 2],
+            },
+            {
+                id: "c-pos",
+                kind: "position_match",
+                required: true,
+                subjectNodeIds: [box.id],
+                expected: { centerMm: [500, 100, 50] },
+                toleranceMm: [2, 2, 2],
+            },
+        ];
+
+        const profile = approveTaskPlan({
+            taskId: "task_async_4b",
+            documentId: doc.id,
+            allowedModifiedNodeIds: [box.id],
+            criteria,
+        });
+
+        const eval1 = await finalizeTaskVerification(doc);
+        const proposal = eval1!.activeProposal!;
+        expect(proposal).toBeDefined();
+        expect(proposal.toolName).toBe("transform_node");
+
+        let delayExecuted = false;
+        // Tool trả về payload chứa transform hợp lệ về hình thức nhưng không hề commit transaction của chính nó
+        const res = await executeRepairProposal(proposal, doc, undefined, {
+            overrideToolHandler: async () => {
+                return JSON.stringify({
+                    id: box.id,
+                    transform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 100, 0, 0, 1],
+                });
+            },
+            postWriteDelay: async () => {
+                delayExecuted = true;
+                // Thao tác khác độc lập commit vào cùng tài liệu trước khi C3 xử lý kết quả
+                Transaction.execute(doc, "Thao tác người dùng ngoại lai", () => {
+                    box.dz = 170;
+                });
+            },
+        });
+
+        expect(delayExecuted).toBe(true);
+        expect(res.success).toBe(false);
+        expect(res.error).toContain("không tạo giao dịch hợp lệ hoặc chưa commit thành công");
+        // Số lượt sửa của tác vụ gốc được bảo toàn = 0
+        expect(profile.executedRepairs).toBe(0);
+        expect(proposal.executed).toBe(false);
+    });
+
+    test("C3-async-4c: ca đối chứng qua tool thật: lệnh C3 commit giao dịch thật, thao tác đổi task hoặc hủy đo sau commit -> tác vụ gốc nhận đúng 1 lượt", async () => {
+        const box = addBox("box_control_real_tool", 700, 200, 100);
+        const criteria: CriterionSpec[] = [
+            {
+                id: "c-dim",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: [box.id],
+                expected: { sizeMm: [800, 200, 100] },
+                toleranceMm: [2, 2, 2],
+            },
+        ];
+
+        const profile = approveTaskPlan({
+            taskId: "task_control_real",
+            documentId: doc.id,
+            allowedModifiedNodeIds: [box.id],
+            criteria,
+        });
+
+        const eval1 = await finalizeTaskVerification(doc);
+        const proposal = eval1!.activeProposal!;
+        expect(proposal).toBeDefined();
+
+        // 1. Dùng tool THẬT (không dùng overrideToolHandler), lệnh C3 commit thành công
+        // Sau đó người dùng hủy đo lại (remeasure throw)
+        const res = await executeRepairProposal(proposal, doc, async () => {
+            throw new Error("Người dùng hủy bước đo lại sau khi commit thành công");
+        });
+
+        // Kết quả ghi nhận commit thành công
+        expect(res.success).toBe(true);
+        expect(res.error).toContain("ghi-thanh-cong-nhung-do-lai-loi");
+        // Hình học đã cập nhật lên 800
+        expect(box.dx).toBe(800);
+        // Tác vụ gốc được tính ĐÚNG 1 lượt sửa
+        expect(profile.executedRepairs).toBe(1);
+    });
 });
