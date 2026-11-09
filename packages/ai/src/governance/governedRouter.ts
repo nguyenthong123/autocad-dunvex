@@ -57,37 +57,11 @@ export function governTool(tool: Tool): Tool {
                 return permissionDeniedPayload(decision);
             }
 
-            const doc = getDocument();
-            const topBefore = doc?.history.undoTop();
             const result = await inner(cleanArgs, signal);
-            const topAfter = doc?.history.undoTop();
-
-            let outputResult = result;
-            if (typeof result === "string" && !looksLikeError(result)) {
-                try {
-                    const parsed = JSON.parse(result) as Record<string, unknown>;
-                    if (typeof parsed === "object" && parsed !== null) {
-                        const committedByTool = parsed["committed"];
-                        const isCommitted =
-                            committedByTool !== undefined
-                                ? Boolean(committedByTool)
-                                : Boolean(doc && topAfter && topAfter !== topBefore);
-                        parsed["committed"] = isCommitted;
-                        if (doc) parsed["documentId"] = parsed["documentId"] ?? doc.id;
-                        if (typeof cleanArgs["proposalId"] === "string") {
-                            parsed["proposalId"] = parsed["proposalId"] ?? cleanArgs["proposalId"];
-                        }
-                        outputResult = JSON.stringify(parsed);
-                    }
-                } catch {
-                    // non-JSON
-                }
-            }
-
             if (WRITE_TOOLS.has(tool.name)) {
-                afterSuccessfulWrite(tool.name, cleanArgs, outputResult);
+                afterSuccessfulWrite(tool.name, cleanArgs, result);
             }
-            return outputResult;
+            return result;
         },
     };
 }

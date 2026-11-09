@@ -256,26 +256,24 @@ lần deploy (bài học version.json TASK-41 stale — xem pdf HANDOFF).
    - Biome (`npm run check`): 0 error.
    - Trạng thái: `WAITING_REVIEW`, chưa triển khai VPS.
 
-### C3 v1.4 — Chốt cơ chế xác nhận giao dịch từ chính lệnh sửa & Ca đối chứng (09/11/2026)
+### C3 v1.4 — Chốt cơ chế xác nhận ghi trực tiếp từ tool & Chặn router tự điền (09/11/2026)
 
-1. **Truyền kết quả commit từ giao dịch chuẩn qua governedRouter**:
+1. **Chỉ chấp nhận xác nhận ghi do chính tool trả về cho đúng tài liệu và đề xuất**:
    - `propertyTools.ts` (`setNodePropertiesHandler`) và `nodeTools.ts` (`transformNodeHandler`) tính toán trực tiếp `committed = Boolean(topAfter && topAfter !== topBefore)` và bổ sung `committed`, `documentId`, `proposalId` vào payload trả về.
-   - `governedRouter.ts` chuẩn hóa và bọc kết quả: nếu tool chưa gắn `committed`, router tự động đối chiếu `topAfter !== topBefore` của document đang mở để xác nhận trạng thái commit, đồng thời đính kèm `documentId` và `proposalId`.
-   - Đảm bảo 100% tương thích ngược (backward compatibility) với các caller hiện tại (chỉ đọc `updated` hoặc `transform`).
-   - C3 `executeRepairProposal` truyền `proposalId` vào tool args và kiểm tra đa tầng:
+   - `governedRouter.ts` giữ nguyên toàn bộ cơ chế phát hiện thay đổi lịch sử và ghi nhận đột biến cho các tính năng hiện có (`afterSuccessfulWrite`, `noteGovernedMutation`, `invalidateEvidenceForNodeIds`), nhưng **TUYỆT ĐỐI KHÔNG** dùng thay đổi lịch sử để tự điền/suy diễn xác nhận commit cho C3. Payload phản hồi từ tool được router chuyển tiếp nguyên bản.
+   - C3 `executeRepairProposal` truyền `proposalId` vào tool args và kiểm tra nghiêm ngặt:
      - `payloadConfirmed`: Payload phản hồi chứa danh sách thuộc tính hoặc ma trận cập nhật hợp lệ.
-     - `toolReportedCommitted`: Tool hoặc governedRouter tường minh xác nhận `committed === true`.
-     - `correctDoc`: Document nhận giao dịch khớp với `snapshot.documentId`.
-     - `correctProposal`: Proposal nhận giao dịch khớp với `snapshot.proposalId`.
-     - `undoAdvanced`: `undoTopImmediatelyAfter !== undoTopBefore` (đỉnh undo dịch chuyển ngay tại thời điểm tool vừa chạy xong, trước mọi bước trễ sau ghi).
+     - `hasCommitConfirmation`: Chính tool xác nhận `committed === true`, `documentId === snapshot.documentId`, và `proposalId === snapshot.proposalId`. Không chấp nhận giá trị `undefined` hay giá trị tự điền từ router.
+     - `undoAdvanced`: `undoTopImmediatelyAfter !== undoTopBefore` (đỉnh undo dịch chuyển ngay tại thời điểm tool vừa chạy xong).
+   - Nếu thiếu xác nhận commit từ tool, C3 báo lỗi rõ ràng `"lệnh sửa chưa xác nhận ghi từ chính tool cho đúng tài liệu và đề xuất"`, giữ nguyên mô hình và không tính lượt sửa.
 
-2. **Ca hồi quy payload hợp lệ hình thức nhưng không commit & Thao tác ngoại lai**:
-   - `C3-async-4a`: Tool trả về `updated` hợp lệ về hình thức nhưng không commit giao dịch của chính nó, thao tác khác độc lập commit vào cùng tài liệu trong bước chờ $\implies$ C3 từ chối, báo lỗi chưa commit, giữ nguyên số lượt sửa = 0 và không đổi hình học.
-   - `C3-async-4b`: Tool trả về `transform` hợp lệ về hình thức nhưng không commit giao dịch của chính nó, thao tác khác độc lập commit vào cùng tài liệu trong bước chờ $\implies$ C3 từ chối, báo lỗi chưa commit, giữ nguyên số lượt sửa = 0.
-   - `C3-async-4c`: Ca đối chứng qua tool thật: lệnh C3 commit giao dịch thật, sau đó thao tác người dùng hủy đo lại sau khi commit $\implies$ tác vụ gốc được ghi nhận ĐÚNG 1 lượt sửa, hình học cập nhật thành công.
+2. **Ca kiểm thử qua governedRouter thật & Thao tác ngoại lai**:
+   - `C3-async-4a`: Chạy qua `governedRouter` thật, tool trả `updated` hợp lệ về hình thức nhưng thiếu xác nhận commit, thao tác ngoại lai commit vào cùng tài liệu trong bước chờ $\implies$ router không tự điền xác nhận, C3 báo chưa xác nhận ghi, giữ nguyên số lượt sửa = 0 và không đổi hình học.
+   - `C3-async-4b`: Chạy qua `governedRouter` thật, tool trả `transform` hợp lệ về hình thức nhưng thiếu xác nhận commit, thao tác ngoại lai commit vào cùng tài liệu trong bước chờ $\implies$ C3 báo chưa xác nhận ghi, giữ nguyên số lượt sửa = 0.
+   - `C3-async-4c`: Ca đối chứng qua tool thật: lệnh C3 commit giao dịch thật qua `set_node_properties`, người dùng hủy đo lại sau khi commit $\implies$ tác vụ gốc được ghi nhận ĐÚNG 1 lượt sửa, hình học cập nhật thành công.
 
 3. **Kết quả kiểm chứng**:
-   - `batchC3Repair.kernel.test.ts`: 26/26 passed (tăng 3 ca hồi quy).
+   - `batchC3Repair.kernel.test.ts`: 26/26 passed.
    - `packages/ai/test/governance/`: 105/105 passed (7 test files).
    - `nodeTools.test.ts` & `propertyTools.test.ts`: 39/39 passed (tương thích ngược hoàn toàn).
    - Full repository test suite: 10,351 tests passed (1 skipped) + 35 backend tests passed = 10,386 tests passed.

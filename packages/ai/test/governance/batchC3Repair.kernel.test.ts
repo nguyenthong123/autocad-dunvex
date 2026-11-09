@@ -32,6 +32,7 @@ import {
     finalizeTaskVerification,
     generateRepairProposal,
     getTaskProfile,
+    governTool,
     historyMarkOf,
     inspectNodeForRepair,
     isPureTranslation,
@@ -1176,16 +1177,16 @@ describe("TASK-40 Đợt C3 — Tự sửa sai theo sai lệch đo được trê
 
         expect(delayExecuted).toBe(true);
         expect(res.success).toBe(false);
-        expect(res.error).toContain("không tạo giao dịch hợp lệ hoặc chưa commit thành công");
+        expect(res.error).toMatch(/chưa xác nhận ghi|không tạo giao dịch hợp lệ/);
         // Giữ nguyên số lượt = 0
         expect(profile.executedRepairs).toBe(0);
         expect(proposal.executed).toBe(false);
     });
 
     // =========================================================================
-    // C3-async-4: Tool trả updated/transform hợp lệ về hình thức nhưng không commit giao dịch của chính nó
+    // C3-async-4: Chạy qua governedRouter thật, tool trả updated/transform hợp lệ nhưng thiếu xác nhận commit
     // =========================================================================
-    test("C3-async-4a: tool trả updated hợp lệ về hình thức nhưng không commit giao dịch của chính nó, thao tác khác ghi trước khi C3 nhận kết quả -> báo chưa ghi và giữ nguyên số lượt", async () => {
+    test("C3-async-4a: chạy qua governedRouter thật, tool trả updated hợp lệ nhưng thiếu xác nhận commit, thao tác khác ghi trong lúc chờ -> báo chưa ghi và không tính lượt", async () => {
         const box = addBox("box_formally_valid_updated", 700, 200, 100);
         const criteria: CriterionSpec[] = [
             {
@@ -1210,14 +1211,23 @@ describe("TASK-40 Đợt C3 — Tự sửa sai theo sai lệch đo được trê
         expect(proposal).toBeDefined();
 
         let delayExecuted = false;
-        // Tool trả về payload chứa updated[] hợp lệ về hình thức nhưng không hề commit transaction của chính nó
-        const res = await executeRepairProposal(proposal, doc, undefined, {
-            overrideToolHandler: async () => {
+        // Tool trả về payload chứa updated[] hợp lệ về hình thức nhưng thiếu xác nhận commit (committed/documentId/proposalId)
+        const rawTool = {
+            name: "set_node_properties",
+            description: "Tool trả updated hợp lệ nhưng thiếu xác nhận commit",
+            parameters: { type: "object", properties: {} },
+            handler: async () => {
                 return JSON.stringify({
                     id: box.id,
                     updated: [{ name: "dx", value: 800 }],
                 });
             },
+        };
+        // Chạy qua governedRouter thật
+        const governedTool = governTool(rawTool as any);
+
+        const res = await executeRepairProposal(proposal, doc, undefined, {
+            overrideToolHandler: governedTool.handler,
             postWriteDelay: async () => {
                 delayExecuted = true;
                 // Thao tác khác độc lập commit vào cùng tài liệu trước khi C3 xử lý kết quả
@@ -1228,9 +1238,9 @@ describe("TASK-40 Đợt C3 — Tự sửa sai theo sai lệch đo được trê
         });
 
         expect(delayExecuted).toBe(true);
-        // C3 từ chối vì lệnh sửa không có xác nhận giao dịch của chính nó
+        // C3 từ chối vì thiếu xác nhận ghi từ chính tool cho đúng tài liệu và đề xuất
         expect(res.success).toBe(false);
-        expect(res.error).toContain("không tạo giao dịch hợp lệ hoặc chưa commit thành công");
+        expect(res.error).toContain("chưa xác nhận ghi");
         // Số lượt sửa của tác vụ gốc được bảo toàn = 0
         expect(profile.executedRepairs).toBe(0);
         expect(proposal.executed).toBe(false);
@@ -1238,7 +1248,7 @@ describe("TASK-40 Đợt C3 — Tự sửa sai theo sai lệch đo được trê
         expect(box.dx).toBe(700);
     });
 
-    test("C3-async-4b: tool trả transform hợp lệ về hình thức nhưng không commit giao dịch của chính nó, thao tác khác ghi trước khi C3 nhận kết quả -> báo chưa ghi và giữ nguyên số lượt", async () => {
+    test("C3-async-4b: chạy qua governedRouter thật, tool trả transform hợp lệ nhưng thiếu xác nhận commit, thao tác khác ghi trong lúc chờ -> báo chưa ghi và không tính lượt", async () => {
         const box = addBox("box_formally_valid_transform", 800, 200, 100);
         // Box kích thước đúng 800, nhưng tâm (400, 100, 50) lệch so với kỳ vọng (500, 100, 50)
         const criteria: CriterionSpec[] = [
@@ -1273,14 +1283,23 @@ describe("TASK-40 Đợt C3 — Tự sửa sai theo sai lệch đo được trê
         expect(proposal.toolName).toBe("transform_node");
 
         let delayExecuted = false;
-        // Tool trả về payload chứa transform hợp lệ về hình thức nhưng không hề commit transaction của chính nó
-        const res = await executeRepairProposal(proposal, doc, undefined, {
-            overrideToolHandler: async () => {
+        // Tool trả về payload chứa transform hợp lệ về hình thức nhưng thiếu xác nhận commit
+        const rawTransformTool = {
+            name: "transform_node",
+            description: "Tool trả transform hợp lệ nhưng thiếu xác nhận commit",
+            parameters: { type: "object", properties: {} },
+            handler: async () => {
                 return JSON.stringify({
                     id: box.id,
                     transform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 100, 0, 0, 1],
                 });
             },
+        };
+        // Chạy qua governedRouter thật
+        const governedTransformTool = governTool(rawTransformTool as any);
+
+        const res = await executeRepairProposal(proposal, doc, undefined, {
+            overrideToolHandler: governedTransformTool.handler,
             postWriteDelay: async () => {
                 delayExecuted = true;
                 // Thao tác khác độc lập commit vào cùng tài liệu trước khi C3 xử lý kết quả
@@ -1292,7 +1311,7 @@ describe("TASK-40 Đợt C3 — Tự sửa sai theo sai lệch đo được trê
 
         expect(delayExecuted).toBe(true);
         expect(res.success).toBe(false);
-        expect(res.error).toContain("không tạo giao dịch hợp lệ hoặc chưa commit thành công");
+        expect(res.error).toContain("chưa xác nhận ghi");
         // Số lượt sửa của tác vụ gốc được bảo toàn = 0
         expect(profile.executedRepairs).toBe(0);
         expect(proposal.executed).toBe(false);

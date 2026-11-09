@@ -835,33 +835,30 @@ export async function executeRepairProposal(
 
         // Xác nhận chính giao dịch mà lệnh sửa C3 thực hiện qua tool:
         // 1. Tool không báo lỗi và xác nhận payload đã cập nhật hợp lệ về hình thức
-        // 2. Tool/governedRouter xác nhận giao dịch đã commit (committed === true)
-        // 3. Giao dịch thuộc đúng tài liệu đã duyệt (documentId === snapshot.documentId)
-        // 4. Giao dịch thuộc đúng lần thực thi đã duyệt (proposalId === snapshot.proposalId)
+        // 2. Chính tool xác nhận giao dịch đã commit (committed === true)
+        // 3. Giao dịch do chính tool xác nhận thuộc đúng tài liệu đã duyệt (documentId === snapshot.documentId)
+        // 4. Giao dịch do chính tool xác nhận thuộc đúng đề xuất đã duyệt (proposalId === snapshot.proposalId)
         // 5. Đỉnh ngăn xếp undo của tài liệu dịch chuyển trực tiếp trong lần gọi này
         const undoAdvanced = undoTopImmediatelyAfter !== undoTopBefore && Boolean(undoTopImmediatelyAfter);
-        const correctDoc = toolReportedDocId === undefined || toolReportedDocId === snapshot.documentId;
-        const correctProposal =
-            toolReportedProposalId === undefined || toolReportedProposalId === snapshot.proposalId;
+        const correctDoc = toolReportedDocId === snapshot.documentId;
+        const correctProposal = toolReportedProposalId === snapshot.proposalId;
+
+        const hasCommitConfirmation = toolReportedCommitted && correctDoc && correctProposal;
 
         const directTransactionCommitted =
-            !writeError &&
-            payloadConfirmed &&
-            toolReportedCommitted &&
-            correctDoc &&
-            correctProposal &&
-            undoAdvanced;
+            !writeError && payloadConfirmed && hasCommitConfirmation && undoAdvanced;
 
         if (testHooks?.postWriteDelay) {
             await testHooks.postWriteDelay();
         }
 
         if (!directTransactionCommitted) {
+            const missingReason = !hasCommitConfirmation
+                ? "lệnh sửa chưa xác nhận ghi từ chính tool cho đúng tài liệu và đề xuất"
+                : "lệnh sửa không tạo giao dịch hợp lệ hoặc chưa commit thành công";
             return {
                 success: false,
-                error:
-                    writeError ??
-                    "lệnh sửa C3 không tạo giao dịch hợp lệ hoặc chưa commit thành công trên tài liệu",
+                error: writeError ?? missingReason,
             };
         }
 
