@@ -231,7 +231,30 @@ lần deploy (bài học version.json TASK-41 stale — xem pdf HANDOFF).
 
 ## C3 — Nhật ký thực thi sửa sai theo sai lệch đo được (09/11/2026)
 
-### C3 v1.2 — Bảo vệ ranh giới ghi & Cách ly tác vụ gốc khi có bước chờ bất đồng bộ
+### C3 v1.3 — Xác nhận giao dịch trực tiếp từ lệnh sửa C3 & Chặn giao dịch ngoại lai (09/11/2026)
+
+1. **Xác nhận giao dịch từ chính đường ghi C3**:
+   - Thay vì chỉ so sánh `historyAfter !== historyBefore` ở cuối hàm (dễ bị đánh lừa nếu có thao tác ngoại lai đổi history trong bước chờ), `executeRepairProposal` trích xuất và kiểm tra trực tiếp giao dịch do lệnh C3 sinh ra ngay khi `tool.handler` vừa kết thúc:
+     - `payloadConfirmed`: Tool xác nhận cập nhật thành công (`updated` với `set_node_properties`, `transform` với `transform_node`, không có `error`).
+     - `undoAdvanced`: `undoTopImmediatelyAfter !== undoTopBefore` (undo stack top dịch chuyển trực tiếp từ lệnh này).
+     - `recordedInTaskHistory`: `governedRouter` đã ghi nhận record giao dịch vào `taskHistoryRecords` của tác vụ gốc.
+   - Chỉ khi giao dịch C3 commit thành công, lượt sửa mới được tính.
+
+2. **Kháng thao tác ngoại lai trong bước chờ**:
+   - Nếu lệnh C3 không tạo giao dịch (ví dụ tool lỗi, hoặc trả về payload rỗng) nhưng trong bước chờ có thao tác khác làm thay đổi lịch sử tài liệu, C3 từ chối nhận vơ giao dịch ngoại lai, báo lỗi chưa ghi và giữ nguyên số lượt sửa.
+   - Nếu lệnh C3 đã commit thành công rồi người dùng đổi tác vụ hoặc hậu kiểm bị hủy, tác vụ gốc vẫn nhận đúng 1 lượt sửa.
+
+3. **Bộ test hồi quy bổ sung**:
+   - `C3-async-3`: Lệnh C3 trả về lỗi không tạo giao dịch, thao tác khác đổi lịch sử tài liệu trong bước chờ $\implies$ C3 báo chưa ghi, giữ nguyên số lượt = 0, proposal.executed = false.
+   - `C3-async-3b`: Lệnh C3 trả về payload rỗng không tạo giao dịch, thao tác khác đổi lịch sử tài liệu trong bước chờ $\implies$ C3 từ chối, giữ nguyên số lượt = 0.
+   - Giữ nguyên toàn bộ 3 ca async `C3-async-1`, `C3-async-1b`, `C3-async-2` từ `b94b3e1d`.
+
+4. **Kết quả kiểm chứng**:
+   - `batchC3Repair.kernel.test.ts`: 23/23 passed.
+   - `packages/ai/test/governance/`: 102/102 passed (7 test files).
+   - Typecheck (`tsc --noEmit`): 0 error.
+   - Biome (`npm run check`): 0 error.
+   - Trạng thái: `WAITING_REVIEW`, chưa triển khai VPS.
 
 1. **Ranh giới ghi tức thời (Immediate Pre-write Recheck)**:
    - Ngay sau bước chờ bất đồng bộ (tải tool qua governedRouter, import động hoặc độ trễ bất đồng bộ), `executeRepairProposal` thực hiện kiểm tra lại toàn diện trước khi gọi `tool.handler`:

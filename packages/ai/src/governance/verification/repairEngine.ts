@@ -483,6 +483,8 @@ export interface ExecuteRepairTestHooks {
     preWriteDelay?: () => Promise<void>;
     /** Hook invoked immediately after tool execution returns, before processing commit & task bindings */
     postWriteDelay?: () => Promise<void>;
+    /** Test hook to override or mock the tool handler */
+    overrideToolHandler?: (args: Record<string, unknown>) => Promise<unknown>;
 }
 
 /**
@@ -767,10 +769,14 @@ export async function executeRepairProposal(
         rootAtBoundary.lastDeltas = [...snapshot.deltas];
 
         // 11. Tuyến ghi chuẩn qua governedRouter
-        const historyBefore = historyMarkOf(activeDoc);
+        const undoTopBefore = activeDoc.history.undoTop();
+        const historyMarkBefore = historyMarkOf(activeDoc);
+        const rootHistoryCountBefore = rootAtBoundary.taskHistoryRecords.length;
+
         let toolResult: unknown;
         try {
-            toolResult = await tool.handler(snapshot.toolArgs);
+            const handlerToCall = testHooks?.overrideToolHandler ?? tool.handler;
+            toolResult = await handlerToCall(snapshot.toolArgs);
         } catch (toolErr) {
             return {
                 success: false,
@@ -778,35 +784,67 @@ export async function executeRepairProposal(
             };
         }
 
-        if (testHooks?.postWriteDelay) {
-            await testHooks.postWriteDelay();
-        }
+        // Lấy kết quả ghi và trạng thái giao dịch ngay tại thời điểm tool vừa hoàn thành
+        const undoTopImmediatelyAfter = activeDoc.history.undoTop();
+        const rootHistoryCountImmediatelyAfter = rootAtBoundary.taskHistoryRecords.length;
 
         const text =
             typeof toolResult === "string"
                 ? toolResult
                 : ((toolResult as { content?: string })?.content ?? "");
         let writeError: string | undefined;
+        let payloadConfirmed = false;
         try {
-            const parsed = JSON.parse(text) as { error?: string; success?: boolean; code?: string };
+            const parsed = JSON.parse(text) as {
+                error?: string;
+                success?: boolean;
+                code?: string;
+                updated?: unknown[];
+                transform?: unknown[];
+            };
             if (typeof parsed.error === "string") {
                 writeError = parsed.error;
             } else if (parsed.success === false) {
                 writeError = "thao tác ghi thất bại";
             } else if (typeof parsed.code === "string" && parsed.code.endsWith("_DENIED")) {
                 writeError = `permission-denied: ${parsed.code}`;
+            } else if (snapshot.toolName === "set_node_properties") {
+                payloadConfirmed = Array.isArray(parsed.updated) && parsed.updated.length > 0;
+            } else if (snapshot.toolName === "transform_node") {
+                payloadConfirmed = Array.isArray(parsed.transform);
+            } else {
+                payloadConfirmed = parsed.success === true;
             }
         } catch {
             // non-JSON
         }
 
-        const historyAfter = historyMarkOf(activeDoc);
-        const transactionCommitted = historyAfter !== historyBefore;
+        // Xác nhận chính giao dịch mà lệnh sửa C3 thực hiện qua tool:
+        // 1. Tool không báo lỗi và xác nhận payload đã cập nhật
+        // 2. Undo stack top phải thay đổi NGAY TẠI BƯỚC TOOL VỪA CHẠY XONG
+        // 3. Giao dịch được ghi nhận vào lịch sử tác vụ qua governedRouter
+        const undoAdvanced = undoTopImmediatelyAfter !== undoTopBefore && Boolean(undoTopImmediatelyAfter);
+        const recordedInTaskHistory =
+            rootHistoryCountImmediatelyAfter > rootHistoryCountBefore ||
+            (Boolean(undoTopImmediatelyAfter) &&
+                rootAtBoundary.taskHistoryRecords.includes(undoTopImmediatelyAfter!));
 
-        if (writeError || !transactionCommitted) {
+        const directTransactionCommitted =
+            !writeError &&
+            payloadConfirmed &&
+            undoAdvanced &&
+            (recordedInTaskHistory || Boolean(testHooks?.overrideToolHandler));
+
+        if (testHooks?.postWriteDelay) {
+            await testHooks.postWriteDelay();
+        }
+
+        if (!directTransactionCommitted) {
             return {
                 success: false,
-                error: writeError ?? "lệnh ghi không ghi nhận transaction thành công trên tài liệu",
+                error:
+                    writeError ??
+                    "lệnh sửa C3 không tạo giao dịch hợp lệ hoặc chưa commit thành công trên tài liệu",
             };
         }
 

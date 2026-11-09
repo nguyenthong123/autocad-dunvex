@@ -14,6 +14,7 @@ import {
     type Result,
     serializable,
     serialize,
+    Transaction,
     XYZ,
 } from "@chili3d/core";
 import { createMockApplication, TestDocument } from "@chili3d/core/test-utils";
@@ -1079,5 +1080,105 @@ describe("TASK-40 Đợt C3 — Tự sửa sai theo sai lệch đo được trê
         const activeProfile = getTaskProfile();
         expect(activeProfile?.taskId).toBe("task_B_uuid");
         expect(activeProfile?.executedRepairs).toBe(0);
+    });
+
+    // =========================================================================
+    // C3-async-3: Lệnh C3 không tạo giao dịch nhưng thao tác khác làm đổi lịch sử trong bước chờ
+    // =========================================================================
+    test("C3-async-3: lệnh C3 không tạo giao dịch nhưng thao tác khác làm đổi lịch sử trong bước chờ -> báo chưa ghi và giữ nguyên số lượt", async () => {
+        const box = addBox("box_async_notrans", 700, 200, 100);
+        const criteria: CriterionSpec[] = [
+            {
+                id: "c-dim",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: [box.id],
+                expected: { sizeMm: [800, 200, 100] },
+                toleranceMm: [2, 2, 2],
+            },
+        ];
+
+        const profile = approveTaskPlan({
+            taskId: "task_async_3",
+            documentId: doc.id,
+            allowedModifiedNodeIds: [box.id],
+            criteria,
+        });
+
+        const eval1 = await finalizeTaskVerification(doc);
+        const proposal = eval1!.activeProposal!;
+        expect(proposal).toBeDefined();
+
+        let delayExecuted = false;
+        // Mô phỏng: Lệnh C3 gọi tool nhưng tool không tạo giao dịch (ví dụ trả về error hoặc không có giao dịch commit)
+        const res = await executeRepairProposal(proposal, doc, undefined, {
+            overrideToolHandler: async () => {
+                // Tool không tạo transaction nào trên doc.history và trả về error
+                return JSON.stringify({ error: "tham số không hợp lệ — không thể thay đổi thuộc tính" });
+            },
+            postWriteDelay: async () => {
+                delayExecuted = true;
+                // Thao tác khác độc lập làm thay đổi lịch sử tài liệu trong lúc chờ!
+                Transaction.execute(doc, "Thao tác người dùng độc lập", () => {
+                    box.dz = 120;
+                });
+            },
+        });
+
+        expect(delayExecuted).toBe(true);
+        // C3 không bị đánh lừa bởi thao tác khác: phải báo lỗi chưa ghi nhận giao dịch của chính C3
+        expect(res.success).toBe(false);
+        expect(res.error).toBeDefined();
+        // QUAN TRỌNG: Tác vụ gốc giữ nguyên số lượt = 0 (không tính lượt cho giao dịch ngoại lai)
+        expect(profile.executedRepairs).toBe(0);
+        // Đề xuất không bị đánh dấu đã thực thi
+        expect(proposal.executed).toBe(false);
+    });
+
+    test("C3-async-3b: lệnh C3 trả về payload rỗng không tạo giao dịch, thao tác khác đổi lịch sử -> từ chối và giữ nguyên số lượt", async () => {
+        const box = addBox("box_async_empty_trans", 700, 200, 100);
+        const criteria: CriterionSpec[] = [
+            {
+                id: "c-dim",
+                kind: "dimension_match",
+                required: true,
+                subjectNodeIds: [box.id],
+                expected: { sizeMm: [800, 200, 100] },
+                toleranceMm: [2, 2, 2],
+            },
+        ];
+
+        const profile = approveTaskPlan({
+            taskId: "task_async_3b",
+            documentId: doc.id,
+            allowedModifiedNodeIds: [box.id],
+            criteria,
+        });
+
+        const eval1 = await finalizeTaskVerification(doc);
+        const proposal = eval1!.activeProposal!;
+        expect(proposal).toBeDefined();
+
+        let delayExecuted = false;
+        // Mô phỏng tool trả về payload rỗng/không cập nhật và không có transaction
+        const res = await executeRepairProposal(proposal, doc, undefined, {
+            overrideToolHandler: async () => {
+                return JSON.stringify({ id: box.id }); // Không có updated[]
+            },
+            postWriteDelay: async () => {
+                delayExecuted = true;
+                // Thao tác khác độc lập làm thay đổi lịch sử tài liệu trong lúc chờ!
+                Transaction.execute(doc, "Thao tác vẽ ngoài lề", () => {
+                    box.dz = 150;
+                });
+            },
+        });
+
+        expect(delayExecuted).toBe(true);
+        expect(res.success).toBe(false);
+        expect(res.error).toContain("không tạo giao dịch hợp lệ hoặc chưa commit thành công");
+        // Giữ nguyên số lượt = 0
+        expect(profile.executedRepairs).toBe(0);
+        expect(proposal.executed).toBe(false);
     });
 });
