@@ -91,6 +91,14 @@ export interface TaskProfile extends TaskScope {
      * last write. Absent = nothing to verify; the card must not claim completion.
      */
     criteria?: import("./verification/types").CriterionSpec[];
+    /** C3: number of executed repairs for this task (max 2). */
+    executedRepairs?: number;
+    /** C3: last measured deltas prior to repair, for convergence check. */
+    lastDeltas?: import("./verification/types").CriterionStructuredDelta[];
+    /** C3: execution mutex flag preventing concurrent approvals / double click. */
+    isRepairExecuting?: boolean;
+    /** C3: currently active immutable repair proposal. */
+    activeProposal?: import("./verification/types").RepairProposal;
 }
 
 /** Minimal structured design rules for Batch B (no approved tolerance table). */

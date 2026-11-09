@@ -34,6 +34,7 @@ import {
     type BoundTaskPlanProposal,
     confirmProposedPlan,
     evaluateTaskCriteria,
+    executeRepairProposal,
     finalizeTaskVerification,
     formatGovernanceStatusLine,
     getCriterionRunner,
@@ -966,17 +967,41 @@ export class ChatPanel extends HTMLElement {
         const evaluation = evaluateTaskCriteria(profile.taskId, this.document);
         this.governanceCardEl.style.display = "";
         this.governanceCardEl.replaceChildren(
-            renderEvidenceCard(evaluation, {
-                root: style.governanceInner,
-                header: style.governanceHeader,
-                row: style.governanceRow,
-                pass: style.governancePass,
-                fail: style.governanceFail,
-                unknown: style.governanceUnknown,
-                stale: style.governanceStale,
-                badgeComplete: style.governanceBadgeComplete,
-                badgeOutstanding: style.governanceBadgeOutstanding,
-            }),
+            renderEvidenceCard(
+                evaluation,
+                {
+                    root: style.governanceInner,
+                    header: style.governanceHeader,
+                    row: style.governanceRow,
+                    pass: style.governancePass,
+                    fail: style.governanceFail,
+                    unknown: style.governanceUnknown,
+                    stale: style.governanceStale,
+                    badgeComplete: style.governanceBadgeComplete,
+                    badgeOutstanding: style.governanceBadgeOutstanding,
+                    repairSection: style.governanceRepairSection,
+                    repairHeader: style.governanceRepairHeader,
+                    repairDescription: style.governanceRepairDescription,
+                    btnApprove: style.governanceBtnApprove,
+                    btnReject: style.governanceBtnReject,
+                },
+                {
+                    onApproveRepair: async (proposal) => {
+                        const res = await executeRepairProposal(proposal, this.document);
+                        if (!res.success) {
+                            this.appendError(res.error ?? "Lỗi thực thi sửa đề xuất");
+                        }
+                        this.refreshGovernanceCard();
+                    },
+                    onRejectRepair: (proposal) => {
+                        const activeProfile = getTaskProfile();
+                        if (activeProfile && activeProfile.activeProposal === proposal) {
+                            activeProfile.activeProposal = undefined;
+                        }
+                        this.refreshGovernanceCard();
+                    },
+                },
+            ),
         );
     }
 

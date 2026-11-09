@@ -4,7 +4,12 @@
 import type { IDocument } from "@chili3d/core";
 import { registerCriterionRunner } from "../evidenceStore";
 import { readSubjectWorldBox } from "../measure";
-import type { CriterionMeasurement, CriterionRunner, CriterionSpec } from "../types";
+import type {
+    CriterionMeasurement,
+    CriterionRunner,
+    CriterionSpec,
+    CriterionStructuredDelta,
+} from "../types";
 
 type Triple = [number, number, number];
 
@@ -63,6 +68,7 @@ function compareAgainstExpected(
         };
     }
     const measured: Record<string, number[]> = {};
+    const deltas: CriterionStructuredDelta[] = [];
     const deviations: string[] = [];
     for (const nodeId of spec.subjectNodeIds) {
         const reading = readNode(nodeId);
@@ -71,21 +77,34 @@ function compareAgainstExpected(
         }
         measured[`${nodeId}:${expectedKey}`] = reading.value.map(round3);
         for (let axis = 0; axis < 3; axis++) {
+            const axisName = "XYZ"[axis] as "X" | "Y" | "Z";
             const delta = reading.value[axis] - expected[axis];
+            deltas.push({
+                criterionId: spec.id,
+                subjectNodeId: nodeId,
+                kind: spec.kind,
+                axis: axisName,
+                axisIndex: axis,
+                measuredMm: round3(reading.value[axis]),
+                expectedMm: expected[axis],
+                deltaMm: round3(delta),
+                toleranceMm: tolerance[axis],
+            });
             if (Math.abs(delta) > tolerance[axis] + 1e-9) {
                 deviations.push(
-                    `${nodeId} trục ${"XYZ"[axis]}: đo ${round3(reading.value[axis])} mm, mong ${expected[axis]} mm, ` +
+                    `${nodeId} trục ${axisName}: đo ${round3(reading.value[axis])} mm, mong ${expected[axis]} mm, ` +
                         `lệch ${round3(delta)} mm vượt dung sai ${tolerance[axis]} mm`,
                 );
             }
         }
     }
     if (deviations.length > 0) {
-        return { status: "fail", measured, reason: `${label} sai — ${deviations.join("; ")}` };
+        return { status: "fail", measured, deltas, reason: `${label} sai — ${deviations.join("; ")}` };
     }
     return {
         status: "pass",
         measured,
+        deltas,
         reason: `${label} đạt: mọi trục trong dung sai ${tolerance.map(round3).join("/")} mm`,
     };
 }

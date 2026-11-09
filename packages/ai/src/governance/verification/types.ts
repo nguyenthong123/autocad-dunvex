@@ -54,6 +54,7 @@ export interface CriterionEvidence {
     stateSignature?: string;
     status: CriterionStatus;
     measured?: Record<string, number[]>;
+    deltas?: CriterionStructuredDelta[];
     reason: string;
     supportNotes?: string;
     recordedAt: number;
@@ -65,7 +66,42 @@ export interface CriterionEvidence {
 export interface CriterionMeasurement {
     status: CriterionStatus;
     measured?: Record<string, number[]>;
+    deltas?: CriterionStructuredDelta[];
     reason: string;
+}
+
+/** C3 structured delta per criterion and axis. */
+export interface CriterionStructuredDelta {
+    criterionId: string;
+    subjectNodeId: string;
+    kind: string;
+    axis: "X" | "Y" | "Z";
+    axisIndex: number;
+    measuredMm: number;
+    expectedMm: number;
+    deltaMm: number; // measuredMm - expectedMm
+    toleranceMm: number;
+}
+
+/** Immutable one-time repair proposal bound to exact document and state marker. */
+export interface RepairProposal {
+    proposalId: string;
+    taskId: string;
+    documentId: string;
+    historyMark: string;
+    rulesFingerprint: string;
+    stateSignature: string;
+    subjectNodeIds: string[];
+    toolName: "set_node_properties" | "transform_node";
+    toolArgs: Record<string, unknown>;
+    displayDescription: string;
+    phase: "size" | "position";
+    attemptIndex: number;
+    deltas: CriterionStructuredDelta[];
+    executed: boolean;
+    invalidated?: boolean;
+    invalidationReason?: string;
+    createdAt: number;
 }
 
 /** A published-scope geometric check. `supportNotes` must state what it cannot prove. */
@@ -91,6 +127,7 @@ export interface CriterionRow {
     status: CriterionStatus;
     reason: string;
     measured?: Record<string, number[]>;
+    deltas?: CriterionStructuredDelta[];
     evidence?: CriterionEvidence;
     /** True when recorded evidence exists but lost validity (node/rules/doc drift). */
     stale: boolean;
@@ -107,4 +144,7 @@ export interface TaskCriteriaEvaluation {
     completable: boolean;
     blockReason?: string;
     counts: { pass: number; fail: number; unknown: number };
+    activeProposal?: RepairProposal;
+    proposalStopReason?: string;
+    executedRepairs?: number;
 }

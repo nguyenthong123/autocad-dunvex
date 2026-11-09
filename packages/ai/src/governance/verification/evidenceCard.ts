@@ -16,6 +16,16 @@ export interface EvidenceCardClasses {
     stale: string;
     badgeComplete: string;
     badgeOutstanding: string;
+    repairSection?: string;
+    repairHeader?: string;
+    repairDescription?: string;
+    btnApprove?: string;
+    btnReject?: string;
+}
+
+export interface EvidenceCardActions {
+    onApproveRepair?: (proposal: import("./types").RepairProposal) => void;
+    onRejectRepair?: (proposal: import("./types").RepairProposal) => void;
 }
 
 const STATUS_ICON = { pass: "✅", fail: "❌", unknown: "❓" } as const;
@@ -54,6 +64,7 @@ function formatExpected(spec: CriterionSpec): string {
 export function renderEvidenceCard(
     evaluation: TaskCriteriaEvaluation,
     classes: EvidenceCardClasses,
+    actions?: EvidenceCardActions,
 ): HTMLElement {
     const rows = evaluation.rows.map((row) => {
         const stateClass = row.stale
@@ -83,6 +94,77 @@ export function renderEvidenceCard(
         );
     });
 
+    const additionalBlocks: HTMLElement[] = [];
+
+    // C3: Thẻ đề xuất sửa sai lệch (nếu có đề xuất hợp lệ)
+    if (evaluation.activeProposal && !evaluation.completable) {
+        const proposal = evaluation.activeProposal;
+        const approveBtn = document.createElement("button");
+        approveBtn.type = "button";
+        approveBtn.className = classes.btnApprove ?? "";
+        approveBtn.textContent = "Duyệt sửa";
+        approveBtn.addEventListener(
+            "click",
+            (e) => {
+                e.stopPropagation();
+                approveBtn.disabled = true;
+                approveBtn.textContent = "Đang sửa...";
+                actions?.onApproveRepair?.(proposal);
+            },
+            { once: true },
+        );
+
+        const rejectBtn = document.createElement("button");
+        rejectBtn.type = "button";
+        rejectBtn.className = classes.btnReject ?? "";
+        rejectBtn.textContent = "Từ chối";
+        rejectBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            rejectBtn.disabled = true;
+            actions?.onRejectRepair?.(proposal);
+        });
+
+        const btnContainer = div(
+            { style: { display: "flex", gap: "8px", marginTop: "4px" } },
+            approveBtn,
+            rejectBtn,
+        );
+
+        const proposalBlock = div(
+            { className: classes.repairSection ?? classes.stale },
+            div({
+                className: classes.repairHeader ?? classes.header,
+                textContent: `🔧 Đề xuất sửa sai lệch (Lần ${proposal.attemptIndex}/2)`,
+            }),
+            div({
+                className: classes.repairDescription ?? classes.row,
+                textContent: `→ ${proposal.displayDescription}`,
+            }),
+            btnContainer,
+        );
+        additionalBlocks.push(proposalBlock);
+    } else if (evaluation.proposalStopReason && !evaluation.completable) {
+        additionalBlocks.push(
+            div({
+                className: classes.unknown,
+                textContent: `ℹ Dừng tự sửa: ${evaluation.proposalStopReason}`,
+            }),
+        );
+    }
+
+    if (
+        evaluation.executedRepairs !== undefined &&
+        evaluation.executedRepairs >= 2 &&
+        !evaluation.completable
+    ) {
+        additionalBlocks.push(
+            div({
+                className: classes.stale,
+                textContent: "🛑 Đã thực thi đủ 2/2 lượt tự sửa trên tác vụ gốc — dừng vòng tự động",
+            }),
+        );
+    }
+
     const badge = evaluation.completable
         ? div({
               className: classes.badgeComplete,
@@ -102,6 +184,7 @@ export function renderEvidenceCard(
             textContent: `Bằng chứng hậu kiểm (Đợt C) · task ${evaluation.taskId.slice(0, 8)} · pass ${evaluation.counts.pass} / fail ${evaluation.counts.fail} / unknown ${evaluation.counts.unknown}`,
         }),
         ...rows,
+        ...additionalBlocks,
         badge,
     );
 }

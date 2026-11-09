@@ -4,6 +4,7 @@
 export * from "./evidenceCard";
 export * from "./evidenceStore";
 export * from "./measure";
+export * from "./repairEngine";
 export * from "./runners/geometry";
 export * from "./runtime";
 export * from "./stateMarker";

@@ -64,6 +64,8 @@ export function approveTaskPlan(
         taskHistoryRecords: [],
         interleaved: false,
         criteria: input.criteria?.length ? [...input.criteria] : undefined,
+        executedRepairs: 0,
+        isRepairExecuting: false,
     };
     activeProfile = profile;
     return profile;

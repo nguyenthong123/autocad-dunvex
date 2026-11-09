@@ -143,4 +143,57 @@ describe("TASK-40 Đợt C1 — thẻ bằng chứng trong chat (mỗi trạng t
         expect(row).not.toBeNull();
         expect(row!.className).toContain("pass");
     });
+
+    test("C3: thẻ có đề xuất sửa → hiển thị khối đề xuất và nút Duyệt sửa, bấm nút disabled ngay", () => {
+        const evaluation = evaluateTaskCriteria("task-card", doc);
+        evaluation.activeProposal = {
+            proposalId: "p1",
+            taskId: "task-card",
+            documentId: doc.id,
+            historyMark: "h1",
+            rulesFingerprint: "r1",
+            stateSignature: "s1",
+            subjectNodeIds: ["wall-1"],
+            toolName: "set_node_properties",
+            toolArgs: { id: "wall-1", properties: { dx: 800 } },
+            displayDescription: "Sửa kích thước wall-1 (dx: 700 → 800 mm)",
+            phase: "size",
+            attemptIndex: 1,
+            deltas: [],
+            executed: false,
+            createdAt: Date.now(),
+        };
+
+        const onApprove = rs.fn();
+        const card = renderEvidenceCard(evaluation, CLASSES, { onApproveRepair: onApprove });
+        document.body.replaceChildren(card);
+
+        expect(card.textContent).toContain("Đề xuất sửa sai lệch (Lần 1/2)");
+        expect(card.textContent).toContain("Sửa kích thước wall-1 (dx: 700 → 800 mm)");
+
+        const approveBtn = card.querySelector("button") as HTMLButtonElement;
+        expect(approveBtn).not.toBeNull();
+        expect(approveBtn.textContent).toBe("Duyệt sửa");
+
+        approveBtn.click();
+        expect(onApprove).toHaveBeenCalledTimes(1);
+        expect(approveBtn.disabled).toBe(true);
+        expect(approveBtn.textContent).toBe("Đang sửa...");
+
+        // Click lần 2 không gọi tiếp (once: true)
+        approveBtn.click();
+        expect(onApprove).toHaveBeenCalledTimes(1);
+    });
+
+    test("C3: hiển thị thông báo khi có lý do dừng tự sửa hoặc hết lượt", () => {
+        const evaluation = evaluateTaskCriteria("task-card", doc);
+        evaluation.proposalStopReason = "unsupported-transform-mapping: có xoay phi trực giao";
+        evaluation.executedRepairs = 2;
+
+        const card = mountCard(evaluation);
+        expect(card.textContent).toContain(
+            "Dừng tự sửa: unsupported-transform-mapping: có xoay phi trực giao",
+        );
+        expect(card.textContent).toContain("Đã thực thi đủ 2/2 lượt tự sửa trên tác vụ gốc");
+    });
 });

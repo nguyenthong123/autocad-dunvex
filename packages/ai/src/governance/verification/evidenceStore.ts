@@ -5,6 +5,7 @@ import type { IDocument } from "@chili3d/core";
 import { getDocument } from "../../tools/documentContext";
 import { rulesFingerprintFor } from "../rulesStore";
 import { getTaskProfile } from "../taskProfile";
+import { generateRepairProposal } from "./repairEngine";
 import { historyMarkOf, subjectsSignatureOf } from "./stateMarker";
 import type {
     CriterionEvidence,
@@ -68,6 +69,7 @@ export interface EvidenceInput {
     status: CriterionEvidence["status"];
     reason: string;
     measured?: Record<string, number[]>;
+    deltas?: import("./types").CriterionStructuredDelta[];
     supportNotes?: string;
     historyMark?: string;
     documentId?: string;
@@ -93,6 +95,7 @@ export function recordCriterionEvidence(input: EvidenceInput): CriterionEvidence
         subjectNodeIds: input.subjectNodeIds,
         status: input.status,
         measured: input.measured,
+        deltas: input.deltas,
         reason: input.reason,
         supportNotes: input.supportNotes,
         documentId: docId,
@@ -247,6 +250,7 @@ export function evaluateTaskCriteria(taskId: string, doc?: IDocument): TaskCrite
                 status: "unknown",
                 reason: staleReason(evidence, active),
                 measured: evidence.measured,
+                deltas: evidence.deltas,
                 evidence,
                 stale: true,
             };
@@ -262,6 +266,7 @@ export function evaluateTaskCriteria(taskId: string, doc?: IDocument): TaskCrite
                 status: "unknown",
                 reason: `state-unverifiable: chủ thể không đọc được ở lần đọc lại — tiêu chí cần phép đo không được giữ ${evidence.status}`,
                 measured: evidence.measured,
+                deltas: evidence.deltas,
                 evidence,
                 stale: false,
             };
@@ -271,6 +276,7 @@ export function evaluateTaskCriteria(taskId: string, doc?: IDocument): TaskCrite
             status: evidence.status,
             reason: evidence.reason,
             measured: evidence.measured,
+            deltas: evidence.deltas,
             evidence,
             stale: false,
         };
@@ -293,7 +299,7 @@ export function evaluateTaskCriteria(taskId: string, doc?: IDocument): TaskCrite
         blockReason = "no_required_criteria";
     }
     const completable = blockReason === undefined && outstandingRequiredIds.length === 0;
-    return {
+    const evaluation: TaskCriteriaEvaluation = {
         taskId,
         rows,
         requiredTotal: requiredRows.length,
@@ -302,7 +308,23 @@ export function evaluateTaskCriteria(taskId: string, doc?: IDocument): TaskCrite
         completable,
         blockReason,
         counts,
+        executedRepairs: profile?.executedRepairs ?? 0,
     };
+
+    if (
+        !completable &&
+        active &&
+        specs.length > 0 &&
+        profile?.status === "active" &&
+        profile.taskId === taskId
+    ) {
+        const repair = generateRepairProposal(evaluation, active);
+        evaluation.activeProposal = repair.proposal;
+        evaluation.proposalStopReason = repair.stopReason;
+        profile.activeProposal = repair.proposal;
+    }
+
+    return evaluation;
 }
 
 /** Trusted execution: runs every registered runner for the task's declared criteria. */
@@ -396,6 +418,7 @@ export async function runTaskCriterionChecks(
             subjectNodeIds: spec.subjectNodeIds,
             status: statusToRecord,
             measured: measuredToRecord,
+            deltas: driftReason ? undefined : measurement.deltas,
             reason: reasonToRecord,
             supportNotes: runner.supportNotes,
             doc: target,

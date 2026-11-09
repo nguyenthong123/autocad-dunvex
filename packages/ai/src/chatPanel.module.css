@@ -1294,3 +1294,49 @@
     font-weight: 600;
     color: var(--foreground-muted-color);
 }
+
+.governanceRepairSection {
+    margin-top: 6px;
+    padding: 6px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-subtle, rgba(0, 0, 0, 0.02));
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.governanceRepairHeader {
+    font-weight: 600;
+    color: var(--primary-color, #0969da);
+}
+
+.governanceRepairDescription {
+    color: var(--foreground-color);
+}
+
+.governanceBtnApprove {
+    background: var(--primary-color, #0969da);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 3px 10px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.governanceBtnApprove:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.governanceBtnReject {
+    background: transparent;
+    color: var(--foreground-muted-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 3px 10px;
+    cursor: pointer;
+    font-size: 11px;
+}
