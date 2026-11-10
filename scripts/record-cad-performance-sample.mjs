@@ -10,6 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, "..");
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const USER_DATA_DIR = "/tmp/chili3d-chrome-profiler-sample";
+const DOWNLOAD_DIR = "/tmp/chili3d-chrome-downloads";
 const CDP_PORT = 9226;
 const DEV_URL = "http://localhost:8080/?test=true";
 const SAMPLE_DOC_PATH = path.join(ROOT_DIR, "data/du_an_1_latest.json");
@@ -24,6 +25,8 @@ class CDPClient {
 
     async launch() {
         fs.mkdirSync(USER_DATA_DIR, { recursive: true });
+        fs.rmSync(DOWNLOAD_DIR, { recursive: true, force: true });
+        fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
         this.proc = spawn(
             CHROME,
             [
@@ -76,6 +79,19 @@ class CDPClient {
 
         await this.send("Page.enable");
         await this.send("Runtime.enable");
+        try {
+            await this.send("Page.setDownloadBehavior", {
+                behavior: "allow",
+                downloadPath: DOWNLOAD_DIR,
+            });
+        } catch {}
+        try {
+            await this.send("Browser.setDownloadBehavior", {
+                behavior: "allow",
+                downloadPath: DOWNLOAD_DIR,
+                eventsEnabled: true,
+            });
+        } catch {}
     }
 
     send(method, params = {}) {
@@ -182,11 +198,11 @@ async function main() {
         console.log("-> Bắt đầu kịch bản kiểm thử nghiệm thu qua UI thật:");
         console.log("   1. Mở giao diện Báo cáo Lỗi & Hiệu năng (ManualReader)...");
         console.log("   2. Bấm nút 'Bắt đầu đo'...");
-        console.log("   3. Thực hiện zoom/kéo và tự lưu tài liệu...");
-        console.log("   4. Mở bản vẽ (thao tác task ngoài Pan/Zoom)...");
-        console.log("   5. Bấm nút 'Vừa bị khựng'...");
+        console.log("   3. Thực hiện zoom hoặc kéo...");
+        console.log("   4. Bấm nút 'Vừa bị khựng' (đánh dấu mốc khựng)...");
+        console.log("   5. Thực hiện tự lưu tài liệu & mở bản vẽ (thao tác task ngoài Pan/Zoom)...");
         console.log("   6. Bấm nút 'Dừng đo'...");
-        console.log("   7. Kiểm tra các nút tải: Báo cáo tổng hợp, Báo cáo lỗi cũ và Báo cáo hiệu năng...");
+        console.log("   7. Bấm nút 'Tải báo cáo tổng hợp (.json)' và nút 'Tải báo cáo (.json)' (legacy)...");
 
         const uiTestResult = await client.evaluate(`(async () => {
             const app = window.__chiliTest.app;
@@ -232,14 +248,33 @@ async function main() {
                 return origAppendChild(node);
             };
 
-            // Tìm nút Bắt đầu đo
-            const allButtons = Array.from(reader.querySelectorAll("button"));
-            const startBtn = allButtons.find((b) => b.textContent && b.textContent.includes("Bắt đầu đo"));
-            if (!startBtn) throw new Error("Không tìm thấy nút 'Bắt đầu đo' trên giao diện!");
+            // Helper to reliably find buttons on ManualReader even if re-rendered
+            const ensureButton = async (text) => {
+                for (let i = 0; i < 20; i++) {
+                    let r = document.querySelector("chili-manual-reader");
+                    if (!r) {
+                        await window.__chiliTest.dispatch("app.manual");
+                        await new Promise((res) => setTimeout(res, 100));
+                        r = document.querySelector("chili-manual-reader");
+                    }
+                    if (r) {
+                        if (typeof r.openDiagnosticsView === "function") {
+                            r.openDiagnosticsView();
+                        }
+                        const b = Array.from(r.querySelectorAll("button")).find(
+                            (btn) => btn.textContent && btn.textContent.includes(text),
+                        );
+                        if (b) return b;
+                    }
+                    await new Promise((res) => setTimeout(res, 50));
+                }
+                throw new Error("Không tìm thấy nút '" + text + "' trên giao diện!");
+            };
 
             // 2. Click 'Bắt đầu đo'
+            const startBtn = await ensureButton("Bắt đầu đo");
             startBtn.click();
-            await new Promise((r) => setTimeout(r, 50));
+            await new Promise((r) => setTimeout(r, 100));
 
             // 3. Thực hiện chuỗi zoom, kéo
             for (let i = 0; i < 10; i++) {
@@ -253,24 +288,20 @@ async function main() {
                 await new Promise((r) => setTimeout(r, 16));
             }
 
-            // Kích hoạt tự lưu
+            // 4. Click 'Vừa bị khựng' (đánh dấu khựng ngay sau zoom/kéo)
+            const markBtn = await ensureButton("Vừa bị khựng");
+            markBtn.click();
+            await new Promise((r) => setTimeout(r, 100));
+
+            // 5. Thực hiện tự lưu tài liệu & mở bản vẽ (thao tác task ngoài Pan/Zoom)
             await doc.save();
 
-            // 4. Mở bản vẽ (thao tác task ngoài Pan/Zoom)
             const sampleRaw = ${JSON.stringify(sampleDocRaw)};
             const parsedDoc = JSON.parse(sampleRaw);
             await app.loadDocument(parsedDoc);
             await window.__chiliTest.quietFrames(5);
 
-            // 5. Click 'Vừa bị khựng'
-            const markBtn = Array.from(reader.querySelectorAll("button")).find(
-                (b) => b.textContent && b.textContent.includes("Vừa bị khựng"),
-            );
-            if (!markBtn) throw new Error("Không tìm thấy nút 'Vừa bị khựng' trên giao diện!");
-            markBtn.click();
-            await new Promise((r) => setTimeout(r, 50));
-
-            // Pan thêm 5 lần
+            // Pan thêm vài khung hình trên bản vẽ mới
             const curCam = app.activeView.cameraController;
             for (let i = 0; i < 5; i++) {
                 curCam.pan(-5, 3);
@@ -280,32 +311,23 @@ async function main() {
             await window.__chiliTest.quietFrames(5);
 
             // 6. Click 'Dừng đo'
-            const stopBtn = Array.from(reader.querySelectorAll("button")).find(
-                (b) => b.textContent && b.textContent.includes("Dừng đo"),
-            );
-            if (!stopBtn) throw new Error("Không tìm thấy nút 'Dừng đo' trên giao diện!");
+            const stopBtn = await ensureButton("Dừng đo");
             stopBtn.click();
-            await new Promise((r) => setTimeout(r, 50));
+            await new Promise((r) => setTimeout(r, 100));
 
             // 7a. Click nút 'Tải báo cáo tổng hợp (.json)'
-            const combinedBtn = Array.from(reader.querySelectorAll("button")).find(
-                (b) => b.textContent && b.textContent.includes("Tải báo cáo tổng hợp"),
-            );
-            if (!combinedBtn) throw new Error("Không tìm thấy nút 'Tải báo cáo tổng hợp' trên giao diện!");
+            const combinedBtn = await ensureButton("Tải báo cáo tổng hợp");
             combinedBtn.click();
-            await new Promise((r) => setTimeout(r, 200));
+            await new Promise((r) => setTimeout(r, 400));
             const combinedDownload = downloads[downloads.length - 1];
             if (combinedDownload && lastDownloadedFileName) {
                 combinedDownload.fileName = lastDownloadedFileName;
             }
 
             // 7b. Click nút 'Tải báo cáo (.json)' (đường xuất báo lỗi cũ)
-            const legacyBtn = Array.from(reader.querySelectorAll("button")).find(
-                (b) => b.textContent && b.textContent.trim() === "📥 Tải báo cáo (.json)",
-            );
-            if (!legacyBtn) throw new Error("Không tìm thấy nút 'Tải báo cáo (.json)' (legacy) trên giao diện!");
+            const legacyBtn = await ensureButton("Tải báo cáo (.json)");
             legacyBtn.click();
-            await new Promise((r) => setTimeout(r, 200));
+            await new Promise((r) => setTimeout(r, 400));
             const legacyDownload = downloads[downloads.length - 1];
             if (legacyDownload && lastDownloadedFileName) {
                 legacyDownload.fileName = lastDownloadedFileName;
@@ -368,12 +390,44 @@ async function main() {
         })()`);
 
         console.log("✅ Thao tác UI thật thành công!");
-        console.log(`   - File xuất tổng hợp từ UI: ${uiTestResult.combinedDownload?.fileName}`);
-        console.log(`   - File xuất lỗi cũ từ UI: ${uiTestResult.legacyDownload?.fileName}`);
+
+        // Check physical downloaded files in DOWNLOAD_DIR if Chrome saved them
+        let physicalCombinedPath = null;
+        let physicalLegacyPath = null;
+        for (let i = 0; i < 25; i++) {
+            await new Promise((r) => setTimeout(r, 100));
+            if (fs.existsSync(DOWNLOAD_DIR)) {
+                const files = fs.readdirSync(DOWNLOAD_DIR);
+                const comb = files.find((f) => f.includes("combined-diagnostics") && f.endsWith(".json"));
+                const leg = files.find((f) => f.includes("error-report") && f.endsWith(".json"));
+                if (comb) physicalCombinedPath = path.join(DOWNLOAD_DIR, comb);
+                if (leg) physicalLegacyPath = path.join(DOWNLOAD_DIR, leg);
+                if (physicalCombinedPath && physicalLegacyPath) break;
+            }
+        }
+
+        let combinedJsonText = "";
+        let legacyJsonText = "";
+
+        if (physicalCombinedPath && fs.existsSync(physicalCombinedPath)) {
+            console.log(`📁 Chrome đã ghi file tải xuống tổng hợp vào đĩa: ${physicalCombinedPath}`);
+            combinedJsonText = fs.readFileSync(physicalCombinedPath, "utf8");
+        } else {
+            console.log("ℹ️ Đọc nội dung file tải về từ interceptor Blob URL của Chrome.");
+            combinedJsonText = uiTestResult.combinedDownload.content;
+        }
+
+        if (physicalLegacyPath && fs.existsSync(physicalLegacyPath)) {
+            console.log(`📁 Chrome đã ghi file tải xuống báo lỗi cũ vào đĩa: ${physicalLegacyPath}`);
+            legacyJsonText = fs.readFileSync(physicalLegacyPath, "utf8");
+        } else {
+            legacyJsonText = uiTestResult.legacyDownload.content;
+        }
+
+        console.log(`   - Tên file xuất tổng hợp: ${uiTestResult.combinedDownload?.fileName}`);
+        console.log(`   - Tên file xuất lỗi cũ (legacy): ${uiTestResult.legacyDownload?.fileName}`);
         console.log(`   - Số lỗi AI hiện tại: ${uiTestResult.errorReportsCount} (Không có lỗi AI)`);
-        console.log(
-            `   - Nội dung xuất lỗi cũ (legacy): ${uiTestResult.legacyDownload?.content.trim()} (mảng chuẩn [])`,
-        );
+        console.log(`   - Nội dung xuất lỗi cũ (legacy): ${legacyJsonText.trim()} (mảng chuẩn [])`);
 
         // Calculate overhead stats and variance
         const offTimesUs = uiTestResult.offTimes.map((t) => t * 1000);
@@ -405,10 +459,13 @@ async function main() {
             `   -> Chi phí đo chỉ chiếm ${(deltaStats.mean / 166.67).toFixed(2)}% ngân sách khung hình 60fps (16.67ms).`,
         );
 
-        const parsedCombined = JSON.parse(uiTestResult.combinedDownload.content);
-        console.log("\n📊 ĐỐI CHIẾU DỮ LIỆU TỪ FILE XUẤT TỔNG HỢP (.json):");
+        const parsedCombined = JSON.parse(combinedJsonText);
+        console.log("\n📊 ĐỐI CHIẾU DỮ LIỆU TỪ CHÍNH FILE CHROME ĐÃ TẢI XUỐNG (.json):");
+        console.log(
+            `   - Có errorReports: ${Array.isArray(parsedCombined.errorReports)} (mảng ${parsedCombined.errorReports.length} phần tử)`,
+        );
+        console.log(`   - Có performance: ${typeof parsedCombined.performance === "object"}`);
         console.log(`   - schemaVersion: ${parsedCombined.schemaVersion}`);
-        console.log(`   - errorReports: mảng ${parsedCombined.errorReports.length} phần tử (Không có lỗi)`);
         console.log(`   - performance.buildSha: ${parsedCombined.performance.buildSha || currentSha}`);
         console.log(
             `   - performance.session.durationMs: ${parsedCombined.performance.session.durationMs} ms`,
@@ -432,8 +489,15 @@ async function main() {
             `   - performance.aggregates.autosave: Serialize=${parsedCombined.performance.aggregates.autosave.serializeCount} (${parsedCombined.performance.aggregates.autosave.avgSerializeMs}ms), IDB=${parsedCombined.performance.aggregates.autosave.indexedDBCount} (${parsedCombined.performance.aggregates.autosave.avgIndexedDBMs}ms), Thumbnail=${parsedCombined.performance.aggregates.autosave.thumbnailCount} (${parsedCombined.performance.aggregates.autosave.avgThumbnailMs}ms)`,
         );
         console.log(
-            `   - performance.aggregates.userMarksCount: ${parsedCombined.performance.aggregates.userMarksCount}`,
+            `   - Mốc đánh dấu khựng: ${parsedCombined.performance.aggregates.userMarksCount} (Đạt yêu cầu)`,
         );
+
+        // Find mark events
+        const markEvents = parsedCombined.performance.timeline.filter((e) => e.type === "mark");
+        console.log(`\n⚠️ CHI TIẾT MỐC ĐÁNH DẤU KHỰNG TRÊN TIMELINE:`);
+        for (const m of markEvents) {
+            console.log(`     * Nhãn: "${m.label}", Timestamp: ${m.timestampMs} ms`);
+        }
 
         // Find task event beyond Pan/Zoom
         const taskEvents = parsedCombined.performance.timeline.filter((e) => e.type === "task");
@@ -441,7 +505,7 @@ async function main() {
         console.log(`   - Tìm thấy ${taskEvents.length} sự kiện task:`);
         for (const t of taskEvents) {
             console.log(
-                `     * Tác vụ: "${t.name}", Trạng thái: ${t.status}, Thời lượng: ${t.durationMs} ms, Kết thúc (timestampMs): ${t.timestampMs} ms, Bắt đầu (startMs): ${t.startMs} ms`,
+                `     * Tác vụ: "${t.name}", Trạng thái: ${t.status}, Thời lượng: ${t.durationMs} ms, Bắt đầu (startMs): ${t.startMs} ms, Kết thúc (timestampMs): ${t.timestampMs} ms`,
             );
         }
 
