@@ -639,7 +639,7 @@ if [ -f "${VPS_DEPLOY_DIR}/.trigger_healthcheck_fail" ]; then
     echo "🧪 [TEST] Phát hiện file cờ .trigger_healthcheck_fail từ môi trường thử!"
     rm -f "${VPS_DEPLOY_DIR}/.trigger_healthcheck_fail"
     echo "❌ Cố tình làm lỗi hậu kiểm để kích hoạt do_rollback!"
-    false
+    do_rollback
 fi
 
 echo "1. Kiểm tra endpoint version.json (HTTP 200 & Full 40-char SHA)..."
