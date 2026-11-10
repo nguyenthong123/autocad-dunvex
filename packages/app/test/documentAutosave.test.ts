@@ -302,4 +302,89 @@ describe("Document Autosave & Revision Tracking", () => {
         expect(errorReported).toBeDefined();
         expect(errorReported).toContain("QuotaExceededError");
     });
+
+    test("close waits and writes subsequent edits made after snapshot was taken but before storage.put completed", async () => {
+        // Initial state A
+        document.userData = { state: "A" };
+        const dummy = { val: "A" };
+        Transaction.add(document, new PropertyHistoryRecord(dummy, "val", "", "A"));
+
+        let resolvePut1: (() => void) | undefined;
+        let resolvePut2: (() => void) | undefined;
+        let pass1Started = false;
+        let pass2Started = false;
+
+        const put1Promise = new Promise<void>((resolve) => {
+            resolvePut1 = resolve;
+        });
+        const put2Promise = new Promise<void>((resolve) => {
+            resolvePut2 = resolve;
+        });
+
+        let callCount = 0;
+        mockApp.storage.put = async (_db, table, id, data) => {
+            if (table === Constants.DocumentTable) {
+                callCount++;
+                savedDocs.push(data);
+                storageDataMap.set(id, data);
+                if (callCount === 1) {
+                    pass1Started = true;
+                    await put1Promise;
+                } else if (callCount === 2) {
+                    pass2Started = true;
+                    await put2Promise;
+                }
+            }
+            return true;
+        };
+
+        // User triggers close
+        const closePromise = document.close();
+
+        // Wait until pass 1 is in-flight (snapshot A taken)
+        while (!pass1Started) {
+            await new Promise((r) => setTimeout(r, 0));
+        }
+        expect(document.isClosingInProgress).toBe(true);
+
+        // Edit to state B while pass 1's storage.put is still in-flight
+        document.userData = { state: "B" };
+        dummy.val = "B";
+        Transaction.add(document, new PropertyHistoryRecord(dummy, "val", "A", "B"));
+
+        // Finish pass 1
+        resolvePut1?.();
+
+        // Wait until pass 2 is in-flight (snapshot B taken)
+        while (!pass2Started) {
+            await new Promise((r) => setTimeout(r, 0));
+        }
+
+        // DOCUMENT MUST STILL REMAIN OPEN!
+        expect(document.isDisposed).toBe(false);
+        expect(mockApp.documents.has(document)).toBe(true);
+
+        // Edit to state C while pass 2's storage.put is in-flight
+        document.userData = { state: "C" };
+        dummy.val = "C";
+        Transaction.add(document, new PropertyHistoryRecord(dummy, "val", "B", "C"));
+
+        // Finish pass 2
+        resolvePut2?.();
+
+        // Await the close operation to complete all required passes
+        await closePromise;
+
+        // VERIFY: All 3 passes were executed, document is now cleanly closed
+        expect(callCount).toBe(3);
+        expect(document.isDisposed).toBe(true);
+        expect(mockApp.documents.has(document)).toBe(false);
+
+        // Reopen document and verify state C is strictly preserved!
+        const reopenedDoc = await Document.open(mockApp, document.id);
+        expect(reopenedDoc).toBeDefined();
+        expect((reopenedDoc?.userData as Record<string, unknown> | undefined)?.state).toBe("C");
+        expect(savedDocs[savedDocs.length - 1].isClosing).toBe(true);
+        reopenedDoc?.dispose();
+    });
 });

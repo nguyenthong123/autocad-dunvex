@@ -68,12 +68,17 @@ export class Document extends Observable implements IDocument {
     private _lastSavedUndoTop: IHistoryRecord | undefined = undefined;
     private _lastSavedEvictedCount = 0;
     private _isSaving = false;
+    private _isClosingInProgress = false;
     private readonly _queuedWaiters: Array<{
         resolve: () => void;
         reject: (err: unknown) => void;
         isClosing: boolean;
     }> = [];
     private _autoSaveTimer?: ReturnType<typeof setTimeout>;
+
+    get isClosingInProgress(): boolean {
+        return this._isClosingInProgress;
+    }
 
     isDirty(): boolean {
         if (this.history.disabled) return false;
@@ -201,6 +206,14 @@ export class Document extends Observable implements IDocument {
 
                 try {
                     await this.executeSavePass(isClosing);
+
+                    if (isClosing && this.isDirty()) {
+                        // User edited the document after the snapshot was taken but before the write finished.
+                        // We must NOT resolve closing waiters yet; re-queue them to persist the latest changes.
+                        this._queuedWaiters.unshift(...currentBatch);
+                        continue;
+                    }
+
                     for (const w of currentBatch) {
                         w.resolve();
                     }
@@ -260,6 +273,7 @@ export class Document extends Observable implements IDocument {
     }
 
     async close() {
+        this._isClosingInProgress = true;
         const shouldSave =
             typeof window !== "undefined" && typeof window.confirm === "function"
                 ? window.confirm(I18n.translate("prompt.saveDocument{0}", this.name))
@@ -268,6 +282,7 @@ export class Document extends Observable implements IDocument {
             try {
                 await this.save(true);
             } catch (error) {
+                this._isClosingInProgress = false;
                 Logger.error(`Failed to save document "${this.name}" on close`, error);
                 PubSub.default.pub(
                     "displayError",
