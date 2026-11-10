@@ -434,7 +434,7 @@ echo "🐳 [Pre-flight] Đang build và kiểm tra Docker image độc lập tro
 (
     cd "\${NEW_RELEASE_DIR}"
     sudo docker build -t "chili3d:${RELEASE_ID}" -f Dockerfile .
-    sudo docker run --rm --entrypoint nginx "chili3d:${RELEASE_ID}" -t
+    sudo docker run --rm --add-host storage-api:127.0.0.1 --entrypoint nginx "chili3d:${RELEASE_ID}" -t
 )
 
 # 4. Định nghĩa hàm rollback toàn diện
