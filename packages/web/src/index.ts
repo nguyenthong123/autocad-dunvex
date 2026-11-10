@@ -42,6 +42,10 @@ function exposeTestSurface(app?: IApplication): void {
                 const appMod = await import("@chili3d/app");
                 return appMod.computeBomReport;
             },
+            getPerformanceProfiler: async () => {
+                const { PerformanceProfiler } = await import("@chili3d/core");
+                return PerformanceProfiler.instance;
+            },
             getSessionMemoryApi: async () => {
                 const ai = await import("@chili3d/ai");
                 return {
