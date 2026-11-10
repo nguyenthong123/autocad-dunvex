@@ -5,6 +5,7 @@ import {
     type Act,
     Config,
     Constants,
+    errorText,
     History,
     I18n,
     type IApplication,
@@ -66,10 +67,13 @@ export class Document extends Observable implements IDocument {
 
     private _lastSavedUndoTop: IHistoryRecord | undefined = undefined;
     private _lastSavedEvictedCount = 0;
-    private _lastSavedRevision = 0;
-    private _lastSavedUndoCount = 0;
     private _isSaving = false;
-    private _autoSaveTimer?: any;
+    private readonly _queuedWaiters: Array<{
+        resolve: () => void;
+        reject: (err: unknown) => void;
+        isClosing: boolean;
+    }> = [];
+    private _autoSaveTimer?: ReturnType<typeof setTimeout>;
 
     isDirty(): boolean {
         if (this.history.disabled) return false;
@@ -166,64 +170,111 @@ export class Document extends Observable implements IDocument {
         this.acts.clear();
     }
 
-    async save(isClosing = false) {
+    async save(isClosing = false): Promise<void> {
+        if (this.isDisposed) return;
+
+        return new Promise<void>((resolve, reject) => {
+            this._queuedWaiters.push({ resolve, reject, isClosing });
+            if (!this._isSaving) {
+                this.processSaveQueue();
+            }
+        });
+    }
+
+    private async processSaveQueue(): Promise<void> {
         if (this._isSaving) return;
         this._isSaving = true;
+
         try {
-            await requestStoragePersistence();
-            const snapshotUndoTop = this.history.undoTop();
-            const snapshotEvictedCount = this.history.evictedCount;
-            const snapshotRevision = this.history.revision;
+            let isFirstPass = true;
+            while (this._queuedWaiters.length > 0) {
+                const currentBatch = this._queuedWaiters.splice(0, this._queuedWaiters.length);
+                const isClosing = currentBatch.some((w) => w.isClosing);
 
-            const data = this.serialize();
-            if (isClosing) {
-                (data as any).isClosing = true;
-            }
-            await this.application.storage.put(Constants.DBName, Constants.DocumentTable, this.id, data);
-            this._lastSavedUndoTop = snapshotUndoTop;
-            this._lastSavedEvictedCount = snapshotEvictedCount;
-            this._lastSavedRevision = snapshotRevision;
-            this._lastSavedUndoCount = this.history.undoCount();
-
-            // The document is saved at this point. The thumbnail and the recents entry are a
-            // courtesy — a view that cannot be captured, or a store that refuses the write,
-            // must not turn a written document into a failed save (and a missing success toast).
-            try {
-                const ownView =
-                    this.application.views?.find((v) => v.document === this) ?? this.application.activeView;
-                const isCurrentView =
-                    ownView && (!this.application.views || this.application.activeView === ownView);
-                const image = isCurrentView
-                    ? ownView?.toImage({ maxSize: 320, mimeType: "image/jpeg", quality: 0.7 })
-                    : undefined;
-                const recentData: any = {
-                    id: this.id,
-                    name: this.name,
-                    date: Date.now(),
-                };
-                if (image) {
-                    recentData.image = image;
+                if (!isFirstPass && !this.isDirty() && !isClosing) {
+                    for (const w of currentBatch) {
+                        w.resolve();
+                    }
+                    continue;
                 }
-                await this.application.storage.put(
-                    Constants.DBName,
-                    Constants.RecentTable,
-                    this.id,
-                    recentData,
-                );
-            } catch (error) {
-                Logger.warn(
-                    `document "${this.name}" saved, but its recent entry could not be written`,
-                    error,
-                );
+                isFirstPass = false;
+
+                try {
+                    await this.executeSavePass(isClosing);
+                    for (const w of currentBatch) {
+                        w.resolve();
+                    }
+                } catch (error) {
+                    for (const w of currentBatch) {
+                        w.reject(error);
+                    }
+                }
             }
         } finally {
             this._isSaving = false;
+            if (this._queuedWaiters.length > 0) {
+                this.processSaveQueue();
+            }
+        }
+    }
+
+    private async executeSavePass(isClosing: boolean): Promise<void> {
+        await requestStoragePersistence();
+        const snapshotUndoTop = this.history.undoTop();
+        const snapshotEvictedCount = this.history.evictedCount;
+        const snapshotRevision = this.history.revision;
+
+        const data = this.serialize();
+        if (isClosing) {
+            (data as any).isClosing = true;
+        }
+        await this.application.storage.put(Constants.DBName, Constants.DocumentTable, this.id, data);
+        this._lastSavedUndoTop = snapshotUndoTop;
+        this._lastSavedEvictedCount = snapshotEvictedCount;
+        this._lastSavedRevision = snapshotRevision;
+        this._lastSavedUndoCount = this.history.undoCount();
+
+        // The document is saved at this point. The thumbnail and the recents entry are a
+        // courtesy — a view that cannot be captured, or a store that refuses the write,
+        // must not turn a written document into a failed save (and a missing success toast).
+        try {
+            const ownView =
+                this.application.views?.find((v) => v.document === this) ?? this.application.activeView;
+            const isCurrentView =
+                ownView && (!this.application.views || this.application.activeView === ownView);
+            const image = isCurrentView
+                ? ownView?.toImage({ maxSize: 320, mimeType: "image/jpeg", quality: 0.7 })
+                : undefined;
+            const recentData: any = {
+                id: this.id,
+                name: this.name,
+                date: Date.now(),
+            };
+            if (image) {
+                recentData.image = image;
+            }
+            await this.application.storage.put(Constants.DBName, Constants.RecentTable, this.id, recentData);
+        } catch (error) {
+            Logger.warn(`document "${this.name}" saved, but its recent entry could not be written`, error);
         }
     }
 
     async close() {
-        if (window.confirm(I18n.translate("prompt.saveDocument{0}", this.name))) {
-            await this.save(true);
+        const shouldSave =
+            typeof window !== "undefined" && typeof window.confirm === "function"
+                ? window.confirm(I18n.translate("prompt.saveDocument{0}", this.name))
+                : true;
+        if (shouldSave) {
+            try {
+                await this.save(true);
+            } catch (error) {
+                Logger.error(`Failed to save document "${this.name}" on close`, error);
+                PubSub.default.pub(
+                    "displayError",
+                    I18n.translate("toast.document.saveFailed{0}", errorText(error)),
+                );
+                return;
+            }
         }
 
         const views = this.application.views.filter((x) => x.document === this);

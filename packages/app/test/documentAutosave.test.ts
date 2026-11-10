@@ -1,30 +1,41 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
-import { Constants, type IApplication, PropertyHistoryRecord, Transaction } from "@chili3d/core";
+import { Constants, type IApplication, PropertyHistoryRecord, PubSub, Transaction } from "@chili3d/core";
 import { createMockApplication } from "@chili3d/core/test-utils";
-import { afterEach, beforeEach, describe, expect, rs, test } from "@rstest/core";
+import { afterEach, beforeEach, describe, expect, test } from "@rstest/core";
 import { Document } from "../src/document";
 
 describe("Document Autosave & Revision Tracking", () => {
     let mockApp: IApplication;
     let document: Document;
-    let savedDocs: any[] = [];
+    let savedDocs: Array<Record<string, unknown>> = [];
+    let storageDataMap: Map<string, unknown> = new Map();
 
     beforeEach(() => {
         mockApp = createMockApplication();
         savedDocs = [];
-        mockApp.storage.put = async (_db, table, _id, data) => {
+        storageDataMap = new Map();
+        mockApp.storage.put = async (_db, table, id, data) => {
             if (table === Constants.DocumentTable) {
                 savedDocs.push(data);
+                storageDataMap.set(id, data);
             }
             return true;
+        };
+        mockApp.storage.get = async (_db, table, id) => {
+            if (table === Constants.DocumentTable) {
+                return storageDataMap.get(id);
+            }
+            return undefined;
         };
         document = new Document(mockApp, "test-doc");
     });
 
     afterEach(() => {
-        document.dispose();
+        if (!document.isDisposed) {
+            document.dispose();
+        }
     });
 
     test("recognizes unsaved changes past 50 undo steps threshold", async () => {
@@ -121,7 +132,7 @@ describe("Document Autosave & Revision Tracking", () => {
         Transaction.add(document, new PropertyHistoryRecord(dummy, "val", 1, 2));
 
         // Let the first save finish
-        finishPut!();
+        finishPut?.();
         await savePromise;
 
         // Even though the first save finished, the document has the in-flight edit (val = 2)
@@ -151,5 +162,144 @@ describe("Document Autosave & Revision Tracking", () => {
 
         // Save failed: document must remain dirty!
         expect(document.isDirty()).toBe(true);
+    });
+
+    test("close waits for in-flight save A, writes latest state B, and preserves B on reopen", async () => {
+        // Initial state A
+        document.userData = { state: "A" };
+        const dummy = { val: "A" };
+        Transaction.add(document, new PropertyHistoryRecord(dummy, "val", "", "A"));
+
+        // Trigger autosave/save A, held in-flight
+        let resolvePutA: () => void;
+        const putAPromise = new Promise<void>((resolve) => {
+            resolvePutA = resolve;
+        });
+
+        let passACalled = false;
+        let passBCalled = false;
+
+        mockApp.storage.put = async (_db, table, id, data) => {
+            if (table === Constants.DocumentTable) {
+                savedDocs.push(data);
+                storageDataMap.set(id, data);
+                if (!passACalled) {
+                    passACalled = true;
+                    await putAPromise;
+                } else {
+                    passBCalled = true;
+                }
+            }
+            return true;
+        };
+
+        const autoSavePromise = document.save();
+
+        // Wait until save A is actively in-flight
+        while (!passACalled) {
+            await new Promise((r) => setTimeout(r, 0));
+        }
+
+        // User edits document to state B while save A is in-flight
+        document.userData = { state: "B" };
+        dummy.val = "B";
+        Transaction.add(document, new PropertyHistoryRecord(dummy, "val", "A", "B"));
+        expect(document.isDirty()).toBe(true);
+
+        // User triggers close with confirmation to save
+        const closePromise = document.close();
+
+        // DOCUMENT MUST REMAIN OPEN while save B is pending!
+        expect(document.isDisposed).toBe(false);
+        expect(mockApp.documents.has(document)).toBe(true);
+        expect(passBCalled).toBe(false);
+
+        // Now let save A finish
+        resolvePutA?.();
+        await autoSavePromise;
+
+        // Wait for close to finish (which must execute save B)
+        await closePromise;
+
+        // Verify save B was actually called and document is now cleanly closed
+        expect(passBCalled).toBe(true);
+        expect(document.isDisposed).toBe(true);
+        expect(mockApp.documents.has(document)).toBe(false);
+        expect(savedDocs.length).toBe(2);
+
+        // Reopen document and verify state B is preserved!
+        const reopenedDoc = await Document.open(mockApp, document.id);
+        expect(reopenedDoc).toBeDefined();
+        expect((reopenedDoc?.userData as Record<string, unknown> | undefined)?.state).toBe("B");
+        expect(savedDocs[1].isClosing).toBe(true);
+        reopenedDoc?.dispose();
+    });
+
+    test("keeps document open and reports error when final save B on close fails", async () => {
+        // Initial state A
+        document.userData = { state: "A" };
+        const dummy = { val: "A" };
+        Transaction.add(document, new PropertyHistoryRecord(dummy, "val", "", "A"));
+
+        let resolvePutA: (() => void) | undefined;
+        const putAPromise = new Promise<void>((resolve) => {
+            resolvePutA = resolve;
+        });
+
+        let passACalled = false;
+        let passBCalled = false;
+        let errorReported: string | undefined;
+
+        PubSub.default.sub("displayError", (msg: string) => {
+            errorReported = msg;
+        });
+
+        mockApp.storage.put = async (_db, table, id, data) => {
+            if (table === Constants.DocumentTable) {
+                if (!passACalled) {
+                    passACalled = true;
+                    savedDocs.push(data);
+                    storageDataMap.set(id, data);
+                    await putAPromise;
+                } else {
+                    passBCalled = true;
+                    // Lượt ghi B thất bại!
+                    throw new Error("QuotaExceededError on disk write");
+                }
+            }
+            return true;
+        };
+
+        const autoSavePromise = document.save();
+
+        while (!passACalled) {
+            await new Promise((r) => setTimeout(r, 0));
+        }
+
+        // Edit to state B
+        document.userData = { state: "B" };
+        dummy.val = "B";
+        Transaction.add(document, new PropertyHistoryRecord(dummy, "val", "A", "B"));
+
+        // Trigger close
+        const closePromise = document.close();
+
+        // Let save A finish
+        resolvePutA?.();
+        await autoSavePromise;
+
+        // Wait for close flow to handle error
+        await closePromise;
+
+        // VERIFY: Save B was attempted, but failed
+        expect(passBCalled).toBe(true);
+
+        // CRITICAL ASSERTION: The document MUST STAY OPEN!
+        expect(document.isDisposed).toBe(false);
+        expect(mockApp.documents.has(document)).toBe(true);
+
+        // Error toast was published
+        expect(errorReported).toBeDefined();
+        expect(errorReported).toContain("QuotaExceededError");
     });
 });
