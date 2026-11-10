@@ -131,5 +131,9 @@ export default defineConfig({
     },
     output: {
         clean: true,
+        filename: isProduction ? "[name].[contenthash:8].js" : "[name].js",
+        chunkFilename: isProduction ? "[name].[contenthash:8].js" : "[name].js",
+        cssFilename: isProduction ? "[name].[contenthash:8].css" : "[name].css",
+        cssChunkFilename: isProduction ? "[name].[contenthash:8].css" : "[name].css",
     },
 });
