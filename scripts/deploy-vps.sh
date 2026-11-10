@@ -135,8 +135,16 @@ sleep 2
 # [Bước 6/6] Xác minh bản cũ thực sự phục vụ trên HTTP
 echo "   -> [Bước 6/6] Xác minh bản quay lui thực sự phục vụ..."
 
-# 6.1. Trạng thái storage-api
-STATUS_RECENTS=\$(curl -s -o /tmp/rb_recents.json -w "%{http_code}" http://127.0.0.1/api/storage/chili3d-db/recents || echo "000")
+# 6.1. Trạng thái storage-api (chờ container sẵn sàng)
+STATUS_RECENTS="000"
+for i in \$(seq 1 15); do
+    STATUS_RECENTS=\$(curl -s -o /tmp/rb_recents.json -w "%{http_code}" http://127.0.0.1/api/storage/chili3d-db/recents || echo "000")
+    if [ "\$STATUS_RECENTS" = "200" ]; then
+        break
+    fi
+    sleep 1
+done
+
 if [ "\$STATUS_RECENTS" != "200" ]; then
     echo "❌ LỖI QUAY LUI [Bước 6/6]: storage-api không phản hồi HTTP 200 (mã nhận: \$STATUS_RECENTS)!" >&2
     exit 15
@@ -154,7 +162,15 @@ if [ -z "\$TARGET_WANT_SHA" ]; then
 fi
 
 # 6.3. Kiểm tra version.json
-STATUS_VER=\$(curl -s -o /tmp/rb_ver.json -w "%{http_code}" http://127.0.0.1/version.json || echo "000")
+STATUS_VER="000"
+for i in \$(seq 1 10); do
+    STATUS_VER=\$(curl -s -o /tmp/rb_ver.json -w "%{http_code}" http://127.0.0.1/version.json || echo "000")
+    if [ "\$STATUS_VER" = "200" ]; then
+        break
+    fi
+    sleep 1
+done
+
 if [ "\$STATUS_VER" != "200" ]; then
     echo "❌ LỖI QUAY LUI [Bước 6/6]: version.json không trả về HTTP 200 (mã nhận: \$STATUS_VER)!" >&2
     exit 17
@@ -169,7 +185,15 @@ if ! node -e "
 fi
 
 # 6.4. Kiểm tra deploy-version.json
-STATUS_DEP=\$(curl -s -o /tmp/rb_dep.json -w "%{http_code}" http://127.0.0.1/deploy-version.json || echo "000")
+STATUS_DEP="000"
+for i in \$(seq 1 10); do
+    STATUS_DEP=\$(curl -s -o /tmp/rb_dep.json -w "%{http_code}" http://127.0.0.1/deploy-version.json || echo "000")
+    if [ "\$STATUS_DEP" = "200" ]; then
+        break
+    fi
+    sleep 1
+done
+
 if [ "\$STATUS_DEP" != "200" ]; then
     echo "❌ LỖI QUAY LUI [Bước 6/6]: deploy-version.json không trả về HTTP 200 (mã nhận: \$STATUS_DEP)!" >&2
     exit 19
@@ -185,7 +209,15 @@ fi
 echo "      ✅ Cả 2 endpoint phiên bản đều trả HTTP 200 và khớp SHA \$TARGET_WANT_SHA."
 
 # 6.5. Kiểm tra file JS tham chiếu trong HTML
-STATUS_HTML=\$(curl -s -o /tmp/rb_index.html -w "%{http_code}" http://127.0.0.1/ || echo "000")
+STATUS_HTML="000"
+for i in \$(seq 1 10); do
+    STATUS_HTML=\$(curl -s -o /tmp/rb_index.html -w "%{http_code}" http://127.0.0.1/ || echo "000")
+    if [ "\$STATUS_HTML" = "200" ]; then
+        break
+    fi
+    sleep 1
+done
+
 if [ "\$STATUS_HTML" != "200" ]; then
     echo "❌ LỖI QUAY LUI [Bước 6/6]: index.html không trả về HTTP 200 (mã nhận: \$STATUS_HTML)!" >&2
     exit 21
@@ -482,8 +514,16 @@ do_rollback() {
     # [Bước 6/6] Xác minh bản cũ thực sự phục vụ trên HTTP
     echo "   -> [Bước 6/6] Xác minh bản quay lui thực sự phục vụ..."
 
-    # 6.1. Trạng thái storage-api
-    STATUS_RECENTS=\$(curl -s -o /tmp/rb_recents.json -w "%{http_code}" http://127.0.0.1/api/storage/chili3d-db/recents || echo "000")
+    # 6.1. Trạng thái storage-api (chờ container sẵn sàng)
+    STATUS_RECENTS="000"
+    for i in \$(seq 1 15); do
+        STATUS_RECENTS=\$(curl -s -o /tmp/rb_recents.json -w "%{http_code}" http://127.0.0.1/api/storage/chili3d-db/recents || echo "000")
+        if [ "\$STATUS_RECENTS" = "200" ]; then
+            break
+        fi
+        sleep 1
+    done
+
     if [ "\$STATUS_RECENTS" != "200" ]; then
         echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: storage-api không phản hồi HTTP 200 (mã nhận: \$STATUS_RECENTS)!" >&2
         exit 15
@@ -501,7 +541,15 @@ do_rollback() {
     fi
 
     # 6.3. Kiểm tra version.json
-    STATUS_VER=\$(curl -s -o /tmp/rb_ver.json -w "%{http_code}" http://127.0.0.1/version.json || echo "000")
+    STATUS_VER="000"
+    for i in \$(seq 1 10); do
+        STATUS_VER=\$(curl -s -o /tmp/rb_ver.json -w "%{http_code}" http://127.0.0.1/version.json || echo "000")
+        if [ "\$STATUS_VER" = "200" ]; then
+            break
+        fi
+        sleep 1
+    done
+
     if [ "\$STATUS_VER" != "200" ]; then
         echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: version.json không trả về HTTP 200 (mã nhận: \$STATUS_VER)!" >&2
         exit 17
@@ -516,7 +564,15 @@ do_rollback() {
     fi
 
     # 6.4. Kiểm tra deploy-version.json
-    STATUS_DEP=\$(curl -s -o /tmp/rb_dep.json -w "%{http_code}" http://127.0.0.1/deploy-version.json || echo "000")
+    STATUS_DEP="000"
+    for i in \$(seq 1 10); do
+        STATUS_DEP=\$(curl -s -o /tmp/rb_dep.json -w "%{http_code}" http://127.0.0.1/deploy-version.json || echo "000")
+        if [ "\$STATUS_DEP" = "200" ]; then
+            break
+        fi
+        sleep 1
+    done
+
     if [ "\$STATUS_DEP" != "200" ]; then
         echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: deploy-version.json không trả về HTTP 200 (mã nhận: \$STATUS_DEP)!" >&2
         exit 19
@@ -532,7 +588,15 @@ do_rollback() {
     echo "      ✅ Cả 2 endpoint phiên bản đều trả HTTP 200 và khớp SHA \$TARGET_WANT_SHA."
 
     # 6.5. Kiểm tra file JS tham chiếu trong HTML
-    STATUS_HTML=\$(curl -s -o /tmp/rb_index.html -w "%{http_code}" http://127.0.0.1/ || echo "000")
+    STATUS_HTML="000"
+    for i in \$(seq 1 10); do
+        STATUS_HTML=\$(curl -s -o /tmp/rb_index.html -w "%{http_code}" http://127.0.0.1/ || echo "000")
+        if [ "\$STATUS_HTML" = "200" ]; then
+            break
+        fi
+        sleep 1
+    done
+
     if [ "\$STATUS_HTML" != "200" ]; then
         echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: index.html không trả về HTTP 200 (mã nhận: \$STATUS_HTML)!" >&2
         exit 21
