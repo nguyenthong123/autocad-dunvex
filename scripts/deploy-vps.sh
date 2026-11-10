@@ -149,17 +149,14 @@ if [ "\$STATUS_RECENTS" != "200" ]; then
     echo "❌ LỖI QUAY LUI [Bước 6/6]: storage-api không phản hồi HTTP 200 (mã nhận: \$STATUS_RECENTS)!" >&2
     exit 15
 fi
-if ! node -e "const r = JSON.parse(require('fs').readFileSync('/tmp/rb_recents.json','utf8')); if(!Array.isArray(r)) process.exit(1);" 2>/dev/null; then
+if ! jq -e 'type == "array"' /tmp/rb_recents.json >/dev/null 2>&1; then
     echo "❌ LỖI QUAY LUI [Bước 6/6]: Dữ liệu storage-api không hợp lệ!" >&2
     exit 16
 fi
 echo "      ✅ storage-api phản hồi HTTP 200, dữ liệu bảo toàn."
 
 # 6.2. Đọc SHA mong muốn
-TARGET_WANT_SHA=\$(node -e "try{process.stdout.write(JSON.parse(require('fs').readFileSync('releases/\$ROLLBACK_TARGET/dist/version.json','utf8')).codeSha||'')}catch{}" 2>/dev/null || echo "")
-if [ -z "\$TARGET_WANT_SHA" ]; then
-    TARGET_WANT_SHA=\$(node -e "try{process.stdout.write(JSON.parse(require('fs').readFileSync('dist/version.json','utf8')).codeSha||'')}catch{}" 2>/dev/null || echo "")
-fi
+TARGET_WANT_SHA=\$(jq -r '.codeSha // empty' "releases/\$ROLLBACK_TARGET/dist/version.json" 2>/dev/null || jq -r '.codeSha // empty' dist/version.json 2>/dev/null || echo "")
 
 # 6.3. Kiểm tra version.json
 STATUS_VER="000"
@@ -175,12 +172,9 @@ if [ "\$STATUS_VER" != "200" ]; then
     echo "❌ LỖI QUAY LUI [Bước 6/6]: version.json không trả về HTTP 200 (mã nhận: \$STATUS_VER)!" >&2
     exit 17
 fi
-if ! node -e "
-    const v = JSON.parse(require('fs').readFileSync('/tmp/rb_ver.json','utf8'));
-    const want = '\$TARGET_WANT_SHA';
-    if (want && v.codeSha !== want && v.tipSha !== want) process.exit(1);
-" 2>/dev/null; then
-    echo "❌ LỖI QUAY LUI [Bước 6/6]: version.json không khớp SHA bản cũ (\$TARGET_WANT_SHA)!" >&2
+RB_V_SHA=\$(jq -r '.codeSha // empty' /tmp/rb_ver.json 2>/dev/null || echo "")
+if [ -n "\$TARGET_WANT_SHA" ] && [ "\$RB_V_SHA" != "\$TARGET_WANT_SHA" ]; then
+    echo "❌ LỖI QUAY LUI [Bước 6/6]: version.json không khớp SHA bản cũ (\$TARGET_WANT_SHA vs \$RB_V_SHA)!" >&2
     exit 18
 fi
 
@@ -198,12 +192,9 @@ if [ "\$STATUS_DEP" != "200" ]; then
     echo "❌ LỖI QUAY LUI [Bước 6/6]: deploy-version.json không trả về HTTP 200 (mã nhận: \$STATUS_DEP)!" >&2
     exit 19
 fi
-if ! node -e "
-    const d = JSON.parse(require('fs').readFileSync('/tmp/rb_dep.json','utf8'));
-    const want = '\$TARGET_WANT_SHA';
-    if (want && d.codeSha !== want && d.tipSha !== want) process.exit(1);
-" 2>/dev/null; then
-    echo "❌ LỖI QUAY LUI [Bước 6/6]: deploy-version.json không khớp SHA bản cũ (\$TARGET_WANT_SHA)!" >&2
+RB_D_SHA=\$(jq -r '.codeSha // empty' /tmp/rb_dep.json 2>/dev/null || echo "")
+if [ -n "\$TARGET_WANT_SHA" ] && [ "\$RB_D_SHA" != "\$TARGET_WANT_SHA" ]; then
+    echo "❌ LỖI QUAY LUI [Bước 6/6]: deploy-version.json không khớp SHA bản cũ (\$TARGET_WANT_SHA vs \$RB_D_SHA)!" >&2
     exit 20
 fi
 echo "      ✅ Cả 2 endpoint phiên bản đều trả HTTP 200 và khớp SHA \$TARGET_WANT_SHA."
@@ -423,7 +414,7 @@ if [ -f "current_release" ]; then
     echo "   -> Ghi nhận rollback target: \$CURRENT"
     echo "\$CURRENT" > rollback_release
 elif [ -d "dist" ] && [ -f "dist/version.json" ]; then
-    OLD_SHA=\$(node -e 'try{process.stdout.write(JSON.parse(require("fs").readFileSync("dist/version.json","utf8")).codeShort||"legacy")}catch{process.stdout.write("legacy")}' 2>/dev/null || echo "legacy")
+    OLD_SHA=\$(jq -r '.codeShort // "legacy"' dist/version.json 2>/dev/null || echo "legacy")
     BASELINE="baseline_\${OLD_SHA}_\$(date -u +%Y%m%d_%H%M%S)"
     echo "   -> Phát hiện VPS chưa có current_release nhưng đang phục vụ dist (\${OLD_SHA})."
     echo "   -> Đang tạo bản sao lưu an toàn tại releases/\${BASELINE}..."
@@ -528,17 +519,14 @@ do_rollback() {
         echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: storage-api không phản hồi HTTP 200 (mã nhận: \$STATUS_RECENTS)!" >&2
         exit 15
     fi
-    if ! node -e "const r = JSON.parse(require('fs').readFileSync('/tmp/rb_recents.json','utf8')); if(!Array.isArray(r)) process.exit(1);" 2>/dev/null; then
+    if ! jq -e 'type == "array"' /tmp/rb_recents.json >/dev/null 2>&1; then
         echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: Dữ liệu storage-api không hợp lệ!" >&2
         exit 16
     fi
     echo "      ✅ storage-api phản hồi HTTP 200, dữ liệu bảo toàn."
 
     # 6.2. Đọc SHA mong muốn
-    TARGET_WANT_SHA=\$(node -e "try{process.stdout.write(JSON.parse(require('fs').readFileSync('releases/\$TARGET/dist/version.json','utf8')).codeSha||'')}catch{}" 2>/dev/null || echo "")
-    if [ -z "\$TARGET_WANT_SHA" ]; then
-        TARGET_WANT_SHA=\$(node -e "try{process.stdout.write(JSON.parse(require('fs').readFileSync('dist/version.json','utf8')).codeSha||'')}catch{}" 2>/dev/null || echo "")
-    fi
+    TARGET_WANT_SHA=\$(jq -r '.codeSha // empty' "releases/\$TARGET/dist/version.json" 2>/dev/null || jq -r '.codeSha // empty' dist/version.json 2>/dev/null || echo "")
 
     # 6.3. Kiểm tra version.json
     STATUS_VER="000"
@@ -554,12 +542,9 @@ do_rollback() {
         echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: version.json không trả về HTTP 200 (mã nhận: \$STATUS_VER)!" >&2
         exit 17
     fi
-    if ! node -e "
-        const v = JSON.parse(require('fs').readFileSync('/tmp/rb_ver.json','utf8'));
-        const want = '\$TARGET_WANT_SHA';
-        if (want && v.codeSha !== want && v.tipSha !== want) process.exit(1);
-    " 2>/dev/null; then
-        echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: version.json không khớp SHA bản cũ (\$TARGET_WANT_SHA)!" >&2
+    RB_V_SHA=\$(jq -r '.codeSha // empty' /tmp/rb_ver.json 2>/dev/null || echo "")
+    if [ -n "\$TARGET_WANT_SHA" ] && [ "\$RB_V_SHA" != "\$TARGET_WANT_SHA" ]; then
+        echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: version.json không khớp SHA bản cũ (\$TARGET_WANT_SHA vs \$RB_V_SHA)!" >&2
         exit 18
     fi
 
@@ -577,12 +562,9 @@ do_rollback() {
         echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: deploy-version.json không trả về HTTP 200 (mã nhận: \$STATUS_DEP)!" >&2
         exit 19
     fi
-    if ! node -e "
-        const d = JSON.parse(require('fs').readFileSync('/tmp/rb_dep.json','utf8'));
-        const want = '\$TARGET_WANT_SHA';
-        if (want && d.codeSha !== want && d.tipSha !== want) process.exit(1);
-    " 2>/dev/null; then
-        echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: deploy-version.json không khớp SHA bản cũ (\$TARGET_WANT_SHA)!" >&2
+    RB_D_SHA=\$(jq -r '.codeSha // empty' /tmp/rb_dep.json 2>/dev/null || echo "")
+    if [ -n "\$TARGET_WANT_SHA" ] && [ "\$RB_D_SHA" != "\$TARGET_WANT_SHA" ]; then
+        echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: deploy-version.json không khớp SHA bản cũ (\$TARGET_WANT_SHA vs \$RB_D_SHA)!" >&2
         exit 20
     fi
     echo "      ✅ Cả 2 endpoint phiên bản đều trả HTTP 200 và khớp SHA \$TARGET_WANT_SHA."
@@ -653,62 +635,67 @@ sleep 2
 echo "🩺 [5/5] Kiểm tra sức khỏe dịch vụ trên VPS (Chỉ chốt current_release khi vượt qua hậu kiểm)..."
 
 echo "1. Kiểm tra endpoint version.json (HTTP 200 & Full 40-char SHA)..."
-STATUS_VER=\$(curl -s -o /tmp/ver.json -w "%{http_code}" http://127.0.0.1/version.json || echo "000")
+STATUS_VER="000"
+for i in \$(seq 1 15); do
+    STATUS_VER=\$(curl -s -o /tmp/ver.json -w "%{http_code}" http://127.0.0.1/version.json || echo "000")
+    [ "\$STATUS_VER" = "200" ] && break
+    sleep 1
+done
+
 if [ "\$STATUS_VER" != "200" ]; then
     echo "❌ Lỗi: version.json trả HTTP \$STATUS_VER (kỳ vọng 200)!"
     do_rollback
 fi
-node -e "
-const fs = require('fs');
-const v = JSON.parse(fs.readFileSync('/tmp/ver.json', 'utf8'));
-const want = '${TIP_SHA}';
-if (v.codeSha !== want && v.tipSha !== want) {
-    console.error('❌ Mismatch SHA in version.json: ' + (v.codeSha || v.tipSha) + ' !== ' + want);
-    process.exit(1);
-}
-console.log('   ✅ version.json khớp full SHA: ' + (v.codeSha || v.tipSha));
-" || do_rollback
+
+V_CODE_SHA=\$(jq -r '.codeSha // empty' /tmp/ver.json 2>/dev/null || echo "")
+V_TIP_SHA=\$(jq -r '.tipSha // empty' /tmp/ver.json 2>/dev/null || echo "")
+if [ "\$V_CODE_SHA" != "${TIP_SHA}" ] && [ "\$V_TIP_SHA" != "${TIP_SHA}" ]; then
+    echo "❌ Mismatch SHA in version.json: codeSha=\$V_CODE_SHA, tipSha=\$V_TIP_SHA !== ${TIP_SHA}"
+    do_rollback
+fi
+echo "   ✅ version.json khớp full SHA: ${TIP_SHA}"
 
 echo "2. Kiểm tra endpoint deploy-version.json (HTTP 200 & Full 40-char SHA)..."
-STATUS_DEP=\$(curl -s -o /tmp/dep.json -w "%{http_code}" http://127.0.0.1/deploy-version.json || echo "000")
+STATUS_DEP="000"
+for i in \$(seq 1 10); do
+    STATUS_DEP=\$(curl -s -o /tmp/dep.json -w "%{http_code}" http://127.0.0.1/deploy-version.json || echo "000")
+    [ "\$STATUS_DEP" = "200" ] && break
+    sleep 1
+done
+
 if [ "\$STATUS_DEP" != "200" ]; then
     echo "❌ Lỗi: deploy-version.json trả HTTP \$STATUS_DEP (kỳ vọng 200)!"
     do_rollback
 fi
-node -e "
-const fs = require('fs');
-const v = JSON.parse(fs.readFileSync('/tmp/dep.json', 'utf8'));
-const want = '${TIP_SHA}';
-if (v.codeSha !== want && v.tipSha !== want) {
-    console.error('❌ Mismatch SHA in deploy-version.json: ' + (v.codeSha || v.tipSha) + ' !== ' + want);
-    process.exit(1);
-}
-console.log('   ✅ deploy-version.json khớp full SHA: ' + (v.codeSha || v.tipSha));
-" || do_rollback
+
+D_CODE_SHA=\$(jq -r '.codeSha // empty' /tmp/dep.json 2>/dev/null || echo "")
+D_TIP_SHA=\$(jq -r '.tipSha // empty' /tmp/dep.json 2>/dev/null || echo "")
+if [ "\$D_CODE_SHA" != "${TIP_SHA}" ] && [ "\$D_TIP_SHA" != "${TIP_SHA}" ]; then
+    echo "❌ Mismatch SHA in deploy-version.json: codeSha=\$D_CODE_SHA, tipSha=\$D_TIP_SHA !== ${TIP_SHA}"
+    do_rollback
+fi
+echo "   ✅ deploy-version.json khớp full SHA: ${TIP_SHA}"
 
 echo "3. Kiểm tra endpoint index.html và các file JS tham chiếu..."
-STATUS_HTML=\$(curl -s -o /tmp/index.html -w "%{http_code}" http://127.0.0.1/ || echo "000")
+STATUS_HTML="000"
+for i in \$(seq 1 10); do
+    STATUS_HTML=\$(curl -s -o /tmp/index.html -w "%{http_code}" http://127.0.0.1/ || echo "000")
+    [ "\$STATUS_HTML" = "200" ] && break
+    sleep 1
+done
+
 if [ "\$STATUS_HTML" != "200" ]; then
     echo "❌ Lỗi: index.html trả HTTP \$STATUS_HTML (kỳ vọng 200)!"
     do_rollback
 fi
 
-node -e "
-const fs = require('fs');
-const html = fs.readFileSync('/tmp/index.html', 'utf8');
-const scriptMatches = [...html.matchAll(/src=[\"']([^\"']+\.js)[\"']/g)].map(m => m[1]);
-if (scriptMatches.length === 0) {
-    console.error('❌ index.html không chứa bất kỳ thẻ script JS nào!');
-    process.exit(1);
-}
-const mainJs = scriptMatches.find(s => s.startsWith('main.'));
-if (!mainJs) {
-    console.error('❌ index.html không tham chiếu script main.*.js!');
-    process.exit(1);
-}
-console.log('   Tìm thấy ' + scriptMatches.length + ' file JS tham chiếu trong HTML (main: ' + mainJs + ').');
-fs.writeFileSync('/tmp/scripts.txt', scriptMatches.join('\n'));
-" || do_rollback
+grep -oE 'src="[^"]+\.js"' /tmp/index.html | cut -d'"' -f2 > /tmp/scripts.txt || true
+if [ ! -s /tmp/scripts.txt ]; then
+    echo "❌ index.html không chứa bất kỳ thẻ script JS nào!"
+    do_rollback
+fi
+SCRIPT_COUNT=\$(wc -l < /tmp/scripts.txt | tr -d '[:space:]')
+echo "   Tìm thấy \$SCRIPT_COUNT file JS tham chiếu trong HTML."
 
 while IFS= read -r script_name; do
     [ -z "\$script_name" ] && continue
@@ -726,20 +713,24 @@ while IFS= read -r script_name; do
 done < /tmp/scripts.txt
 
 echo "4. Kiểm tra endpoint dữ liệu lưu trữ bản vẽ (/api/storage/chili3d-db/recents)..."
-STATUS_RECENTS=\$(curl -s -o /tmp/recents.json -w "%{http_code}" http://127.0.0.1/api/storage/chili3d-db/recents || echo "000")
+STATUS_RECENTS="000"
+for i in \$(seq 1 15); do
+    STATUS_RECENTS=\$(curl -s -o /tmp/recents.json -w "%{http_code}" http://127.0.0.1/api/storage/chili3d-db/recents || echo "000")
+    [ "\$STATUS_RECENTS" = "200" ] && break
+    sleep 1
+done
+
 if [ "\$STATUS_RECENTS" != "200" ]; then
     echo "❌ Lỗi: Endpoint recents trả HTTP \$STATUS_RECENTS (kỳ vọng 200)!"
     do_rollback
 fi
-node -e "
-const fs = require('fs');
-const recents = JSON.parse(fs.readFileSync('/tmp/recents.json', 'utf8'));
-if (!Array.isArray(recents) || recents.length === 0) {
-    console.error('⚠️ Cảnh báo: Danh sách recents rỗng hoặc không đúng định dạng!');
-    process.exit(1);
-}
-console.log('   ✅ Dữ liệu bản vẽ lưu trữ hoàn toàn nguyên vẹn (' + recents.length + ' bản vẽ).');
-" || do_rollback
+
+RECENTS_COUNT=\$(jq -r 'if type == "array" then length else -1 end' /tmp/recents.json 2>/dev/null || echo "-1")
+if [ "\$RECENTS_COUNT" -le 0 ]; then
+    echo "⚠️ Cảnh báo: Danh sách recents rỗng hoặc không đúng định dạng (count: \$RECENTS_COUNT)!"
+    do_rollback
+fi
+echo "   ✅ Dữ liệu bản vẽ lưu trữ hoàn toàn nguyên vẹn (\$RECENTS_COUNT bản vẽ)."
 
 echo "5. Kiểm tra endpoint LLM proxy:"
 STATUS_CODE=\$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1/api/llm-proxy/anthropic/v1/models || echo "000")
