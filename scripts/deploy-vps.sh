@@ -719,7 +719,7 @@ while IFS= read -r script_name; do
         echo "❌ Lỗi: Không thể tải file JS tham chiếu \${CLEAN_SCRIPT} (HTTP \$JS_STATUS)!"
         do_rollback
     fi
-    if grep -q -i '<!DOCTYPE html' /tmp/check.js || grep -q -i '<html' /tmp/check.js; then
+    if head -n 5 /tmp/check.js | grep -q -i '<!DOCTYPE html' || head -n 2 /tmp/check.js | grep -q -i '<html'; then
         echo "❌ Lỗi: File JS \${CLEAN_SCRIPT} trả về mã HTML thay vì JavaScript!"
         do_rollback
     fi
