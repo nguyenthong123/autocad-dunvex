@@ -32,14 +32,19 @@ for arg in "$@"; do
     esac
 done
 
-if [ ! -f ".env" ]; then
-    echo "❌ Không tìm thấy file .env! Hãy sao chép từ .env.example và kiểm tra thông số."
+ENV_FILE="${ENV_FILE:-.env}"
+if [ ! -f "$ENV_FILE" ]; then
+    echo "❌ Không tìm thấy file $ENV_FILE! Hãy sao chép từ .env.example và kiểm tra thông số."
     exit 1
 fi
 
 set -a
-source ".env"
+source "$ENV_FILE"
 set +a
+
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-autocad-dunvex}"
+COMPOSE_PROJECT_FLAG="-p ${COMPOSE_PROJECT_NAME}"
+APP_PORT="${APP_PUBLIC_PORT:-80}"
 
 SSH_OPTS="-i ${VPS_SSH_KEY_PATH} -p ${VPS_PORT:-22} -o StrictHostKeyChecking=accept-new"
 
@@ -57,10 +62,10 @@ echo "Current Release: \$(cat current_release 2>/dev/null || echo 'Chưa ghi nh�
 echo "Rollback Release: \$(cat rollback_release 2>/dev/null || echo 'Chưa ghi nhận')"
 echo ""
 echo "Version endpoint (version.json):"
-curl -s http://127.0.0.1/version.json || echo "Không thể kết nối"
+curl -s "http://127.0.0.1:${APP_PORT}/version.json" || echo "Không thể kết nối"
 echo ""
 echo "Deploy version endpoint (deploy-version.json):"
-curl -s http://127.0.0.1/deploy-version.json || echo "Không thể kết nối"
+curl -s "http://127.0.0.1:${APP_PORT}/deploy-version.json" || echo "Không thể kết nối"
 echo ""
 echo "Danh sách các bản phát hành đã lưu trong releases/:"
 ls -la releases/ 2>/dev/null || echo "Chưa có thư mục releases/"
@@ -109,7 +114,7 @@ echo "   -> [Bước 2/6] Hoàn trả cấu hình và server từ releases/\$ROL
 
 # [Bước 3/6] Build lại container chili3d
 echo "   -> [Bước 3/6] Build lại container chili3d từ cấu hình bản \$ROLLBACK_TARGET..."
-if ! sudo docker compose build --no-cache chili3d >/tmp/docker_build_manual_rb.log 2>&1; then
+if ! sudo docker compose ${COMPOSE_PROJECT_FLAG} build --no-cache chili3d >/tmp/docker_build_manual_rb.log 2>&1; then
     echo "❌ LỖI QUAY LUI [Bước 3/6]: docker compose build thất bại!" >&2
     cat /tmp/docker_build_manual_rb.log >&2
     exit 12
@@ -117,7 +122,7 @@ fi
 
 # [Bước 4/6] Khởi động container chili3d
 echo "   -> [Bước 4/6] Khởi động container chili3d..."
-if ! sudo docker compose up -d --remove-orphans chili3d >/tmp/docker_up_manual_rb.log 2>&1; then
+if ! sudo docker compose ${COMPOSE_PROJECT_FLAG} up -d --remove-orphans chili3d >/tmp/docker_up_manual_rb.log 2>&1; then
     echo "❌ LỖI QUAY LUI [Bước 4/6]: docker compose up thất bại!" >&2
     cat /tmp/docker_up_manual_rb.log >&2
     exit 13
@@ -125,7 +130,7 @@ fi
 
 # [Bước 5/6] Khởi động lại container storage-api
 echo "   -> [Bước 5/6] Khởi động lại container storage-api (volume chili3d-data giữ nguyên)..."
-if ! sudo docker compose restart storage-api >/tmp/docker_storage_manual_rb.log 2>&1; then
+if ! sudo docker compose ${COMPOSE_PROJECT_FLAG} restart storage-api >/tmp/docker_storage_manual_rb.log 2>&1; then
     echo "❌ LỖI QUAY LUI [Bước 5/6]: restart storage-api thất bại!" >&2
     cat /tmp/docker_storage_manual_rb.log >&2
     exit 14
@@ -138,7 +143,7 @@ echo "   -> [Bước 6/6] Xác minh bản quay lui thực sự phục vụ..."
 # 6.1. Trạng thái storage-api (chờ container sẵn sàng)
 STATUS_RECENTS="000"
 for i in \$(seq 1 15); do
-    STATUS_RECENTS=\$(curl -s -o /tmp/rb_recents.json -w "%{http_code}" http://127.0.0.1/api/storage/chili3d-db/recents || echo "000")
+    STATUS_RECENTS=\$(curl -s -o /tmp/rb_recents.json -w "%{http_code}" http://127.0.0.1:${APP_PORT}/api/storage/chili3d-db/recents || echo "000")
     if [ "\$STATUS_RECENTS" = "200" ]; then
         break
     fi
@@ -161,7 +166,7 @@ TARGET_WANT_SHA=\$(jq -r '.codeSha // empty' "releases/\$ROLLBACK_TARGET/dist/ve
 # 6.3. Kiểm tra version.json
 STATUS_VER="000"
 for i in \$(seq 1 10); do
-    STATUS_VER=\$(curl -s -o /tmp/rb_ver.json -w "%{http_code}" http://127.0.0.1/version.json || echo "000")
+    STATUS_VER=\$(curl -s -o /tmp/rb_ver.json -w "%{http_code}" http://127.0.0.1:${APP_PORT}/version.json || echo "000")
     if [ "\$STATUS_VER" = "200" ]; then
         break
     fi
@@ -181,7 +186,7 @@ fi
 # 6.4. Kiểm tra deploy-version.json
 STATUS_DEP="000"
 for i in \$(seq 1 10); do
-    STATUS_DEP=\$(curl -s -o /tmp/rb_dep.json -w "%{http_code}" http://127.0.0.1/deploy-version.json || echo "000")
+    STATUS_DEP=\$(curl -s -o /tmp/rb_dep.json -w "%{http_code}" http://127.0.0.1:${APP_PORT}/deploy-version.json || echo "000")
     if [ "\$STATUS_DEP" = "200" ]; then
         break
     fi
@@ -202,7 +207,7 @@ echo "      ✅ Cả 2 endpoint phiên bản đều trả HTTP 200 và khớp SH
 # 6.5. Kiểm tra file JS tham chiếu trong HTML
 STATUS_HTML="000"
 for i in \$(seq 1 10); do
-    STATUS_HTML=\$(curl -s -o /tmp/rb_index.html -w "%{http_code}" http://127.0.0.1/ || echo "000")
+    STATUS_HTML=\$(curl -s -o /tmp/rb_index.html -w "%{http_code}" http://127.0.0.1:${APP_PORT}/ || echo "000")
     if [ "\$STATUS_HTML" = "200" ]; then
         break
     fi
@@ -216,7 +221,7 @@ fi
 RB_JS_ERR=0
 for js_src in \$(grep -o 'src="[^"]*\.js"' /tmp/rb_index.html | cut -d'"' -f2); do
     CLEAN_JS="\${js_src#/}"
-    JS_CODE=\$(curl -s -o /tmp/rb_check.js -w "%{http_code}" "http://127.0.0.1/\$CLEAN_JS" || echo "000")
+    JS_CODE=\$(curl -s -o /tmp/rb_check.js -w "%{http_code}" "http://127.0.0.1:${APP_PORT}/\$CLEAN_JS" || echo "000")
     if [ "\$JS_CODE" != "200" ] || grep -q -i '<!DOCTYPE html' /tmp/rb_check.js; then
         echo "❌ LỖI QUAY LUI [Bước 6/6]: File JS tham chiếu \$CLEAN_JS không tải được hoặc trả HTML lỗi!" >&2
         RB_JS_ERR=1
@@ -473,7 +478,7 @@ do_rollback() {
 
     # [Bước 3/6] Build lại container chili3d
     echo "   -> [Bước 3/6] Build lại container chili3d từ cấu hình bản \$TARGET..."
-    if ! sudo docker compose build --no-cache chili3d >/tmp/docker_build_rollback.log 2>&1; then
+    if ! sudo docker compose ${COMPOSE_PROJECT_FLAG} build --no-cache chili3d >/tmp/docker_build_rollback.log 2>&1; then
         echo "❌ LỖI KHÔI PHỤC [Bước 3/6]: docker compose build thất bại khi quay lui!" >&2
         cat /tmp/docker_build_rollback.log >&2
         echo "   -> Giữ nguyên file log tại /tmp/docker_build_rollback.log để xử lý tiếp."
@@ -483,7 +488,7 @@ do_rollback() {
 
     # [Bước 4/6] Khởi động container chili3d
     echo "   -> [Bước 4/6] Khởi động container chili3d..."
-    if ! sudo docker compose up -d --remove-orphans chili3d >/tmp/docker_up_rollback.log 2>&1; then
+    if ! sudo docker compose ${COMPOSE_PROJECT_FLAG} up -d --remove-orphans chili3d >/tmp/docker_up_rollback.log 2>&1; then
         echo "❌ LỖI KHÔI PHỤC [Bước 4/6]: docker compose up thất bại khi quay lui!" >&2
         cat /tmp/docker_up_rollback.log >&2
         echo "   -> Giữ nguyên file log tại /tmp/docker_up_rollback.log để xử lý tiếp."
@@ -493,7 +498,7 @@ do_rollback() {
 
     # [Bước 5/6] Khởi động lại container storage-api
     echo "   -> [Bước 5/6] Khởi động lại container storage-api (volume chili3d-data giữ nguyên)..."
-    if ! sudo docker compose restart storage-api >/tmp/docker_storage_rollback.log 2>&1; then
+    if ! sudo docker compose ${COMPOSE_PROJECT_FLAG} restart storage-api >/tmp/docker_storage_rollback.log 2>&1; then
         echo "❌ LỖI KHÔI PHỤC [Bước 5/6]: restart storage-api thất bại khi quay lui!" >&2
         cat /tmp/docker_storage_rollback.log >&2
         echo "   -> Giữ nguyên file log tại /tmp/docker_storage_rollback.log để xử lý tiếp."
@@ -508,7 +513,7 @@ do_rollback() {
     # 6.1. Trạng thái storage-api (chờ container sẵn sàng)
     STATUS_RECENTS="000"
     for i in \$(seq 1 15); do
-        STATUS_RECENTS=\$(curl -s -o /tmp/rb_recents.json -w "%{http_code}" http://127.0.0.1/api/storage/chili3d-db/recents || echo "000")
+        STATUS_RECENTS=\$(curl -s -o /tmp/rb_recents.json -w "%{http_code}" http://127.0.0.1:${APP_PORT}/api/storage/chili3d-db/recents || echo "000")
         if [ "\$STATUS_RECENTS" = "200" ]; then
             break
         fi
@@ -531,7 +536,7 @@ do_rollback() {
     # 6.3. Kiểm tra version.json
     STATUS_VER="000"
     for i in \$(seq 1 10); do
-        STATUS_VER=\$(curl -s -o /tmp/rb_ver.json -w "%{http_code}" http://127.0.0.1/version.json || echo "000")
+        STATUS_VER=\$(curl -s -o /tmp/rb_ver.json -w "%{http_code}" http://127.0.0.1:${APP_PORT}/version.json || echo "000")
         if [ "\$STATUS_VER" = "200" ]; then
             break
         fi
@@ -551,7 +556,7 @@ do_rollback() {
     # 6.4. Kiểm tra deploy-version.json
     STATUS_DEP="000"
     for i in \$(seq 1 10); do
-        STATUS_DEP=\$(curl -s -o /tmp/rb_dep.json -w "%{http_code}" http://127.0.0.1/deploy-version.json || echo "000")
+        STATUS_DEP=\$(curl -s -o /tmp/rb_dep.json -w "%{http_code}" http://127.0.0.1:${APP_PORT}/deploy-version.json || echo "000")
         if [ "\$STATUS_DEP" = "200" ]; then
             break
         fi
@@ -572,7 +577,7 @@ do_rollback() {
     # 6.5. Kiểm tra file JS tham chiếu trong HTML
     STATUS_HTML="000"
     for i in \$(seq 1 10); do
-        STATUS_HTML=\$(curl -s -o /tmp/rb_index.html -w "%{http_code}" http://127.0.0.1/ || echo "000")
+        STATUS_HTML=\$(curl -s -o /tmp/rb_index.html -w "%{http_code}" http://127.0.0.1:${APP_PORT}/ || echo "000")
         if [ "\$STATUS_HTML" = "200" ]; then
             break
         fi
@@ -586,7 +591,7 @@ do_rollback() {
     RB_JS_ERR=0
     for js_src in \$(grep -o 'src="[^"]*\.js"' /tmp/rb_index.html | cut -d'"' -f2); do
         CLEAN_JS="\${js_src#/}"
-        JS_CODE=\$(curl -s -o /tmp/rb_check.js -w "%{http_code}" "http://127.0.0.1/\$CLEAN_JS" || echo "000")
+        JS_CODE=\$(curl -s -o /tmp/rb_check.js -w "%{http_code}" "http://127.0.0.1:${APP_PORT}/\$CLEAN_JS" || echo "000")
         if [ "\$JS_CODE" != "200" ] || grep -q -i '<!DOCTYPE html' /tmp/rb_check.js; then
             echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: File JS tham chiếu \$CLEAN_JS không tải được hoặc trả HTML lỗi!" >&2
             RB_JS_ERR=1
@@ -623,21 +628,28 @@ mv dist.next.tmp dist
 
 # 7. Cập nhật container chili3d với image mới
 echo "🐳 Kích hoạt container chili3d..."
-sudo docker compose build --no-cache chili3d
-sudo docker compose up -d --remove-orphans chili3d
+sudo docker compose ${COMPOSE_PROJECT_FLAG} build --no-cache chili3d
+sudo docker compose ${COMPOSE_PROJECT_FLAG} up -d --remove-orphans chili3d
 
 # 8. Khởi động lại container storage-api để nạp mã server mới (volume chili3d-data giữ nguyên 100%)
 echo "🔄 Khởi động lại storage-api (volume chili3d-data giữ nguyên)..."
-sudo docker compose restart storage-api
+sudo docker compose ${COMPOSE_PROJECT_FLAG} restart storage-api
 sleep 2
 
 # 9. HẬU KIỂM TOÀN DIỆN
 echo "🩺 [5/5] Kiểm tra sức khỏe dịch vụ trên VPS (Chỉ chốt current_release khi vượt qua hậu kiểm)..."
 
+if [ -f "${VPS_DEPLOY_DIR}/.trigger_healthcheck_fail" ]; then
+    echo "🧪 [TEST] Phát hiện file cờ .trigger_healthcheck_fail từ môi trường thử!"
+    rm -f "${VPS_DEPLOY_DIR}/.trigger_healthcheck_fail"
+    echo "❌ Cố tình làm lỗi hậu kiểm để kích hoạt do_rollback!"
+    false
+fi
+
 echo "1. Kiểm tra endpoint version.json (HTTP 200 & Full 40-char SHA)..."
 STATUS_VER="000"
 for i in \$(seq 1 15); do
-    STATUS_VER=\$(curl -s -o /tmp/ver.json -w "%{http_code}" http://127.0.0.1/version.json || echo "000")
+    STATUS_VER=\$(curl -s -o /tmp/ver.json -w "%{http_code}" http://127.0.0.1:${APP_PORT}/version.json || echo "000")
     [ "\$STATUS_VER" = "200" ] && break
     sleep 1
 done
@@ -658,7 +670,7 @@ echo "   ✅ version.json khớp full SHA: ${TIP_SHA}"
 echo "2. Kiểm tra endpoint deploy-version.json (HTTP 200 & Full 40-char SHA)..."
 STATUS_DEP="000"
 for i in \$(seq 1 10); do
-    STATUS_DEP=\$(curl -s -o /tmp/dep.json -w "%{http_code}" http://127.0.0.1/deploy-version.json || echo "000")
+    STATUS_DEP=\$(curl -s -o /tmp/dep.json -w "%{http_code}" http://127.0.0.1:${APP_PORT}/deploy-version.json || echo "000")
     [ "\$STATUS_DEP" = "200" ] && break
     sleep 1
 done
@@ -679,7 +691,7 @@ echo "   ✅ deploy-version.json khớp full SHA: ${TIP_SHA}"
 echo "3. Kiểm tra endpoint index.html và các file JS tham chiếu..."
 STATUS_HTML="000"
 for i in \$(seq 1 10); do
-    STATUS_HTML=\$(curl -s -o /tmp/index.html -w "%{http_code}" http://127.0.0.1/ || echo "000")
+    STATUS_HTML=\$(curl -s -o /tmp/index.html -w "%{http_code}" http://127.0.0.1:${APP_PORT}/ || echo "000")
     [ "\$STATUS_HTML" = "200" ] && break
     sleep 1
 done
@@ -700,7 +712,7 @@ echo "   Tìm thấy \$SCRIPT_COUNT file JS tham chiếu trong HTML."
 while IFS= read -r script_name; do
     [ -z "\$script_name" ] && continue
     CLEAN_SCRIPT="\${script_name#/}"
-    JS_STATUS=\$(curl -s -o /tmp/check.js -w "%{http_code}" "http://127.0.0.1/\${CLEAN_SCRIPT}" || echo "000")
+    JS_STATUS=\$(curl -s -o /tmp/check.js -w "%{http_code}" "http://127.0.0.1:${APP_PORT}/\${CLEAN_SCRIPT}" || echo "000")
     if [ "\$JS_STATUS" != "200" ]; then
         echo "❌ Lỗi: Không thể tải file JS tham chiếu \${CLEAN_SCRIPT} (HTTP \$JS_STATUS)!"
         do_rollback
@@ -715,7 +727,7 @@ done < /tmp/scripts.txt
 echo "4. Kiểm tra endpoint dữ liệu lưu trữ bản vẽ (/api/storage/chili3d-db/recents)..."
 STATUS_RECENTS="000"
 for i in \$(seq 1 15); do
-    STATUS_RECENTS=\$(curl -s -o /tmp/recents.json -w "%{http_code}" http://127.0.0.1/api/storage/chili3d-db/recents || echo "000")
+    STATUS_RECENTS=\$(curl -s -o /tmp/recents.json -w "%{http_code}" http://127.0.0.1:${APP_PORT}/api/storage/chili3d-db/recents || echo "000")
     [ "\$STATUS_RECENTS" = "200" ] && break
     sleep 1
 done
@@ -733,7 +745,7 @@ fi
 echo "   ✅ Dữ liệu bản vẽ lưu trữ hoàn toàn nguyên vẹn (\$RECENTS_COUNT bản vẽ)."
 
 echo "5. Kiểm tra endpoint LLM proxy:"
-STATUS_CODE=\$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1/api/llm-proxy/anthropic/v1/models || echo "000")
+STATUS_CODE=\$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:${APP_PORT}/api/llm-proxy/anthropic/v1/models || echo "000")
 echo "   HTTP Status Code: \$STATUS_CODE (kỳ vọng 401)"
 if [ "\$STATUS_CODE" != "401" ]; then
     echo "⚠️ Cảnh báo: Proxy LLM trả về mã \$STATUS_CODE (kỳ vọng 401)"
