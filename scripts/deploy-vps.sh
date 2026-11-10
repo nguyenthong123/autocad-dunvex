@@ -392,11 +392,7 @@ EOF
 echo "📤 [3/5] Đang đồng bộ gói độc lập vào releases/${RELEASE_ID} trên VPS..."
 # Đóng gói và giải nén vào thư mục release độc lập (không xóa hay ghi đè dist đang chạy)
 COPYFILE_DISABLE=1 tar --exclude="._*" -czf - dist server Dockerfile nginx.conf compose.yml .env.example | \
-    ssh $SSH_OPTS "${VPS_USER}@${VPS_HOST}" "bash -s" <<EOF
-set -euo pipefail
-mkdir -p "${VPS_DEPLOY_DIR}/releases/${RELEASE_ID}"
-tar -xzf - -C "${VPS_DEPLOY_DIR}/releases/${RELEASE_ID}"
-EOF
+    ssh $SSH_OPTS "${VPS_USER}@${VPS_HOST}" "set -euo pipefail; mkdir -p \"${VPS_DEPLOY_DIR}/releases/${RELEASE_ID}\"; tar -xzf - -C \"${VPS_DEPLOY_DIR}/releases/${RELEASE_ID}\""
 
 echo "🔄 [4/5] Kích hoạt bản phát hành mới và Docker Container (Bảo vệ bằng Rollback toàn diện)..."
 ssh $SSH_OPTS "${VPS_USER}@${VPS_HOST}" "bash -s" <<EOF
