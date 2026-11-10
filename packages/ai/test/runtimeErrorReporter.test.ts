@@ -233,4 +233,43 @@ describe("runtimeErrorReporter diagnostics", () => {
         expect(res.downloaded).toBe(false);
         expect(res.content).toContain("Open profile error");
     });
+
+    test("exports standalone and combined performance reports conforming to schema", () => {
+        const { PerformanceProfiler } = require("@chili3d/core");
+        const profiler = PerformanceProfiler.instance;
+        profiler.reset();
+        profiler.startRecording();
+        profiler.recordInteraction("pan");
+        profiler.recordFrame(20.5);
+        profiler.markJank("freeze_detected");
+        profiler.stopRecording();
+
+        // 1. Standalone performance export
+        const { exportPerformanceReport } = require("../src");
+        const perfJsonStr = exportPerformanceReport("sha-test-456");
+        const perfJson = JSON.parse(perfJsonStr);
+        expect(perfJson.schemaVersion).toBe("1.0.0");
+        expect(perfJson.buildSha).toBe("sha-test-456");
+        expect(perfJson.aggregates.interactions.panCount).toBe(1);
+        expect(perfJson.aggregates.userMarksCount).toBe(1);
+        expect(perfJson.timeline.length).toBe(3);
+
+        // 2. Backward compatibility: exportRuntimeErrorReports("json") without options returns array
+        const rawArrayJson = exportRuntimeErrorReports("json");
+        const parsedArray = JSON.parse(rawArrayJson);
+        expect(Array.isArray(parsedArray)).toBe(true);
+
+        // 3. Combined export with includePerformance: true
+        const combinedJsonStr = exportRuntimeErrorReports("json", {
+            includePerformance: true,
+            buildSha: "sha-test-456",
+        });
+        const combined = JSON.parse(combinedJsonStr);
+        expect(combined.schemaVersion).toBe("1.0.0");
+        expect(Array.isArray(combined.errorReports)).toBe(true);
+        expect(combined.performance).toBeDefined();
+        expect(combined.performance.schemaVersion).toBe("1.0.0");
+        expect(combined.performance.buildSha).toBe("sha-test-456");
+        expect(combined.performance.aggregates.interactions.panCount).toBe(1);
+    });
 });

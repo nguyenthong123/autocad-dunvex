@@ -20,6 +20,7 @@ export * from "./messageType";
 export * from "./objectStorage";
 export * from "./observer";
 export * from "./pendingWork";
+export * from "./performanceProfiler";
 export * from "./precision";
 export * from "./pubsub";
 export * from "./result";

@@ -21,6 +21,7 @@ import {
     ModelManager,
     Observable,
     ObservableCollection,
+    PerformanceProfiler,
     PubSub,
     type Serialized,
     Serializer,
@@ -237,11 +238,20 @@ export class Document extends Observable implements IDocument {
         const snapshotEvictedCount = this.history.evictedCount;
         const snapshotRevision = this.history.revision;
 
+        const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
         const data = this.serialize();
+        const tSerialize = (typeof performance !== "undefined" ? performance.now() : Date.now()) - t0;
+        PerformanceProfiler.instance.recordAutosaveStep("serialize", tSerialize, true);
+
         if (isClosing) {
             (data as any).isClosing = true;
         }
+
+        const t1 = typeof performance !== "undefined" ? performance.now() : Date.now();
         await this.application.storage.put(Constants.DBName, Constants.DocumentTable, this.id, data);
+        const tIdb = (typeof performance !== "undefined" ? performance.now() : Date.now()) - t1;
+        PerformanceProfiler.instance.recordAutosaveStep("indexeddb", tIdb, true);
+
         this._lastSavedUndoTop = snapshotUndoTop;
         this._lastSavedEvictedCount = snapshotEvictedCount;
         this._lastSavedRevision = snapshotRevision;
@@ -255,9 +265,21 @@ export class Document extends Observable implements IDocument {
                 this.application.views?.find((v) => v.document === this) ?? this.application.activeView;
             const isCurrentView =
                 ownView && (!this.application.views || this.application.activeView === ownView);
+
+            const t2 = typeof performance !== "undefined" ? performance.now() : Date.now();
             const image = isCurrentView
                 ? ownView?.toImage({ maxSize: 320, mimeType: "image/jpeg", quality: 0.7 })
                 : undefined;
+            const tThumb = (typeof performance !== "undefined" ? performance.now() : Date.now()) - t2;
+            if (isCurrentView) {
+                PerformanceProfiler.instance.recordAutosaveStep(
+                    "thumbnail",
+                    tThumb,
+                    true,
+                    image ? image.length : undefined,
+                );
+            }
+
             const recentData: any = {
                 id: this.id,
                 name: this.name,

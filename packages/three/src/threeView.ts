@@ -21,6 +21,7 @@ import {
     type Matrix4,
     MultiShapeNode,
     Observable,
+    PerformanceProfiler,
     type Plane,
     Precision,
     PubSub,
@@ -498,10 +499,27 @@ export class ThreeView extends Observable implements IView {
 
         if (!this._needsUpdate) return;
 
+        const profiler = PerformanceProfiler.instance;
+        const isProfiling = profiler.isRecording;
+        let cpuStart = 0;
+        if (isProfiling) {
+            cpuStart = typeof performance !== "undefined" ? performance.now() : Date.now();
+        }
+
         this.syncCameraDependentState();
         this._renderer.render(this._scene, this.camera);
         this._cssRenderer.render(this._scene, this.camera);
         this._gizmo?.update();
+
+        if (isProfiling) {
+            const cpuEnd = typeof performance !== "undefined" ? performance.now() : Date.now();
+            const cpuRenderMs = cpuEnd - cpuStart;
+            const calls = this._renderer.info.render.calls;
+            const triangles = this._renderer.info.render.triangles;
+            const geometries = this._renderer.info.memory.geometries;
+            const textures = this._renderer.info.memory.textures;
+            profiler.recordFrame(delta, cpuRenderMs, calls, triangles, geometries, textures);
+        }
 
         this._needsUpdate = false;
     }

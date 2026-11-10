@@ -3,13 +3,14 @@
 
 import {
     clearRuntimeErrorReports,
+    exportPerformanceReport,
     exportRuntimeErrorReports,
     findCommandGuide,
     listRuntimeErrorReports,
     type RuntimeErrorReport,
     searchCommandGuides,
 } from "@chili3d/ai";
-import { Localize } from "@chili3d/core";
+import { Localize, PerformanceProfiler, PubSub } from "@chili3d/core";
 import { button, div, span } from "@chili3d/element";
 import { Marked } from "marked";
 import style from "./manualReader.module.css";
@@ -377,6 +378,81 @@ export class ManualReader extends HTMLElement {
         const reports = listRuntimeErrorReports();
         this.contentEl.innerHTML = "";
 
+        // Section 1: Performance Profiler Controls
+        const profiler = PerformanceProfiler.instance;
+        const profilerTitle = span({ textContent: "⏱️ Đo đạc Hiệu năng CAD (Performance Profiler)" });
+        const recordBtn = button(
+            {
+                className: style.actionButton,
+                onclick: () => {
+                    if (profiler.isRecording) {
+                        profiler.stopRecording();
+                    } else {
+                        profiler.startRecording();
+                    }
+                    this.renderDiagnosticsView();
+                },
+            },
+            span({ textContent: profiler.isRecording ? "⏹️ Dừng đo" : "🔴 Bắt đầu đo" }),
+        );
+        const markJankBtn = button(
+            {
+                className: `${style.actionButton} ${style.actionButtonSecondary}`,
+                onclick: () => {
+                    if (!profiler.isRecording) {
+                        profiler.startRecording();
+                    }
+                    profiler.markJank("user_freeze_marked");
+                    PubSub.default.pub("showToast", "Đã đánh dấu điểm khựng vào timeline hiệu năng");
+                    this.renderDiagnosticsView();
+                },
+            },
+            span({ textContent: "⚠️ Vừa bị khựng" }),
+        );
+        const downloadPerfJsonBtn = button(
+            {
+                className: `${style.actionButton} ${style.actionButtonSecondary}`,
+                onclick: () => this.downloadPerformanceReportJson(),
+            },
+            span({ textContent: "📥 Tải báo cáo hiệu năng (.json)" }),
+        );
+        const resetPerfBtn = button(
+            {
+                className: `${style.actionButton} ${style.actionButtonSecondary}`,
+                onclick: () => {
+                    profiler.reset();
+                    this.renderDiagnosticsView();
+                },
+            },
+            span({ textContent: "🔄 Đặt lại" }),
+        );
+
+        const statusText = profiler.isRecording
+            ? `🔴 Đang ghi dữ liệu (${profiler.eventCount} sự kiện)...`
+            : profiler.eventCount > 0
+              ? `⏹️ Đã dừng đo (${profiler.eventCount} sự kiện). Sẵn sàng tải JSON.`
+              : "Mặc định tắt. Bấm Bắt đầu đo để ghi timeline Pan, Zoom, Tự lưu và Khung hình.";
+        const statusSpan = span({
+            className: profiler.isRecording ? style.recordingBadge : style.errorMeta,
+            textContent: statusText,
+        });
+
+        const profilerActions = div(
+            { className: style.profilerActions },
+            recordBtn,
+            markJankBtn,
+            downloadPerfJsonBtn,
+            resetPerfBtn,
+            statusSpan,
+        );
+        const profilerPanel = div(
+            { className: style.profilerPanel },
+            div({ className: style.profilerTitleRow }, profilerTitle),
+            profilerActions,
+        );
+        this.contentEl.appendChild(profilerPanel);
+
+        // Section 2: AI Runtime Error Reports
         const titleSpan = span({ textContent: "Báo cáo Lỗi Runtime AI (AI Diagnostics)" });
         const downloadMdBtn = button(
             {
@@ -533,6 +609,20 @@ export class ManualReader extends HTMLElement {
         const dateStr = new Date().toISOString().split("T")[0];
         a.href = url;
         a.download = `chili3d-error-report-${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    private downloadPerformanceReportJson(): void {
+        const json = exportPerformanceReport();
+        const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const dateStr = new Date().toISOString().split("T")[0];
+        a.href = url;
+        a.download = `chili3d-performance-report-${dateStr}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

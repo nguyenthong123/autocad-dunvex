@@ -7,6 +7,8 @@ export {
     classifyError,
     clearRuntimeErrorReports,
     type ErrorClass,
+    type ExportReportOptions,
+    exportPerformanceReport,
     exportRuntimeErrorReports,
     isStreamParseError,
     listRuntimeErrorReports,

@@ -13,6 +13,7 @@ import {
     MathUtils,
     NodeUtils,
     Observable,
+    PerformanceProfiler,
     Plane,
     type ViewMode,
     VisualNode,
@@ -163,6 +164,7 @@ export class CameraController extends Observable implements ICameraController {
     }
 
     pan(dx: number, dy: number): void {
+        PerformanceProfiler.instance.recordInteraction("pan");
         this.cancelTransition();
         this.clearZoomCache();
         const ratio = PAN_SPEED_FACTOR * this._target.distanceTo(this._position);
@@ -490,6 +492,7 @@ export class CameraController extends Observable implements ICameraController {
     }
 
     zoom(x: number, y: number, delta: number): void {
+        PerformanceProfiler.instance.recordInteraction("zoom");
         this.cancelTransition();
         const deltaSign = Math.sign(delta);
         if (this._lastZoomDeltaSign !== 0 && deltaSign !== 0 && deltaSign !== this._lastZoomDeltaSign) {

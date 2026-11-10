@@ -1,7 +1,7 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
-import { type IStorage, Logger, PubSub } from "@chili3d/core";
+import { type IStorage, Logger, PerformanceProfiler, PubSub } from "@chili3d/core";
 import { IndexedDBStorage } from "./indexedDBStorage";
 import { type OutboxItem, OutboxManager, resolveOutboxOwner, type SyncStatus } from "./outbox";
 
@@ -32,6 +32,11 @@ export class ApiCloudStorage implements IStorage {
             getCurrentOwnerId: () => this.getUserId() ?? null,
             onStatusChange: (status, count) => {
                 options.onStatusChange?.(status, count);
+                if (status === "saving") {
+                    PerformanceProfiler.instance.recordAutosaveStep("sync_send", 0, true);
+                } else if (status === "saved") {
+                    PerformanceProfiler.instance.recordAutosaveStep("sync_ack", 0, true);
+                }
                 try {
                     PubSub.default.pub("syncStatusChanged", status, count);
                 } catch {

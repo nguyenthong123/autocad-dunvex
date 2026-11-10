@@ -1,6 +1,7 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
+import { PerformanceProfiler } from "@chili3d/core";
 import { redactDataUrls } from "../llm/redact";
 import type {
     ErrorClass,
@@ -353,12 +354,32 @@ export function clearRuntimeErrorReports(): void {
     recentReportTimes.clear();
 }
 
+export interface ExportReportOptions {
+    includePerformance?: boolean;
+    buildSha?: string;
+}
+
 /**
  * Exports runtime error reports as a formatted Markdown or JSON string.
  */
-export function exportRuntimeErrorReports(format: "markdown" | "json" = "markdown"): string {
+export function exportRuntimeErrorReports(
+    format: "markdown" | "json" = "markdown",
+    options?: ExportReportOptions,
+): string {
     const reports = loadStoredReports();
     if (format === "json") {
+        if (options?.includePerformance) {
+            const perfReport = PerformanceProfiler.instance.exportReport(options.buildSha);
+            return JSON.stringify(
+                {
+                    schemaVersion: "1.0.0",
+                    errorReports: reports,
+                    performance: perfReport,
+                },
+                null,
+                2,
+            );
+        }
         return JSON.stringify(reports, null, 2);
     }
 
@@ -433,4 +454,11 @@ export function exportRuntimeErrorReports(format: "markdown" | "json" = "markdow
     }
 
     return lines.join("\n");
+}
+
+/**
+ * Exports standalone performance profiler report as a JSON string.
+ */
+export function exportPerformanceReport(buildSha?: string): string {
+    return PerformanceProfiler.instance.exportJson(buildSha);
 }

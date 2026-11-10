@@ -4,6 +4,8 @@
 export {
     classifyError,
     clearRuntimeErrorReports,
+    type ExportReportOptions,
+    exportPerformanceReport,
     exportRuntimeErrorReports,
     isStreamParseError,
     listRuntimeErrorReports,
