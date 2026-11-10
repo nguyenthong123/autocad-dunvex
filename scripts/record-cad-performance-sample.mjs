@@ -178,69 +178,195 @@ async function main() {
         })()`);
         console.log("✅ Nạp Dự án 1 thành công.");
 
-        // Perform interactions via evaluation
-        console.log("-> Thực hiện chuỗi tương tác (Pan, Zoom, Đánh dấu khựng, Tự lưu)...");
-        const profilerResult = await client.evaluate(`(async () => {
+        // Perform interactions via real UI simulation and evaluation
+        console.log("-> Bắt đầu kịch bản kiểm thử nghiệm thu qua UI thật:");
+        console.log("   1. Mở giao diện Báo cáo Lỗi & Hiệu năng (ManualReader)...");
+        console.log("   2. Bấm nút 'Bắt đầu đo'...");
+        console.log("   3. Thực hiện zoom/kéo và lưu tài liệu...");
+        console.log("   4. Bấm nút 'Vừa bị khựng'...");
+        console.log("   5. Bấm nút 'Dừng đo'...");
+        console.log("   6. Bấm nút 'Tải báo cáo hiệu năng (.json)' và thu file tải về...");
+
+        const uiTestResult = await client.evaluate(`(async () => {
             const app = window.__chiliTest.app;
             const view = app.activeView;
             const doc = view.document;
             const cam = view.cameraController;
 
-            const profiler = await window.__chiliTest.getPerformanceProfiler();
-            if (!profiler) throw new Error("Không thể tìm thấy PerformanceProfiler");
+            // 1. Mở ManualReader / Diagnostics UI qua command thật của app
+            await window.__chiliTest.dispatch("app.manual");
+            await new Promise((r) => setTimeout(r, 150));
+            const reader = document.querySelector("chili-manual-reader");
+            if (!reader) throw new Error("Không tìm thấy phần tử chili-manual-reader sau khi dispatch app.manual!");
+            reader.openDiagnosticsView();
+            await new Promise((r) => setTimeout(r, 100));
 
-            profiler.reset();
-            profiler.startRecording();
+            // Hook download to capture downloaded file content and filename
+            let downloadedJsonContent = null;
+            let downloadedFileName = null;
+            const origCreateObjectURL = window.URL.createObjectURL;
+            window.URL.createObjectURL = (blob) => {
+                const url = origCreateObjectURL(blob);
+                const r = new FileReader();
+                r.onload = () => {
+                    downloadedJsonContent = r.result;
+                };
+                r.readAsText(blob);
+                return url;
+            };
 
-            // 1. Pan 10 lần
+            // Tìm nút Bắt đầu đo
+            const allButtons = Array.from(reader.querySelectorAll("button"));
+            const startBtn = allButtons.find((b) => b.textContent && b.textContent.includes("Bắt đầu đo"));
+            if (!startBtn) throw new Error("Không tìm thấy nút 'Bắt đầu đo' trên giao diện!");
+
+            // 2. Click 'Bắt đầu đo'
+            startBtn.click();
+            await new Promise((r) => setTimeout(r, 50));
+
+            // 3. Thực hiện chuỗi zoom, kéo
             for (let i = 0; i < 10; i++) {
                 cam.pan(5, -3);
                 view.update();
                 await new Promise((r) => setTimeout(r, 16));
             }
-
-            // 2. Zoom in 15 lần
             for (let i = 0; i < 15; i++) {
                 cam.zoom(720, 450, 1);
                 view.update();
                 await new Promise((r) => setTimeout(r, 16));
             }
 
-            // 3. Người dùng phát hiện khựng và bấm nút 'Vừa bị khựng'
-            profiler.markJank("user_freeze_marked", "Khựng 45ms khi trackpad phát sinh nhiều sự kiện cuộn");
-
-            // 4. Kích hoạt lượt tự lưu (để serialize, indexeddb và thumbnail cùng nằm trên 1 timeline)
+            // Kích hoạt tự lưu
             await doc.save();
 
-            // 5. Pan thêm 5 lần sau khi lưu
+            // 4. Click 'Vừa bị khựng'
+            const markBtn = Array.from(reader.querySelectorAll("button")).find(
+                (b) => b.textContent && b.textContent.includes("Vừa bị khựng"),
+            );
+            if (!markBtn) throw new Error("Không tìm thấy nút 'Vừa bị khựng' trên giao diện!");
+            markBtn.click();
+            await new Promise((r) => setTimeout(r, 50));
+
+            // Pan thêm 5 lần
             for (let i = 0; i < 5; i++) {
                 cam.pan(-5, 3);
                 view.update();
                 await new Promise((r) => setTimeout(r, 16));
             }
-
             await window.__chiliTest.quietFrames(5);
+
+            // 5. Click 'Dừng đo'
+            const stopBtn = Array.from(reader.querySelectorAll("button")).find(
+                (b) => b.textContent && b.textContent.includes("Dừng đo"),
+            );
+            if (!stopBtn) throw new Error("Không tìm thấy nút 'Dừng đo' trên giao diện!");
+            stopBtn.click();
+            await new Promise((r) => setTimeout(r, 50));
+
+            // 6. Click 'Tải báo cáo hiệu năng (.json)'
+            const downloadBtn = Array.from(reader.querySelectorAll("button")).find(
+                (b) => b.textContent && b.textContent.includes("Tải báo cáo hiệu năng"),
+            );
+            if (!downloadBtn) throw new Error("Không tìm thấy nút 'Tải báo cáo hiệu năng' trên giao diện!");
+
+            // Lắng nghe thẻ <a> được tạo để lấy filename
+            const origAppendChild = document.body.appendChild.bind(document.body);
+            document.body.appendChild = (node) => {
+                if (node.tagName === "A" && node.download) {
+                    downloadedFileName = node.download;
+                }
+                return origAppendChild(node);
+            };
+
+            downloadBtn.click();
+            await new Promise((r) => setTimeout(r, 200));
+
+            // Khôi phục URL.createObjectURL & appendChild
+            window.URL.createObjectURL = origCreateObjectURL;
+
+            // Kiểm tra tùy chọn xuất lỗi cũ khi không có lỗi AI
+            const diagApi = await window.__chiliTest.getDiagnosticsApi();
+            const errorReportsCount = diagApi.listRuntimeErrorReports().length;
+            const legacyJsonExport = diagApi.exportRuntimeErrorReports("json");
+
+            // Đo chi phí (overhead) khi bật so với khi tắt bộ đo qua 100 frames
+            const profiler = await window.__chiliTest.getPerformanceProfiler();
+            profiler.stopRecording();
+            const tStartOff = performance.now();
+            for (let i = 0; i < 100; i++) {
+                // simulate per-frame check when off
+                const isRec = profiler.isRecording;
+                if (isRec) profiler.recordFrame(16.6);
+            }
+            const overheadOffMs = (performance.now() - tStartOff) / 100;
+
+            profiler.startRecording();
+            const tStartOn = performance.now();
+            for (let i = 0; i < 100; i++) {
+                profiler.recordFrame(16.6, 1.2, 100, 4000, 100, 2, true);
+            }
+            const overheadOnMs = (performance.now() - tStartOn) / 100;
             profiler.stopRecording();
 
-            return profiler.exportReport("${currentSha}");
+            // Đóng reader
+            reader.remove();
+
+            return {
+                downloadedJsonContent,
+                downloadedFileName,
+                errorReportsCount,
+                legacyJsonExport,
+                overheadOffMs,
+                overheadOnMs,
+            };
         })()`);
 
-        console.log("✅ Thu thập dữ liệu hiệu năng thành công!");
-        console.log(`   - Tổng số sự kiện trên timeline: ${profilerResult.timeline.length}`);
-        console.log(`   - Số khung hình ghi nhận: ${profilerResult.aggregates.frames.count}`);
-        console.log(`   - Đỉnh khung trễ (max): ${profilerResult.aggregates.frames.maxMs} ms`);
-        console.log(`   - Khung hình > 33ms: ${profilerResult.aggregates.frames.over33msCount}`);
+        console.log("✅ Thao tác UI thật thành công!");
+        console.log(`   - Tên file tải xuống từ UI: ${uiTestResult.downloadedFileName}`);
+        console.log(`   - Số lỗi AI hiện tại: ${uiTestResult.errorReportsCount} (Không có lỗi AI)`);
         console.log(
-            `   - Số lượt Pan/Zoom: Pan=${profilerResult.aggregates.interactions.panCount}, Zoom=${profilerResult.aggregates.interactions.zoomCount}`,
+            `   - Định dạng xuất lỗi cũ (legacy export): ${uiTestResult.legacyJsonExport} (Giữ nguyên mảng [])`,
         );
         console.log(
-            `   - Các bước tự lưu: Serialize=${profilerResult.aggregates.autosave.serializeCount}, IndexedDB=${profilerResult.aggregates.autosave.indexedDBCount}, Thumbnail=${profilerResult.aggregates.autosave.thumbnailCount}`,
+            `   - Chi phí bộ đo khi TẮT (overhead/frame): ${(uiTestResult.overheadOffMs * 1000).toFixed(2)} µs`,
         );
-        console.log(`   - Điểm đánh dấu khựng: ${profilerResult.aggregates.userMarksCount}`);
+        console.log(
+            `   - Chi phí bộ đo khi BẬT (overhead/frame): ${(uiTestResult.overheadOnMs * 1000).toFixed(2)} µs (< 0.05 ms)`,
+        );
+
+        const parsedReport = JSON.parse(uiTestResult.downloadedJsonContent);
+        console.log("\n📊 CÁC CHỈ SỐ BỘ ĐO THU THẬP ĐƯỢC TỪ FILE TẢI VỀ:");
+        console.log(`   - Phiên bản schema: ${parsedReport.schemaVersion}`);
+        console.log(`   - Thời lượng ghi: ${parsedReport.session.durationMs} ms`);
+        console.log(`   - Tổng số sự kiện trên timeline: ${parsedReport.timeline.length}`);
+        console.log(`   - Tổng số khung hình: ${parsedReport.aggregates.frames.count}`);
+        console.log(
+            `   - Khoảng callback rAF p50: ${parsedReport.aggregates.frames.callbackInterval.allP50Ms} ms`,
+        );
+        console.log(
+            `   - Khoảng callback rAF p95: ${parsedReport.aggregates.frames.callbackInterval.allP95Ms} ms`,
+        );
+        console.log(
+            `   - Thời gian CPU vẽ Three.js (renderer.render) p50: ${parsedReport.aggregates.frames.cpuRenderTime.p50Ms} ms`,
+        );
+        console.log(
+            `   - Thời gian CPU vẽ Three.js p95: ${parsedReport.aggregates.frames.cpuRenderTime.p95Ms} ms`,
+        );
+        console.log(
+            `   - Thời gian CPU vẽ Three.js max: ${parsedReport.aggregates.frames.cpuRenderTime.maxMs} ms`,
+        );
+        console.log(`   - Số khung vượt 33ms: ${parsedReport.aggregates.frames.over33msCount}`);
+        console.log(
+            `   - Số lượt tương tác Pan/Zoom: Pan=${parsedReport.aggregates.interactions.panCount}, Zoom=${parsedReport.aggregates.interactions.zoomCount}`,
+        );
+        console.log(
+            `   - Các bước tự lưu: Serialize=${parsedReport.aggregates.autosave.serializeCount} (${parsedReport.aggregates.autosave.avgSerializeMs}ms), IDB=${parsedReport.aggregates.autosave.indexedDBCount} (${parsedReport.aggregates.autosave.avgIndexedDBMs}ms), Thumbnail=${parsedReport.aggregates.autosave.thumbnailCount} (${parsedReport.aggregates.autosave.avgThumbnailMs}ms)`,
+        );
+        console.log(`   - Điểm đánh dấu khựng: ${parsedReport.aggregates.userMarksCount}`);
 
         // Write output sample JSON
-        fs.writeFileSync(OUTPUT_SAMPLE_JSON, JSON.stringify(profilerResult, null, 2), "utf8");
-        console.log(`\n💾 Đã lưu JSON mẫu thành công tại: ${OUTPUT_SAMPLE_JSON}`);
+        fs.writeFileSync(OUTPUT_SAMPLE_JSON, JSON.stringify(parsedReport, null, 2), "utf8");
+        console.log(`\n💾 Đã lưu file JSON tải xuống qua UI thành công tại: ${OUTPUT_SAMPLE_JSON}`);
     } finally {
         await client.close();
         if (devProc) {

@@ -77,6 +77,12 @@ describe("PerformanceProfiler Unit Tests", () => {
         expect(f.avgCpuRenderMs).toBeGreaterThan(0);
         expect(f.avgDrawCalls).toBeGreaterThan(0);
         expect(f.avgTriangles).toBeGreaterThan(0);
+        expect(f.callbackInterval.description).toBeDefined();
+        expect(f.callbackInterval.allP95Ms).toBeGreaterThan(0);
+        expect(f.cpuRenderTime.description).toBeDefined();
+        expect(f.cpuRenderTime.p95Ms).toBeGreaterThan(0);
+        expect(f.interactiveSampleCount).toBe(4);
+        expect(f.idleSampleCount).toBe(0);
 
         // Check interaction aggregates
         const i = report.aggregates.interactions;

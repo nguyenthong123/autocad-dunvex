@@ -46,6 +46,14 @@ function exposeTestSurface(app?: IApplication): void {
                 const { PerformanceProfiler } = await import("@chili3d/core");
                 return PerformanceProfiler.instance;
             },
+            getDiagnosticsApi: async () => {
+                const ai = await import("@chili3d/ai");
+                return {
+                    exportRuntimeErrorReports: ai.exportRuntimeErrorReports,
+                    listRuntimeErrorReports: ai.listRuntimeErrorReports,
+                    exportPerformanceReport: ai.exportPerformanceReport,
+                };
+            },
             getSessionMemoryApi: async () => {
                 const ai = await import("@chili3d/ai");
                 return {

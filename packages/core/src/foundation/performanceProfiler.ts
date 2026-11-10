@@ -26,6 +26,8 @@ export interface IProfilerFrameEvent {
     triangles?: number;
     geometries?: number;
     textures?: number;
+    isInteractive?: boolean;
+    isTabHidden?: boolean;
 }
 
 export interface IProfilerAutosaveEvent {
@@ -84,6 +86,23 @@ export interface FrameAggregates {
     maxCpuRenderMs: number;
     avgDrawCalls: number;
     avgTriangles: number;
+    callbackInterval: {
+        description: string;
+        allP50Ms: number;
+        allP95Ms: number;
+        interactiveP50Ms: number;
+        interactiveP95Ms: number;
+    };
+    cpuRenderTime: {
+        description: string;
+        p50Ms: number;
+        p95Ms: number;
+        avgMs: number;
+        maxMs: number;
+    };
+    interactiveSampleCount: number;
+    idleSampleCount: number;
+    hiddenTabCount: number;
 }
 
 export interface InteractionAggregates {
@@ -209,8 +228,10 @@ export class PerformanceProfiler {
         triangles?: number,
         geometries?: number,
         textures?: number,
+        isInteractive = true,
     ): void {
         if (!this._isRecording) return;
+        const isTabHidden = typeof document !== "undefined" ? Boolean(document.hidden) : false;
         const timestampMs = this.getRelativeTime();
         this.pushEvent({
             type: "frame",
@@ -221,6 +242,8 @@ export class PerformanceProfiler {
             triangles,
             geometries,
             textures,
+            isInteractive,
+            isTabHidden,
         });
     }
 
@@ -345,7 +368,9 @@ export class PerformanceProfiler {
     }
 
     private computeAggregates(): PerformanceReportData["aggregates"] {
-        const frameTimes: number[] = [];
+        const allFrameTimes: number[] = [];
+        const interactiveFrameTimes: number[] = [];
+        const cpuRenderTimes: number[] = [];
         let cpuRenderSum = 0;
         let cpuRenderCount = 0;
         let maxCpuRender = 0;
@@ -355,6 +380,9 @@ export class PerformanceProfiler {
         let trianglesCount = 0;
         let over16 = 0;
         let over33 = 0;
+        let interactiveCount = 0;
+        let idleCount = 0;
+        let hiddenTabCount = 0;
 
         let pan = 0;
         let zoom = 0;
@@ -369,10 +397,20 @@ export class PerformanceProfiler {
 
         for (const ev of this._events) {
             if (ev.type === "frame") {
-                frameTimes.push(ev.durationMs);
+                allFrameTimes.push(ev.durationMs);
+                if (ev.isTabHidden) {
+                    hiddenTabCount++;
+                } else if (ev.isInteractive !== false) {
+                    interactiveCount++;
+                    interactiveFrameTimes.push(ev.durationMs);
+                } else {
+                    idleCount++;
+                }
+
                 if (ev.durationMs > 16.7) over16++;
                 if (ev.durationMs > 33.3) over33++;
                 if (ev.cpuRenderMs !== undefined) {
+                    cpuRenderTimes.push(ev.cpuRenderMs);
                     cpuRenderSum += ev.cpuRenderMs;
                     cpuRenderCount++;
                     if (ev.cpuRenderMs > maxCpuRender) maxCpuRender = ev.cpuRenderMs;
@@ -400,28 +438,46 @@ export class PerformanceProfiler {
             }
         }
 
-        frameTimes.sort((a, b) => a - b);
-        const p50 = frameTimes.length > 0 ? frameTimes[Math.floor(frameTimes.length * 0.5)] : 0;
-        const p95 = frameTimes.length > 0 ? frameTimes[Math.floor(frameTimes.length * 0.95)] : 0;
-        const maxFrame = frameTimes.length > 0 ? frameTimes[frameTimes.length - 1] : 0;
-
-        const avg = (arr: number[]) =>
+        const percentile = (arr: number[], pct: number) => {
+            if (arr.length === 0) return 0;
+            const sorted = [...arr].sort((a, b) => a - b);
+            return sorted[Math.floor(sorted.length * pct)] ?? 0;
+        };
+        const maxVal = (arr: number[]) => (arr.length > 0 ? Math.max(...arr) : 0);
+        const avgVal = (arr: number[]) =>
             arr.length > 0 ? Math.round((arr.reduce((s, x) => s + x, 0) / arr.length) * 10) / 10 : 0;
-        const max = (arr: number[]) => (arr.length > 0 ? Math.max(...arr) : 0);
 
         return {
             frames: {
-                count: frameTimes.length,
+                count: allFrameTimes.length,
                 over16msCount: over16,
                 over33msCount: over33,
-                p50Ms: Math.round(p50 * 10) / 10,
-                p95Ms: Math.round(p95 * 10) / 10,
-                maxMs: Math.round(maxFrame * 10) / 10,
+                p50Ms: Math.round(percentile(allFrameTimes, 0.5) * 10) / 10,
+                p95Ms: Math.round(percentile(allFrameTimes, 0.95) * 10) / 10,
+                maxMs: Math.round(maxVal(allFrameTimes) * 10) / 10,
                 avgCpuRenderMs:
                     cpuRenderCount > 0 ? Math.round((cpuRenderSum / cpuRenderCount) * 10) / 10 : 0,
                 maxCpuRenderMs: Math.round(maxCpuRender * 10) / 10,
                 avgDrawCalls: drawCallsCount > 0 ? Math.round(drawCallsSum / drawCallsCount) : 0,
                 avgTriangles: trianglesCount > 0 ? Math.round(trianglesSum / trianglesCount) : 0,
+                callbackInterval: {
+                    description:
+                        "Khoảng cách giữa các callback requestAnimationFrame (nhịp render trình duyệt)",
+                    allP50Ms: Math.round(percentile(allFrameTimes, 0.5) * 10) / 10,
+                    allP95Ms: Math.round(percentile(allFrameTimes, 0.95) * 10) / 10,
+                    interactiveP50Ms: Math.round(percentile(interactiveFrameTimes, 0.5) * 10) / 10,
+                    interactiveP95Ms: Math.round(percentile(interactiveFrameTimes, 0.95) * 10) / 10,
+                },
+                cpuRenderTime: {
+                    description: "Thời gian CPU thực thi lệnh vẽ Three.js (renderer.render)",
+                    p50Ms: Math.round(percentile(cpuRenderTimes, 0.5) * 10) / 10,
+                    p95Ms: Math.round(percentile(cpuRenderTimes, 0.95) * 10) / 10,
+                    avgMs: avgVal(cpuRenderTimes),
+                    maxMs: Math.round(maxVal(cpuRenderTimes) * 10) / 10,
+                },
+                interactiveSampleCount: interactiveCount,
+                idleSampleCount: idleCount,
+                hiddenTabCount,
             },
             interactions: {
                 panCount: pan,
@@ -431,14 +487,14 @@ export class PerformanceProfiler {
             },
             autosave: {
                 serializeCount: serializeTimes.length,
-                avgSerializeMs: avg(serializeTimes),
-                maxSerializeMs: max(serializeTimes),
+                avgSerializeMs: avgVal(serializeTimes),
+                maxSerializeMs: maxVal(serializeTimes),
                 indexedDBCount: idbTimes.length,
-                avgIndexedDBMs: avg(idbTimes),
-                maxIndexedDBMs: max(idbTimes),
+                avgIndexedDBMs: avgVal(idbTimes),
+                maxIndexedDBMs: maxVal(idbTimes),
                 thumbnailCount: thumbTimes.length,
-                avgThumbnailMs: avg(thumbTimes),
-                maxThumbnailMs: max(thumbTimes),
+                avgThumbnailMs: avgVal(thumbTimes),
+                maxThumbnailMs: maxVal(thumbTimes),
                 syncCount,
             },
             userMarksCount: userMarks,

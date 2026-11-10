@@ -23,6 +23,7 @@ import {
     NodeUtils,
     Observable,
     ObservableCollection,
+    PerformanceProfiler,
     PLUGIN_FILE_EXTENSION,
     Plane,
     PubSub,
@@ -251,6 +252,7 @@ export class Application extends Observable implements IApplication {
     }
 
     async openDocument(id: string): Promise<IDocument | undefined> {
+        const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
         const existingDoc = Array.from(this.documents).find((d) => d.id === id);
         const existingView = this.views.find((v) => v.document.id === id || v.document === existingDoc);
         if (existingView) {
@@ -260,6 +262,8 @@ export class Application extends Observable implements IApplication {
         }
         const document = await Document.open(this, id);
         await this.createActiveView(document);
+        const dur = (typeof performance !== "undefined" ? performance.now() : Date.now()) - t0;
+        PerformanceProfiler.instance.recordTask("open_document", dur, document ? "success" : "error");
         return document;
     }
 
@@ -273,8 +277,11 @@ export class Application extends Observable implements IApplication {
     }
 
     async loadDocument(data: Serialized): Promise<IDocument | undefined> {
+        const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
         const document = await Document.load(this, data);
         await this.createActiveView(document);
+        const dur = (typeof performance !== "undefined" ? performance.now() : Date.now()) - t0;
+        PerformanceProfiler.instance.recordTask("open_document", dur, document ? "success" : "error");
         return document;
     }
 
