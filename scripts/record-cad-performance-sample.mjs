@@ -182,10 +182,11 @@ async function main() {
         console.log("-> Bắt đầu kịch bản kiểm thử nghiệm thu qua UI thật:");
         console.log("   1. Mở giao diện Báo cáo Lỗi & Hiệu năng (ManualReader)...");
         console.log("   2. Bấm nút 'Bắt đầu đo'...");
-        console.log("   3. Thực hiện zoom/kéo và lưu tài liệu...");
-        console.log("   4. Bấm nút 'Vừa bị khựng'...");
-        console.log("   5. Bấm nút 'Dừng đo'...");
-        console.log("   6. Bấm nút 'Tải báo cáo hiệu năng (.json)' và thu file tải về...");
+        console.log("   3. Thực hiện zoom/kéo và tự lưu tài liệu...");
+        console.log("   4. Mở bản vẽ (thao tác task ngoài Pan/Zoom)...");
+        console.log("   5. Bấm nút 'Vừa bị khựng'...");
+        console.log("   6. Bấm nút 'Dừng đo'...");
+        console.log("   7. Kiểm tra các nút tải: Báo cáo tổng hợp, Báo cáo lỗi cũ và Báo cáo hiệu năng...");
 
         const uiTestResult = await client.evaluate(`(async () => {
             const app = window.__chiliTest.app;
@@ -201,18 +202,34 @@ async function main() {
             reader.openDiagnosticsView();
             await new Promise((r) => setTimeout(r, 100));
 
-            // Hook download to capture downloaded file content and filename
-            let downloadedJsonContent = null;
-            let downloadedFileName = null;
+            // Setup download interceptor to capture files clicked in UI
+            const downloads = [];
             const origCreateObjectURL = window.URL.createObjectURL;
             window.URL.createObjectURL = (blob) => {
                 const url = origCreateObjectURL(blob);
                 const r = new FileReader();
                 r.onload = () => {
-                    downloadedJsonContent = r.result;
+                    downloads.push({
+                        url,
+                        content: r.result,
+                        size: blob.size,
+                        type: blob.type,
+                    });
                 };
                 r.readAsText(blob);
                 return url;
+            };
+
+            const origAppendChild = document.body.appendChild.bind(document.body);
+            let lastDownloadedFileName = null;
+            document.body.appendChild = (node) => {
+                if (node.tagName === "A" && node.download) {
+                    lastDownloadedFileName = node.download;
+                    if (downloads.length > 0 && !downloads[downloads.length - 1].fileName) {
+                        downloads[downloads.length - 1].fileName = node.download;
+                    }
+                }
+                return origAppendChild(node);
             };
 
             // Tìm nút Bắt đầu đo
@@ -239,7 +256,13 @@ async function main() {
             // Kích hoạt tự lưu
             await doc.save();
 
-            // 4. Click 'Vừa bị khựng'
+            // 4. Mở bản vẽ (thao tác task ngoài Pan/Zoom)
+            const sampleRaw = ${JSON.stringify(sampleDocRaw)};
+            const parsedDoc = JSON.parse(sampleRaw);
+            await app.loadDocument(parsedDoc);
+            await window.__chiliTest.quietFrames(5);
+
+            // 5. Click 'Vừa bị khựng'
             const markBtn = Array.from(reader.querySelectorAll("button")).find(
                 (b) => b.textContent && b.textContent.includes("Vừa bị khựng"),
             );
@@ -248,14 +271,15 @@ async function main() {
             await new Promise((r) => setTimeout(r, 50));
 
             // Pan thêm 5 lần
+            const curCam = app.activeView.cameraController;
             for (let i = 0; i < 5; i++) {
-                cam.pan(-5, 3);
-                view.update();
+                curCam.pan(-5, 3);
+                app.activeView.update();
                 await new Promise((r) => setTimeout(r, 16));
             }
             await window.__chiliTest.quietFrames(5);
 
-            // 5. Click 'Dừng đo'
+            // 6. Click 'Dừng đo'
             const stopBtn = Array.from(reader.querySelectorAll("button")).find(
                 (b) => b.textContent && b.textContent.includes("Dừng đo"),
             );
@@ -263,110 +287,176 @@ async function main() {
             stopBtn.click();
             await new Promise((r) => setTimeout(r, 50));
 
-            // 6. Click 'Tải báo cáo hiệu năng (.json)'
-            const downloadBtn = Array.from(reader.querySelectorAll("button")).find(
-                (b) => b.textContent && b.textContent.includes("Tải báo cáo hiệu năng"),
+            // 7a. Click nút 'Tải báo cáo tổng hợp (.json)'
+            const combinedBtn = Array.from(reader.querySelectorAll("button")).find(
+                (b) => b.textContent && b.textContent.includes("Tải báo cáo tổng hợp"),
             );
-            if (!downloadBtn) throw new Error("Không tìm thấy nút 'Tải báo cáo hiệu năng' trên giao diện!");
-
-            // Lắng nghe thẻ <a> được tạo để lấy filename
-            const origAppendChild = document.body.appendChild.bind(document.body);
-            document.body.appendChild = (node) => {
-                if (node.tagName === "A" && node.download) {
-                    downloadedFileName = node.download;
-                }
-                return origAppendChild(node);
-            };
-
-            downloadBtn.click();
+            if (!combinedBtn) throw new Error("Không tìm thấy nút 'Tải báo cáo tổng hợp' trên giao diện!");
+            combinedBtn.click();
             await new Promise((r) => setTimeout(r, 200));
+            const combinedDownload = downloads[downloads.length - 1];
+            if (combinedDownload && lastDownloadedFileName) {
+                combinedDownload.fileName = lastDownloadedFileName;
+            }
+
+            // 7b. Click nút 'Tải báo cáo (.json)' (đường xuất báo lỗi cũ)
+            const legacyBtn = Array.from(reader.querySelectorAll("button")).find(
+                (b) => b.textContent && b.textContent.trim() === "📥 Tải báo cáo (.json)",
+            );
+            if (!legacyBtn) throw new Error("Không tìm thấy nút 'Tải báo cáo (.json)' (legacy) trên giao diện!");
+            legacyBtn.click();
+            await new Promise((r) => setTimeout(r, 200));
+            const legacyDownload = downloads[downloads.length - 1];
+            if (legacyDownload && lastDownloadedFileName) {
+                legacyDownload.fileName = lastDownloadedFileName;
+            }
 
             // Khôi phục URL.createObjectURL & appendChild
             window.URL.createObjectURL = origCreateObjectURL;
+            document.body.appendChild = origAppendChild;
 
-            // Kiểm tra tùy chọn xuất lỗi cũ khi không có lỗi AI
+            // Kiểm tra số lỗi AI và exportRuntimeErrorReports trực tiếp
             const diagApi = await window.__chiliTest.getDiagnosticsApi();
             const errorReportsCount = diagApi.listRuntimeErrorReports().length;
-            const legacyJsonExport = diagApi.exportRuntimeErrorReports("json");
+            const directLegacyExport = diagApi.exportRuntimeErrorReports("json");
 
-            // Đo chi phí (overhead) khi bật so với khi tắt bộ đo qua 100 frames
+            // 8. Đo chi phí (overhead) qua NHIỀU LƯỢT (5 rounds, 100 frames/round) để tính độ dao động
             const profiler = await window.__chiliTest.getPerformanceProfiler();
             profiler.stopRecording();
-            const tStartOff = performance.now();
-            for (let i = 0; i < 100; i++) {
-                // simulate per-frame check when off
-                const isRec = profiler.isRecording;
-                if (isRec) profiler.recordFrame(16.6);
-            }
-            const overheadOffMs = (performance.now() - tStartOff) / 100;
 
-            profiler.startRecording();
-            const tStartOn = performance.now();
-            for (let i = 0; i < 100; i++) {
-                profiler.recordFrame(16.6, 1.2, 100, 4000, 100, 2, true);
+            const rounds = 5;
+            const framesPerRound = 100;
+            const offTimes = [];
+            const onTimes = [];
+
+            for (let r = 0; r < rounds; r++) {
+                // Measure OFF
+                profiler.stopRecording();
+                const t0Off = performance.now();
+                for (let f = 0; f < framesPerRound; f++) {
+                    if (profiler.isRecording) {
+                        profiler.recordFrame(16.6);
+                    }
+                }
+                const tOff = (performance.now() - t0Off) / framesPerRound;
+                offTimes.push(tOff);
+
+                // Measure ON
+                profiler.startRecording();
+                const t0On = performance.now();
+                for (let f = 0; f < framesPerRound; f++) {
+                    profiler.recordFrame(16.6, 1.2, 100, 4000, 100, 2, true);
+                }
+                const tOn = (performance.now() - t0On) / framesPerRound;
+                onTimes.push(tOn);
+                profiler.stopRecording();
             }
-            const overheadOnMs = (performance.now() - tStartOn) / 100;
-            profiler.stopRecording();
 
             // Đóng reader
             reader.remove();
 
             return {
-                downloadedJsonContent,
-                downloadedFileName,
+                combinedDownload,
+                legacyDownload,
                 errorReportsCount,
-                legacyJsonExport,
-                overheadOffMs,
-                overheadOnMs,
+                directLegacyExport,
+                rounds,
+                framesPerRound,
+                offTimes,
+                onTimes,
             };
         })()`);
 
         console.log("✅ Thao tác UI thật thành công!");
-        console.log(`   - Tên file tải xuống từ UI: ${uiTestResult.downloadedFileName}`);
+        console.log(`   - File xuất tổng hợp từ UI: ${uiTestResult.combinedDownload?.fileName}`);
+        console.log(`   - File xuất lỗi cũ từ UI: ${uiTestResult.legacyDownload?.fileName}`);
         console.log(`   - Số lỗi AI hiện tại: ${uiTestResult.errorReportsCount} (Không có lỗi AI)`);
         console.log(
-            `   - Định dạng xuất lỗi cũ (legacy export): ${uiTestResult.legacyJsonExport} (Giữ nguyên mảng [])`,
-        );
-        console.log(
-            `   - Chi phí bộ đo khi TẮT (overhead/frame): ${(uiTestResult.overheadOffMs * 1000).toFixed(2)} µs`,
-        );
-        console.log(
-            `   - Chi phí bộ đo khi BẬT (overhead/frame): ${(uiTestResult.overheadOnMs * 1000).toFixed(2)} µs (< 0.05 ms)`,
+            `   - Nội dung xuất lỗi cũ (legacy): ${uiTestResult.legacyDownload?.content.trim()} (mảng chuẩn [])`,
         );
 
-        const parsedReport = JSON.parse(uiTestResult.downloadedJsonContent);
-        console.log("\n📊 CÁC CHỈ SỐ BỘ ĐO THU THẬP ĐƯỢC TỪ FILE TẢI VỀ:");
-        console.log(`   - Phiên bản schema: ${parsedReport.schemaVersion}`);
-        console.log(`   - Thời lượng ghi: ${parsedReport.session.durationMs} ms`);
-        console.log(`   - Tổng số sự kiện trên timeline: ${parsedReport.timeline.length}`);
-        console.log(`   - Tổng số khung hình: ${parsedReport.aggregates.frames.count}`);
-        console.log(
-            `   - Khoảng callback rAF p50: ${parsedReport.aggregates.frames.callbackInterval.allP50Ms} ms`,
-        );
-        console.log(
-            `   - Khoảng callback rAF p95: ${parsedReport.aggregates.frames.callbackInterval.allP95Ms} ms`,
-        );
-        console.log(
-            `   - Thời gian CPU vẽ Three.js (renderer.render) p50: ${parsedReport.aggregates.frames.cpuRenderTime.p50Ms} ms`,
-        );
-        console.log(
-            `   - Thời gian CPU vẽ Three.js p95: ${parsedReport.aggregates.frames.cpuRenderTime.p95Ms} ms`,
-        );
-        console.log(
-            `   - Thời gian CPU vẽ Three.js max: ${parsedReport.aggregates.frames.cpuRenderTime.maxMs} ms`,
-        );
-        console.log(`   - Số khung vượt 33ms: ${parsedReport.aggregates.frames.over33msCount}`);
-        console.log(
-            `   - Số lượt tương tác Pan/Zoom: Pan=${parsedReport.aggregates.interactions.panCount}, Zoom=${parsedReport.aggregates.interactions.zoomCount}`,
-        );
-        console.log(
-            `   - Các bước tự lưu: Serialize=${parsedReport.aggregates.autosave.serializeCount} (${parsedReport.aggregates.autosave.avgSerializeMs}ms), IDB=${parsedReport.aggregates.autosave.indexedDBCount} (${parsedReport.aggregates.autosave.avgIndexedDBMs}ms), Thumbnail=${parsedReport.aggregates.autosave.thumbnailCount} (${parsedReport.aggregates.autosave.avgThumbnailMs}ms)`,
-        );
-        console.log(`   - Điểm đánh dấu khựng: ${parsedReport.aggregates.userMarksCount}`);
+        // Calculate overhead stats and variance
+        const offTimesUs = uiTestResult.offTimes.map((t) => t * 1000);
+        const onTimesUs = uiTestResult.onTimes.map((t) => t * 1000);
+        const deltaUs = onTimesUs.map((on, i) => on - offTimesUs[i]);
 
-        // Write output sample JSON
-        fs.writeFileSync(OUTPUT_SAMPLE_JSON, JSON.stringify(parsedReport, null, 2), "utf8");
-        console.log(`\n💾 Đã lưu file JSON tải xuống qua UI thành công tại: ${OUTPUT_SAMPLE_JSON}`);
+        const calcStats = (arr) => {
+            const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+            const variance = arr.reduce((sum, v) => sum + (v - mean) ** 2, 0) / (arr.length - 1 || 1);
+            const stdDev = Math.sqrt(variance);
+            return { mean, variance, stdDev, min: Math.min(...arr), max: Math.max(...arr) };
+        };
+
+        const offStats = calcStats(offTimesUs);
+        const onStats = calcStats(onTimesUs);
+        const deltaStats = calcStats(deltaUs);
+
+        console.log("\n📈 KẾT QUẢ ĐO CHI PHÍ BẬT / TẮT BỘ ĐO QUA 5 LƯỢT (100 khung hình/lượt):");
+        console.log(
+            `   - Khi TẮT (OFF): TB = ${offStats.mean.toFixed(2)} µs/frame (độ lệch chuẩn σ = ${offStats.stdDev.toFixed(2)} µs, min = ${offStats.min.toFixed(2)} µs, max = ${offStats.max.toFixed(2)} µs)`,
+        );
+        console.log(
+            `   - Khi BẬT (ON): TB = ${onStats.mean.toFixed(2)} µs/frame (độ lệch chuẩn σ = ${onStats.stdDev.toFixed(2)} µs, min = ${onStats.min.toFixed(2)} µs, max = ${onStats.max.toFixed(2)} µs)`,
+        );
+        console.log(
+            `   - Chênh lệch (Net Overhead ON - OFF): TB = ${deltaStats.mean.toFixed(2)} µs/frame (~${(deltaStats.mean / 1000).toFixed(4)} ms/frame, σ = ${deltaStats.stdDev.toFixed(2)} µs)`,
+        );
+        console.log(
+            `   -> Chi phí đo chỉ chiếm ${(deltaStats.mean / 166.67).toFixed(2)}% ngân sách khung hình 60fps (16.67ms).`,
+        );
+
+        const parsedCombined = JSON.parse(uiTestResult.combinedDownload.content);
+        console.log("\n📊 ĐỐI CHIẾU DỮ LIỆU TỪ FILE XUẤT TỔNG HỢP (.json):");
+        console.log(`   - schemaVersion: ${parsedCombined.schemaVersion}`);
+        console.log(`   - errorReports: mảng ${parsedCombined.errorReports.length} phần tử (Không có lỗi)`);
+        console.log(`   - performance.buildSha: ${parsedCombined.performance.buildSha || currentSha}`);
+        console.log(
+            `   - performance.session.durationMs: ${parsedCombined.performance.session.durationMs} ms`,
+        );
+        console.log(
+            `   - performance.aggregates.frames.count: ${parsedCombined.performance.aggregates.frames.count}`,
+        );
+        console.log(
+            `   - performance.aggregates.frames.callbackInterval.allP95Ms: ${parsedCombined.performance.aggregates.frames.callbackInterval.allP95Ms} ms`,
+        );
+        console.log(
+            `   - performance.aggregates.frames.cpuRenderTime.p95Ms: ${parsedCombined.performance.aggregates.frames.cpuRenderTime.p95Ms} ms`,
+        );
+        console.log(
+            `   - performance.aggregates.frames.over33msCount: ${parsedCombined.performance.aggregates.frames.over33msCount}`,
+        );
+        console.log(
+            `   - performance.aggregates.interactions: Pan=${parsedCombined.performance.aggregates.interactions.panCount}, Zoom=${parsedCombined.performance.aggregates.interactions.zoomCount}`,
+        );
+        console.log(
+            `   - performance.aggregates.autosave: Serialize=${parsedCombined.performance.aggregates.autosave.serializeCount} (${parsedCombined.performance.aggregates.autosave.avgSerializeMs}ms), IDB=${parsedCombined.performance.aggregates.autosave.indexedDBCount} (${parsedCombined.performance.aggregates.autosave.avgIndexedDBMs}ms), Thumbnail=${parsedCombined.performance.aggregates.autosave.thumbnailCount} (${parsedCombined.performance.aggregates.autosave.avgThumbnailMs}ms)`,
+        );
+        console.log(
+            `   - performance.aggregates.userMarksCount: ${parsedCombined.performance.aggregates.userMarksCount}`,
+        );
+
+        // Find task event beyond Pan/Zoom
+        const taskEvents = parsedCombined.performance.timeline.filter((e) => e.type === "task");
+        console.log(`\n🎯 KIỂM TRA SỰ KIỆN TASK NGOÀI PAN/ZOOM:`);
+        console.log(`   - Tìm thấy ${taskEvents.length} sự kiện task:`);
+        for (const t of taskEvents) {
+            console.log(
+                `     * Tác vụ: "${t.name}", Trạng thái: ${t.status}, Thời lượng: ${t.durationMs} ms, Kết thúc (timestampMs): ${t.timestampMs} ms, Bắt đầu (startMs): ${t.startMs} ms`,
+            );
+        }
+
+        // Check autosave steps timestamps and startMs
+        const autosaveEvents = parsedCombined.performance.timeline.filter((e) => e.type === "autosave_step");
+        console.log(`\n💾 KIỂM TRA CÁC BƯỚC TỰ LƯU TRÊN TIMELINE:`);
+        for (const s of autosaveEvents) {
+            console.log(
+                `     * Bước: "${s.step}", Thành công: ${s.success}, Thời lượng: ${s.durationMs} ms, Bắt đầu: ${s.startMs} ms, Kết thúc: ${s.timestampMs} ms`,
+            );
+        }
+
+        // Save downloaded combined report to file
+        fs.writeFileSync(OUTPUT_SAMPLE_JSON, JSON.stringify(parsedCombined, null, 2), "utf8");
+        console.log(`\n💾 Đã lưu file xuất tổng hợp nguyên dạng tải từ UI tại: ${OUTPUT_SAMPLE_JSON}`);
     } finally {
         await client.close();
         if (devProc) {

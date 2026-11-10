@@ -33,6 +33,7 @@ export interface IProfilerFrameEvent {
 export interface IProfilerAutosaveEvent {
     type: "autosave_step";
     timestampMs: number;
+    startMs?: number;
     step: "serialize" | "indexeddb" | "thumbnail" | "sync_send" | "sync_ack";
     durationMs: number;
     bytes?: number;
@@ -42,6 +43,7 @@ export interface IProfilerAutosaveEvent {
 export interface IProfilerTaskEvent {
     type: "task";
     timestampMs: number;
+    startMs?: number;
     name: string;
     durationMs: number;
     status: "success" | "error" | "canceled";
@@ -255,9 +257,11 @@ export class PerformanceProfiler {
     ): void {
         if (!this._isRecording) return;
         const timestampMs = this.getRelativeTime();
+        const startMs = Math.max(0, Math.round((timestampMs - durationMs) * 10) / 10);
         this.pushEvent({
             type: "autosave_step",
             timestampMs,
+            startMs,
             step,
             durationMs: Math.round(durationMs * 10) / 10,
             bytes,
@@ -272,9 +276,11 @@ export class PerformanceProfiler {
     ): void {
         if (!this._isRecording) return;
         const timestampMs = this.getRelativeTime();
+        const startMs = Math.max(0, Math.round((timestampMs - durationMs) * 10) / 10);
         this.pushEvent({
             type: "task",
             timestampMs,
+            startMs,
             name,
             durationMs: Math.round(durationMs * 10) / 10,
             status,

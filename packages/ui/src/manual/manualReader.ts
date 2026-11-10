@@ -5,9 +5,7 @@ import {
     clearRuntimeErrorReports,
     exportPerformanceReport,
     exportRuntimeErrorReports,
-    findCommandGuide,
     listRuntimeErrorReports,
-    type RuntimeErrorReport,
     searchCommandGuides,
 } from "@chili3d/ai";
 import { Localize, PerformanceProfiler, PubSub } from "@chili3d/core";
@@ -409,9 +407,18 @@ export class ManualReader extends HTMLElement {
             },
             span({ textContent: "⚠️ Vừa bị khựng" }),
         );
+        const downloadCombinedJsonBtn = button(
+            {
+                className: `${style.actionButton} ${style.actionButtonSecondary}`,
+                title: "Tải báo cáo tổng hợp (.json) gồm cả lỗi runtime AI và dữ liệu hiệu năng",
+                onclick: () => this.downloadCombinedReportJson(),
+            },
+            span({ textContent: "📥 Tải báo cáo tổng hợp (.json)" }),
+        );
         const downloadPerfJsonBtn = button(
             {
                 className: `${style.actionButton} ${style.actionButtonSecondary}`,
+                title: "Tải riêng báo cáo hiệu năng CAD (.json)",
                 onclick: () => this.downloadPerformanceReportJson(),
             },
             span({ textContent: "📥 Tải báo cáo hiệu năng (.json)" }),
@@ -441,6 +448,7 @@ export class ManualReader extends HTMLElement {
             { className: style.profilerActions },
             recordBtn,
             markJankBtn,
+            downloadCombinedJsonBtn,
             downloadPerfJsonBtn,
             resetPerfBtn,
             statusSpan,
@@ -464,9 +472,18 @@ export class ManualReader extends HTMLElement {
         const downloadJsonBtn = button(
             {
                 className: `${style.actionButton} ${style.actionButtonSecondary}`,
+                title: "Tải danh sách lỗi AI định dạng JSON chuẩn (mảng)",
                 onclick: () => this.downloadErrorReportJson(),
             },
             span({ textContent: "📥 Tải báo cáo (.json)" }),
+        );
+        const downloadCombinedJsonBtn2 = button(
+            {
+                className: `${style.actionButton} ${style.actionButtonSecondary}`,
+                title: "Tải báo cáo tổng hợp (.json) gồm cả lỗi runtime AI và dữ liệu hiệu năng",
+                onclick: () => this.downloadCombinedReportJson(),
+            },
+            span({ textContent: "📥 Tải báo cáo tổng hợp (.json)" }),
         );
         const clearBtn = button(
             {
@@ -484,6 +501,7 @@ export class ManualReader extends HTMLElement {
             { className: style.diagnosticsActions },
             downloadMdBtn,
             downloadJsonBtn,
+            downloadCombinedJsonBtn2,
             clearBtn,
         );
         const headerEl = div({ className: style.diagnosticsHeader }, titleSpan, actions);
@@ -609,6 +627,20 @@ export class ManualReader extends HTMLElement {
         const dateStr = new Date().toISOString().split("T")[0];
         a.href = url;
         a.download = `chili3d-error-report-${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    private downloadCombinedReportJson(): void {
+        const json = exportRuntimeErrorReports("json", { includePerformance: true });
+        const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const dateStr = new Date().toISOString().split("T")[0];
+        a.href = url;
+        a.download = `chili3d-combined-diagnostics-${dateStr}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
