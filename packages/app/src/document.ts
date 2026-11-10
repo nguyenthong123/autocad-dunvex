@@ -10,6 +10,7 @@ import {
     type IApplication,
     type IDocument,
     Id,
+    type IHistoryRecord,
     InternalClassName,
     type IPicker,
     type ISelection,
@@ -63,8 +64,21 @@ export class Document extends Observable implements IDocument {
         if (this.modelManager.rootNode) this.modelManager.rootNode.name = name;
     }
 
+    private _lastSavedUndoTop: IHistoryRecord | undefined = undefined;
+    private _lastSavedEvictedCount = 0;
+    private _lastSavedRevision = 0;
     private _lastSavedUndoCount = 0;
+    private _isSaving = false;
     private _autoSaveTimer?: any;
+
+    isDirty(): boolean {
+        if (this.history.disabled) return false;
+        if (this.history.undoTop() !== this._lastSavedUndoTop) return true;
+        if (this._lastSavedUndoTop === undefined && this.history.evictedCount > this._lastSavedEvictedCount) {
+            return true;
+        }
+        return false;
+    }
 
     constructor(
         readonly application: IApplication,
@@ -84,11 +98,7 @@ export class Document extends Observable implements IDocument {
 
         if (typeof setInterval !== "undefined") {
             this._autoSaveTimer = setInterval(async () => {
-                if (
-                    !this.isDisposed &&
-                    !this.history.disabled &&
-                    this.history.undoCount() !== this._lastSavedUndoCount
-                ) {
+                if (!this.isDisposed && this.isDirty()) {
                     try {
                         await this.save();
                         Logger.info(`Auto-saved document: ${this.name}`);
@@ -157,34 +167,57 @@ export class Document extends Observable implements IDocument {
     }
 
     async save(isClosing = false) {
-        await requestStoragePersistence();
-        const data = this.serialize();
-        if (isClosing) {
-            (data as any).isClosing = true;
-        }
-        await this.application.storage.put(Constants.DBName, Constants.DocumentTable, this.id, data);
-        this._lastSavedUndoCount = this.history.undoCount();
-
-        // The document is saved at this point. The thumbnail and the recents entry are a
-        // courtesy — a view that cannot be captured, or a store that refuses the write,
-        // must not turn a written document into a failed save (and a missing success toast).
+        if (this._isSaving) return;
+        this._isSaving = true;
         try {
-            const ownView =
-                this.application.views?.find((v) => v.document === this) ?? this.application.activeView;
-            const isCurrentView =
-                ownView && (!this.application.views || this.application.activeView === ownView);
-            const image = isCurrentView ? ownView?.toImage() : undefined;
-            const recentData: any = {
-                id: this.id,
-                name: this.name,
-                date: Date.now(),
-            };
-            if (image) {
-                recentData.image = image;
+            await requestStoragePersistence();
+            const snapshotUndoTop = this.history.undoTop();
+            const snapshotEvictedCount = this.history.evictedCount;
+            const snapshotRevision = this.history.revision;
+
+            const data = this.serialize();
+            if (isClosing) {
+                (data as any).isClosing = true;
             }
-            await this.application.storage.put(Constants.DBName, Constants.RecentTable, this.id, recentData);
-        } catch (error) {
-            Logger.warn(`document "${this.name}" saved, but its recent entry could not be written`, error);
+            await this.application.storage.put(Constants.DBName, Constants.DocumentTable, this.id, data);
+            this._lastSavedUndoTop = snapshotUndoTop;
+            this._lastSavedEvictedCount = snapshotEvictedCount;
+            this._lastSavedRevision = snapshotRevision;
+            this._lastSavedUndoCount = this.history.undoCount();
+
+            // The document is saved at this point. The thumbnail and the recents entry are a
+            // courtesy — a view that cannot be captured, or a store that refuses the write,
+            // must not turn a written document into a failed save (and a missing success toast).
+            try {
+                const ownView =
+                    this.application.views?.find((v) => v.document === this) ?? this.application.activeView;
+                const isCurrentView =
+                    ownView && (!this.application.views || this.application.activeView === ownView);
+                const image = isCurrentView
+                    ? ownView?.toImage({ maxSize: 320, mimeType: "image/jpeg", quality: 0.7 })
+                    : undefined;
+                const recentData: any = {
+                    id: this.id,
+                    name: this.name,
+                    date: Date.now(),
+                };
+                if (image) {
+                    recentData.image = image;
+                }
+                await this.application.storage.put(
+                    Constants.DBName,
+                    Constants.RecentTable,
+                    this.id,
+                    recentData,
+                );
+            } catch (error) {
+                Logger.warn(
+                    `document "${this.name}" saved, but its recent entry could not be written`,
+                    error,
+                );
+            }
+        } finally {
+            this._isSaving = false;
         }
     }
 

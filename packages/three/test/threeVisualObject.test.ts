@@ -652,4 +652,19 @@ describe("ThreeComponentObject", () => {
         // The handler was removed, so the visual keeps its old transform
         expect(obj.transform.toArray()[12]).toBe(0);
     });
+
+    test("dispose disposes all component member geometries", () => {
+        const obj = new ThreeComponentObject(makeFakeNode(), context);
+        const edgesGeomSpy = rs.spyOn(obj.edges!.geometry, "dispose");
+        const facesGeomSpy = rs.spyOn(obj.faces!.geometry, "dispose");
+        const linesegmentsGeomSpy = rs.spyOn(obj.linesegments!.geometry, "dispose");
+        const surfacesGeomSpy = rs.spyOn(obj.surfaces!.geometry, "dispose");
+
+        obj.dispose();
+
+        expect(edgesGeomSpy).toHaveBeenCalledTimes(1);
+        expect(facesGeomSpy).toHaveBeenCalledTimes(1);
+        expect(linesegmentsGeomSpy).toHaveBeenCalledTimes(1);
+        expect(surfacesGeomSpy).toHaveBeenCalledTimes(1);
+    });
 });

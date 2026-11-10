@@ -18,6 +18,22 @@ export class History implements IDisposable {
     disabled = false;
     undoLimits = 50;
 
+    private _revision = 0;
+    /**
+     * Monotonically increasing revision counter that changes on any mutation to the undo/redo stack.
+     */
+    get revision(): number {
+        return this._revision;
+    }
+
+    private _evictedCount = 0;
+    /**
+     * Number of undo records evicted from the bottom of the stack because they exceeded `undoLimits`.
+     */
+    get evictedCount(): number {
+        return this._evictedCount;
+    }
+
     #isUndoing = false;
     get isUndoing() {
         return this.#isUndoing;
@@ -34,6 +50,7 @@ export class History implements IDisposable {
     }
 
     private clear(): void {
+        this._revision++;
         this._undos.length = 0;
         this._redos.length = 0;
     }
@@ -41,6 +58,7 @@ export class History implements IDisposable {
     add(record: IHistoryRecord) {
         if (this.disabled) return;
 
+        this._revision++;
         // A new branch kills the redo line for good, and its records still hold whatever the
         // undone changes detached — nodes, replaced shapes — so dispose them, not just drop them.
         this._redos.forEach((record) => record.dispose());
@@ -48,6 +66,7 @@ export class History implements IDisposable {
         this._undos.push(record);
 
         if (this._undos.length > this.undoLimits) {
+            this._evictedCount++;
             const removed = this._undos.shift();
             removed?.dispose();
         }
@@ -72,6 +91,7 @@ export class History implements IDisposable {
 
     undo() {
         this.#isUndoing = true;
+        this._revision++;
         this.tryOperate(
             () => {
                 const record = this._undos.pop();
@@ -88,6 +108,7 @@ export class History implements IDisposable {
 
     redo() {
         this.#isRedoing = true;
+        this._revision++;
         this.tryOperate(
             () => {
                 const record = this._redos.pop();

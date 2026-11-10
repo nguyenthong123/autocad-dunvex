@@ -120,9 +120,11 @@ export class Application extends Observable implements IApplication {
         for (const doc of this.documents) {
             const document = doc as any;
             if (typeof document?.save === "function") {
-                const lastSavedUndo = document._lastSavedUndoCount ?? 0;
-                const undoCount = document.history?.undoCount?.() ?? 0;
-                if (!document.isDisposed && !document.history?.disabled && undoCount !== lastSavedUndo) {
+                const isDirty =
+                    typeof document.isDirty === "function"
+                        ? document.isDirty()
+                        : (document.history?.undoCount?.() ?? 0) !== (document._lastSavedUndoCount ?? 0);
+                if (!document.isDisposed && !document.history?.disabled && isDirty) {
                     try {
                         await document.save();
                         Logger.info(`Auto-saved document on visibility change / pagehide: ${document.name}`);

@@ -402,6 +402,11 @@ export class ThreeComponentObject extends ThreeVisualObject implements IHighligh
         super.dispose();
         this._annotations.forEach((x) => x.dispose());
         this._annotations.length = 0;
+        this._edges?.geometry?.dispose();
+        this._faces?.geometry?.dispose();
+        this._surfaces?.geometry?.dispose();
+        this._linesegments?.geometry?.dispose();
+        this._boundbox?.geometry?.dispose();
     }
 
     private initEdges() {
