@@ -399,7 +399,15 @@ ssh $SSH_OPTS "${VPS_USER}@${VPS_HOST}" "bash -s" <<EOF
 set -euo pipefail
 cd "${VPS_DEPLOY_DIR}"
 
+export APP_PUBLIC_PORT="${APP_PUBLIC_PORT:-80}"
+export APP_FALLBACK_PORT="${APP_FALLBACK_PORT:-8080}"
+cat << 'ENV_VARS_EOF' > "${VPS_DEPLOY_DIR}/.env"
+APP_PUBLIC_PORT=${APP_PUBLIC_PORT:-80}
+APP_FALLBACK_PORT=${APP_FALLBACK_PORT:-8080}
+ENV_VARS_EOF
+
 NEW_RELEASE_DIR="${VPS_DEPLOY_DIR}/releases/${RELEASE_ID}"
+cp "${VPS_DEPLOY_DIR}/.env" "${NEW_RELEASE_DIR}/.env" 2>/dev/null || true
 
 # 1. Bảo toàn chunk hash cũ từ phiên bản trước để tab đang mở không bị lỗi 404
 if [ -d "dist" ]; then
@@ -470,6 +478,7 @@ do_rollback() {
     [ -f "releases/\$TARGET/nginx.conf" ] && cp "releases/\$TARGET/nginx.conf" nginx.conf
     [ -f "releases/\$TARGET/compose.yml" ] && cp "releases/\$TARGET/compose.yml" compose.yml
     [ -f "releases/\$TARGET/Dockerfile" ] && cp "releases/\$TARGET/Dockerfile" Dockerfile
+    [ -f "releases/\$TARGET/.env" ] && cp "releases/\$TARGET/.env" .env
     [ -d "releases/\$TARGET/server" ] && cp -r "releases/\$TARGET/server" .
 
     # [Bước 3/6] Build lại container chili3d
