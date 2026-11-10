@@ -80,62 +80,135 @@ set -euo pipefail
 cd "${VPS_DEPLOY_DIR}"
 
 if [ ! -f "rollback_release" ]; then
-    echo "❌ Không tìm thấy file rollback_release! Không thể xác định bản để quay lui."
-    exit 1
+    echo "❌ LỖI QUAY LUI: Không tìm thấy file rollback_release! Không thể xác định bản để quay lui." >&2
+    exit 10
 fi
 
 ROLLBACK_TARGET=\$(cat rollback_release | tr -d '[:space:]')
-if [ -z "\$ROLLBACK_TARGET" ] || [ ! -d "releases/\$ROLLBACK_TARGET/dist" ]; then
-    echo "❌ Thư mục releases/\$ROLLBACK_TARGET/dist không tồn tại hoặc không hợp lệ!"
-    exit 1
+if [ -z "\$ROLLBACK_TARGET" ] || [ ! -d "releases/\$ROLLBACK_TARGET" ] || [ ! -d "releases/\$ROLLBACK_TARGET/dist" ]; then
+    echo "❌ LỖI QUAY LUI: Thư mục releases/\$ROLLBACK_TARGET không tồn tại hoặc thiếu dist/!" >&2
+    exit 11
 fi
 
 CURRENT=\$(cat current_release 2>/dev/null || echo "unknown")
-echo "   -> Đang chuyển từ \$CURRENT sang \$ROLLBACK_TARGET..."
+echo "   -> Đang chuẩn bị hoàn trả từ \$CURRENT sang \$ROLLBACK_TARGET..."
 
-# Đồng bộ thư mục dist sang bản rollback mà không xóa dữ liệu lưu trữ
+# [Bước 1/6] Hoàn trả dist
+echo "   -> [Bước 1/6] Hoàn trả thư mục dist từ releases/\$ROLLBACK_TARGET/dist..."
 rm -rf dist.rollback.tmp
 cp -r "releases/\$ROLLBACK_TARGET/dist" dist.rollback.tmp
 rm -rf dist
 mv dist.rollback.tmp dist
 
-# Sao chép lại cấu hình đi kèm nếu có trong bản rollback
+# [Bước 2/6] Hoàn trả cấu hình đi kèm
+echo "   -> [Bước 2/6] Hoàn trả cấu hình và server từ releases/\$ROLLBACK_TARGET..."
 [ -f "releases/\$ROLLBACK_TARGET/nginx.conf" ] && cp "releases/\$ROLLBACK_TARGET/nginx.conf" nginx.conf
 [ -f "releases/\$ROLLBACK_TARGET/compose.yml" ] && cp "releases/\$ROLLBACK_TARGET/compose.yml" compose.yml
 [ -f "releases/\$ROLLBACK_TARGET/Dockerfile" ] && cp "releases/\$ROLLBACK_TARGET/Dockerfile" Dockerfile
 [ -d "releases/\$ROLLBACK_TARGET/server" ] && cp -r "releases/\$ROLLBACK_TARGET/server" .
 
-echo "🐳 Khởi động lại container chili3d..."
-sudo docker compose build --no-cache chili3d
-sudo docker compose up -d --remove-orphans chili3d
-
-echo "🔄 Khởi động lại container storage-api..."
-sudo docker compose restart storage-api
-sleep 2
-
-echo "🩺 Kiểm tra sức khỏe toàn diện sau khi rollback..."
-STATUS_VER=\$(curl -s -o /tmp/rb_ver.json -w "%{http_code}" http://127.0.0.1/version.json || echo "000")
-STATUS_DEP=\$(curl -s -o /tmp/rb_dep.json -w "%{http_code}" http://127.0.0.1/deploy-version.json || echo "000")
-
-if [ "\$STATUS_VER" != "200" ] || [ "\$STATUS_DEP" != "200" ]; then
-    echo "❌ Rollback thất bại! HTTP Status Code: version=\$STATUS_VER, deploy=\$STATUS_DEP"
-    exit 1
+# [Bước 3/6] Build lại container chili3d
+echo "   -> [Bước 3/6] Build lại container chili3d từ cấu hình bản \$ROLLBACK_TARGET..."
+if ! sudo docker compose build --no-cache chili3d >/tmp/docker_build_manual_rb.log 2>&1; then
+    echo "❌ LỖI QUAY LUI [Bước 3/6]: docker compose build thất bại!" >&2
+    cat /tmp/docker_build_manual_rb.log >&2
+    exit 12
 fi
 
-node -e "
-const fs = require('fs');
-const v = JSON.parse(fs.readFileSync('/tmp/rb_ver.json', 'utf8'));
-const d = JSON.parse(fs.readFileSync('/tmp/rb_dep.json', 'utf8'));
-if (!v.codeSha || v.codeSha !== d.codeSha) {
-    console.error('❌ Version endpoints mismatch sau rollback: ' + v.codeSha + ' !== ' + d.codeSha);
-    process.exit(1);
-}
-console.log('   ✅ SHA xác nhận sau rollback: ' + v.codeSha);
-"
+# [Bước 4/6] Khởi động container chili3d
+echo "   -> [Bước 4/6] Khởi động container chili3d..."
+if ! sudo docker compose up -d --remove-orphans chili3d >/tmp/docker_up_manual_rb.log 2>&1; then
+    echo "❌ LỖI QUAY LUI [Bước 4/6]: docker compose up thất bại!" >&2
+    cat /tmp/docker_up_manual_rb.log >&2
+    exit 13
+fi
 
+# [Bước 5/6] Khởi động lại container storage-api
+echo "   -> [Bước 5/6] Khởi động lại container storage-api (volume chili3d-data giữ nguyên)..."
+if ! sudo docker compose restart storage-api >/tmp/docker_storage_manual_rb.log 2>&1; then
+    echo "❌ LỖI QUAY LUI [Bước 5/6]: restart storage-api thất bại!" >&2
+    cat /tmp/docker_storage_manual_rb.log >&2
+    exit 14
+fi
+sleep 2
+
+# [Bước 6/6] Xác minh bản cũ thực sự phục vụ trên HTTP
+echo "   -> [Bước 6/6] Xác minh bản quay lui thực sự phục vụ..."
+
+# 6.1. Trạng thái storage-api
+STATUS_RECENTS=\$(curl -s -o /tmp/rb_recents.json -w "%{http_code}" http://127.0.0.1/api/storage/chili3d-db/recents || echo "000")
+if [ "\$STATUS_RECENTS" != "200" ]; then
+    echo "❌ LỖI QUAY LUI [Bước 6/6]: storage-api không phản hồi HTTP 200 (mã nhận: \$STATUS_RECENTS)!" >&2
+    exit 15
+fi
+if ! node -e "const r = JSON.parse(require('fs').readFileSync('/tmp/rb_recents.json','utf8')); if(!Array.isArray(r)) process.exit(1);" 2>/dev/null; then
+    echo "❌ LỖI QUAY LUI [Bước 6/6]: Dữ liệu storage-api không hợp lệ!" >&2
+    exit 16
+fi
+echo "      ✅ storage-api phản hồi HTTP 200, dữ liệu bảo toàn."
+
+# 6.2. Đọc SHA mong muốn
+TARGET_WANT_SHA=\$(node -e "try{process.stdout.write(JSON.parse(require('fs').readFileSync('releases/\$ROLLBACK_TARGET/dist/version.json','utf8')).codeSha||'')}catch{}" 2>/dev/null || echo "")
+if [ -z "\$TARGET_WANT_SHA" ]; then
+    TARGET_WANT_SHA=\$(node -e "try{process.stdout.write(JSON.parse(require('fs').readFileSync('dist/version.json','utf8')).codeSha||'')}catch{}" 2>/dev/null || echo "")
+fi
+
+# 6.3. Kiểm tra version.json
+STATUS_VER=\$(curl -s -o /tmp/rb_ver.json -w "%{http_code}" http://127.0.0.1/version.json || echo "000")
+if [ "\$STATUS_VER" != "200" ]; then
+    echo "❌ LỖI QUAY LUI [Bước 6/6]: version.json không trả về HTTP 200 (mã nhận: \$STATUS_VER)!" >&2
+    exit 17
+fi
+if ! node -e "
+    const v = JSON.parse(require('fs').readFileSync('/tmp/rb_ver.json','utf8'));
+    const want = '\$TARGET_WANT_SHA';
+    if (want && v.codeSha !== want && v.tipSha !== want) process.exit(1);
+" 2>/dev/null; then
+    echo "❌ LỖI QUAY LUI [Bước 6/6]: version.json không khớp SHA bản cũ (\$TARGET_WANT_SHA)!" >&2
+    exit 18
+fi
+
+# 6.4. Kiểm tra deploy-version.json
+STATUS_DEP=\$(curl -s -o /tmp/rb_dep.json -w "%{http_code}" http://127.0.0.1/deploy-version.json || echo "000")
+if [ "\$STATUS_DEP" != "200" ]; then
+    echo "❌ LỖI QUAY LUI [Bước 6/6]: deploy-version.json không trả về HTTP 200 (mã nhận: \$STATUS_DEP)!" >&2
+    exit 19
+fi
+if ! node -e "
+    const d = JSON.parse(require('fs').readFileSync('/tmp/rb_dep.json','utf8'));
+    const want = '\$TARGET_WANT_SHA';
+    if (want && d.codeSha !== want && d.tipSha !== want) process.exit(1);
+" 2>/dev/null; then
+    echo "❌ LỖI QUAY LUI [Bước 6/6]: deploy-version.json không khớp SHA bản cũ (\$TARGET_WANT_SHA)!" >&2
+    exit 20
+fi
+echo "      ✅ Cả 2 endpoint phiên bản đều trả HTTP 200 và khớp SHA \$TARGET_WANT_SHA."
+
+# 6.5. Kiểm tra file JS tham chiếu trong HTML
+STATUS_HTML=\$(curl -s -o /tmp/rb_index.html -w "%{http_code}" http://127.0.0.1/ || echo "000")
+if [ "\$STATUS_HTML" != "200" ]; then
+    echo "❌ LỖI QUAY LUI [Bước 6/6]: index.html không trả về HTTP 200 (mã nhận: \$STATUS_HTML)!" >&2
+    exit 21
+fi
+RB_JS_ERR=0
+for js_src in \$(grep -o 'src="[^"]*\.js"' /tmp/rb_index.html | cut -d'"' -f2); do
+    CLEAN_JS="\${js_src#/}"
+    JS_CODE=\$(curl -s -o /tmp/rb_check.js -w "%{http_code}" "http://127.0.0.1/\$CLEAN_JS" || echo "000")
+    if [ "\$JS_CODE" != "200" ] || grep -q -i '<!DOCTYPE html' /tmp/rb_check.js; then
+        echo "❌ LỖI QUAY LUI [Bước 6/6]: File JS tham chiếu \$CLEAN_JS không tải được hoặc trả HTML lỗi!" >&2
+        RB_JS_ERR=1
+        break
+    fi
+done
+if [ "\$RB_JS_ERR" -eq 1 ]; then
+    exit 22
+fi
+echo "      ✅ File JS tham chiếu trong HTML tải thành công và hợp lệ."
+
+# CHỈ CHỐT current_release KHI TẤT CẢ BƯỚC HẬU KIỂM QUA THÀNH CÔNG!
 echo "\$ROLLBACK_TARGET" > current_release
 echo "\$CURRENT" > rollback_release
-echo "✅ Rollback thành công về bản \$ROLLBACK_TARGET"
+echo "   ✅ ĐÃ KHÔI PHỤC VÀ XÁC NHẬN BẢN \$ROLLBACK_TARGET ĐANG PHỤC VỤ THỰC TẾ."
 EOF
     echo "============================================================"
     echo "✅ ĐÃ HOÀN TẤT QUAY LUI VPS VỀ BẢN DỰ PHÒNG!"
@@ -345,32 +418,143 @@ do_rollback() {
     local EXIT_CODE=\$?
     trap - ERR EXIT
     echo ""
-    echo "🚨 SỰ CỐ XẢY RA TRONG QUÁ TRÌNH TRIỂN KHAI (Mã lỗi: \${EXIT_CODE})!"
-    echo "🔄 Tự động kích hoạt cơ chế quay lui (Rollback) toàn diện..."
-    if [ -f "rollback_release" ]; then
-        TARGET=\$(cat rollback_release | tr -d '[:space:]')
-        if [ -n "\$TARGET" ] && [ -d "releases/\$TARGET" ]; then
-            echo "   -> Đang khôi phục toàn diện về bản dự phòng \$TARGET..."
-            if [ -d "releases/\$TARGET/dist" ]; then
-                rm -rf dist.rollback.tmp
-                cp -r "releases/\$TARGET/dist" dist.rollback.tmp
-                rm -rf dist
-                mv dist.rollback.tmp dist
-            fi
-            [ -f "releases/\$TARGET/nginx.conf" ] && cp "releases/\$TARGET/nginx.conf" nginx.conf
-            [ -f "releases/\$TARGET/compose.yml" ] && cp "releases/\$TARGET/compose.yml" compose.yml
-            [ -f "releases/\$TARGET/Dockerfile" ] && cp "releases/\$TARGET/Dockerfile" Dockerfile
-            [ -d "releases/\$TARGET/server" ] && cp -r "releases/\$TARGET/server" .
+    echo "🚨 SỰ CỐ XẢY RA TRONG QUÁ TRÌNH PHÁT HÀNH (Mã lỗi kích hoạt: \${EXIT_CODE})!"
+    echo "🔄 Bắt đầu tiến trình quay lui (Rollback) và xác minh bản cũ..."
 
-            echo "   -> Khởi động lại container chili3d và storage-api về bản \$TARGET..."
-            sudo docker compose build --no-cache chili3d || true
-            sudo docker compose up -d --remove-orphans chili3d || true
-            sudo docker compose restart storage-api || true
-
-            echo "\$TARGET" > current_release
-            echo "   ✅ Đã khôi phục an toàn về bản \$TARGET."
-        fi
+    if [ ! -f "rollback_release" ]; then
+        echo "❌ LỖI QUAY LUI: Không tìm thấy file rollback_release! Không thể xác định bản để quay lui." >&2
+        echo "   -> GIỮ NGUYÊN HIỆN TRẠNG, KHÔNG GHI NHẬN THÀNH CÔNG GIẢ."
+        exit 10
     fi
+
+    TARGET=\$(cat rollback_release | tr -d '[:space:]')
+    if [ -z "\$TARGET" ] || [ ! -d "releases/\$TARGET" ] || [ ! -d "releases/\$TARGET/dist" ]; then
+        echo "❌ LỖI QUAY LUI: Thư mục releases/\$TARGET không tồn tại hoặc thiếu dist/!" >&2
+        echo "   -> GIỮ NGUYÊN HIỆN TRẠNG, KHÔNG GHI NHẬN THÀNH CÔNG GIẢ."
+        exit 11
+    fi
+
+    # [Bước 1/6] Hoàn trả dist
+    echo "   -> [Bước 1/6] Hoàn trả thư mục dist từ releases/\$TARGET/dist..."
+    rm -rf dist.rollback.tmp
+    cp -r "releases/\$TARGET/dist" dist.rollback.tmp
+    rm -rf dist
+    mv dist.rollback.tmp dist
+
+    # [Bước 2/6] Hoàn trả cấu hình đi kèm
+    echo "   -> [Bước 2/6] Hoàn trả cấu hình và server từ releases/\$TARGET..."
+    [ -f "releases/\$TARGET/nginx.conf" ] && cp "releases/\$TARGET/nginx.conf" nginx.conf
+    [ -f "releases/\$TARGET/compose.yml" ] && cp "releases/\$TARGET/compose.yml" compose.yml
+    [ -f "releases/\$TARGET/Dockerfile" ] && cp "releases/\$TARGET/Dockerfile" Dockerfile
+    [ -d "releases/\$TARGET/server" ] && cp -r "releases/\$TARGET/server" .
+
+    # [Bước 3/6] Build lại container chili3d
+    echo "   -> [Bước 3/6] Build lại container chili3d từ cấu hình bản \$TARGET..."
+    if ! sudo docker compose build --no-cache chili3d >/tmp/docker_build_rollback.log 2>&1; then
+        echo "❌ LỖI KHÔI PHỤC [Bước 3/6]: docker compose build thất bại khi quay lui!" >&2
+        cat /tmp/docker_build_rollback.log >&2
+        echo "   -> Giữ nguyên file log tại /tmp/docker_build_rollback.log để xử lý tiếp."
+        echo "   -> TUYỆT ĐỐI KHÔNG CHỐT current_release. Thoát với mã lỗi 12."
+        exit 12
+    fi
+
+    # [Bước 4/6] Khởi động container chili3d
+    echo "   -> [Bước 4/6] Khởi động container chili3d..."
+    if ! sudo docker compose up -d --remove-orphans chili3d >/tmp/docker_up_rollback.log 2>&1; then
+        echo "❌ LỖI KHÔI PHỤC [Bước 4/6]: docker compose up thất bại khi quay lui!" >&2
+        cat /tmp/docker_up_rollback.log >&2
+        echo "   -> Giữ nguyên file log tại /tmp/docker_up_rollback.log để xử lý tiếp."
+        echo "   -> TUYỆT ĐỐI KHÔNG CHỐT current_release. Thoát với mã lỗi 13."
+        exit 13
+    fi
+
+    # [Bước 5/6] Khởi động lại container storage-api
+    echo "   -> [Bước 5/6] Khởi động lại container storage-api (volume chili3d-data giữ nguyên)..."
+    if ! sudo docker compose restart storage-api >/tmp/docker_storage_rollback.log 2>&1; then
+        echo "❌ LỖI KHÔI PHỤC [Bước 5/6]: restart storage-api thất bại khi quay lui!" >&2
+        cat /tmp/docker_storage_rollback.log >&2
+        echo "   -> Giữ nguyên file log tại /tmp/docker_storage_rollback.log để xử lý tiếp."
+        echo "   -> TUYỆT ĐỐI KHÔNG CHỐT current_release. Thoát với mã lỗi 14."
+        exit 14
+    fi
+    sleep 2
+
+    # [Bước 6/6] Xác minh bản cũ thực sự phục vụ trên HTTP
+    echo "   -> [Bước 6/6] Xác minh bản quay lui thực sự phục vụ..."
+
+    # 6.1. Trạng thái storage-api
+    STATUS_RECENTS=\$(curl -s -o /tmp/rb_recents.json -w "%{http_code}" http://127.0.0.1/api/storage/chili3d-db/recents || echo "000")
+    if [ "\$STATUS_RECENTS" != "200" ]; then
+        echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: storage-api không phản hồi HTTP 200 (mã nhận: \$STATUS_RECENTS)!" >&2
+        exit 15
+    fi
+    if ! node -e "const r = JSON.parse(require('fs').readFileSync('/tmp/rb_recents.json','utf8')); if(!Array.isArray(r)) process.exit(1);" 2>/dev/null; then
+        echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: Dữ liệu storage-api không hợp lệ!" >&2
+        exit 16
+    fi
+    echo "      ✅ storage-api phản hồi HTTP 200, dữ liệu bảo toàn."
+
+    # 6.2. Đọc SHA mong muốn
+    TARGET_WANT_SHA=\$(node -e "try{process.stdout.write(JSON.parse(require('fs').readFileSync('releases/\$TARGET/dist/version.json','utf8')).codeSha||'')}catch{}" 2>/dev/null || echo "")
+    if [ -z "\$TARGET_WANT_SHA" ]; then
+        TARGET_WANT_SHA=\$(node -e "try{process.stdout.write(JSON.parse(require('fs').readFileSync('dist/version.json','utf8')).codeSha||'')}catch{}" 2>/dev/null || echo "")
+    fi
+
+    # 6.3. Kiểm tra version.json
+    STATUS_VER=\$(curl -s -o /tmp/rb_ver.json -w "%{http_code}" http://127.0.0.1/version.json || echo "000")
+    if [ "\$STATUS_VER" != "200" ]; then
+        echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: version.json không trả về HTTP 200 (mã nhận: \$STATUS_VER)!" >&2
+        exit 17
+    fi
+    if ! node -e "
+        const v = JSON.parse(require('fs').readFileSync('/tmp/rb_ver.json','utf8'));
+        const want = '\$TARGET_WANT_SHA';
+        if (want && v.codeSha !== want && v.tipSha !== want) process.exit(1);
+    " 2>/dev/null; then
+        echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: version.json không khớp SHA bản cũ (\$TARGET_WANT_SHA)!" >&2
+        exit 18
+    fi
+
+    # 6.4. Kiểm tra deploy-version.json
+    STATUS_DEP=\$(curl -s -o /tmp/rb_dep.json -w "%{http_code}" http://127.0.0.1/deploy-version.json || echo "000")
+    if [ "\$STATUS_DEP" != "200" ]; then
+        echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: deploy-version.json không trả về HTTP 200 (mã nhận: \$STATUS_DEP)!" >&2
+        exit 19
+    fi
+    if ! node -e "
+        const d = JSON.parse(require('fs').readFileSync('/tmp/rb_dep.json','utf8'));
+        const want = '\$TARGET_WANT_SHA';
+        if (want && d.codeSha !== want && d.tipSha !== want) process.exit(1);
+    " 2>/dev/null; then
+        echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: deploy-version.json không khớp SHA bản cũ (\$TARGET_WANT_SHA)!" >&2
+        exit 20
+    fi
+    echo "      ✅ Cả 2 endpoint phiên bản đều trả HTTP 200 và khớp SHA \$TARGET_WANT_SHA."
+
+    # 6.5. Kiểm tra file JS tham chiếu trong HTML
+    STATUS_HTML=\$(curl -s -o /tmp/rb_index.html -w "%{http_code}" http://127.0.0.1/ || echo "000")
+    if [ "\$STATUS_HTML" != "200" ]; then
+        echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: index.html không trả về HTTP 200 (mã nhận: \$STATUS_HTML)!" >&2
+        exit 21
+    fi
+    RB_JS_ERR=0
+    for js_src in \$(grep -o 'src="[^"]*\.js"' /tmp/rb_index.html | cut -d'"' -f2); do
+        CLEAN_JS="\${js_src#/}"
+        JS_CODE=\$(curl -s -o /tmp/rb_check.js -w "%{http_code}" "http://127.0.0.1/\$CLEAN_JS" || echo "000")
+        if [ "\$JS_CODE" != "200" ] || grep -q -i '<!DOCTYPE html' /tmp/rb_check.js; then
+            echo "❌ LỖI KHÔI PHỤC [Bước 6/6]: File JS tham chiếu \$CLEAN_JS không tải được hoặc trả HTML lỗi!" >&2
+            RB_JS_ERR=1
+            break
+        fi
+    done
+    if [ "\$RB_JS_ERR" -eq 1 ]; then
+        exit 22
+    fi
+    echo "      ✅ File JS tham chiếu trong HTML tải thành công và hợp lệ."
+
+    # CHỈ CHỐT current_release KHI TẤT CẢ BƯỚC HẬU KIỂM QUA THÀNH CÔNG!
+    echo "\$TARGET" > current_release
+    echo "   ✅ ĐÃ KHÔI PHỤC VÀ XÁC NHẬN BẢN \$TARGET ĐANG PHỤC VỤ THỰC TẾ (current_release: \$TARGET)."
     exit 1
 }
 
