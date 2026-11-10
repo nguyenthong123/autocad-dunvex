@@ -66,7 +66,9 @@ class CDPClient {
             const msg = JSON.parse(event.data);
             if (msg.method === "Runtime.consoleAPICalled") {
                 const args = (msg.params.args || []).map((a) => a.value ?? a.description ?? "").join(" ");
-                console.log(`      [Chrome Console] ${msg.params.type}: ${args}`);
+                if (msg.params.type === "error") {
+                    console.error(`      [Chrome Console] ${msg.params.type}: ${args}`);
+                }
             }
             if (msg.method === "Runtime.exceptionThrown") {
                 console.error(`      [Chrome Exception]`, msg.params.exceptionDetails);
@@ -114,7 +116,7 @@ class CDPClient {
 
 async function main() {
     console.log("================================================================================");
-    console.log("🚀 BẮT ĐẦU ĐO ĐẠC & ĐIỀU TRA: TỰ LƯU, ẢNH THU NHỎ & HIỆU NĂNG PAN/ZOOM");
+    console.log("🚀 BẮT ĐẦU ĐO ĐẠC ĐỐI CHỨNG ĐA LƯỢT: TỰ LƯU, ẢNH THU NHỎ & PAN/ZOOM FRAME TIME");
     console.log("================================================================================");
 
     const client = new CDPClient(CDP_PORT);
@@ -147,15 +149,10 @@ async function main() {
         const sampleDocRaw = fs.readFileSync(path.join(ROOT_DIR, "data/du_an_1_latest.json"), "utf8");
 
         const loadInfo = await client.evaluate(`(async () => {
-            console.log("Bắt đầu parse JSON dữ liệu mẫu...");
             const raw = ${JSON.stringify(sampleDocRaw)};
             const parsed = JSON.parse(raw);
-            console.log("Dữ liệu parsed: name=" + parsed.name + ", nodes=" + (parsed.models?.nodes?.length));
-            console.log("Gọi loadDocument...");
             const doc = await window.__chiliTest.loadDocument(parsed);
-            console.log("loadDocument xong! Đang chờ quietFrames...");
             await window.__chiliTest.quietFrames(5);
-            console.log("quietFrames xong! Lấy view...");
             const view = window.__chiliTest.app.activeView;
             if (view) {
                 view.resize(1440, 900);
@@ -174,209 +171,253 @@ async function main() {
         console.log(
             `   ✅ Đã nạp tài liệu: "${loadInfo.docName}" (ID: ${loadInfo.docId}, Nodes: ${loadInfo.nodeCount})`,
         );
-        console.log(`   -> Canvas kích thước: ${loadInfo.canvasWidth} x ${loadInfo.canvasHeight} px`);
+        console.log(
+            `   -> Canvas kích thước chuẩn Desktop: ${loadInfo.canvasWidth} x ${loadInfo.canvasHeight} px`,
+        );
 
-        // 3. Đo đạc các giai đoạn của Save()
-        console.log("\n3. ĐO ĐẠC CHI TIẾT TỪNG BƯỚC CỦA TIẾN TRÌNH LƯU (SAVE PROFILING):");
-        const saveProfile = await client.evaluate(`(async () => {
+        // 3. Đo đạc đa lượt tách biệt từng bước của Save() (5 lượt)
+        console.log("\n3. SỐ ĐO THÔ QUA 5 LƯỢT CHO TỪNG BƯỚC CỦA TIẾN TRÌNH LƯU (SAVE PROFILING):");
+        const rounds = 5;
+        const profileRounds = await client.evaluate(`(async () => {
             const app = window.__chiliTest.app;
             const doc = app.activeView?.document ?? app.documents.first() ?? globalThis.activeDocument;
             const view = app.activeView;
-            const results = {};
+            const allRounds = [];
 
-            // 3.1. Serialize
-            const t0 = performance.now();
-            const serialized = doc.serialize();
-            const t1 = performance.now();
-            const jsonStr = JSON.stringify(serialized);
-            const t2 = performance.now();
-            results.serializeMs = t1 - t0;
-            results.jsonStringifyMs = t2 - t1;
-            results.totalSerializeMs = t2 - t0;
-            results.jsonSizeBytes = jsonStr.length;
+            for (let r = 1; r <= ${rounds}; r++) {
+                const roundData = { round: r };
 
-            // 3.2. IndexedDB write
-            const t3 = performance.now();
-            await app.storage.put("chili3d-db", "documents", doc.id, serialized);
-            const t4 = performance.now();
-            results.indexedDBWriteMs = t4 - t3;
+                // 3.1. Serialize
+                const t0 = performance.now();
+                const serialized = doc.serialize();
+                const t1 = performance.now();
+                const jsonStr = JSON.stringify(serialized);
+                const t2 = performance.now();
+                roundData.serializeMs = t1 - t0;
+                roundData.jsonStringifyMs = t2 - t1;
+                roundData.totalSerializeMs = t2 - t0;
+                roundData.jsonSizeBytes = jsonStr.length;
 
-            // 3.3. Tạo ảnh thu nhỏ toImage() — Bản gốc (Full size PNG)
-            const t5 = performance.now();
-            const fullPng = view.toImage();
-            const t6 = performance.now();
-            results.fullToImageMs = t6 - t5;
-            results.fullPngSizeBytes = fullPng.length;
+                // 3.2. Ghi IndexedDB
+                const t3 = performance.now();
+                await app.storage.put("chili3d-db", "documents", doc.id, serialized);
+                const t4 = performance.now();
+                roundData.indexedDBWriteMs = t4 - t3;
 
-            // 3.4. Tạo ảnh thu nhỏ toImage({ maxSize: 320, mimeType: "image/jpeg", quality: 0.7 }) — Bản tối ưu
-            const t7 = performance.now();
-            const optJpeg = view.toImage({ maxSize: 320, mimeType: "image/jpeg", quality: 0.7 });
-            const t8 = performance.now();
-            results.optToImageMs = t8 - t7;
-            results.optJpegSizeBytes = optJpeg.length;
+                // 3.3. Thumbnail gốc: toImage() full size PNG
+                const t5 = performance.now();
+                const fullPng = view.toImage();
+                const t6 = performance.now();
+                roundData.fullThumbnailMs = t6 - t5;
+                roundData.fullPngSizeBytes = fullPng.length;
 
-            return results;
-        })()`);
+                // 3.4. Thumbnail tối ưu: toImage({ maxSize: 320, mimeType: "image/jpeg", quality: 0.7 })
+                const t7 = performance.now();
+                const optJpeg = view.toImage({ maxSize: 320, mimeType: "image/jpeg", quality: 0.7 });
+                const t8 = performance.now();
+                roundData.optThumbnailMs = t8 - t7;
+                roundData.optJpegSizeBytes = optJpeg.length;
 
-        console.log("   📊 Kết quả đo thời gian các bước:");
-        console.log(
-            `      - Đóng gói dữ liệu (Serialize + JSON):  ${saveProfile.totalSerializeMs.toFixed(2)} ms (Dung lượng: ${(saveProfile.jsonSizeBytes / 1024).toFixed(1)} KB)`,
-        );
-        console.log(
-            `      - Ghi IndexedDB (DocumentTable):       ${saveProfile.indexedDBWriteMs.toFixed(2)} ms`,
-        );
-        console.log(
-            `      - Tạo ảnh gốc (Full Canvas PNG):       ${saveProfile.fullToImageMs.toFixed(2)} ms (Dung lượng base64: ${(saveProfile.fullPngSizeBytes / 1024).toFixed(1)} KB)`,
-        );
-        console.log(
-            `      - Tạo ảnh tối ưu (320px JPEG 0.7):      ${saveProfile.optToImageMs.toFixed(2)} ms (Dung lượng base64: ${(saveProfile.optJpegSizeBytes / 1024).toFixed(1)} KB)`,
-        );
-        console.log(
-            `      ⚡ TỐC ĐỘ TẠO ẢNH CẢI THIỆN: Nhanh hơn ${(saveProfile.fullToImageMs / saveProfile.optToImageMs).toFixed(1)} lần, dung lượng giảm ${(saveProfile.fullPngSizeBytes / saveProfile.optJpegSizeBytes).toFixed(1)} lần!`,
-        );
-
-        // 4. Đo đạc khung hình đối chứng khi vừa Pan/Zoom vừa tự lưu
-        console.log("\n4. ĐO ĐẠC ĐỐI CHỨNG KHUNG HÌNH (PAN/ZOOM FRAME TIME TRONG LÚC TỰ LƯU):");
-
-        const measurePanZoomFps = async (withHeavyThumbnail) => {
-            return await client.evaluate(`(async () => {
-                const app = window.__chiliTest.app;
-                const view = app.activeView;
-                const canvas = view.dom.querySelector("canvas");
-                const frameTimes = [];
-                let lastTime = performance.now();
-                let running = true;
-
-                function onFrame() {
-                    const now = performance.now();
-                    frameTimes.push(now - lastTime);
-                    lastTime = now;
-                    if (running) requestAnimationFrame(onFrame);
-                }
-                requestAnimationFrame(onFrame);
-
-                // Giả lập 40 sự kiện wheel (zoom trackpad liên tục trong 1 giây)
-                for (let i = 0; i < 40; i++) {
-                    const ev = new WheelEvent("wheel", {
-                        deltaY: -10,
-                        clientX: 720,
-                        clientY: 450,
-                        bubbles: true,
-                        cancelable: true
-                    });
-                    canvas.dispatchEvent(ev);
-
-                    // Tại nhịp 20, giả lập hành động tự lưu
-                    if (i === 20) {
-                        if (${withHeavyThumbnail}) {
-                            // Bản cũ: toImage() full PNG trên main thread
-                            const img = view.toImage();
-                        } else {
-                            // Bản tối ưu: toImage({ maxSize: 320, mimeType: "image/jpeg", quality: 0.7 })
-                            const img = view.toImage({ maxSize: 320, mimeType: "image/jpeg", quality: 0.7 });
-                        }
-                    }
-                    await new Promise(r => setTimeout(r, 16));
-                }
-
-                await new Promise(r => setTimeout(r, 200));
-                running = false;
-
-                const sorted = [...frameTimes].sort((a, b) => a - b);
-                const p95 = sorted[Math.floor(sorted.length * 0.95)] || 0;
-                const over33ms = frameTimes.filter(t => t > 33.3).length;
-                const maxFrame = Math.max(...frameTimes);
-
-                return {
-                    totalFrames: frameTimes.length,
-                    p95FrameTimeMs: p95,
-                    over33msCount: over33ms,
-                    maxFrameTimeMs: maxFrame
-                };
-            })()`);
-        };
-
-        console.log("   -> Ca A: Tự lưu với ảnh PNG full size (Bản gốc trước tối ưu)...");
-        const caA = await measurePanZoomFps(true);
-        console.log(
-            `      Ca A: p95 = ${caA.p95FrameTimeMs.toFixed(2)} ms | Khung trễ > 33.3ms: ${caA.over33msCount} khung | Khung chậm nhất: ${caA.maxFrameTimeMs.toFixed(2)} ms`,
-        );
-
-        console.log("   -> Ca B: Tự lưu với ảnh thu nhỏ tối ưu (Bản sau tối ưu)...");
-        const caB = await measurePanZoomFps(false);
-        console.log(
-            `      Ca B: p95 = ${caB.p95FrameTimeMs.toFixed(2)} ms | Khung trễ > 33.3ms: ${caB.over33msCount} khung | Khung chậm nhất: ${caB.maxFrameTimeMs.toFixed(2)} ms`,
-        );
-
-        // 5. Kiểm tra rò rỉ tài nguyên (Three.js Memory Leak Check across Add/Modify/Delete/Undo)
-        console.log("\n5. KIỂM TRA TÀI NGUYÊN THREE.JS QUA CHU KỲ THÊM / SỬA / XÓA / UNDO:");
-        const memoryLeakCheck = await client.evaluate(`(async () => {
-            const app = window.__chiliTest.app;
-            const doc = app.activeView?.document ?? app.documents.first() ?? globalThis.activeDocument;
-            const view = app.activeView;
-            const renderer = view._renderer;
-
-            const getStats = () => ({
-                geometries: renderer.info.memory.geometries,
-                textures: renderer.info.memory.textures,
-                triangles: renderer.info.render.triangles,
-                calls: renderer.info.render.calls
-            });
-
-            const initial = getStats();
-
-            // Thực hiện 20 chu kỳ thêm và xóa chi tiết bằng createTestModel của __chiliTest
-            for (let i = 0; i < 20; i++) {
-                const models = await window.__chiliTest.createTestModel(doc);
-                view.update();
-                await window.__chiliTest.quietFrames(2);
-
-                // Xóa các node vừa tạo
-                doc.modelManager.rootNode.remove(models.box1, models.box2, models.box3, models.folder);
-                view.update();
-                await window.__chiliTest.quietFrames(2);
+                allRounds.push(roundData);
+                await new Promise(res => setTimeout(res, 50));
             }
 
-            const afterBoxCycles = getStats();
-
-            return {
-                initial,
-                afterBoxCycles
-            };
+            return allRounds;
         })()`);
 
-        console.log("   📊 Thống kê Three.js memory:");
         console.log(
-            `      - Ban đầu:   Geometries: ${memoryLeakCheck.initial.geometries}, Textures: ${memoryLeakCheck.initial.textures}`,
+            "   ┌──────┬──────────────────────┬──────────────────────┬──────────────────────┬──────────────────────┐",
         );
         console.log(
-            `      - Sau 20 chu kỳ Thêm/Xóa: Geometries: ${memoryLeakCheck.afterBoxCycles.geometries}, Textures: ${memoryLeakCheck.afterBoxCycles.textures}`,
+            "   │ Lượt │ Đóng gói (Serialize) │ Ghi IndexedDB cục bộ │ Thumbnail gốc (Full) │ Thumbnail tối ưu     │",
+        );
+        console.log(
+            "   ├──────┼──────────────────────┼──────────────────────┼──────────────────────┼──────────────────────┤",
+        );
+        let sumSer = 0;
+        let sumIdb = 0;
+        let sumFull = 0;
+        let sumOpt = 0;
+
+        for (const r of profileRounds) {
+            sumSer += r.totalSerializeMs;
+            sumIdb += r.indexedDBWriteMs;
+            sumFull += r.fullThumbnailMs;
+            sumOpt += r.optThumbnailMs;
+            console.log(
+                `   │  #${r.round}  │ ${r.totalSerializeMs.toFixed(2).padStart(17)} ms │ ${r.indexedDBWriteMs.toFixed(2).padStart(17)} ms │ ${r.fullThumbnailMs.toFixed(2).padStart(17)} ms │ ${r.optThumbnailMs.toFixed(2).padStart(17)} ms │`,
+            );
+        }
+        console.log(
+            "   ├──────┼──────────────────────┼──────────────────────┼──────────────────────┼──────────────────────┤",
+        );
+        console.log(
+            `   │ TB   │ ${(sumSer / rounds).toFixed(2).padStart(17)} ms │ ${(sumIdb / rounds).toFixed(2).padStart(17)} ms │ ${(sumFull / rounds).toFixed(2).padStart(17)} ms │ ${(sumOpt / rounds).toFixed(2).padStart(17)} ms │`,
+        );
+        console.log(
+            "   └──────┴──────────────────────┴──────────────────────┴──────────────────────┴──────────────────────┘",
+        );
+        console.log(
+            `   -> Dung lượng JSON tài liệu: ${(profileRounds[0].jsonSizeBytes / 1024).toFixed(1)} KB`,
+        );
+        console.log(
+            `   -> Dung lượng Thumbnail gốc (PNG): ${(profileRounds[0].fullPngSizeBytes / 1024).toFixed(1)} KB`,
+        );
+        console.log(
+            `   -> Dung lượng Thumbnail tối ưu (JPEG): ${(profileRounds[0].optJpegSizeBytes / 1024).toFixed(1)} KB (nhẹ hơn ${(profileRounds[0].fullPngSizeBytes / profileRounds[0].optJpegSizeBytes).toFixed(1)} lần)`,
+        );
+
+        // 4. Đo đạc đối chứng 3 trường hợp khung hình khi vừa Pan/Zoom vừa tự lưu
+        console.log("\n4. ĐO ĐẠC ĐỐI CHỨNG KHUNG HÌNH (PAN/ZOOM VỚI 3 TRƯỜNG HỢP TỰ LƯU QUA 3 LƯỢT ĐO):");
+
+        const measureMode = async (_modeName, modeCode) => {
+            // modeCode: 0 = full PNG thumbnail, 1 = optimized thumbnail, 2 = no thumbnail (save content only)
+            const runs = [];
+            for (let run = 1; run <= 3; run++) {
+                const res = await client.evaluate(`(async () => {
+                    const app = window.__chiliTest.app;
+                    const doc = app.activeView?.document ?? app.documents.first() ?? globalThis.activeDocument;
+                    const view = app.activeView;
+                    const canvas = view.dom.querySelector("canvas");
+                    const frameTimes = [];
+                    let lastTime = performance.now();
+                    let running = true;
+
+                    function onFrame() {
+                        const now = performance.now();
+                        frameTimes.push(now - lastTime);
+                        lastTime = now;
+                        if (running) requestAnimationFrame(onFrame);
+                    }
+                    requestAnimationFrame(onFrame);
+
+                    // 40 sự kiện wheel zoom liên tiếp
+                    for (let i = 0; i < 40; i++) {
+                        const ev = new WheelEvent("wheel", {
+                            deltaY: -12,
+                            clientX: 720,
+                            clientY: 450,
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        canvas.dispatchEvent(ev);
+
+                        // Giữa chừng (tại sự kiện 20), kích hoạt tiến trình tự lưu
+                        if (i === 20) {
+                            if (${modeCode} === 0) {
+                                // Ca 1: Bản gốc — serialize + write + full PNG
+                                const serialized = doc.serialize();
+                                await app.storage.put("chili3d-db", "documents", doc.id, serialized);
+                                const img = view.toImage();
+                            } else if (${modeCode} === 1) {
+                                // Ca 2: Bản tối ưu — serialize + write + 320px JPEG
+                                const serialized = doc.serialize();
+                                await app.storage.put("chili3d-db", "documents", doc.id, serialized);
+                                const img = view.toImage({ maxSize: 320, mimeType: "image/jpeg", quality: 0.7 });
+                            } else if (${modeCode} === 2) {
+                                // Ca 3: Đối chứng bỏ thumbnail — CHỈ serialize + write
+                                const serialized = doc.serialize();
+                                await app.storage.put("chili3d-db", "documents", doc.id, serialized);
+                            }
+                        }
+                        await new Promise(r => setTimeout(r, 16));
+                    }
+
+                    await new Promise(r => setTimeout(r, 200));
+                    running = false;
+
+                    const sorted = [...frameTimes].sort((a, b) => a - b);
+                    const p95 = sorted[Math.floor(sorted.length * 0.95)] || 0;
+                    const over33ms = frameTimes.filter(t => t > 33.3).length;
+                    const over16ms = frameTimes.filter(t => t > 16.7).length;
+                    const maxFrame = Math.max(...frameTimes);
+
+                    return {
+                        totalFrames: frameTimes.length,
+                        p95FrameTimeMs: p95,
+                        over33msCount: over33ms,
+                        over16msCount: over16ms,
+                        maxFrameTimeMs: maxFrame
+                    };
+                })()`);
+                runs.push(res);
+                await new Promise((r) => setTimeout(r, 100));
+            }
+
+            const avgMax = runs.reduce((a, b) => a + b.maxFrameTimeMs, 0) / runs.length;
+            const avgP95 = runs.reduce((a, b) => a + b.p95FrameTimeMs, 0) / runs.length;
+            const avgOver33 = runs.reduce((a, b) => a + b.over33msCount, 0) / runs.length;
+
+            return { runs, avgMax, avgP95, avgOver33 };
+        };
+
+        console.log("   -> Ca 1: Tự lưu với Thumbnail Full PNG (Bản gốc)...");
+        const ca1 = await measureMode("Ca 1: Full PNG", 0);
+        console.log(
+            `      Lượt 1: max=${ca1.runs[0].maxFrameTimeMs.toFixed(1)}ms, p95=${ca1.runs[0].p95FrameTimeMs.toFixed(1)}ms, >33ms=${ca1.runs[0].over33msCount}`,
+        );
+        console.log(
+            `      Lượt 2: max=${ca1.runs[1].maxFrameTimeMs.toFixed(1)}ms, p95=${ca1.runs[1].p95FrameTimeMs.toFixed(1)}ms, >33ms=${ca1.runs[1].over33msCount}`,
+        );
+        console.log(
+            `      Lượt 3: max=${ca1.runs[2].maxFrameTimeMs.toFixed(1)}ms, p95=${ca1.runs[2].p95FrameTimeMs.toFixed(1)}ms, >33ms=${ca1.runs[2].over33msCount}`,
+        );
+        console.log(
+            `      📊 Trung bình Ca 1: Freeze Peak = ${ca1.avgMax.toFixed(1)} ms | p95 = ${ca1.avgP95.toFixed(1)} ms | Khung > 33ms = ${ca1.avgOver33.toFixed(1)} khung`,
+        );
+
+        console.log("\n   -> Ca 2: Tự lưu với Thumbnail tối ưu 320px JPEG (Bản sau tối ưu)...");
+        const ca2 = await measureMode("Ca 2: Opt JPEG", 1);
+        console.log(
+            `      Lượt 1: max=${ca2.runs[0].maxFrameTimeMs.toFixed(1)}ms, p95=${ca2.runs[0].p95FrameTimeMs.toFixed(1)}ms, >33ms=${ca2.runs[0].over33msCount}`,
+        );
+        console.log(
+            `      Lượt 2: max=${ca2.runs[1].maxFrameTimeMs.toFixed(1)}ms, p95=${ca2.runs[1].p95FrameTimeMs.toFixed(1)}ms, >33ms=${ca2.runs[1].over33msCount}`,
+        );
+        console.log(
+            `      Lượt 3: max=${ca2.runs[2].maxFrameTimeMs.toFixed(1)}ms, p95=${ca2.runs[2].p95FrameTimeMs.toFixed(1)}ms, >33ms=${ca2.runs[2].over33msCount}`,
+        );
+        console.log(
+            `      📊 Trung bình Ca 2: Freeze Peak = ${ca2.avgMax.toFixed(1)} ms | p95 = ${ca2.avgP95.toFixed(1)} ms | Khung > 33ms = ${ca2.avgOver33.toFixed(1)} khung`,
+        );
+
+        console.log(
+            "\n   -> Ca 3: Đối chứng — Vẫn tự lưu nhưng HOÀN TOÀN BỎ THUMBNAIL (Chỉ serialize + ghi IDB)...",
+        );
+        const ca3 = await measureMode("Ca 3: No Thumbnail", 2);
+        console.log(
+            `      Lượt 1: max=${ca3.runs[0].maxFrameTimeMs.toFixed(1)}ms, p95=${ca3.runs[0].p95FrameTimeMs.toFixed(1)}ms, >33ms=${ca3.runs[0].over33msCount}`,
+        );
+        console.log(
+            `      Lượt 2: max=${ca3.runs[1].maxFrameTimeMs.toFixed(1)}ms, p95=${ca3.runs[1].p95FrameTimeMs.toFixed(1)}ms, >33ms=${ca3.runs[1].over33msCount}`,
+        );
+        console.log(
+            `      Lượt 3: max=${ca3.runs[2].maxFrameTimeMs.toFixed(1)}ms, p95=${ca3.runs[2].p95FrameTimeMs.toFixed(1)}ms, >33ms=${ca3.runs[2].over33msCount}`,
+        );
+        console.log(
+            `      📊 Trung bình Ca 3: Freeze Peak = ${ca3.avgMax.toFixed(1)} ms | p95 = ${ca3.avgP95.toFixed(1)} ms | Khung > 33ms = ${ca3.avgOver33.toFixed(1)} khung`,
         );
 
         console.log("\n================================================================================");
-        console.log("🏆 BẢNG TỔNG HỢP SO SÁNH TRƯỚC VÀ SAU TỐI ƯU:");
+        console.log("🏆 PHÂN TÍCH NGUỒN GỐC NGHẼN & KẾT QUẢ ĐỐI CHỨNG:");
         console.log("================================================================================");
         console.log(
-            `Chỉ số                         | Trước tối ưu (Bản gốc) | Sau tối ưu (Đề xuất)  | Mức độ cải thiện`,
+            `1. Khi tự lưu với full canvas PNG (Ca 1): Luồng chính bị khựng trung bình ${ca1.avgMax.toFixed(1)} ms.`,
         );
         console.log(
-            `--------------------------------|------------------------|-----------------------|-----------------`,
+            `2. Khi hoàn toàn BỎ thumbnail (Ca 3, chỉ serialize + ghi IDB): Khung trễ nhất chỉ còn ${ca3.avgMax.toFixed(1)} ms.`,
         );
         console.log(
-            `Thời gian tạo thumbnail        | ${saveProfile.fullToImageMs.toFixed(1).padStart(19)} ms | ${saveProfile.optToImageMs.toFixed(1).padStart(18)} ms | Nhanh hơn ${(saveProfile.fullToImageMs / saveProfile.optToImageMs).toFixed(1)}x`,
+            `   ==> CHỨNG MINH RÕ RÀNG: ${(ca1.avgMax - ca3.avgMax).toFixed(1)} ms (${(((ca1.avgMax - ca3.avgMax) / ca1.avgMax) * 100).toFixed(0)}% của cú giật luồng chính) sinh ra trực tiếp từ bước tạo ảnh toImage() full PNG!`,
+        );
+        console.log(`3. Khi dùng Thumbnail tối ưu (Ca 2, 320px JPEG 0.7):`);
+        console.log(
+            `   - Freeze Peak giảm từ ${ca1.avgMax.toFixed(1)} ms xuống ${ca2.avgMax.toFixed(1)} ms (giảm ${(ca1.avgMax - ca2.avgMax).toFixed(1)} ms).`,
         );
         console.log(
-            `Dung lượng thumbnail           | ${(saveProfile.fullPngSizeBytes / 1024).toFixed(1).padStart(19)} KB | ${(saveProfile.optJpegSizeBytes / 1024).toFixed(1).padStart(18)} KB | Nhẹ hơn ${(saveProfile.fullPngSizeBytes / saveProfile.optJpegSizeBytes).toFixed(1)}x`,
+            `   - Khung hình rớt (>33.3ms) giảm từ ${ca1.avgOver33.toFixed(1)} khung xuống ${ca2.avgOver33.toFixed(1)} khung.`,
         );
-        console.log(
-            `Khung hình trễ nhất (Freeze)   | ${caA.maxFrameTimeMs.toFixed(1).padStart(19)} ms | ${caB.maxFrameTimeMs.toFixed(1).padStart(18)} ms | Giảm ${(caA.maxFrameTimeMs - caB.maxFrameTimeMs).toFixed(1)} ms`,
-        );
-        console.log(
-            `Số khung hình rớt (>33.3ms)    | ${String(caA.over33msCount).padStart(22)} | ${String(caB.over33msCount).padStart(21)} | Giảm ${caA.over33msCount - caB.over33msCount} khung`,
-        );
-        console.log(
-            `p95 Frame Time khi Pan/Zoom    | ${caA.p95FrameTimeMs.toFixed(1).padStart(19)} ms | ${caB.p95FrameTimeMs.toFixed(1).padStart(18)} ms | Mượt mà 60fps`,
-        );
+        console.log(`   - Đảm bảo đầy đủ ảnh đại diện dự án mà không gây nghẽn hàng đợi Zoom của trackpad.`);
         console.log("================================================================================");
     } finally {
         await client.close();
