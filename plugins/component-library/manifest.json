@@ -1,0 +1,14 @@
+{
+    "name": "Dunvex Component Library",
+    "version": "1.0.0",
+    "description": "Thư viện chi tiết Dunvex CAD hỗ trợ chèn mẫu lam, tấm ốp vách và nhân mảng theo bước lắp",
+    "main": "dist/main.js",
+    "css": "dist/main.css",
+    "icon": "icons/library.svg",
+    "author": {
+        "name": "Dunvex CAD Team"
+    },
+    "engines": {
+        "chili3d": ">=0.6"
+    }
+}

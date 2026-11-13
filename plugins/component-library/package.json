@@ -1,0 +1,18 @@
+{
+    "name": "component-library",
+    "version": "1.0.0",
+    "description": "Thư viện chi tiết Dunvex CAD - Mẫu lam, tấm ốp tường và thanh đa năng",
+    "main": "dist/main.js",
+    "type": "module",
+    "scripts": {
+        "build": "rspack build",
+        "package": "npm run build && node ../scripts/package-plugin.mjs dist/component-library.chiliplugin manifest.json icons dist"
+    },
+    "keywords": [
+        "chili3d",
+        "plugin",
+        "component-library",
+        "dunvex"
+    ],
+    "author": "Dunvex CAD Team"
+}
