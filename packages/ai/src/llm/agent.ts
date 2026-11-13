@@ -167,6 +167,8 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
     let hasExecutedReadTools = false;
     let hasExecutedWriteTools = false;
     let lastTokenUsage: TokenUsage | undefined;
+    let lastToolErrorSig: string | undefined;
+    let repeatedToolErrorCount = 0;
     // Whether the attempt in flight has already put text on screen. A retry after a context
     // overflow would replay that text, so the retry is only allowed before the first delta.
     let emittedText = false;
@@ -318,6 +320,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
             appendToolResults(runOpts, results, multimodalDisabled);
 
             const READ_TOOLS = new Set(["get_document_state", "get_selection"]);
+            let batchRepeatedErrorMsg: string | undefined;
             // Update verification state based on tool outputs
             for (const res of results) {
                 if (READ_TOOLS.has(res.name)) {
@@ -337,7 +340,19 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                 } catch {
                     // Non-JSON output
                 }
-                if (isError) continue;
+                if (isError) {
+                    const sig = `${res.name}:${parsedContent?.error ?? ""}`;
+                    if (sig === lastToolErrorSig) {
+                        repeatedToolErrorCount++;
+                    } else {
+                        lastToolErrorSig = sig;
+                        repeatedToolErrorCount = 1;
+                    }
+                    batchRepeatedErrorMsg = `${res.name}: ${parsedContent?.error ?? ""}`;
+                    continue;
+                }
+                lastToolErrorSig = undefined;
+                repeatedToolErrorCount = 0;
 
                 const tc = turn.toolCalls.find((c) => c.id === res.toolCallId);
                 const rawArgs = tc?.arguments ?? "{}";
@@ -434,6 +449,21 @@ export async function runAgent(opts: RunAgentOptions): Promise<void> {
                             onVerificationCompleted(res.name, "verified post-write state");
                         }
                     }
+                }
+            }
+            if (batchRepeatedErrorMsg !== undefined) {
+                if (repeatedToolErrorCount >= 3) {
+                    callbacks.onTextDelta(
+                        `\n\n[Dừng do lỗi lặp lại] Công cụ gặp lỗi tương đương liên tiếp ${repeatedToolErrorCount} lần (${batchRepeatedErrorMsg}). Đã dừng để tránh lặp lại các biến thể tương đương; vui lòng kiểm tra tham số theo schema hoặc quyền truy cập.`,
+                    );
+                    break;
+                }
+                if (repeatedToolErrorCount === 2) {
+                    runOpts.messages.push({
+                        role: "user",
+                        content: `Repeated tool error (${batchRepeatedErrorMsg}). Do NOT retry equivalent parameter variants (key order, float/string variations). Fix the call strictly per the tool schema (or use set_node_properties / booleanCut for member resizing/cutting) or stop and report the blocker clearly to the user.`,
+                        synthetic: true,
+                    });
                 }
             }
         }

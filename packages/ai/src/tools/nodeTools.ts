@@ -30,7 +30,16 @@ const TRANSFORM_NODE_PARAMETERS = {
             },
             required: ["axis", "angle"],
         },
-        scale: { description: TRANSFORM_ARG_DOC.scale },
+        scale: {
+            anyOf: [
+                { type: "number", description: "Uniform scale factor (finite non-zero number)" },
+                {
+                    ...VEC3_SCHEMA,
+                    description: "Non-uniform scale vector {x, y, z} (finite non-zero numbers)",
+                },
+            ],
+            description: TRANSFORM_ARG_DOC.scale,
+        },
         mirror: {
             type: "object",
             properties: {
@@ -156,7 +165,7 @@ const transformNodeHandler: Tool["handler"] = async (args) => {
     });
     if (!accepted) {
         return JSON.stringify({
-            error: `node refused the transform (only rigid moves, rotations and mirrors are supported): ${id}`,
+            error: `node refused the transform (only rigid moves, rotations and mirrors are supported): ${id}. If modifying member length, width, or height, use set_node_properties (e.g. "length" or "dy") instead of scaling.`,
         });
     }
     const topAfter = doc.history.undoTop();

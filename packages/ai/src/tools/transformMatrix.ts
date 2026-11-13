@@ -15,13 +15,38 @@ export const VEC3_SCHEMA = {
     required: ["x", "y", "z"],
 };
 
+function parsePossibleJson(value: unknown): unknown {
+    if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (
+            (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+            (trimmed.startsWith("[") && trimmed.endsWith("]"))
+        ) {
+            try {
+                return JSON.parse(trimmed);
+            } catch {
+                return value;
+            }
+        }
+        const num = Number(trimmed);
+        if (!Number.isNaN(num) && trimmed !== "") {
+            return num;
+        }
+    }
+    return value;
+}
+
 function asVec3(value: unknown, label: string): Vec3 | string {
-    if (typeof value !== "object" || value === null) return `${label} must be an object {x, y, z}`;
-    const { x, y, z } = value as Record<string, unknown>;
-    if (![x, y, z].every((n) => typeof n === "number" && Number.isFinite(n))) {
+    const raw = parsePossibleJson(value);
+    if (typeof raw !== "object" || raw === null) return `${label} must be an object {x, y, z}`;
+    const { x, y, z } = raw as Record<string, unknown>;
+    const numX = typeof x === "string" ? Number(x) : x;
+    const numY = typeof y === "string" ? Number(y) : y;
+    const numZ = typeof z === "string" ? Number(z) : z;
+    if (![numX, numY, numZ].every((n) => typeof n === "number" && Number.isFinite(n))) {
         return `${label} must have finite numeric x, y, z`;
     }
-    return { x: x as number, y: y as number, z: z as number };
+    return { x: numX as number, y: numY as number, z: numZ as number };
 }
 
 /**
@@ -34,7 +59,7 @@ function asVec3(value: unknown, label: string): Vec3 | string {
 type MatrixStep = (matrix: Matrix4, value: unknown) => Matrix4 | string;
 
 function applyMirror(matrix: Matrix4, mirror: unknown): Matrix4 | string {
-    const args = mirror as Record<string, unknown>;
+    const args = (typeof mirror === "string" ? parsePossibleJson(mirror) : mirror) as Record<string, unknown>;
     const origin = asVec3(args?.["origin"], "mirror.origin");
     if (typeof origin === "string") return origin;
     const normal = asVec3(args?.["normal"], "mirror.normal");
@@ -47,7 +72,8 @@ function applyMirror(matrix: Matrix4, mirror: unknown): Matrix4 | string {
     );
 }
 
-function applyScale(matrix: Matrix4, scale: unknown): Matrix4 | string {
+function applyScale(matrix: Matrix4, rawScale: unknown): Matrix4 | string {
+    const scale = parsePossibleJson(rawScale);
     let vec: Vec3;
     if (typeof scale === "number") {
         vec = { x: scale, y: scale, z: scale };
@@ -63,10 +89,10 @@ function applyScale(matrix: Matrix4, scale: unknown): Matrix4 | string {
 }
 
 function applyRotate(matrix: Matrix4, rotate: unknown): Matrix4 | string {
-    const args = rotate as Record<string, unknown>;
+    const args = (typeof rotate === "string" ? parsePossibleJson(rotate) : rotate) as Record<string, unknown>;
     const axis = asVec3(args?.["axis"], "rotate.axis");
     if (typeof axis === "string") return axis;
-    const angle = args?.["angle"];
+    const angle = typeof args?.["angle"] === "string" ? Number(args["angle"]) : args?.["angle"];
     if (typeof angle !== "number" || !Number.isFinite(angle)) {
         return "rotate.angle must be a finite number in degrees";
     }

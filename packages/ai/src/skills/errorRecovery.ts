@@ -13,6 +13,8 @@ export const errorRecovery: Skill = {
 
 "must be a finite number" / "must be one of a|b|c" / "must be { x, y, z }" — argument encoding wrong. Re-check the JSON encoding section: XYZ={x,y,z}, Line={point,direction} (NOT {start,end}), Plane={origin, normal?, xvec?}, enum params list values inline.
 
+"scale must be an object {x, y, z}" / "node refused the transform" (transform_node) — transform_node is strictly for rigid spatial placement (translation, rotation, mirror) or uniform scale. Never use transform_node scale to shorten, lengthen, or resize members (beams, columns, extruded profiles, boxes). To adjust member length or dimensions while keeping cross-section and anchor intact, call get_node_properties to inspect parameters, then set_node_properties with property "length" (for ExtrudeNode/Prism) or "dx"/"dy"/"dz" (for BoxNode). To cut off excess material, use booleanCut with an explicit cutting box. When encountering a parameter type error, fix the call according to the schema or stop and report clearly — do not repeat equivalent string variants.
+
 "Missing required parameter "x"" — the op left out a required argument; nothing ran. Add it and re-run that op (the signatures are in the modeling-api skill).
 
 "The radius is too small." — the radius is at or below the kernel's minimum (1e-7 mm), i.e. effectively zero. Pass a positive radius.
