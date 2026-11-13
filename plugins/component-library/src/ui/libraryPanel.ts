@@ -1,7 +1,7 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
-import type { IApplication } from "@chili3d/core";
+import { type IApplication, type IFace, ShapeTypes, type XYZ } from "@chili3d/core";
 import { button, div, input, label, span } from "@chili3d/element";
 import { CATALOG_ITEMS } from "../catalog/items";
 import type { CatalogItem, ComponentOrientation } from "../catalog/types";
@@ -98,6 +98,7 @@ export class LibraryPanel {
 
         this.container.append(searchBarElem, controlsElem, this.cardListElem);
         this.renderCards();
+        this.setupViewportDrop();
     }
 
     public getElement(): HTMLElement {
@@ -217,10 +218,82 @@ export class LibraryPanel {
                 flip: this.flip,
                 customLength: this.customLength,
             };
-            e.dataTransfer?.setData("application/json", JSON.stringify(dragData));
+            const jsonStr = JSON.stringify(dragData);
+            e.dataTransfer?.setData("application/json", jsonStr);
+            e.dataTransfer?.setData("text/plain", jsonStr);
+            e.dataTransfer?.setData("dunvex-component", jsonStr);
         });
 
         return cardElem;
+    }
+
+    private setupViewportDrop(): void {
+        const handleDragOver = (e: DragEvent) => {
+            if (
+                e.dataTransfer?.types.includes("application/json") ||
+                e.dataTransfer?.types.includes("dunvex-component")
+            ) {
+                e.preventDefault();
+                if (e.dataTransfer) {
+                    e.dataTransfer.dropEffect = "copy";
+                }
+            }
+        };
+
+        const handleDrop = async (e: DragEvent) => {
+            const raw =
+                e.dataTransfer?.getData("application/json") || e.dataTransfer?.getData("dunvex-component");
+            if (!raw) return;
+            let data: any;
+            try {
+                data = JSON.parse(raw);
+            } catch {
+                return;
+            }
+            if (data?.type !== "dunvex-component") return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const view = this.app.activeView;
+            if (!view) return;
+
+            const rect = (e.target as HTMLElement).getBoundingClientRect?.() ?? { left: 0, top: 0 };
+            const offsetX = e.clientX - rect.left;
+            const offsetY = e.clientY - rect.top;
+
+            let targetPoint: XYZ | undefined;
+            let targetNormal: XYZ | undefined;
+
+            try {
+                const hits = view.detectShapes(ShapeTypes.face, offsetX, offsetY);
+                if (hits && hits.length > 0) {
+                    const shapeData = hits[0];
+                    const face = shapeData.shape.transformedMul(shapeData.transform) as IFace;
+                    if (face.surface().isPlanar()) {
+                        const [facePoint, faceNormal] = face.normal(0, 0);
+                        targetNormal = faceNormal.normalize();
+                        targetPoint = shapeData.point ?? facePoint;
+                    }
+                    face.dispose();
+                }
+            } catch {}
+
+            const cmd = new InsertComponentCommand({
+                catalogCode: data.code,
+                orientation: data.orientation ?? this.orientation,
+                flip: data.flip ?? this.flip,
+                customLength: data.customLength ?? this.customLength,
+                targetPoint,
+                targetNormal,
+            });
+            await cmd.execute(this.app);
+        };
+
+        if (typeof window !== "undefined") {
+            window.addEventListener("dragover", handleDragOver);
+            window.addEventListener("drop", handleDrop, true);
+        }
     }
 
     private async handleInsert(item: CatalogItem): Promise<void> {
