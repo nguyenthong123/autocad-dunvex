@@ -147,11 +147,22 @@ export class LibraryPanel {
         const previewElem = div({ className: style.cardPreview });
         previewElem.innerHTML = item.svgPreview;
 
-        // Card header
+        // Card header with badge
+        const badgeElements: HTMLElement[] = [];
+        if (item.badgeText) {
+            badgeElements.push(
+                span({
+                    className: item.isRealProfile ? style.realProfileBadge : style.boxModelBadge,
+                    textContent: item.badgeText,
+                }),
+            );
+        }
+        badgeElements.push(span({ className: style.cardBadge, textContent: item.code }));
+
         const header = div(
             { className: style.cardHeader },
             span({ className: style.cardTitle, textContent: item.name }),
-            span({ className: style.cardBadge, textContent: item.code }),
+            div({ className: style.cardBadges }, ...badgeElements),
         );
 
         // Specs table

@@ -4,6 +4,7 @@
 import { Matrix4, Precision, XYZ } from "@chili3d/core";
 import { CATALOG_ITEMS, findCatalogItem } from "../src/catalog/items";
 import { calculateWallPlacement } from "../src/geometry/placementHelper";
+import { THREE_WAVE_2D_PROFILE } from "../src/geometry/profileBuilder";
 
 describe("Component Library Plugin", () => {
     describe("Catalog Specifications", () => {
@@ -32,12 +33,24 @@ describe("Component Library Plugin", () => {
             expect(item?.step).toBe(60); // 50mm slat + 10mm technical gap
         });
 
-        test("LS-3S-150 3-wave panel has interlock pitch equal to width", () => {
+        test("LS-3S-150 3-wave panel has interlock pitch equal to width and real profile flag", () => {
             const item = findCatalogItem("LS-3S-150");
             expect(item).toBeDefined();
             expect(item?.width).toBe(150);
             expect(item?.thickness).toBe(15);
             expect(item?.step).toBe(150); // Interlock joint: pitch equals effective width
+            expect(item?.isRealProfile).toBe(true);
+            expect(item?.badgeText).toBe("Tiết diện 3 sóng thật");
+        });
+
+        test("box-representative items carry explicit 'Mẫu thử khối hộp' badge", () => {
+            const boxCodes = ["LH-5050", "LH-10050", "TN-9010"];
+            for (const code of boxCodes) {
+                const item = findCatalogItem(code);
+                expect(item).toBeDefined();
+                expect(item?.isRealProfile).toBe(false);
+                expect(item?.badgeText).toBe("Mẫu thử khối hộp");
+            }
         });
     });
 
@@ -170,6 +183,36 @@ describe("Component Library Plugin", () => {
             // Last copy at 240 mm (4 * 60 mm) along widthDir
             const p4 = matrices[3].ofPoint(p0);
             expect(p4.distanceTo(dir.multiply(240))).toBeLessThan(Precision.Distance);
+        });
+    });
+
+    describe("Authentic 3-Wave Profile Cross-Section (LS-3S-150)", () => {
+        test("profile 2D coordinates span exactly 150 mm width and 15 mm height", () => {
+            const uVals = THREE_WAVE_2D_PROFILE.map(([u]) => u);
+            const vVals = THREE_WAVE_2D_PROFILE.map(([, v]) => v);
+
+            const minU = Math.min(...uVals);
+            const maxU = Math.max(...uVals);
+            const minV = Math.min(...vVals);
+            const maxV = Math.max(...vVals);
+
+            expect(minU).toBe(0);
+            expect(maxU).toBe(150);
+            expect(minV).toBe(0);
+            expect(maxV).toBe(15);
+        });
+
+        test("profile contains 3 distinct crests at height 15 mm", () => {
+            const crests = THREE_WAVE_2D_PROFILE.filter(([, v]) => v === 15);
+            // 3 crests, each having 2 coordinate points (start & end of plateau)
+            expect(crests.length).toBe(6);
+        });
+
+        test("profile base sits at v = 0 on wall face", () => {
+            const basePoints = THREE_WAVE_2D_PROFILE.filter(([, v]) => v === 0);
+            expect(basePoints.length).toBeGreaterThanOrEqual(2);
+            expect(basePoints[0]).toEqual([0, 0]);
+            expect(basePoints[1]).toEqual([150, 0]);
         });
     });
 });

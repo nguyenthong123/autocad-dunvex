@@ -17,6 +17,8 @@ export const CATALOG_ITEMS: CatalogItem[] = [
         defaultColor: "#9c6644",
         description: "Lam hộp gỗ nhựa ngoài trời/trong nhà quy cách chuẩn 50×50 mm, lắp vách trang trí.",
         isVerifiedRealSpec: true,
+        isRealProfile: false,
+        badgeText: "Mẫu thử khối hộp",
         svgPreview: `<svg viewBox="0 0 120 90" width="100%" height="70" xmlns="http://www.w3.org/2000/svg">
             <rect x="35" y="20" width="50" height="50" rx="3" fill="#b07d58" stroke="#5a3825" stroke-width="2" />
             <rect x="42" y="27" width="36" height="36" rx="2" fill="#dfc5b2" stroke="#5a3825" stroke-width="1.2" stroke-dasharray="2 2" />
@@ -45,6 +47,8 @@ export const CATALOG_ITEMS: CatalogItem[] = [
         defaultColor: "#7f5539",
         description: "Lam hộp bản lớn 100×50 mm dùng cho vách sảnh, mặt tiền hoặc trần nan.",
         isVerifiedRealSpec: true,
+        isRealProfile: false,
+        badgeText: "Mẫu thử khối hộp",
         svgPreview: `<svg viewBox="0 0 140 90" width="100%" height="70" xmlns="http://www.w3.org/2000/svg">
             <rect x="20" y="25" width="100" height="40" rx="3" fill="#8f5d38" stroke="#482e1c" stroke-width="2" />
             <rect x="27" y="32" width="40" height="26" rx="2" fill="#dfc5b2" stroke="#482e1c" stroke-width="1" stroke-dasharray="2 2" />
@@ -72,6 +76,8 @@ export const CATALOG_ITEMS: CatalogItem[] = [
         defaultColor: "#b08968",
         description: "Tấm ốp tường lam 3 sóng cao 15 mm, bề rộng hiệu dụng 150 mm, liên kết hèm khóa.",
         isVerifiedRealSpec: true,
+        isRealProfile: true,
+        badgeText: "Tiết diện 3 sóng thật",
         svgPreview: `<svg viewBox="0 0 160 85" width="100%" height="70" xmlns="http://www.w3.org/2000/svg">
             <!-- 3 waves profile -->
             <path d="M 10 50 L 15 50 L 15 35 L 35 35 L 35 50 L 55 50 L 55 35 L 75 35 L 75 50 L 95 50 L 95 35 L 115 35 L 115 50 L 150 50 L 150 54 L 10 54 Z"
@@ -98,6 +104,8 @@ export const CATALOG_ITEMS: CatalogItem[] = [
         defaultColor: "#6f4e37",
         description: "Thanh đa năng bản phẳng 90×10 mm làm nẹp chỉ, ốp trần phẳng hoặc viền vách.",
         isVerifiedRealSpec: true,
+        isRealProfile: false,
+        badgeText: "Mẫu thử khối hộp",
         svgPreview: `<svg viewBox="0 0 140 85" width="100%" height="70" xmlns="http://www.w3.org/2000/svg">
             <rect x="25" y="38" width="90" height="12" rx="1.5" fill="#805b38" stroke="#482e1c" stroke-width="1.6" />
             <!-- Dimension W = 90 -->

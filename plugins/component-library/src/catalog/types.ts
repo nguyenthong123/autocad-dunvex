@@ -27,6 +27,10 @@ export interface CatalogItem {
     readonly description: string;
     /** Whether this is a verified production specification */
     readonly isVerifiedRealSpec: boolean;
+    /** Whether this component builds an authentic parametric extruded profile */
+    readonly isRealProfile?: boolean;
+    /** Badge display text on the card (e.g. "Tiết diện 3 sóng thật" or "Mẫu thử khối hộp") */
+    readonly badgeText?: string;
     /** SVG diagram representation of the profile cross-section */
     readonly svgPreview: string;
 }

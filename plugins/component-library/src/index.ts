@@ -2,10 +2,12 @@
 // See LICENSE file in the project root for full license information.
 
 import type { CommandKeys, Plugin, RibbonGroupKeys, RibbonTabKeys } from "@chili3d/core";
+import { InsertComponentCommand } from "./commands/insertComponentCommand";
 import { OpenLibraryCommand } from "./commands/openLibraryCommand";
+import { QuickArrayCommand } from "./commands/quickArrayCommand";
 
 const ComponentLibraryPlugin: Plugin = {
-    commands: [OpenLibraryCommand],
+    commands: [OpenLibraryCommand, InsertComponentCommand, QuickArrayCommand],
     ribbons: [
         {
             tabName: "ribbon.tab.plugin" as RibbonTabKeys,

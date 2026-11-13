@@ -3,6 +3,7 @@
 
 import {
     cloneForCopyNode,
+    command,
     FolderNode,
     type IApplication,
     type ICommand,
@@ -18,6 +19,14 @@ export interface QuickArrayOptions {
     step?: number;
 }
 
+@command({
+    key: "componentLibrary.quickArray" as any,
+    icon: {
+        type: "path",
+        value: "icons/library.svg",
+    },
+    helpText: "Nhân mảng chi tiết theo bước lắp" as any,
+})
 export class QuickArrayCommand implements ICommand {
     constructor(private readonly options?: QuickArrayOptions) {}
 
@@ -39,8 +48,16 @@ export class QuickArrayCommand implements ICommand {
         }
 
         const sourceNode = selected[0];
-        const plane = (sourceNode as any).plane;
-        if (!plane || !plane.xvec) {
+        let dir: XYZ | undefined;
+
+        const u = sourceNode.userData as any;
+        if (typeof u?.get === "function" && u.get("widthDirX") !== undefined) {
+            dir = new XYZ(u.get("widthDirX"), u.get("widthDirY"), u.get("widthDirZ")).normalize();
+        } else if ((sourceNode as any).plane?.xvec) {
+            dir = ((sourceNode as any).plane.xvec as XYZ).normalize();
+        }
+
+        if (!dir) {
             PubSub.default.pub(
                 "showToast",
                 "Đối tượng đã chọn không có mặt phẳng tọa độ hợp lệ để xác định bước nhân." as any,
@@ -63,39 +80,17 @@ export class QuickArrayCommand implements ICommand {
         // Total count includes original + (count - 1) copies
         const count = this.options?.count && this.options.count >= 2 ? Math.floor(this.options.count) : 5;
 
-        // Array direction: along plane.xvec (transverse to length, in wall plane)
-        const dir = (plane.xvec as XYZ).normalize() ?? XYZ.unitX;
         const offsetVec = dir.multiply(step);
 
         Transaction.execute(document, `Nhân mảng ${count} ${sourceNode.name}`, () => {
-            const newNodes: VisualNode[] = [sourceNode];
-
+            const copies: VisualNode[] = [];
             for (let i = 1; i < count; i++) {
                 const trans = offsetVec.multiply(i);
                 const matrix = Matrix4.fromTranslation(trans.x, trans.y, trans.z);
                 const copyNode = cloneForCopyNode(sourceNode, matrix);
-                newNodes.push(copyNode);
+                copies.push(copyNode);
             }
-
-            // Put copies into model manager
-            const copiesOnly = newNodes.slice(1);
-            const folderName = `Mảng ${sourceNode.name} (${count})`;
-            const folder = new FolderNode({ document, name: folderName });
-
-            const targetParent =
-                sourceNode.parent instanceof FolderNode
-                    ? sourceNode.parent
-                    : (document.modelManager.currentNode ?? document.modelManager.rootNode);
-
-            if (typeof (targetParent as any).add === "function") {
-                (targetParent as any).add(folder);
-            } else if (typeof (targetParent as any).addNode === "function") {
-                (targetParent as any).addNode(folder);
-            } else {
-                document.modelManager.addNode(folder);
-            }
-
-            folder.add(sourceNode, ...copiesOnly);
+            document.modelManager.addNode(...copies);
         });
 
         PubSub.default.pub(

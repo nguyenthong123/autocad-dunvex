@@ -3,6 +3,7 @@
 
 import {
     AsyncController,
+    command,
     type IApplication,
     type ICommand,
     type IFace,
@@ -17,6 +18,7 @@ import {
 import { CATALOG_ITEMS, findCatalogItem } from "../catalog/items";
 import type { CatalogItem, ComponentOrientation } from "../catalog/types";
 import { calculateWallPlacement } from "../geometry/placementHelper";
+import { buildThreeWaveProfileFace } from "../geometry/profileBuilder";
 
 export interface InsertComponentOptions {
     catalogCode: string;
@@ -27,6 +29,14 @@ export interface InsertComponentOptions {
     targetNormal?: XYZ;
 }
 
+@command({
+    key: "componentLibrary.insert" as any,
+    icon: {
+        type: "path",
+        value: "icons/library.svg",
+    },
+    helpText: "Chèn mẫu lam/tấm ốp vào vách" as any,
+})
 export class InsertComponentCommand implements ICommand {
     constructor(private readonly options?: InsertComponentOptions) {}
 
@@ -98,16 +108,39 @@ export class InsertComponentCommand implements ICommand {
 
         const placement = placementRes.value;
 
-        // Create standard BoxNode using Serializer (guarantees serialization compatibility)
-        const node = Serializer.deserializeObject(document, {
-            __cla$$__: "BoxNode",
-            document,
-            plane: placement.plane,
-            dx: item.width,
-            dy: length,
-            dz: item.thickness,
-            name: `${item.name}`,
-        }) as VisualNode;
+        // Create authentic ExtrudeNode for real profiles (e.g. 3-wave panel),
+        // or standard BoxNode for box-representative items.
+        let node: VisualNode;
+        if (item.isRealProfile) {
+            const faceRes = buildThreeWaveProfileFace(
+                application.shapeProvider.factory,
+                placement.plane.origin,
+                placement.widthDir,
+                placement.normalDir,
+                placement.lengthDir,
+            );
+            if (!faceRes.isOk) {
+                PubSub.default.pub("showToast", faceRes.error as any);
+                return;
+            }
+            node = Serializer.deserializeObject(document, {
+                __cla$$__: "ExtrudeNode",
+                document,
+                section: faceRes.value,
+                length,
+                name: `${item.name}`,
+            }) as VisualNode;
+        } else {
+            node = Serializer.deserializeObject(document, {
+                __cla$$__: "BoxNode",
+                document,
+                plane: placement.plane,
+                dx: item.width,
+                dy: length,
+                dz: item.thickness,
+                name: `${item.name}`,
+            }) as VisualNode;
+        }
 
         if (node.userData && typeof (node.userData as any).with === "function") {
             node.userData = (node.userData as any)
@@ -115,6 +148,9 @@ export class InsertComponentCommand implements ICommand {
                 .with("catalogName", item.name)
                 .with("catalogStep", item.step)
                 .with("orientation", orientation)
+                .with("widthDirX", placement.widthDir.x)
+                .with("widthDirY", placement.widthDir.y)
+                .with("widthDirZ", placement.widthDir.z)
                 .with("material", item.material);
         }
 

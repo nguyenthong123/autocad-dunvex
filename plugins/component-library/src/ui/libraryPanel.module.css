@@ -139,6 +139,32 @@
     font-weight: 600;
 }
 
+.cardBadges {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.realProfileBadge {
+    font-size: 10px;
+    padding: 2px 6px;
+    background-color: #1e4620;
+    color: #4ade80;
+    border: 1px solid #2e7d32;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+.boxModelBadge {
+    font-size: 10px;
+    padding: 2px 6px;
+    background-color: #3e3318;
+    color: #fbbf24;
+    border: 1px solid #785c1a;
+    border-radius: 3px;
+    font-weight: 500;
+}
+
 .cardPreview {
     display: flex;
     justify-content: center;
