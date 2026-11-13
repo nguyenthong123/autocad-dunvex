@@ -343,11 +343,19 @@ export class PerformanceProfiler {
     private collectEnvironment(): PerformanceEnvironment {
         let memory: PerformanceEnvironment["memory"] = "unavailable";
         if (typeof performance !== "undefined") {
-            const mem = (performance as unknown as { memory?: Record<string, number> }).memory;
+            const mem = (
+                performance as unknown as {
+                    memory?: {
+                        jsHeapSizeLimit?: number;
+                        totalJSHeapSize?: number;
+                        usedJSHeapSize?: number;
+                    };
+                }
+            ).memory;
             if (mem && typeof mem.usedJSHeapSize === "number") {
                 memory = {
-                    jsHeapSizeLimit: mem.jsHeapSizeLimit,
-                    totalJSHeapSize: mem.totalJSHeapSize,
+                    jsHeapSizeLimit: mem.jsHeapSizeLimit ?? 0,
+                    totalJSHeapSize: mem.totalJSHeapSize ?? 0,
                     usedJSHeapSize: mem.usedJSHeapSize,
                 };
             }

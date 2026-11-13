@@ -105,7 +105,7 @@ describe("Document Autosave & Revision Tracking", () => {
         expect(document.isDirty()).toBe(true);
 
         // Simulate slow storage.put
-        let finishPut: () => void;
+        let finishPut: (() => void) | undefined;
         const putPromise = new Promise<void>((resolve) => {
             finishPut = resolve;
         });
@@ -132,7 +132,7 @@ describe("Document Autosave & Revision Tracking", () => {
         Transaction.add(document, new PropertyHistoryRecord(dummy, "val", 1, 2));
 
         // Let the first save finish
-        finishPut?.();
+        (finishPut as any)?.();
         await savePromise;
 
         // Even though the first save finished, the document has the in-flight edit (val = 2)
@@ -171,7 +171,7 @@ describe("Document Autosave & Revision Tracking", () => {
         Transaction.add(document, new PropertyHistoryRecord(dummy, "val", "", "A"));
 
         // Trigger autosave/save A, held in-flight
-        let resolvePutA: () => void;
+        let resolvePutA: (() => void) | undefined;
         const putAPromise = new Promise<void>((resolve) => {
             resolvePutA = resolve;
         });
@@ -215,7 +215,7 @@ describe("Document Autosave & Revision Tracking", () => {
         expect(passBCalled).toBe(false);
 
         // Now let save A finish
-        resolvePutA?.();
+        (resolvePutA as any)?.();
         await autoSavePromise;
 
         // Wait for close to finish (which must execute save B)
@@ -230,8 +230,8 @@ describe("Document Autosave & Revision Tracking", () => {
         // Reopen document and verify state B is preserved!
         const reopenedDoc = await Document.open(mockApp, document.id);
         expect(reopenedDoc).toBeDefined();
-        expect((reopenedDoc?.userData as Record<string, unknown> | undefined)?.state).toBe("B");
-        expect(savedDocs[1].isClosing).toBe(true);
+        expect((reopenedDoc?.userData as any)?.state).toBe("B");
+        expect((savedDocs[1] as any).isClosing).toBe(true);
         reopenedDoc?.dispose();
     });
 
@@ -383,8 +383,8 @@ describe("Document Autosave & Revision Tracking", () => {
         // Reopen document and verify state C is strictly preserved!
         const reopenedDoc = await Document.open(mockApp, document.id);
         expect(reopenedDoc).toBeDefined();
-        expect((reopenedDoc?.userData as Record<string, unknown> | undefined)?.state).toBe("C");
-        expect(savedDocs[savedDocs.length - 1].isClosing).toBe(true);
+        expect((reopenedDoc?.userData as any)?.state).toBe("C");
+        expect((savedDocs[savedDocs.length - 1] as any).isClosing).toBe(true);
         reopenedDoc?.dispose();
     });
 });

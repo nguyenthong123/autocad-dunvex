@@ -68,6 +68,7 @@ export interface PubSubEventMap {
     nodeDoubleClicked: (node: INode) => void;
     openCommandContext: (command: ICommand) => void;
     parentVisibleChanged: (model: INode) => void;
+    performanceProfilerStateChanged: (state: { isRecording: boolean; eventCount: number }) => void;
     /**
      * A confirm/cancel bar for a step that is not a selection — a drag that edits a
      * value, say. `showSelectionControl` carries the picked-shape count, which means

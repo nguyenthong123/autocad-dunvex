@@ -68,6 +68,8 @@ export class Document extends Observable implements IDocument {
 
     private _lastSavedUndoTop: IHistoryRecord | undefined = undefined;
     private _lastSavedEvictedCount = 0;
+    private _lastSavedRevision = 0;
+    private _lastSavedUndoCount = 0;
     private _isSaving = false;
     private _isClosingInProgress = false;
     private readonly _queuedWaiters: Array<{

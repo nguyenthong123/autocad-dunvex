@@ -401,7 +401,7 @@ export class ManualReader extends HTMLElement {
                         profiler.startRecording();
                     }
                     profiler.markJank("user_freeze_marked");
-                    PubSub.default.pub("showToast", "Đã đánh dấu điểm khựng vào timeline hiệu năng");
+                    PubSub.default.pub("showToast", "Đã đánh dấu điểm khựng vào timeline hiệu năng" as any);
                     this.renderDiagnosticsView();
                 },
             },
