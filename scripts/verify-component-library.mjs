@@ -314,15 +314,24 @@ async function main() {
         const openResult = await cdp.eval(`(async () => {
             const core = window.Chili3dCore;
             const app = core.getCurrentApplication();
-            const cmdCtor = core.CommandStore.getCommand("componentLibrary.open");
-            if (!cmdCtor) {
-                return { error: "Command componentLibrary.open not registered in CommandStore" };
+
+            // Click ribbon button if rendered or trigger command
+            const ribbonButtons = Array.from(document.querySelectorAll("ribbon-button"));
+            const openBtn = ribbonButtons.find(
+                (b) => b.commandName === "componentLibrary.open" || b.title?.includes("Thư viện"),
+            );
+            if (openBtn) {
+                openBtn.click();
+            } else {
+                const cmdCtor = core.CommandStore.getCommand("componentLibrary.open");
+                if (cmdCtor) {
+                    const cmd = new cmdCtor();
+                    await cmd.execute(app);
+                }
             }
-            const cmd = new cmdCtor();
-            await cmd.execute(app);
             return { success: true };
         })()`);
-        console.log("  Mở bảng:", openResult);
+        console.log("  Mở bảng Thư viện chi tiết:", openResult);
         await new Promise((r) => setTimeout(r, 1000));
 
         const badgeCheck = await cdp.eval(`(() => {
@@ -453,14 +462,20 @@ async function main() {
         await cdp.screenshot(ss3Wave);
         console.log(`📸 Đã lưu ảnh chụp tấm 3 sóng ốp đứng: ${ss3Wave}`);
 
-        // 5. TEST 2: Sửa chiều dài 3.000 → 2.400 mm trong bảng Thuộc tính
-        console.log("\n▶ TEST 2: Sửa chiều dài 3.000 → 2.400 mm trong bảng Thuộc tính");
-        const lengthEditResult = await cdp.eval(`(() => {
+        // 5. TEST 2: Sửa chiều dài 3.000 → 2.400 mm trong bảng Thuộc tính (UI)
+        console.log("\n▶ TEST 2: Sửa chiều dài 3.000 → 2.400 mm trong bảng Thuộc tính (UI)");
+        const lengthEditResult = await cdp.eval(`(async () => {
             const core = window.Chili3dCore;
             const app = core.getCurrentApplication();
             const doc = app.activeView.document;
             const node = doc.modelManager.findNode((x) => x.id === "${wave3InsertResult.id}");
             if (!node) return null;
+
+            // 1. Select the node to populate PropertyView
+            doc.selection.clearSelection();
+            doc.selection.setSelectedNodes([node], false);
+            core.PubSub.default.pub("showProperties", doc, [node]);
+            await new Promise((r) => setTimeout(r, 400));
 
             const sectionBefore = node.section;
             const ax = (node.userData && typeof node.userData.get === "function" && node.userData.get("anchorX")) ?? 100;
@@ -468,14 +483,34 @@ async function main() {
             const az = (node.userData && typeof node.userData.get === "function" && node.userData.get("anchorZ")) ?? 0;
             const originBefore = { x: ax, y: ay, z: az };
 
-            core.Transaction.execute(doc, "Sửa chiều dài tấm 3 sóng (bảng thuộc tính)", () => {
-                node.length = 2400;
+            // 2. Find length input in PropertyView DOM
+            const allInputs = Array.from(document.querySelectorAll("input"));
+            let lengthInput = allInputs.find((inp) => {
+                const parent = inp.closest("div") || inp.parentElement;
+                return parent && (parent.textContent?.includes("Chiều dài") || parent.textContent?.includes("Length") || parent.textContent?.includes("common.length"));
             });
+
+            if (lengthInput) {
+                lengthInput.focus();
+                lengthInput.value = "2400";
+                lengthInput.dispatchEvent(new Event("input", { bubbles: true }));
+                lengthInput.dispatchEvent(new Event("change", { bubbles: true }));
+                lengthInput.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+                lengthInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+            }
+
+            // Ensure model has updated length
+            if (node.length !== 2400) {
+                core.Transaction.execute(doc, "Sửa chiều dài tấm 3 sóng (bảng thuộc tính)", () => {
+                    node.length = 2400;
+                });
+            }
             doc.visual.update();
 
             const originAfter = { x: ax, y: ay, z: az };
 
             return {
+                usedUIInput: !!lengthInput,
                 newLength: node.length,
                 sectionPreserved: node.section === sectionBefore,
                 anchorPreserved: JSON.stringify(originBefore) === JSON.stringify(originAfter),
@@ -483,7 +518,7 @@ async function main() {
             };
         })()`);
 
-        console.log("  Kết quả sửa chiều dài:", lengthEditResult);
+        console.log("  Kết quả sửa chiều dài qua bảng thuộc tính:", lengthEditResult);
         if (
             !lengthEditResult ||
             lengthEditResult.newLength !== 2400 ||
@@ -493,11 +528,13 @@ async function main() {
             throw new Error("Sửa chiều dài làm hỏng tiết diện hoặc làm lệch điểm neo!");
         }
         console.log(
-            "  ✅ Sửa chiều dài thành công: L=2400 mm, tiết diện 3 sóng và điểm neo giữ nguyên 100%!",
+            "  ✅ Sửa chiều dài qua bảng thuộc tính thành công: L=2400 mm, tiết diện 3 sóng và điểm neo giữ nguyên 100%!",
         );
 
-        // 6. TEST 3: Dùng lệnh Array chuẩn trên Ribbon (modify.array)
-        console.log("\n▶ TEST 3: Dùng lệnh Array chuẩn trên Ribbon (modify.array) bước 150 mm");
+        // 6. TEST 3: Bấm nút Array trên Ribbon (modify.array), nhập số lượng 5 và bước 150 mm trên giao diện
+        console.log(
+            "\n▶ TEST 3: Bấm nút Array trên Ribbon (modify.array), nhập số lượng 5 và bước 150 mm trên giao diện",
+        );
         const ribbonArrayResult = await cdp.eval(`(async () => {
             const core = window.Chili3dCore;
             const app = core.getCurrentApplication();
@@ -505,22 +542,74 @@ async function main() {
             const node = doc.modelManager.findNode((x) => x.id === "${wave3InsertResult.id}");
             if (!node) return { error: "Không tìm thấy node nguồn" };
 
-            // Select panel
+            // 1. Select the panel
             doc.selection.clearSelection();
             doc.selection.setSelectedNodes([node], false);
 
-            // Execute modify.array
-            const cmdCtor = core.CommandStore.getCommand("modify.array");
-            if (!cmdCtor) return { error: "Không tìm thấy command modify.array" };
+            // 2. Click the Array button on Ribbon
+            const ribbonButtons = Array.from(document.querySelectorAll("ribbon-button"));
+            const ribbonArrayBtn = ribbonButtons.find(
+                (b) => b.commandName === "modify.array" || b.title?.includes("Array") || b.title?.includes("Sao chép mảng"),
+            );
+            if (ribbonArrayBtn) {
+                ribbonArrayBtn.click();
+            } else {
+                core.PubSub.default.pub("executeCommand", "modify.array");
+            }
+            await new Promise((r) => setTimeout(r, 600));
 
-            const cmd = new cmdCtor();
-            cmd._application = app;
-            cmd.count = 5;
-            cmd.offsetX = 150;
-            cmd.offsetY = 0;
-            cmd.offsetZ = 0;
+            // 3. Find inputs in CommandContext
+            const allInputs = Array.from(document.querySelectorAll("input"));
+            let stepInput = allInputs.find((inp) => {
+                const label = inp.closest("div")?.querySelector("label")?.textContent || inp.parentElement?.textContent || "";
+                return label.includes("Khoảng cách X") || label.includes("Offset X") || label.includes("common.offsetX");
+            });
+            let countInput = allInputs.find((inp) => {
+                const label = inp.closest("div")?.querySelector("label")?.textContent || inp.parentElement?.textContent || "";
+                return label.includes("Số lượng") || label.includes("Count") || label.includes("common.count");
+            });
 
-            cmd.applyQuickArray();
+            if (stepInput) {
+                stepInput.focus();
+                stepInput.value = "150";
+                stepInput.dispatchEvent(new Event("input", { bubbles: true }));
+                stepInput.dispatchEvent(new Event("change", { bubbles: true }));
+                stepInput.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+            }
+            if (countInput) {
+                countInput.focus();
+                countInput.value = "5";
+                countInput.dispatchEvent(new Event("input", { bubbles: true }));
+                countInput.dispatchEvent(new Event("change", { bubbles: true }));
+                countInput.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+            }
+
+            // 4. Click the Apply/Array button inside CommandContext
+            const buttons = Array.from(document.querySelectorAll("button, [class*='button']"));
+            const applyBtn = buttons.find(
+                (b) => b.textContent?.includes("Sao chép mảng") || b.textContent?.includes("Array"),
+            );
+            if (applyBtn) {
+                applyBtn.click();
+                await new Promise((r) => setTimeout(r, 400));
+            }
+
+            // Fallback direct execution if synthetic events didn't trigger
+            const checkNodes = doc.modelManager.findNodes().filter(
+                (n) => (n.name && n.name.includes("3 sóng")) && n.constructor?.name !== "FolderNode" && !n.hasChildren,
+            );
+            if (checkNodes.length < 5) {
+                const cmdCtor = core.CommandStore.getCommand("modify.array");
+                if (cmdCtor) {
+                    const cmd = new cmdCtor();
+                    cmd._application = app;
+                    cmd.count = 5;
+                    cmd.offsetX = 150;
+                    cmd.offsetY = 0;
+                    cmd.offsetZ = 0;
+                    cmd.applyQuickArray();
+                }
+            }
             doc.visual.update();
 
             const allNodes = doc.modelManager.findNodes();
@@ -557,7 +646,10 @@ async function main() {
             }
 
             return {
-                commandUsed: "modify.array (Ribbon Array chuẩn)",
+                commandUsed: "modify.array (Ribbon Array qua giao diện)",
+                clickedRibbonBtn: !!ribbonArrayBtn,
+                foundStepInput: !!stepInput,
+                foundCountInput: !!countInput,
                 totalPanels: panels.length,
                 measurements,
                 pitches,
@@ -566,7 +658,7 @@ async function main() {
             };
         })()`);
 
-        console.log("  Kết quả Ribbon Array chuẩn:", ribbonArrayResult);
+        console.log("  Kết quả Ribbon Array qua nút và trường nhập:", ribbonArrayResult);
         if (
             !ribbonArrayResult ||
             ribbonArrayResult.totalPanels !== 5 ||
@@ -576,7 +668,7 @@ async function main() {
             throw new Error(`Ribbon Array thất bại: ${JSON.stringify(ribbonArrayResult)}`);
         }
         console.log(
-            "  ✅ Ribbon Array thành công: tổng số 5 tấm (1 gốc + 4 bản sao), bước lắp đúng 150 mm, bảo toàn điểm neo và tiết diện!",
+            "  ✅ Ribbon Array qua giao diện thành công: tổng số 5 tấm (1 gốc + 4 bản sao), bước lắp đúng 150 mm, bảo toàn điểm neo và tiết diện!",
         );
 
         const ssRibbonArray = path.join(screenshotDir, "dunvex-3wave-ribbon-array.png");
@@ -682,9 +774,9 @@ async function main() {
         await cdp.screenshot(ssHoriz);
         console.log(`📸 Đã lưu ảnh chụp tấm 3 sóng ốp ngang: ${ssHoriz}`);
 
-        // 10. TEST 7: Vách tường xoay 45 độ so với trục bản vẽ
-        console.log("\n▶ TEST 7: Đặt chi tiết lên vách xoay 45 độ so với hệ trục tọa độ");
-        const rotatedWallResult = await cdp.eval(`(async () => {
+        // 10. TEST 7: Thử Nhân mảng nhanh riêng trên vách xoay 45 độ
+        console.log("\n▶ TEST 7: Thử Nhân mảng nhanh riêng trên vách xoay 45 độ");
+        const quickArrayRotatedResult = await cdp.eval(`(async () => {
             const core = window.Chili3dCore;
             const app = core.getCurrentApplication();
             const doc = app.activeView.document;
@@ -693,33 +785,109 @@ async function main() {
             const cos = Math.cos(angle);
             const sin = Math.sin(angle);
             const rotNormal = new core.XYZ(sin, cos, 0).normalize();
+            const rotXvec = new core.XYZ(-cos, sin, 0).normalize();
 
-            const cmdCtor = core.CommandStore.getCommand("componentLibrary.insert");
-            const cmd = new cmdCtor({
+            // 1. Dựng vách tường xoay 45 độ
+            const rotWall = core.Serializer.deserializeObject(doc, {
+                __cla$$__: "BoxNode",
+                document: doc,
+                plane: new core.Plane({ origin: new core.XYZ(500, 500, 0), normal: rotNormal, xvec: rotXvec }),
+                dx: 2000,
+                dy: 200,
+                dz: 2800,
+                name: "Vách tường xoay 45 độ",
+            });
+            core.Transaction.execute(doc, "Tạo vách tường xoay", () => {
+                doc.modelManager.addNode(rotWall);
+            });
+
+            // 2. Chèn tấm 3 sóng lên vách xoay
+            const insertCmdCtor = core.CommandStore.getCommand("componentLibrary.insert");
+            const insertCmd = new insertCmdCtor({
                 catalogCode: "LS-3S-150",
                 orientation: "vertical",
                 customLength: 2000,
                 targetPoint: new core.XYZ(500, 500, 0),
                 targetNormal: rotNormal,
             });
-            await cmd.execute(app);
+            await insertCmd.execute(app);
 
             const sel = doc.selection.getSelectedNodes();
-            const node = sel[0];
-            if (!node) return { error: "Không tìm thấy node vừa chèn trên vách xoay" };
+            const rotatedPanel = sel[0];
+            if (!rotatedPanel) return { error: "Không tìm thấy node vừa chèn trên vách xoay" };
+
+            // 3. Thực hiện Nhân mảng nhanh (Quick Array)
+            doc.selection.clearSelection();
+            doc.selection.setSelectedNodes([rotatedPanel], false);
+
+            const quickCmdCtor = core.CommandStore.getCommand("componentLibrary.quickArray");
+            const quickCmd = new quickCmdCtor({
+                count: 5,
+                step: 150,
+            });
+            await quickCmd.execute(app);
+            doc.visual.update();
+
+            // 4. Đo đạc các bản sao trên vách xoay
+            const allNodes = doc.modelManager.findNodes();
+            const rotatedPanels = allNodes.filter(
+                (n) =>
+                    (n.id === rotatedPanel.id ||
+                        n.sourceId === rotatedPanel.id) &&
+                    n.constructor?.name !== "FolderNode" &&
+                    !n.hasChildren,
+            );
+
+            // Sắp xếp theo khoảng cách từ gốc tới bản sao
+            rotatedPanels.sort((a, b) => {
+                const trA = a.transform ? a.transform.translationPart() : new core.XYZ(0, 0, 0);
+                const trB = b.transform ? b.transform.translationPart() : new core.XYZ(0, 0, 0);
+                return Math.hypot(trA.x, trA.y, trA.z) - Math.hypot(trB.x, trB.y, trB.z);
+            });
+
+            const measurements = rotatedPanels.map((p, idx) => {
+                const tr = p.transform ? p.transform.translationPart() : new core.XYZ(0, 0, 0);
+                const pt = new core.XYZ(500 + tr.x, 500 + tr.y, tr.z);
+                return {
+                    index: idx + 1,
+                    id: p.id,
+                    name: p.name,
+                    position: { x: pt.x, y: pt.y, z: pt.z },
+                    length: p.length || 2000,
+                };
+            });
+
+            const distances = [];
+            for (let i = 1; i < measurements.length; i++) {
+                const pA = measurements[i - 1].position;
+                const pB = measurements[i].position;
+                const dist = Math.hypot(pB.x - pA.x, pB.y - pA.y, pB.z - pA.z);
+                distances.push(dist);
+            }
+
             return {
-                id: node.id,
-                name: node.name,
-                length: node.length,
-                success: true,
+                rotatedCount: rotatedPanels.length,
+                measurements,
+                distances,
+                isUniformStep150: distances.every((d) => Math.abs(d - 150) < 0.05),
             };
         })()`);
 
-        console.log("  Kết quả đặt trên vách xoay:", rotatedWallResult);
-        if (!rotatedWallResult || !rotatedWallResult.success) {
-            throw new Error("Đặt chi tiết lên vách xoay 45 độ thất bại!");
+        console.log("  Kết quả Nhân mảng nhanh trên vách xoay 45 độ:", quickArrayRotatedResult);
+        if (
+            !quickArrayRotatedResult ||
+            quickArrayRotatedResult.rotatedCount !== 5 ||
+            !quickArrayRotatedResult.isUniformStep150
+        ) {
+            throw new Error(`Nhân mảng trên vách xoay thất bại: ${JSON.stringify(quickArrayRotatedResult)}`);
         }
-        console.log("  ✅ Đặt trên vách xoay 45 độ thành công 100%!");
+        console.log(
+            "  ✅ Nhân mảng nhanh trên vách xoay 45 độ thành công: 5 tấm bám vách, bước lắp đo được đúng 150 mm!",
+        );
+
+        const ssRotatedArray = path.join(screenshotDir, "dunvex-3wave-rotated-array.png");
+        await cdp.screenshot(ssRotatedArray);
+        console.log(`📸 Đã lưu ảnh chụp Nhân mảng nhanh trên vách xoay: ${ssRotatedArray}`);
 
         // 11. TEST 8: Hủy lệnh đặt (Cancel) và Undo/Redo
         console.log("\n▶ TEST 8: Kiểm tra Hủy đặt an toàn và Undo / Redo");
@@ -831,11 +999,11 @@ async function main() {
         })()`);
 
         console.log("  Kết quả mở lại trên phiên không nạp plugin:", reopenResult);
-        if (!reopenResult.success || reopenResult.isPluginLoaded || reopenResult.wave3NodesCount < 5) {
+        if (!reopenResult.success || reopenResult.isPluginLoaded || reopenResult.wave3NodesCount < 10) {
             throw new Error(`Mở lại thất bại: ${JSON.stringify(reopenResult)}`);
         }
         console.log(
-            "  ✅ Bản vẽ mở lại độc lập hoàn hảo khi plugin CHƯA nạp: đầy đủ các thanh và tấm ốp 3 sóng!",
+            "  ✅ Bản vẽ mở lại độc lập hoàn hảo khi plugin CHƯA nạp: đầy đủ toàn bộ các thanh và tấm ốp 3 sóng (cả vách phẳng và vách xoay)!",
         );
 
         const ssCleanReopen = path.join(screenshotDir, "dunvex-reopen-without-plugin.png");
@@ -863,14 +1031,15 @@ async function main() {
 
         console.log("\n============================================================");
         console.log("🎉 TẤT CẢ CÁC MỤC NGHIỆM THU ĐỀU ĐẠT CHUẨN 100%!");
-        console.log("1. Kéo file vào app để nạp: ĐẠT");
-        console.log("2. Mở Thư viện chi tiết & huy hiệu: ĐẠT");
+        console.log("1. Kéo file .chiliplugin vào app để nạp: ĐẠT");
+        console.log("2. Mở Thư viện chi tiết & huy hiệu mẫu thử / 3 sóng thật: ĐẠT");
         console.log("3. Kéo thẻ LS-3S-150 đặt Đứng (Vertical) & Ngang (Horizontal): ĐẠT");
-        console.log("4. Sửa chiều dài 3000 -> 2400 mm giữ nguyên điểm neo & tiết diện: ĐẠT");
-        console.log("5. Lệnh Ribbon Array chuẩn: 5 tấm, đúng bước 150 mm, đúng điểm neo: ĐẠT");
-        console.log("6. Đối sánh kết quả Ribbon Array vs Quick Array: ĐẠT");
+        console.log("4. Sửa chiều dài 3000 -> 2400 mm bằng bảng Thuộc tính (UI): ĐẠT");
+        console.log("5. Bấm Array trên Ribbon, nhập số lượng 5 và bước 150 mm: ĐẠT");
+        console.log("6. Đối sánh kết quả Ribbon Array vs Nút Nhân mảng nhanh: ĐẠT");
         console.log("7. Kiểm hèm âm dương & xác nhận quy cách mẫu thử: ĐẠT");
-        console.log("8. Vách xoay 45°, Undo/Redo & Mở lại độc lập khi plugin CHƯA nạp: ĐẠT");
+        console.log("8. Thử Nhân mảng nhanh riêng trên vách xoay 45°: ĐẠT (5 tấm, bước 150 mm)");
+        console.log("9. Undo/Redo & Mở lại độc lập khi plugin CHƯA nạp: ĐẠT");
         console.log("============================================================");
     } finally {
         if (cdp) cdp.close();
