@@ -1,7 +1,7 @@
 // Part of the Chili3d Project, under the AGPL-3.0 License.
 // See LICENSE file in the project root for full license information.
 
-import { Group, InstancedMesh, type Material } from "three";
+import { type BufferGeometry, Group, InstancedMesh, type Material } from "three";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 import { Constants } from "./constants";
@@ -9,10 +9,28 @@ import { ThreeGeometry } from "./threeGeometry";
 import { ThreeGeometryFactory } from "./threeGeometryFactory";
 import type { ThreeVisualContext } from "./threeVisualContext";
 
-interface BatchEntry {
+export interface BatchEntry {
     facesMesh?: InstancedMesh;
     edgesLine?: LineSegments2;
     edgesGeometry?: LineSegmentsGeometry;
+    members: ThreeGeometry[];
+}
+
+interface MemberSnapshot {
+    visual: ThreeGeometry;
+    key: string;
+    matrixElements: Float64Array;
+    facesGeometry?: BufferGeometry;
+    facesPosAttr?: unknown;
+    facesMaterial?: Material;
+    facesColorHex?: number;
+    facesOpacity?: number;
+    facesMaterialVersion?: number;
+    edgesPosArray?: Float32Array | number[];
+    edgesGeometry?: LineSegmentsGeometry;
+    edgesMaterial?: Material;
+    edgesColorHex?: number;
+    edgesMaterialVersion?: number;
 }
 
 /**
@@ -26,8 +44,8 @@ export class BodyInstanceBatchManager {
     readonly group = new Group();
     private readonly _batches = new Map<string, BatchEntry>();
     private readonly _batchedGeometries = new Set<ThreeGeometry>();
+    private _lastSnapshots: MemberSnapshot[] = [];
     private _dirty = true;
-    private _lastSignature = 0;
     private _lastIsolated = false;
 
     constructor(private readonly context: ThreeVisualContext) {
@@ -35,29 +53,44 @@ export class BodyInstanceBatchManager {
         this.group.matrixAutoUpdate = false;
     }
 
+    get batches(): ReadonlyMap<string, BatchEntry> {
+        return this._batches;
+    }
+
     markDirty(): void {
         this._dirty = true;
     }
 
     sync(isolated: boolean): void {
-        const signature = this.computeSignature(isolated);
-        if (!this._dirty && isolated === this._lastIsolated && signature === this._lastSignature) {
+        const eligibleVisuals: ThreeGeometry[] = [];
+        if (!isolated) {
+            for (const visual of this.context.visuals()) {
+                if (visual instanceof ThreeGeometry && visual.isBatchEligible()) {
+                    eligibleVisuals.push(visual);
+                }
+            }
+        }
+
+        if (
+            !this._dirty &&
+            isolated === this._lastIsolated &&
+            this.snapshotsMatch(eligibleVisuals, this._lastSnapshots)
+        ) {
             return;
         }
+
         this._dirty = false;
         this._lastIsolated = isolated;
-        this._lastSignature = signature;
+        this._lastSnapshots = eligibleVisuals.map((v) => this.captureSnapshot(v));
 
         this.clearBatches();
 
-        if (isolated) {
+        if (isolated || eligibleVisuals.length === 0) {
             return;
         }
 
         const groups = new Map<string, ThreeGeometry[]>();
-        for (const visual of this.context.visuals()) {
-            if (!(visual instanceof ThreeGeometry)) continue;
-            if (!visual.isBatchEligible()) continue;
+        for (const visual of eligibleVisuals) {
             const key = visual.batchGroupKey();
             if (!key) continue;
             let list = groups.get(key);
@@ -81,31 +114,72 @@ export class BodyInstanceBatchManager {
         }
     }
 
-    private computeSignature(isolated: boolean): number {
-        let hash = isolated ? 17 : 31;
-        for (const visual of this.context.visuals()) {
-            if (!(visual instanceof ThreeGeometry)) continue;
-            if (!visual.isBatchCandidateNode()) continue;
-            const eligible = visual.isBatchEligible() ? 1 : 0;
-            hash = (hash * 31 + visual.id) | 0;
-            hash = (hash * 31 + eligible) | 0;
-            if (eligible) {
-                const e = visual.matrixWorld.elements;
-                hash = (hash * 31 + ((e[12] * 10) | 0)) | 0;
-                hash = (hash * 31 + ((e[13] * 10) | 0)) | 0;
-                hash = (hash * 31 + ((e[14] * 10) | 0)) | 0;
-                hash = (hash * 31 + ((e[0] * 1000) | 0)) | 0;
-                hash = (hash * 31 + ((e[5] * 1000) | 0)) | 0;
+    private captureSnapshot(visual: ThreeGeometry): MemberSnapshot {
+        const faces = visual.faces();
+        const edges = visual.edges();
+        const faceMat = (faces && !Array.isArray(faces.material) ? faces.material : undefined) as any;
+        const edgeMat = edges?.material as any;
+        return {
+            visual,
+            key: visual.batchGroupKey() ?? "",
+            matrixElements: new Float64Array(visual.matrixWorld.elements),
+            facesGeometry: faces?.geometry,
+            facesPosAttr: faces?.geometry.getAttribute("position"),
+            facesMaterial: faceMat,
+            facesColorHex: faceMat?.color?.isColor ? faceMat.color.getHex() : undefined,
+            facesOpacity: faceMat?.opacity,
+            facesMaterialVersion: faceMat?.version,
+            edgesPosArray: visual.geometryNode.mesh?.edges?.position,
+            edgesGeometry: edges?.geometry,
+            edgesMaterial: edgeMat,
+            edgesColorHex: edgeMat?.color?.isColor ? edgeMat.color.getHex() : undefined,
+            edgesMaterialVersion: edgeMat?.version,
+        };
+    }
+
+    private snapshotsMatch(current: ThreeGeometry[], previous: MemberSnapshot[]): boolean {
+        if (current.length !== previous.length) return false;
+        for (let i = 0; i < current.length; i++) {
+            const vis = current[i];
+            const snap = previous[i];
+            if (vis !== snap.visual) return false;
+            if ((vis.batchGroupKey() ?? "") !== snap.key) return false;
+
+            const e = vis.matrixWorld.elements;
+            const se = snap.matrixElements;
+            for (let m = 0; m < 16; m++) {
+                if (e[m] !== se[m]) return false;
             }
+
+            const faces = vis.faces();
+            const faceMat = (faces && !Array.isArray(faces.material) ? faces.material : undefined) as any;
+            if (faces?.geometry !== snap.facesGeometry) return false;
+            if (faces?.geometry.getAttribute("position") !== snap.facesPosAttr) return false;
+            if (faceMat !== snap.facesMaterial) return false;
+            if ((faceMat?.color?.isColor ? faceMat.color.getHex() : undefined) !== snap.facesColorHex) {
+                return false;
+            }
+            if (faceMat?.opacity !== snap.facesOpacity) return false;
+            if (faceMat?.version !== snap.facesMaterialVersion) return false;
+
+            const edges = vis.edges();
+            const edgeMat = edges?.material as any;
+            if (vis.geometryNode.mesh?.edges?.position !== snap.edgesPosArray) return false;
+            if (edges?.geometry !== snap.edgesGeometry) return false;
+            if (edgeMat !== snap.edgesMaterial) return false;
+            if ((edgeMat?.color?.isColor ? edgeMat.color.getHex() : undefined) !== snap.edgesColorHex) {
+                return false;
+            }
+            if (edgeMat?.version !== snap.edgesMaterialVersion) return false;
         }
-        return hash;
+        return true;
     }
 
     private buildBatch(members: ThreeGeometry[]): BatchEntry | undefined {
         const first = members[0];
         const firstFaces = first.faces();
         const firstEdges = first.edges();
-        const entry: BatchEntry = {};
+        const entry: BatchEntry = { members: [...members] };
 
         if (firstFaces && !Array.isArray(firstFaces.material)) {
             const instanced = new InstancedMesh(
@@ -129,6 +203,7 @@ export class BodyInstanceBatchManager {
             const merged = new Float32Array(members.length * stride);
             let out = 0;
             for (let i = 0; i < members.length; i++) {
+                const memberPos = members[i].geometryNode.mesh?.edges?.position ?? rawEdgePos;
                 const e = members[i].matrixWorld.elements;
                 const e0 = e[0];
                 const e1 = e[1];
@@ -142,10 +217,11 @@ export class BodyInstanceBatchManager {
                 const e12 = e[12];
                 const e13 = e[13];
                 const e14 = e[14];
-                for (let j = 0; j < stride; j += 3) {
-                    const x = rawEdgePos[j];
-                    const y = rawEdgePos[j + 1];
-                    const z = rawEdgePos[j + 2];
+                const len = Math.min(stride, memberPos.length);
+                for (let j = 0; j < len; j += 3) {
+                    const x = memberPos[j];
+                    const y = memberPos[j + 1];
+                    const z = memberPos[j + 2];
                     merged[out++] = e0 * x + e4 * y + e8 * z + e12;
                     merged[out++] = e1 * x + e5 * y + e9 * z + e13;
                     merged[out++] = e2 * x + e6 * y + e10 * z + e14;
@@ -188,6 +264,7 @@ export class BodyInstanceBatchManager {
 
     dispose(): void {
         this.clearBatches();
+        this._lastSnapshots = [];
         this.group.parent?.remove(this.group);
     }
 }

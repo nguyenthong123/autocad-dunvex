@@ -71,6 +71,7 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
     private _generated = false;
     private _disposed = false;
     private _worldBox?: Box3;
+    private _worldBoxMatrix?: Float64Array;
     private _batched = false;
     private _hasTempFaceMaterial = false;
     private _hasTempEdgeMaterial = false;
@@ -100,13 +101,36 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
     override updateWorldMatrix(updateParents?: boolean, updateChildren?: boolean): void {
         super.updateWorldMatrix(updateParents, updateChildren);
         this._worldBox = undefined;
+        this.context?.markInstanceBatchesDirty?.();
+    }
+
+    override updateMatrixWorld(force?: boolean): void {
+        super.updateMatrixWorld(force);
+        this._worldBox = undefined;
+        this.context?.markInstanceBatchesDirty?.();
     }
 
     worldBox(): Box3 | undefined {
-        if (this._worldBox !== undefined) return this._worldBox;
+        const e = this.matrixWorld.elements;
+        if (this._worldBox !== undefined && this._worldBoxMatrix !== undefined) {
+            let same = true;
+            for (let i = 0; i < 16; i++) {
+                if (e[i] !== this._worldBoxMatrix[i]) {
+                    same = false;
+                    break;
+                }
+            }
+            if (same) return this._worldBox;
+        }
         const localBox = this.box();
         if (!localBox || localBox.isEmpty()) return undefined;
         this._worldBox = localBox.clone().applyMatrix4(this.matrixWorld);
+        if (!this._worldBoxMatrix) {
+            this._worldBoxMatrix = new Float64Array(16);
+        }
+        for (let i = 0; i < 16; i++) {
+            this._worldBoxMatrix[i] = e[i];
+        }
         return this._worldBox;
     }
 
@@ -155,8 +179,15 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
         if (!this.isBatchCandidateNode()) return undefined;
         const node = this.geometryNode as any;
         const matId = typeof node.materialId === "string" ? node.materialId : "";
-        const edgeMatId = this._edgeParts[0]?.material.uuid ?? "";
-        return `${node.sourceId}::${matId}::${edgeMatId}`;
+        const faceMat = (
+            this._faces && !Array.isArray(this._faces.material) ? this._faces.material : undefined
+        ) as any;
+        const faceColor = faceMat?.color?.isColor ? faceMat.color.getHex() : "";
+        const faceOpacity = faceMat?.opacity ?? "";
+        const edgeMat = this._edgeParts[0]?.material as any;
+        const edgeMatId = edgeMat?.uuid ?? "";
+        const edgeColor = edgeMat?.color?.isColor ? edgeMat.color.getHex() : "";
+        return `${node.sourceId}::${matId}::${faceColor}::${faceOpacity}::${edgeMatId}::${edgeColor}`;
     }
 
     get isBatched(): boolean {
@@ -273,6 +304,7 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
         this.updateEffectiveFaceMaterial();
         if (!this._faces) {
             this.updateEdgeMaterials();
+            this.context?.markInstanceBatchesDirty?.();
             return;
         }
 
@@ -281,6 +313,7 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
         } else {
             this._faces.material = this._effectiveFaceMaterial!;
         }
+        this.context?.markInstanceBatchesDirty?.();
     }
 
     get renderOnTop(): boolean {
@@ -468,6 +501,7 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
         this._vertexs.visible = !pickOnly;
         if (this._renderOnTop) this.applyOnTopMaterial(this._vertexs, defaultVertexMaterial);
         this.add(this._vertexs);
+        this._vertexs.updateWorldMatrix(true, false);
     }
 
     private initEdges(data: EdgeMeshData) {

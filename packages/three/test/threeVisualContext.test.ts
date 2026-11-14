@@ -8,14 +8,22 @@ import {
     type IVisual,
     type IVisualObject,
     Material,
-    type Matrix4,
+    Matrix4,
     MeshNode,
     ShapeTypes,
     type VisualNode,
     VisualStates,
 } from "@chili3d/core";
 import { createMockVisual, TestDocument } from "@chili3d/core/test-utils";
-import { Group, MeshBasicMaterial, type MeshPhysicalMaterial, Object3D, Scene, Texture } from "three";
+import {
+    Group,
+    MeshBasicMaterial,
+    type MeshPhysicalMaterial,
+    Object3D,
+    Scene,
+    Texture,
+    Matrix4 as ThreeMatrix4,
+} from "three";
 import { hilightEdgeMaterial } from "../src/materials";
 import { ThreeGeometry } from "../src/threeGeometry";
 import { ThreeVisualContext } from "../src/threeVisualContext";
@@ -560,43 +568,54 @@ describe("ThreeVisualContext (real instance)", () => {
     });
 
     describe("BodyInstanceBatchManager integration", () => {
-        test("syncInstanceBatches batches eligible BodyInstanceNode visuals and keeps highlighted edges on Wireframe layer", () => {
-            const mat = new MeshBasicMaterial();
-            context.materialMap.set("mat-inst", mat);
+        function createBatchedPair(ctx: ThreeVisualContext, len = 10) {
+            const mat = new MeshBasicMaterial({ color: 0xcc2222 });
+            ctx.materialMap.set("mat-inst", mat);
 
             const makeInstanceVisual = (id: string, xOffset: number) => {
                 const node = createTestGeometryNode({
                     materialId: "mat-inst",
-                    faces: {
-                        position: new Float32Array([0, 0, 0, 10, 0, 0, 0, 10, 0]),
-                        normal: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
-                        uv: new Float32Array([0, 0, 1, 0, 0, 1]),
-                        index: new Uint32Array([0, 1, 2]),
-                        groups: [],
-                        range: [],
-                        color: 0xcccccc,
-                    },
                     edges: {
-                        position: new Float32Array([0, 0, 0, 10, 0, 0]),
+                        position: new Float32Array([0, 0, 0, len, 0, 0]),
                         color: 0x333333,
                         lineType: "solid",
                         range: [{ start: 0, count: 2, shape: { id: `${id}-e1` } as any }],
                     },
                 });
+                node.mesh.faces = {
+                    position: new Float32Array([0, 0, 0, len, 0, 0, 0, len, 0]),
+                    normal: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+                    uv: new Float32Array([0, 0, 1, 0, 0, 1]),
+                    index: new Uint32Array([0, 1, 2]),
+                    groups: [],
+                    range: [{ start: 0, count: 3, shape: { id: `${id}-f1` } as any }],
+                    color: 0xcccccc,
+                } as any;
+                node.mesh.vertexs = {
+                    position: new Float32Array([0, 0, 0, len, 0, 0]),
+                    range: [
+                        { start: 0, count: 1, shape: { id: `${id}-v1` } as any },
+                        { start: 1, count: 1, shape: { id: `${id}-v2` } as any },
+                    ],
+                    size: 3,
+                    color: 0x0000ff,
+                } as any;
                 (node as any).isInstance = true;
                 (node as any).sourceId = "src-panel-1";
-                const geo = new ThreeGeometry(node, context);
-                geo.position.set(xOffset, 0, 0);
-                geo.updateMatrixWorld(true);
-                context.visualShapes.add(geo);
-                return geo;
+                const geo = new ThreeGeometry(node, ctx);
+                geo.transform = Matrix4.fromTranslation(xOffset, 0, 0);
+                ctx.visualShapes.add(geo);
+                return { node, geo };
             };
 
-            const g1 = makeInstanceVisual("inst-1", 0);
-            const g2 = makeInstanceVisual("inst-2", 150);
+            const first = makeInstanceVisual("inst-1", 0);
+            const second = makeInstanceVisual("inst-2", 150);
+            ctx.syncInstanceBatches(false);
+            return { mat, g1: first.geo, g2: second.geo, n1: first.node, n2: second.node };
+        }
 
-            context.markInstanceBatchesDirty();
-            context.syncInstanceBatches(false);
+        test("syncInstanceBatches batches eligible BodyInstanceNode visuals and keeps highlighted edges on Wireframe layer", () => {
+            const { g1, g2 } = createBatchedPair(context);
 
             expect(g1.isBatched).toBe(true);
             expect(g2.isBatched).toBe(true);
@@ -612,6 +631,142 @@ describe("ThreeVisualContext (real instance)", () => {
             g1.removeTemperaryMaterial();
             expect(g1.edgeLines()[0].layers.isEnabled(3)).toBe(true);
             expect(g1.edgeLines()[0].layers.isEnabled(1)).toBe(false);
+        });
+
+        test("sub-0.1mm translation (0.05 mm) updates batched faces, batched edges, worldBox selection bounds, and OSNAP sub-shapes", () => {
+            const { g1 } = createBatchedPair(context);
+
+            // Translate g1 by 0.05 mm in X (under 0.1 mm threshold of old integer quantization)
+            g1.transform = Matrix4.fromTranslation(0.05, 0, 0);
+            // Even if _dirty were false, snapshotsMatch must detect the 0.05 mm difference
+            (context.instanceBatchManager as any)._dirty = false;
+            context.syncInstanceBatches(false);
+
+            const batch = [...context.instanceBatchManager.batches.values()][0];
+            expect(batch).toBeDefined();
+
+            // 1. Batched face InstancedMesh matrix updated
+            const instMat = new ThreeMatrix4();
+            batch.facesMesh!.getMatrixAt(0, instMat);
+            expect(instMat.elements[12]).toBeCloseTo(0.05, 5);
+
+            // 2. Batched edge LineSegments2 start/end buffer updated
+            const startAttr = batch.edgesGeometry!.getAttribute("instanceStart");
+            const endAttr = batch.edgesGeometry!.getAttribute("instanceEnd");
+            expect(startAttr.getX(0)).toBeCloseTo(0.05, 5);
+            expect(endAttr.getX(0)).toBeCloseTo(10.05, 5);
+
+            // 3. Selection / worldBox updated
+            const wbox = g1.worldBox()!;
+            expect(wbox.min.x).toBeCloseTo(0.05, 5);
+            expect(wbox.max.x).toBeCloseTo(10.05, 5);
+
+            // 4. OSNAP sub-shapes (faces, edges, and on-demand vertices) updated
+            expect(g1.faces()!.matrixWorld.elements[12]).toBeCloseTo(0.05, 5);
+            expect(g1.edgeLines()[0].matrixWorld.elements[12]).toBeCloseTo(0.05, 5);
+            const vertexVisual = g1.subShapeVisual(ShapeTypes.vertex)[0];
+            expect(vertexVisual.matrixWorld.elements[12]).toBeCloseTo(0.05, 5);
+        });
+
+        test("rotation that preserves e[0], e[5], e[12], e[13], e[14] (+30 deg -> -30 deg around Z) updates batch, worldBox, and OSNAP", () => {
+            const { g1 } = createBatchedPair(context);
+
+            const radPos30 = (30 * Math.PI) / 180;
+            const radNeg30 = (-30 * Math.PI) / 180;
+            g1.transform = Matrix4.fromAxisRad({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }, radPos30);
+            context.syncInstanceBatches(false);
+
+            const eBefore = [...g1.matrixWorld.elements];
+
+            // Rotate from +30° to -30° around Z: cos(-30°) === cos(+30°), so e[0], e[5], e[12], e[13], e[14] stay identical!
+            g1.transform = Matrix4.fromAxisRad({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }, radNeg30);
+            const eAfter = [...g1.matrixWorld.elements];
+            expect(eAfter[0]).toBeCloseTo(eBefore[0], 7);
+            expect(eAfter[5]).toBeCloseTo(eBefore[5], 7);
+            expect(eAfter[12]).toBe(eBefore[12]);
+            expect(eAfter[13]).toBe(eBefore[13]);
+            expect(eAfter[14]).toBe(eBefore[14]);
+            expect(eAfter[1]).toBeCloseTo(-eBefore[1], 7);
+
+            // Even if _dirty were false, snapshotsMatch must detect the off-diagonal rotation change
+            (context.instanceBatchManager as any)._dirty = false;
+            context.syncInstanceBatches(false);
+
+            const batch = [...context.instanceBatchManager.batches.values()][0];
+            const instMat = new ThreeMatrix4();
+            batch.facesMesh!.getMatrixAt(0, instMat);
+            expect(instMat.elements[1]).toBeCloseTo(-0.5, 5);
+            expect(instMat.elements[4]).toBeCloseTo(0.5, 5);
+
+            // Batched edge endpoint (10, 0, 0) rotated by -30° around Z has Y = -5 instead of +5
+            const endAttr = batch.edgesGeometry!.getAttribute("instanceEnd");
+            expect(endAttr.getX(0)).toBeCloseTo(10 * Math.cos(radNeg30), 4);
+            expect(endAttr.getY(0)).toBeCloseTo(-5, 4);
+
+            // Selection worldBox and OSNAP sub-shapes reflect -30°
+            const wbox = g1.worldBox()!;
+            expect(wbox.min.y).toBeCloseTo(-5, 4);
+            expect(g1.faces()!.matrixWorld.elements[1]).toBeCloseTo(-0.5, 5);
+            expect(g1.edgeLines()[0].matrixWorld.elements[1]).toBeCloseTo(-0.5, 5);
+            const vertexVisual = g1.subShapeVisual(ShapeTypes.vertex)[0];
+            expect(vertexVisual.matrixWorld.elements[1]).toBeCloseTo(-0.5, 5);
+        });
+
+        test("changing material color or instance materialId updates batched group", () => {
+            const { g1, g2 } = createBatchedPair(context);
+
+            // 1. Change material color in-place via changeFaceMaterial
+            const updatedMat = new MeshBasicMaterial({ color: 0x00ff88 });
+            context.materialMap.set("mat-inst", updatedMat);
+            g1.changeFaceMaterial(updatedMat);
+            g2.changeFaceMaterial(updatedMat);
+            context.syncInstanceBatches(false);
+
+            const batchAfterColor = [...context.instanceBatchManager.batches.values()][0];
+            expect((batchAfterColor.facesMesh!.material as MeshBasicMaterial).color.getHex()).toBe(0x00ff88);
+
+            // 2. Change materialId on g1 alone -> g1 and g2 no longer share a batch group
+            const mat2 = new MeshBasicMaterial({ color: 0x1122ff });
+            context.materialMap.set("mat-2", mat2);
+            (g1.geometryNode as any).materialId = "mat-2";
+            g1.changeFaceMaterial(mat2);
+            context.syncInstanceBatches(false);
+
+            expect(context.instanceBatchManager.batches.size).toBe(0);
+            expect(g1.isBatched).toBe(false);
+            expect(g2.isBatched).toBe(false);
+        });
+
+        test("modifying source geometry updates batched faces, batched edges, worldBox, and OSNAP", () => {
+            const { g1, g2, n1, n2 } = createBatchedPair(context, 10);
+
+            // Simulate source geometry lengthening from 10 to 25
+            for (const n of [n1, n2]) {
+                n.mesh.faces!.position = new Float32Array([0, 0, 0, 25, 0, 0, 0, 10, 0]);
+                n.mesh.edges!.position = new Float32Array([0, 0, 0, 25, 0, 0]);
+                n.mesh.vertexs!.position = new Float32Array([0, 0, 0, 25, 0, 0]);
+            }
+            g1.rebuildMesh();
+            g2.rebuildMesh();
+            context.syncInstanceBatches(false);
+
+            const batch = [...context.instanceBatchManager.batches.values()][0];
+            expect(batch).toBeDefined();
+
+            // Batched face geometry reflects length 25
+            const facePos = batch.facesMesh!.geometry.getAttribute("position");
+            expect(facePos.getX(1)).toBeCloseTo(25, 5);
+
+            // Batched edge geometry reflects length 25 for g1 (0 -> 25) and g2 (150 -> 175)
+            const endAttr = batch.edgesGeometry!.getAttribute("instanceEnd");
+            expect(endAttr.getX(0)).toBeCloseTo(25, 5);
+            expect(endAttr.getX(1)).toBeCloseTo(175, 5);
+
+            // Selection worldBox and OSNAP sub-shapes reflect length 25
+            expect(g1.worldBox()!.max.x).toBeCloseTo(25, 5);
+            expect(g2.worldBox()!.max.x).toBeCloseTo(175, 5);
+            const vPos = g1.subShapeVisual(ShapeTypes.vertex)[0].geometry.getAttribute("position");
+            expect(vPos.getX(1)).toBeCloseTo(25, 5);
         });
     });
 });

@@ -209,6 +209,7 @@ export class ThreeVisualContext implements IVisualContext {
             }
         }
 
+        this._instanceBatchManager.markDirty();
         this.visual.update();
     };
 
@@ -308,6 +309,10 @@ export class ThreeVisualContext implements IVisualContext {
         this.scene.remove(this.visualShapes, this.tempShapes);
     }
 
+    get instanceBatchManager(): BodyInstanceBatchManager {
+        return this._instanceBatchManager;
+    }
+
     markInstanceBatchesDirty(): void {
         this._instanceBatchManager.markDirty();
     }
@@ -325,7 +330,9 @@ export class ThreeVisualContext implements IVisualContext {
 
     redrawNode(models: INode[]) {
         const lockedStates = new Map<INode, boolean>();
+        const sourceIds = new Set<string>();
         for (const node of models) {
+            if (node.id) sourceIds.add(node.id);
             const visual = this.getVisual(node);
             if (visual) lockedStates.set(node, visual.locked);
         }
@@ -337,6 +344,18 @@ export class ThreeVisualContext implements IVisualContext {
             const visual = this.getVisual(node);
             if (visual) visual.locked = locked;
         }
+
+        if (sourceIds.size > 0) {
+            for (const visual of this._NodeVisualMap.values()) {
+                if (visual instanceof ThreeGeometry) {
+                    const srcId = (visual.geometryNode as any)?.sourceId;
+                    if (typeof srcId === "string" && sourceIds.has(srcId)) {
+                        visual.rebuildMesh();
+                    }
+                }
+            }
+        }
+        this._instanceBatchManager.markDirty();
     }
 
     get shapeCount() {
@@ -549,6 +568,8 @@ export class ThreeVisualContext implements IVisualContext {
             if (visual instanceof Object3D) {
                 parentNode.remove(visual);
                 newParentNode.add(visual);
+                visual.updateWorldMatrix(true, true);
+                this._instanceBatchManager.markDirty();
             }
         }
     }
@@ -563,6 +584,9 @@ export class ThreeVisualContext implements IVisualContext {
                 }
             }
         });
+        if (nodes.length > 0) {
+            this._instanceBatchManager.markDirty();
+        }
     }
 
     private displayNode(node: INode) {
@@ -613,6 +637,9 @@ export class ThreeVisualContext implements IVisualContext {
             visual.parent?.remove(visual);
             visual.dispose();
         });
+        if (models.length > 0) {
+            this._instanceBatchManager.markDirty();
+        }
     }
 
     private getParentVisual(node: INode): Group {
