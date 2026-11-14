@@ -6,6 +6,8 @@ export class Constants {
         Default: 0,
         Wireframe: 1,
         Solid: 2,
+        BatchedWireframe: 3,
+        BatchedSolid: 4,
         Isolation: 30,
     });
 }

@@ -20,6 +20,7 @@ import {
     VisualConfig,
 } from "@chili3d/core";
 import {
+    type Box3,
     type Color,
     type Material,
     Mesh,
@@ -67,6 +68,12 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
     private _ownsFaceMaterial = false;
     private _vertexs?: Points;
     private _renderOnTop = false;
+    private _generated = false;
+    private _disposed = false;
+    private _worldBox?: Box3;
+    private _batched = false;
+    private _hasTempFaceMaterial = false;
+    private _hasTempEdgeMaterial = false;
 
     get ownsFaceMaterial(): boolean {
         return this._ownsFaceMaterial;
@@ -78,8 +85,95 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
     ) {
         super(geometryNode);
         this._faceMaterial = context.getMaterial(geometryNode.materialId);
-        this.generateShape();
+        if (geometryNode.visible !== false && geometryNode.parentVisible !== false) {
+            this.generateShape();
+        }
         geometryNode.onPropertyChanged(this.handleGeometryPropertyChanged);
+    }
+
+    private ensureGenerated(): void {
+        if (!this._generated && !this._disposed) {
+            this.generateShape();
+        }
+    }
+
+    override updateWorldMatrix(updateParents?: boolean, updateChildren?: boolean): void {
+        super.updateWorldMatrix(updateParents, updateChildren);
+        this._worldBox = undefined;
+    }
+
+    worldBox(): Box3 | undefined {
+        if (this._worldBox !== undefined) return this._worldBox;
+        const localBox = this.box();
+        if (!localBox || localBox.isEmpty()) return undefined;
+        this._worldBox = localBox.clone().applyMatrix4(this.matrixWorld);
+        return this._worldBox;
+    }
+
+    isBatchCandidateNode(): boolean {
+        const node = this.geometryNode as any;
+        return Boolean(
+            (node.isInstance === true || node.constructor?.name === "BodyInstanceNode") &&
+                typeof node.sourceId === "string" &&
+                node.sourceId.length > 0,
+        );
+    }
+
+    isBatchEligible(): boolean {
+        if (!this.isBatchCandidateNode()) return false;
+        if (
+            !this.visible ||
+            this.geometryNode.visible === false ||
+            this.geometryNode.parentVisible === false
+        ) {
+            return false;
+        }
+        if (this.locked || this._renderOnTop || this._hasTempFaceMaterial) {
+            return false;
+        }
+        const node = this.geometryNode as any;
+        if (Array.isArray(node.materialId) || (node.faceMaterialPair && node.faceMaterialPair.length > 0)) {
+            return false;
+        }
+        this.ensureGenerated();
+        if (!this._faces || Array.isArray(this._faces.material) || this._faces.geometry.groups.length > 1) {
+            return false;
+        }
+        if (this._edgeParts.length > 1) {
+            return false;
+        }
+        if (this._edgeParts.length === 1 && this._edgeParts[0].lineType === "dash") {
+            return false;
+        }
+        if (this.matrixWorld.determinant() <= 0) {
+            return false;
+        }
+        return true;
+    }
+
+    batchGroupKey(): string | undefined {
+        if (!this.isBatchCandidateNode()) return undefined;
+        const node = this.geometryNode as any;
+        const matId = typeof node.materialId === "string" ? node.materialId : "";
+        const edgeMatId = this._edgeParts[0]?.material.uuid ?? "";
+        return `${node.sourceId}::${matId}::${edgeMatId}`;
+    }
+
+    get isBatched(): boolean {
+        return this._batched;
+    }
+
+    setBatchedState(batched: boolean): void {
+        this._batched = batched;
+        if (this._faces) {
+            this._faces.layers.set(batched ? Constants.Layers.BatchedSolid : Constants.Layers.Solid);
+        }
+        for (const part of this._edgeParts) {
+            const useWireframe = !batched || this._hasTempEdgeMaterial;
+            part.line.layers.set(
+                useWireframe ? Constants.Layers.Wireframe : Constants.Layers.BatchedWireframe,
+            );
+        }
     }
 
     private hasCustomFaceMaterial(): boolean {
@@ -231,6 +325,7 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
     }
 
     box() {
+        this.ensureGenerated();
         // Fast path: at most one edge run and no points — nothing to union (a body's own
         // edges cannot stick out past its faces), and the geometry's live box can be
         // returned as-is. Rect picks call this once per visual, so skip the copies.
@@ -269,13 +364,18 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
     private readonly handleGeometryPropertyChanged = (property: keyof GeometryNode) => {
         if (property === "materialId") {
             this.changeFaceMaterial(this.context.getMaterial(this.geometryNode.materialId));
+            this.context.markInstanceBatchesDirty?.();
         } else if ((property as keyof ShapeNode) === "shape") {
             this.removeMeshes();
-            this.generateShape();
+            if (this.geometryNode.visible !== false && this.geometryNode.parentVisible !== false) {
+                this.generateShape();
+            }
+            this.context.markInstanceBatchesDirty?.();
         }
     };
 
     private generateShape() {
+        this._generated = true;
         const mesh = this.geometryNode.mesh;
         const faces = mesh?.faces;
         const edges = mesh?.edges;
@@ -298,6 +398,7 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
         this.removeMeshes();
         this.generateShape();
         this.updateWorldMatrix(true, true);
+        this.context.markInstanceBatchesDirty?.();
     }
 
     /**
@@ -316,12 +417,17 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
     }
 
     override dispose() {
+        this._disposed = true;
         super.dispose();
         this.geometryNode.removePropertyChanged(this.handleGeometryPropertyChanged);
         this.removeMeshes();
+        this.context.markInstanceBatchesDirty?.();
     }
 
     private removeMeshes() {
+        this._generated = false;
+        this._worldBox = undefined;
+        this._batched = false;
         if (this._vertexs) {
             this.disposeOnTopMaterial(this._vertexs);
             this.remove(this._vertexs);
@@ -505,11 +611,22 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
     }
 
     setFacesMateiralTemperary(material: MeshLambertMaterial) {
-        if (this._faces) this._faces.material = material;
+        this.ensureGenerated();
+        this._hasTempFaceMaterial = true;
+        if (this._faces) {
+            this._faces.material = material;
+            this._faces.layers.set(Constants.Layers.Solid);
+        }
+        this.context.markInstanceBatchesDirty?.();
     }
 
     setEdgesMateiralTemperary(material: LineMaterial) {
-        for (const part of this._edgeParts) part.line.material = material;
+        this.ensureGenerated();
+        this._hasTempEdgeMaterial = true;
+        for (const part of this._edgeParts) {
+            part.line.material = material;
+            part.line.layers.set(Constants.Layers.Wireframe);
+        }
     }
 
     setVertexsMateiralTemperary(material: PointsMaterial) {
@@ -517,12 +634,21 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
     }
 
     removeTemperaryMaterial(): void {
+        const hadTempFace = this._hasTempFaceMaterial;
+        this._hasTempFaceMaterial = false;
+        this._hasTempEdgeMaterial = false;
         if (this._vertexs) this._vertexs.material = defaultVertexMaterial;
         for (const part of this._edgeParts) {
             if (part.line.material !== lockLineMaterial) part.line.material = part.material;
+            part.line.layers.set(
+                this._batched ? Constants.Layers.BatchedWireframe : Constants.Layers.Wireframe,
+            );
         }
         const effective = this._effectiveFaceMaterial ?? this._faceMaterial;
-        if (this._faces && this._faces.material !== lockFaceMaterial) this._faces.material = effective;
+        if (this._faces && this._faces.material !== lockFaceMaterial) {
+            this._faces.material = effective;
+            this._faces.layers.set(this._batched ? Constants.Layers.BatchedSolid : Constants.Layers.Solid);
+        }
         // restore the on-top state the temporary material replaced
         if (this._renderOnTop) {
             if (this._vertexs) this.applyOnTopMaterial(this._vertexs, defaultVertexMaterial);
@@ -533,9 +659,13 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
             if (this._faces && this._faces.material !== lockFaceMaterial)
                 this.applyOnTopMaterial(this._faces, effective);
         }
+        if (hadTempFace) {
+            this.context.markInstanceBatchesDirty?.();
+        }
     }
 
     cloneSubEdge(index: number) {
+        this.ensureGenerated();
         const positions = MeshUtils.subEdge(this.geometryNode.mesh.edges!, index);
         if (!positions) return undefined;
 
@@ -547,6 +677,7 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
     }
 
     cloneSubFace(index: number) {
+        this.ensureGenerated();
         const mesh = MeshUtils.subFace(this.geometryNode.mesh.faces!, index);
         if (!mesh) return undefined;
 
@@ -557,19 +688,23 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
     }
 
     faces() {
+        this.ensureGenerated();
         return this._faces;
     }
 
     edges() {
+        this.ensureGenerated();
         return this._edgeParts[0]?.line;
     }
 
     /** Every edge line object — several when the mesh mixes line types (`initEdges` splits it). */
     edgeLines(): LineSegments2[] {
+        this.ensureGenerated();
         return this._edgeParts.map((x) => x.line);
     }
 
     vertexs() {
+        this.ensureGenerated();
         return this._vertexs;
     }
 
@@ -601,6 +736,7 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
     }
 
     override subShapeVisual(shapeType: ShapeType): (Mesh | LineSegments2 | Points)[] {
+        this.ensureGenerated();
         const shapes: (Mesh | LineSegments2 | Points | undefined)[] = [];
 
         const isWhole =
@@ -638,6 +774,7 @@ export class ThreeGeometry extends ThreeVisualObject implements IVisualGeometry 
     }
 
     override wholeVisual(): (Mesh | LineSegments2 | Points)[] {
+        this.ensureGenerated();
         return [...this.edgeLines(), this.faces(), this.vertexs()].filter(
             (x) => x !== undefined && x !== null,
         );

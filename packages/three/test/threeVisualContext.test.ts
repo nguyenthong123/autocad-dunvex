@@ -16,6 +16,7 @@ import {
 } from "@chili3d/core";
 import { createMockVisual, TestDocument } from "@chili3d/core/test-utils";
 import { Group, MeshBasicMaterial, type MeshPhysicalMaterial, Object3D, Scene, Texture } from "three";
+import { hilightEdgeMaterial } from "../src/materials";
 import { ThreeGeometry } from "../src/threeGeometry";
 import { ThreeVisualContext } from "../src/threeVisualContext";
 import { createTestGeometryNode } from "./mocks";
@@ -555,6 +556,62 @@ describe("ThreeVisualContext (real instance)", () => {
             expect(id).toBeGreaterThan(0);
 
             context.removeMesh(id);
+        });
+    });
+
+    describe("BodyInstanceBatchManager integration", () => {
+        test("syncInstanceBatches batches eligible BodyInstanceNode visuals and keeps highlighted edges on Wireframe layer", () => {
+            const mat = new MeshBasicMaterial();
+            context.materialMap.set("mat-inst", mat);
+
+            const makeInstanceVisual = (id: string, xOffset: number) => {
+                const node = createTestGeometryNode({
+                    materialId: "mat-inst",
+                    faces: {
+                        position: new Float32Array([0, 0, 0, 10, 0, 0, 0, 10, 0]),
+                        normal: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+                        uv: new Float32Array([0, 0, 1, 0, 0, 1]),
+                        index: new Uint32Array([0, 1, 2]),
+                        groups: [],
+                        range: [],
+                        color: 0xcccccc,
+                    },
+                    edges: {
+                        position: new Float32Array([0, 0, 0, 10, 0, 0]),
+                        color: 0x333333,
+                        lineType: "solid",
+                        range: [{ start: 0, count: 2, shape: { id: `${id}-e1` } as any }],
+                    },
+                });
+                (node as any).isInstance = true;
+                (node as any).sourceId = "src-panel-1";
+                const geo = new ThreeGeometry(node, context);
+                geo.position.set(xOffset, 0, 0);
+                geo.updateMatrixWorld(true);
+                context.visualShapes.add(geo);
+                return geo;
+            };
+
+            const g1 = makeInstanceVisual("inst-1", 0);
+            const g2 = makeInstanceVisual("inst-2", 150);
+
+            context.markInstanceBatchesDirty();
+            context.syncInstanceBatches(false);
+
+            expect(g1.isBatched).toBe(true);
+            expect(g2.isBatched).toBe(true);
+            // Individual edges move to BatchedWireframe (3) while unselected
+            expect(g1.edgeLines()[0].layers.isEnabled(3)).toBe(true);
+            expect(g1.edgeLines()[0].layers.isEnabled(1)).toBe(false);
+
+            // Selecting/highlighting g1 keeps g1 batched for faces, but promotes g1's own 3px edge outline to Wireframe (1)
+            g1.setEdgesMateiralTemperary(hilightEdgeMaterial);
+            expect(g1.edgeLines()[0].layers.isEnabled(1)).toBe(true);
+
+            // Clearing state returns g1's edge to BatchedWireframe (3)
+            g1.removeTemperaryMaterial();
+            expect(g1.edgeLines()[0].layers.isEnabled(3)).toBe(true);
+            expect(g1.edgeLines()[0].layers.isEnabled(1)).toBe(false);
         });
     });
 });

@@ -377,6 +377,10 @@ export class Viewport extends HTMLElement {
     };
 
     private readonly pointerOut = (event: PointerEvent) => {
+        const related = event.relatedTarget as Node | null;
+        if (related && this.contains(related)) {
+            return;
+        }
         this.handleEvent("pointerOut", event);
     };
 

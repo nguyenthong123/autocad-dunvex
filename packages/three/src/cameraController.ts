@@ -45,7 +45,7 @@ const PAN_SPEED_FACTOR = 0.002;
 const CAMERA_FOV = 50;
 const CAMERA_NEAR = 0.1;
 const CAMERA_FAR = 1e6;
-const MIN_CARME_TO_TARGET = 50;
+const MIN_CARME_TO_TARGET = 2;
 const SHAPE_EMPTY_SIZE = 800;
 // A frame that arrives late (a background tab waking up) must not skip the whole fly-to.
 const MAX_TRANSITION_STEP_MS = 100;
@@ -161,6 +161,8 @@ export class CameraController extends Observable implements ICameraController {
         } else {
             camera.layers.enableAll();
         }
+        camera.layers.disable(Constants.Layers.BatchedWireframe);
+        camera.layers.disable(Constants.Layers.BatchedSolid);
     }
 
     pan(dx: number, dy: number): void {
@@ -183,6 +185,7 @@ export class CameraController extends Observable implements ICameraController {
         this._camera.position.copy(this._position);
         this._camera.lookAt(this._target);
         this._camera.updateProjectionMatrix();
+        this._camera.updateMatrixWorld();
         this.emitPropertyChanged("cameraPosition", oldValue);
     }
 
@@ -501,9 +504,23 @@ export class CameraController extends Observable implements ICameraController {
         this._lastZoomDeltaSign = deltaSign;
 
         const vector = this._target.clone().sub(this._position);
+        const dirNormal = vector.clone().normalize();
 
-        const zoomFactor = this.caclueZoomFactor(x, y, vector);
+        const rawZoomFactor = this.caclueZoomFactor(x, y, vector);
+        const zoomFactor =
+            delta <= 0 ? Math.min(rawZoomFactor, ZOOM_SPEED_FACTOR) : Math.min(rawZoomFactor, 0.5);
         const scale = delta > 0 ? zoomFactor : -zoomFactor;
+
+        if (
+            delta < 0 &&
+            this._cachedZoomIntersect &&
+            this._position.distanceTo(this._cachedZoomIntersect) <= MIN_CARME_TO_TARGET
+        ) {
+            this.updateLens();
+            this.updateCameraPosionTarget();
+            return;
+        }
+
         let mouse = this.mouseToWorld(x, y);
         if (this._camera instanceof PerspectiveCamera) {
             mouse = this.caculePerspectiveCameraMouse(vector, mouse);
@@ -511,10 +528,19 @@ export class CameraController extends Observable implements ICameraController {
         const targetMoveVector = this._target.clone().sub(mouse).multiplyScalar(scale);
         this._target.add(targetMoveVector);
         this._position.copy(this._target.clone().sub(vector.clone().multiplyScalar(1 + scale)));
-        if (vector.length() < MIN_CARME_TO_TARGET) {
-            this._target = this._position
-                .clone()
-                .add(vector.clone().normalize().multiplyScalar(MIN_CARME_TO_TARGET));
+
+        if (delta < 0 && this._cachedZoomIntersect && this._camera instanceof PerspectiveCamera) {
+            const newHitDist = this._position.distanceTo(this._cachedZoomIntersect);
+            const curTargetDist = this._target.distanceTo(this._position);
+            if (newHitDist < curTargetDist) {
+                this._target
+                    .copy(this._position)
+                    .addScaledVector(dirNormal, Math.max(MIN_CARME_TO_TARGET, newHitDist));
+            }
+        }
+
+        if (this._target.distanceTo(this._position) < MIN_CARME_TO_TARGET) {
+            this._target = this._position.clone().addScaledVector(dirNormal, MIN_CARME_TO_TARGET);
         }
 
         this.updateLens();
@@ -578,6 +604,15 @@ export class CameraController extends Observable implements ICameraController {
             intersect = null;
             if (candidates.length > 0) {
                 const raycaster = new Raycaster();
+                if (this.view.mode === "wireframe") {
+                    raycaster.layers.enable(Constants.Layers.Wireframe);
+                    raycaster.layers.enable(Constants.Layers.BatchedWireframe);
+                } else {
+                    raycaster.layers.enable(Constants.Layers.Solid);
+                    raycaster.layers.enable(Constants.Layers.BatchedSolid);
+                    raycaster.layers.enable(Constants.Layers.Wireframe);
+                    raycaster.layers.enable(Constants.Layers.BatchedWireframe);
+                }
                 raycaster.setFromCamera(this.view.screenToCameraRect(x, y), this.camera);
                 const hits = raycaster.intersectObjects(candidates);
                 for (const hit of hits) {
@@ -613,7 +648,7 @@ export class CameraController extends Observable implements ICameraController {
         }
 
         const nearPlane = Math.max(0.01, Math.min(distance / 1000, distance / 10));
-        const farPlane = Math.max(1000, distance * 100);
+        const farPlane = Math.max(20000, distance * 100);
 
         this.camera.near = nearPlane;
         this.camera.far = farPlane;
@@ -623,7 +658,12 @@ export class CameraController extends Observable implements ICameraController {
         const directionNormal = direction.clone().normalize();
         const dot = mouse.clone().sub(this._position).dot(directionNormal);
         const project = this._position.clone().add(directionNormal.clone().multiplyScalar(dot));
-        const length = (project.distanceTo(mouse) * direction.length()) / project.distanceTo(this._position);
+        const projDist = project.distanceTo(this._position);
+        const offsetDist = project.distanceTo(mouse);
+        if (projDist <= 1e-6 || offsetDist <= 1e-6) {
+            return this._target.clone();
+        }
+        const length = (offsetDist * direction.length()) / projDist;
         const v = mouse.clone().sub(project).normalize().multiplyScalar(length);
         mouse = this._target.clone().add(v);
         return mouse;

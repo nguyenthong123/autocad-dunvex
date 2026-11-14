@@ -463,6 +463,44 @@ describe("CameraController — zoom", () => {
             expect(cached).not.toBeNull();
             expect(cached.z).toBeCloseTo(50, 1);
         });
+
+        test("close-up zoom hits Solid and BatchedSolid layers and stops at 2mm without punching through", () => {
+            const view = createFakeView();
+            const cc = new CameraController(view);
+            cc.setSize(800, 600);
+            // Camera at z = 500 looking toward origin, while _target sits far behind the wall at z = -3000
+            cc.lookAt(new Vector3(0, 0, 500), new Vector3(0, 0, -3000), new Vector3(0, 1, 0), {
+                duration: 0,
+            });
+
+            // Front wall at z = 400 on Constants.Layers.Solid (like ThreeGeometry._faces)
+            const geomWall = new BufferGeometry();
+            geomWall.setAttribute(
+                "position",
+                new BufferAttribute(
+                    new Float32Array([
+                        -500, -500, 400, 500, -500, 400, 500, 500, 400, -500, -500, 400, 500, 500, 400, -500,
+                        500, 400,
+                    ]),
+                    3,
+                ),
+            );
+            const meshWall = new Mesh(geomWall, new MeshBasicMaterial({ side: 2 }));
+            meshWall.layers.set(Constants.Layers.Solid);
+            view.content.visualShapes.add(meshWall);
+            view.content.visualShapes.updateMatrixWorld(true);
+
+            // Zoom in 40 times toward the wall at z = 400
+            for (let i = 0; i < 40; i++) {
+                cc.zoom(400, 300, -100);
+            }
+
+            // Camera must NOT punch through z = 400; it must stop ~1.8-2.0 mm in front of the wall
+            expect(cc.cameraPosition.z).toBeGreaterThanOrEqual(401.8);
+            expect(cc.cameraPosition.z).toBeLessThan(415);
+            // Far plane must remain >= 20,000 mm even when zoomed within 2-10 mm of the surface
+            expect(cc.camera.far).toBeGreaterThanOrEqual(20000);
+        });
     });
 });
 

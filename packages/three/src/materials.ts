@@ -2,9 +2,30 @@
 // See LICENSE file in the project root for full license information.
 
 import { VisualConfig, type VisualItemConfig } from "@chili3d/core";
-import { DoubleSide, MeshLambertMaterial, PointsMaterial } from "three";
+import { DoubleSide, MeshLambertMaterial, PointsMaterial, ShaderLib } from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { ThreeHelper } from "./threeHelper";
+
+// Bias LineMaterial segments slightly toward the camera in view space so 2D screen-aligned
+// wide line quads (whose clip.z has zero derivative perpendicular to the line) do not lose
+// fragments against adjacent shallow-angle or Tier-1 polygonOffset solid faces.
+const LINE_CAMERA_SPACE_ANCHOR =
+    "vec4 start = modelViewMatrix * vec4( instanceStart, 1.0 );\n\t\t\tvec4 end = modelViewMatrix * vec4( instanceEnd, 1.0 );";
+if (
+    ShaderLib.line?.vertexShader &&
+    ShaderLib.line.vertexShader.includes(LINE_CAMERA_SPACE_ANCHOR) &&
+    !ShaderLib.line.vertexShader.includes("/* chili3d_edge_bias */")
+) {
+    ShaderLib.line.vertexShader = ShaderLib.line.vertexShader.replace(
+        LINE_CAMERA_SPACE_ANCHOR,
+        `${LINE_CAMERA_SPACE_ANCHOR}
+\t\t\t/* chili3d_edge_bias */
+\t\t\tif ( start.z < 0.0 && end.z < 0.0 ) {
+\t\t\t\tstart.z += min( abs( start.z ) * 0.0025, 1.5 );
+\t\t\t\tend.z += min( abs( end.z ) * 0.0025, 1.5 );
+\t\t\t}`,
+    );
+}
 
 export const defaultVertexMaterial = new PointsMaterial({
     color: ThreeHelper.fromColor(VisualConfig.defaultEdgeColor),
@@ -28,8 +49,8 @@ const defaultEdgeMaterialOptions = {
     color: VisualConfig.defaultEdgeColor,
     side: DoubleSide,
     polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2,
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -8,
 };
 
 export const defaultEdgeMaterial = new LineMaterial({

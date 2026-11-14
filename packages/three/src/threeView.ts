@@ -267,6 +267,8 @@ export class ThreeView extends Observable implements IView {
         this._scene.add(this.dynamicLight);
         this._gizmo = this.initGizmo();
         this.camera.layers.enableAll();
+        this.camera.layers.disable(Constants.Layers.BatchedWireframe);
+        this.camera.layers.disable(Constants.Layers.BatchedSolid);
         this.document.application.views.push(this);
         this.animate();
     }
@@ -454,6 +456,7 @@ export class ThreeView extends Observable implements IView {
     private syncCameraDependentState() {
         const dir = this.camera.position.clone().sub(this.cameraController.target);
         this.dynamicLight.position.copy(dir);
+        this.content.syncInstanceBatches?.(Boolean(this._isolatedNodes?.length));
     }
 
     private downscaleImage(source: HTMLCanvasElement, maxSize: number, options?: ToImageOptions): string {
@@ -1257,6 +1260,18 @@ export class ThreeView extends Observable implements IView {
             order: number;
         }
 
+        const children = (this.document?.visual?.context as any)?.visualShapes?.children;
+        const orderMap = new Map<Object3D, number>();
+        if (Array.isArray(children)) {
+            for (let i = 0; i < children.length; i++) {
+                orderMap.set(children[i], i);
+            }
+        }
+        const visualMetaCache = new Map<
+            ThreeVisualObject | ThreeAnnotation,
+            { is2D: boolean; diag: number; order: number }
+        >();
+
         const metaList: HitMeta[] = hits.map((hit) => {
             let current: Object3D | null = hit.object;
             let visual: ThreeVisualObject | ThreeAnnotation | null = null;
@@ -1280,35 +1295,45 @@ export class ThreeView extends Observable implements IView {
             let order = 0;
 
             if (visual) {
-                if (visual instanceof ThreeGeometry) {
-                    if (visual.geometryNode instanceof ShapeNode && visual.geometryNode.shape.isOk) {
-                        const st = visual.geometryNode.shape.value.shapeType;
-                        if (
-                            st === ShapeTypes.face ||
-                            st === ShapeTypes.wire ||
-                            st === ShapeTypes.edge ||
-                            st === ShapeTypes.compound
-                        ) {
+                let cached = visualMetaCache.get(visual);
+                if (!cached) {
+                    if (visual instanceof ThreeGeometry) {
+                        if (!(visual as any)._faces) {
                             is2D = true;
+                        } else if (
+                            visual.geometryNode instanceof ShapeNode &&
+                            visual.geometryNode.shape.isOk
+                        ) {
+                            const st = visual.geometryNode.shape.value.shapeType;
+                            if (
+                                st === ShapeTypes.face ||
+                                st === ShapeTypes.wire ||
+                                st === ShapeTypes.edge ||
+                                st === ShapeTypes.compound
+                            ) {
+                                is2D = true;
+                            }
                         }
                     }
-                    if (!(visual as any)._faces) {
-                        is2D = true;
+
+                    const box = visual.boundingBox();
+                    if (box) {
+                        const dx = box.max.x - box.min.x;
+                        const dy = box.max.y - box.min.y;
+                        const dz = box.max.z - box.min.z;
+                        diag = Math.hypot(dx, dy, dz);
                     }
-                }
 
-                const box = visual.boundingBox();
-                if (box) {
-                    const dx = box.max.x - box.min.x;
-                    const dy = box.max.y - box.min.y;
-                    const dz = box.max.z - box.min.z;
-                    diag = Math.hypot(dx, dy, dz);
-                }
-
-                const children = (this.document?.visual?.context as any)?.visualShapes?.children;
-                const idx = Array.isArray(children) ? children.indexOf(visual) : -1;
-                if (idx >= 0) {
-                    order = idx;
+                    const idx = orderMap.get(visual) ?? -1;
+                    if (idx >= 0) {
+                        order = idx;
+                    }
+                    cached = { is2D, diag, order };
+                    visualMetaCache.set(visual, cached);
+                } else {
+                    is2D = cached.is2D;
+                    diag = cached.diag;
+                    order = cached.order;
                 }
             }
 
@@ -1348,13 +1373,33 @@ export class ThreeView extends Observable implements IView {
         return metaList.map((m) => m.hit);
     }
 
+    private mayRayIntersectVisual(raycaster: Raycaster, visual: ThreeVisualObject): boolean {
+        if (!(visual instanceof ThreeGeometry)) return true;
+        if (this.width <= 1 || this.height <= 1) return true;
+        const wb = visual.worldBox();
+        if (!wb || wb.isEmpty() || !Number.isFinite(wb.min.x)) return true;
+
+        const dist = wb.distanceToPoint(raycaster.ray.origin);
+        const snapPx = (Config.instance.SnapDistance + 8) * 2;
+        let worldPerPx = dist / Math.max(100, this.height);
+        if (this.camera instanceof OrthographicCamera) {
+            worldPerPx = Math.abs(this.camera.top - this.camera.bottom) / Math.max(100, this.height);
+        }
+        const margin = Math.max(25, worldPerPx * snapPx);
+        const expanded = wb.clone().expandByScalar(margin);
+        return raycaster.ray.intersectsBox(expanded);
+    }
+
     private findIntersectedNodes(mx: number, my: number) {
+        const raycaster = this.initRaycaster(mx, my);
         let visuals: Object3D[] = [];
         const batches = new Set<AnnotationBatch>();
         this.document.visual.context.visuals().forEach((x) => {
             if (!x.visible) return;
             if (x instanceof ThreeVisualObject && x.node.visible && x.node.parentVisible) {
-                visuals.push(...x.wholeVisual());
+                if (this.mayRayIntersectVisual(raycaster, x)) {
+                    visuals.push(...x.wholeVisual());
+                }
             } else if (x instanceof ThreeAnnotation) {
                 visuals.push(...x.wholeVisual());
                 // Annotations draw through their parent's batch: raycast the batch
@@ -1368,7 +1413,7 @@ export class ThreeView extends Observable implements IView {
         // Raycasting ignores `visible` — filter it ourselves: hidden children (grip
         // dots, an empty batch's objects) must not eat hover raycasts.
         visuals = visuals.filter((x) => x !== undefined && x !== null && x.visible);
-        const hits = this.initRaycaster(mx, my).intersectObjects(visuals, false);
+        const hits = raycaster.intersectObjects(visuals, false);
         return this.sortCoplanarHits(hits);
     }
 
@@ -1380,7 +1425,7 @@ export class ThreeView extends Observable implements IView {
         nodeFilter?: INodeFilter,
     ) {
         const raycaster = this.initRaycaster(mx, my);
-        const shapes = this.initIntersectableShapes(shapeType, includeHiddenVisuals, nodeFilter);
+        const shapes = this.initIntersectableShapes(shapeType, includeHiddenVisuals, nodeFilter, raycaster);
         const hits = raycaster.intersectObjects(shapes, false);
         return this.sortCoplanarHits(hits);
     }
@@ -1389,6 +1434,7 @@ export class ThreeView extends Observable implements IView {
         shapeType: ShapeType,
         includeHiddenVisuals: boolean,
         nodeFilter?: INodeFilter,
+        raycaster?: Raycaster,
     ) {
         let shapes: Object3D[] = [];
         this.document.visual.context.visuals().forEach((x) => {
@@ -1400,7 +1446,9 @@ export class ThreeView extends Observable implements IView {
                 x.node.parentVisible &&
                 (!nodeFilter || nodeFilter.allow(x.node))
             ) {
-                shapes.push(...x.subShapeVisual(shapeType));
+                if (!raycaster || this.mayRayIntersectVisual(raycaster, x)) {
+                    shapes.push(...x.subShapeVisual(shapeType));
+                }
             }
         });
         shapes = shapes.filter((x) => x !== undefined && x !== null);
@@ -1416,9 +1464,11 @@ export class ThreeView extends Observable implements IView {
         if (this.mode === "wireframe") {
             raycaster.layers.disableAll();
             raycaster.layers.enable(Constants.Layers.Wireframe);
+            raycaster.layers.enable(Constants.Layers.BatchedWireframe);
         } else if (this.mode === "solid") {
             raycaster.layers.disableAll();
             raycaster.layers.enable(Constants.Layers.Solid);
+            raycaster.layers.enable(Constants.Layers.BatchedSolid);
         } else {
             raycaster.layers.enableAll();
         }

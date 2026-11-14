@@ -55,6 +55,7 @@ import {
 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { AnnotationBatch } from "./annotationBatch";
+import { BodyInstanceBatchManager } from "./bodyInstanceBatch";
 import { createAnnotationVisual, ThreeAnnotation } from "./threeAnnotation";
 import { ThreeGeometry } from "./threeGeometry";
 import { ThreeGeometryFactory } from "./threeGeometryFactory";
@@ -70,6 +71,7 @@ export class ThreeVisualContext implements IVisualContext {
     private readonly _visualNodeMap = new Map<IVisualObject, INode>();
     private readonly _NodeVisualMap = new Map<INode, IVisualObject & Object3D>();
     private readonly _annotationBatches = new Map<Object3D, AnnotationBatch>();
+    private readonly _instanceBatchManager = new BodyInstanceBatchManager(this);
     readonly materialMap = new Map<string, ThreeMaterial>();
 
     readonly visualShapes: Group;
@@ -297,12 +299,24 @@ export class ThreeVisualContext implements IVisualContext {
         this.visual.document.modelManager.removeNodeObserver(this.handleNodeChanged);
         this.materialMap.forEach((x) => x.dispose());
         this.materialMap.clear();
+        this._instanceBatchManager.dispose();
         this._annotationBatches.clear();
         this.visualShapes.clear();
         this.tempShapes.clear();
         this._visualNodeMap.clear();
         this._NodeVisualMap.clear();
         this.scene.remove(this.visualShapes, this.tempShapes);
+    }
+
+    markInstanceBatchesDirty(): void {
+        this._instanceBatchManager.markDirty();
+    }
+
+    syncInstanceBatches(isolated = false): void {
+        if (!this._instanceBatchManager.group.parent) {
+            this.scene.add(this._instanceBatchManager.group);
+        }
+        this._instanceBatchManager.sync(isolated);
     }
 
     getNode(visual: IVisualObject): INode | undefined {
@@ -504,6 +518,7 @@ export class ThreeVisualContext implements IVisualContext {
             shape.rebuildMesh();
         }
         shape.visible = visible;
+        this._instanceBatchManager.markDirty();
         if (shape instanceof ThreeComponentObject) {
             // Three's own traversal hides member annotations on render, but the pick
             // paths read the flag on the annotation visual itself.

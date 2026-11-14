@@ -32,6 +32,11 @@ export class PanEventHandler implements IEventHandler {
         if (event.button === 0) {
             this._isDragging = true;
             this._lastPos = { x: event.offsetX, y: event.offsetY };
+            try {
+                (event.target as Element | null)?.setPointerCapture?.(event.pointerId);
+            } catch {
+                // ignore if synthetic event
+            }
             PubSub.default.pub("viewCursor", "grabbing");
         } else if (event.button === 2) {
             this.controller.cancel();
@@ -52,6 +57,11 @@ export class PanEventHandler implements IEventHandler {
         if (event.button === 0) {
             this._isDragging = false;
             this._lastPos = undefined;
+            try {
+                (event.target as Element | null)?.releasePointerCapture?.(event.pointerId);
+            } catch {
+                // ignore if synthetic event
+            }
             PubSub.default.pub("viewCursor", "grab");
         }
     }

@@ -320,6 +320,7 @@ export class ModelManager extends Observable {
                 !(node as any).isInstance &&
                 node.constructor?.name !== "BodyInstanceNode"
             ) {
+                if (node.visible === false || node.parentVisible === false) continue;
                 try {
                     const _ = node.shape;
                 } catch {
@@ -329,6 +330,7 @@ export class ModelManager extends Observable {
         }
         for (const node of allNodes) {
             if ((node as any).isInstance === true || node.constructor?.name === "BodyInstanceNode") {
+                if (node.visible === false || node.parentVisible === false) continue;
                 const instance = node as any;
                 const src = instance.source;
                 if (src) {
